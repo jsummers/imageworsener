@@ -1,1 +1,13 @@
-#ImageWorsener
+/Debug
+/Release
+/Debug64
+/Release64
+/LibDebug
+/LibRelease
+/LibDebug64
+/LibRelease64
+*.suo
+*.ncb
+/imagew2008.vcproj.*
+/libimagew2008.vcproj.*
+/tests/actual

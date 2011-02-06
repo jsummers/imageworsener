@@ -1,0 +1,5 @@
+*.c text
+*.h text
+*.txt text
+.gitignore export-ignore
+.gitattributes export-ignore

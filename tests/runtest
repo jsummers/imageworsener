@@ -1,0 +1,161 @@
+#!/bin/bash
+
+# Quick & dirty ImageWorsener regression testing.
+
+# Optional first parameter is the "imagew" binary to test.
+
+# It is normal for some warnings to be displayed when running the tests.
+
+# This testing system is not implemented very well. There are many reasons
+# you could get "failures" even when there is nothing wrong.
+# For example:
+#  - Using a different version of libjpeg, libpng, or zlib.
+#  - Subtle differences in math libraries.
+#  - Subtle differences and indeterminacies in how compilers handle floating
+#    point calculations
+#    (see also http://gcc.gnu.org/bugzilla/show_bug.cgi?id=323).
+#
+# Consider using the "compare" utility from ImageMagick to determine how
+# many pixels are actually different.
+# 
+# (Unfortunately, we can't always test *just* the pixels values, because
+# some of the meta data in the image files is important.)
+
+IW="$1"
+CMP=cmp
+
+
+if [ "$IW" = "" ]
+then
+ # Search for the IW executable.
+ for x in ../imagew ../Release64/imagew.exe ../Debug64/imagew.exe \
+  ../Release/imagew.exe ../Debug/imagew.exe ../imagew.exe
+ do
+  if [ -x "$x" ]
+  then
+   IW="$x"
+   break
+  fi
+ done
+
+ if [ "$IW" = "" ]
+ then
+  echo "Can't find the imagew executable."
+  exit 1
+ fi
+
+ echo "Testing $IW"
+fi
+
+
+SCALE="-width 35 -height 35"
+
+if [ ! -d actual ]
+then
+	mkdir actual
+fi
+
+rm -f actual/*.png actual/*.jpg
+
+echo "Creating images..."
+
+# PNG reading tests.
+for f in g1 g1t g2 g2t g4 g4t g8 g8t g16 g16t \
+ p1 p1t p2 p2t p4 p4t p8 p8t \
+ rgb8 rgb8t rgb16 rgb16t g8a g16a rgb8a rgb16a
+do
+ $IW srcimg/$f.png actual/png-$f.png -width 35 -height 35 -filter catrom
+done
+
+$IW srcimg/g2t.png actual/bkgd.png -width 35 -height 35 -filter catrom -bkgd e42
+$IW srcimg/rgb8a.png actual/bkgd2.png -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
+
+# test downscaling
+for f in auto nearest mix box triangle gaussian lanczos
+do
+ $IW srcimg/rings1.png "actual/ds-$f.png" -width 35 -height 35 -filter "$f"
+done
+
+
+$IW srcimg/4x4.png actual/cc-2.png $SCALE -filter catrom -cc 2
+$IW srcimg/4x4.png actual/cc-6.png $SCALE -filter catrom -cc 6
+$IW srcimg/4x4.png actual/cc-mixed.png $SCALE -filter catrom -ccred 3 -ccgreen 10 -ccblue 5
+$IW srcimg/4x4.png actual/depth-16.png $SCALE -filter catrom -depth 16
+
+#test upscaling
+for f in auto nearest mix box triangle quadratic gaussian hermite \
+ catrom mitchell bspline lanczos2 lanczos lanczos8 blackman hanning
+do
+ $IW srcimg/4x4.png "actual/us-$f.png" $SCALE -filter "$f"
+done
+$IW srcimg/4x4.png "actual/us-cubic01.png" $SCALE -filter "cubic0,1"
+
+$IW srcimg/4x4.png actual/us-mixed.png $SCALE -filterx catrom -filtery nearest
+$IW srcimg/4x4.png actual/blur.png $SCALE -filter catrom -blur 1.5
+$IW srcimg/4x4.png actual/edge-s.png $SCALE -filter lanczos -edge s
+$IW srcimg/4x4.png actual/edge-r.png $SCALE -filter lanczos -edge r
+
+$IW srcimg/4x4.png actual/cs-linear.png $SCALE -filter catrom -cs linear
+$IW srcimg/4x4.png actual/cs-gamma15.png $SCALE -filter catrom -cs gamma1.5
+$IW srcimg/4x4.png actual/cs-srgbs.png $SCALE -filter catrom -cs srgbs
+
+$IW srcimg/4x4.png actual/nocslabel.png $SCALE -filter catrom -nocslabel
+$IW srcimg/4x4.png actual/inputcs.png $SCALE -filter catrom -inputcs linear -cs srgb
+
+$IW srcimg/4x4.png actual/nogamma.png $SCALE -filter catrom -nogamma
+$IW srcimg/4x4.png actual/intclamp.png $SCALE -filter lanczos -intclamp
+
+$IW srcimg/4x4.png actual/grayscale.png $SCALE -filter catrom -grayscale
+$IW srcimg/4x4.png actual/grayscale-c.png $SCALE -filter catrom -grayscale -nogamma -grayscaleformula c
+
+$IW srcimg/4x4.png actual/offset.png $SCALE -filter mix -offsetred .333 -offsetgreen -0.2 -offsetblue -1.5
+$IW srcimg/rgb8a.png actual/offsetv.png $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5
+$IW srcimg/g2.png actual/offsetrb.png $SCALE -filter catrom -offsetrb .333 -offsetvrb -0.6
+
+# Not tested: random dithering.
+for d in f o sierra sierra2 sierralite jjn burkes atkinson
+do
+ $IW srcimg/4x4.png actual/dither-$d.png $SCALE -filter catrom -cc 3 -dither $d
+done
+
+$IW srcimg/4x4.png actual/dither-gray.png $SCALE -filter catrom -cc 2 -grayscale -dither f
+
+# test reading/writing JPEG
+
+$IW srcimg/rgb8.jpg actual/jpeg.jpg $SCALE -filter catrom
+$IW srcimg/g8.jpg actual/jpeggray.jpg $SCALE -filter catrom -jpegquality 60
+$IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom
+
+
+# Image with just 2 pixels can't have more than 2 colors. Test to see
+# if we optimize to a 1bpp palette (etc.).
+$IW srcimg/rgb8a.png actual/opt-02col.png -width 2 -height 1 -filter mix
+$IW srcimg/rgb8a.png actual/opt-04col.png -width 2 -height 2 -filter mix
+$IW srcimg/rgb8.png actual/opt-12col.png -width 4 -height 3 -filter mix
+$IW srcimg/rgb8a.png actual/opt-20col.png -width 5 -height 4 -filter mix
+
+
+# Compare the expected and actual files.
+# (TODO: Need a better way to do this.)
+
+echo "Checking images..."
+
+FAIL=0
+for ff in expected/*.png expected/*.jpg
+do
+	f=${ff#expected/}
+	#echo $f
+	cmp actual/$f expected/$f
+	RET="$?"
+	if [ "$RET" -ne 0 ]
+	then
+		echo "Test failed: $f"
+		FAIL=1
+	fi
+done
+
+if [ $FAIL -eq 0 ]
+then
+	echo "All tests passed."
+fi
+
