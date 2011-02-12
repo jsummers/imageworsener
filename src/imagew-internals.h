@@ -82,7 +82,7 @@ struct iw_opt_ctx {
 	int has_partial_transparency;
 	int has_16bit_precision;
 	int has_color;
-	int is_non_bilevel;
+	int palette_is_grayscale;
 
 	struct iw_palette *palette;
 };

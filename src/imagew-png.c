@@ -329,6 +329,7 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	struct iw_csdescr csdescr;
 	const struct iw_palette *iwpal = NULL;
 	int no_cslabel;
+	int palette_is_gray;
 
 	iw_get_output_image(ctx,&img);
 	iw_get_output_colorspace(ctx,&csdescr);
@@ -382,9 +383,11 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 		if(iwpal->num_entries <= 2) png_bit_depth=1;
 		else if(iwpal->num_entries <= 4) png_bit_depth=2;
 		else if(iwpal->num_entries <= 16) png_bit_depth=4;
-	}
-	else if(img.imgtype==IW_IMGTYPE_GRAY1) {
-		png_bit_depth=1;
+
+		palette_is_gray = iw_get_value(ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE);
+		if(palette_is_gray) {
+			png_color_type = PNG_COLOR_TYPE_GRAY;
+		}
 	}
 
 	png_set_IHDR(png_ptr, info_ptr, img.width, img.height,
@@ -419,11 +422,7 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 		row_pointers[i] = &img.pixels[img.bpr*i];
 	}
 
-	if(png_color_type==PNG_COLOR_TYPE_PALETTE) {
-		if(png_bit_depth<8)
-			png_set_packing(png_ptr);
-	}
-	else if(img.imgtype==IW_IMGTYPE_GRAY1) {
+	if(png_bit_depth<8) {
 		png_set_packing(png_ptr);
 	}
 

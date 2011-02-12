@@ -73,27 +73,6 @@ done:
 	;
 }
 
-static void iw_opt_scanpixels_g8(struct iw_opt_ctx *optctx)
-{
-	int i,j;
-	unsigned char gray;
-	const unsigned char *ptr;
-
-	for(j=0;j<optctx->height;j++) {
-		for(i=0;i<optctx->width;i++) {
-			ptr = &optctx->pixelsptr[j*optctx->bpr+i];
-			gray=ptr[0];
-
-			if(gray!=0 && gray!=255) {
-				optctx->is_non_bilevel=1;
-				goto done;
-			}
-		}
-	}
-done:
-	;
-}
-
 static void iw_opt_scanpixels_rgba8(struct iw_opt_ctx *optctx)
 {
 	int i,j;
@@ -405,21 +384,6 @@ static int iw_opt_scanpixels(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 	return 1;
 }
 
-// Try to convert an 8-bit grayscale image to a 1-bit grayscale image.
-static void iwopt_try_bilevel_optimization(struct iw_context *ctx, struct iw_opt_ctx *optctx)
-{
-	if(optctx->imgtype!=IW_IMGTYPE_GRAY) return;
-	if(optctx->bit_depth!=8) return;
-	if(!(ctx->output_profile&IW_PROFILE_GRAYSCALE)) return;
-	if(!(ctx->output_profile&IW_PROFILE_1BPP)) return;
-
-	iw_opt_scanpixels_g8(optctx);
-	if(optctx->is_non_bilevel) return;
-
-	optctx->imgtype = IW_IMGTYPE_GRAY1;
-	// TODO: We probably should convert the 255's to 1's.
-}
-
 ////////////////////
 
 // returns palette entry, or -1 if not found
@@ -585,30 +549,61 @@ static int iwopt_palsortfunc(const void* p1, const void* p2)
 	return 0; // Should be unreachable.
 }
 
+static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx *optctx, int bpp)
+{
+	int factor;
+	int i;
+
+	if(optctx->has_color) return 0;
+	if(optctx->has_transparency) return 0;
+
+	switch(bpp) {
+	case 1: factor=255; break;
+	case 2: factor=85; break;
+	case 4: factor=17; break;
+	case 8: factor=1; break;
+	default: return 0;
+	}
+
+	for(i=0;i<optctx->palette->num_entries;i++) {
+		if(optctx->palette->entry[i].r % factor) return 0;
+	}
+	return 1;
+}
+
+static void iwopt_make_gray_palette(struct iw_context *ctx, struct iw_opt_ctx *optctx, int bpp)
+{
+	int factor;
+	int i;
+
+	switch(bpp) {
+	case 1: factor=255; optctx->palette->num_entries=2; break;
+	case 2: factor=85; optctx->palette->num_entries=4; break;
+	case 4: factor=17; optctx->palette->num_entries=16; break;
+	default: factor=1; optctx->palette->num_entries=256; break;
+	}
+
+	for(i=0;i<optctx->palette->num_entries;i++) {
+		optctx->palette->entry[i].r = optctx->palette->entry[i].g =
+			optctx->palette->entry[i].b = factor*i;
+		optctx->palette->entry[i].a = 255;
+	}
+
+	optctx->palette_is_grayscale=1;
+}
+
 static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int ret;
+	int to_grayscale=0;
 
 	if(!(ctx->output_profile&IW_PROFILE_PALETTE)) {
 		// Output format doesn't support palette images.
 		return;
 	}
 
-	if(ctx->to_grayscale && (ctx->output_profile&IW_PROFILE_GRAYSCALE)) {
-		// User requested grayscale output.
-		// We acknowledge that by never using a palette, if the output format
-		// has grayscale capability.
-		return;
-	}
-
 	if(optctx->bit_depth!=8) {
 		// Palettes aren't supported with bitdepth>8.
-		return;
-	}
-
-	if(optctx->imgtype==IW_IMGTYPE_GRAY) {
-		// Currently, we won't try to convert a grayscale image
-		// (w/o transparency) to a palette image.
 		return;
 	}
 
@@ -620,18 +615,44 @@ static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt
 	ret = optctx_collect_palette_colors(ctx,optctx);
 	if(!ret) {
 		// Image can't be converted to a palette image.
-		iw_free(optctx->palette);
-		optctx->palette = NULL;
-		return;
+		goto done;
 	}
 
 	// optctx->palette now contains a palette that can be used.
 
+	if(optctx->palette->num_entries>16 && optctx->imgtype==IW_IMGTYPE_GRAY)
+	{
+		// Image is already encoded as 8bpp grayscale; encoding it as
+		// 8bpp palette wouldn't be an improvement.
+		goto done;
+	}
+
+	if((ctx->output_profile&IW_PROFILE_1BPP) && iwopt_palette_is_valid_gray(ctx,optctx,1)) {
+		// Replace the palette with a fully-populated grayscale palette.
+		// The palette might already be correct, but it might not be.
+		// It will be missing any gray shade that wasn't in the image.
+		iwopt_make_gray_palette(ctx,optctx,1);
+	}
+	else if((ctx->output_profile&IW_PROFILE_2BPP) && iwopt_palette_is_valid_gray(ctx,optctx,2)) {
+		iwopt_make_gray_palette(ctx,optctx,2);
+	}
+	else if((ctx->output_profile&IW_PROFILE_4BPP) && iwopt_palette_is_valid_gray(ctx,optctx,4)) {
+		iwopt_make_gray_palette(ctx,optctx,4);
+	}
+
 	// Sort the palette
-	qsort((void*)optctx->palette->entry,optctx->palette->num_entries,
-		sizeof(struct iw_rgba8color),iwopt_palsortfunc);
+	if(!optctx->palette_is_grayscale) {
+		qsort((void*)optctx->palette->entry,optctx->palette->num_entries,
+			sizeof(struct iw_rgba8color),iwopt_palsortfunc);
+	}
 
 	iwopt_convert_to_palette_image(ctx,optctx);
+
+done:
+	if(optctx->imgtype!=IW_IMGTYPE_PALETTE) {
+		iw_free(optctx->palette);
+		optctx->palette = NULL;
+	}
 }
 
 ////////////////////
@@ -654,7 +675,6 @@ void iw_optimize_image(struct iw_context *ctx)
 	optctx->has_partial_transparency=0;
 	optctx->has_16bit_precision=0;
 	optctx->has_color=0;
-	optctx->is_non_bilevel=0;
 
 	if(!iw_opt_scanpixels(ctx,optctx)) {
 		goto noscan;
@@ -711,6 +731,4 @@ void iw_optimize_image(struct iw_context *ctx)
 noscan:
 
 	iwopt_try_palette_optimization(ctx,optctx);
-
-	iwopt_try_bilevel_optimization(ctx,optctx);
 }

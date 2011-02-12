@@ -504,6 +504,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_JPEG_QUALITY:
 		ret = ctx->jpeg_quality;
 		break;
+	case IW_VAL_OUTPUT_PALETTE_GRAYSCALE:
+		ret = ctx->optctx.palette_is_grayscale;
+		break;
 	}
 
 	return ret;

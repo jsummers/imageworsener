@@ -65,6 +65,10 @@
 
 #define IW_VAL_JPEG_QUALITY      30
 
+// Nonzero if the palette is a fully-populated and sorted 1-, 2-, 4,
+// or 8-bit grayscale palette.
+#define IW_VAL_OUTPUT_PALETTE_GRAYSCALE 35
+
 
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.
