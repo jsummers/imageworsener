@@ -49,6 +49,7 @@ fi
 
 
 SCALE="-width 35 -height 35"
+SMALL="-width 15 -height 15"
 
 if [ ! -d actual ]
 then
@@ -66,6 +67,17 @@ for f in g1 g1t g2 g2t g4 g4t g8 g8t g16 g16t \
 do
  $IW srcimg/$f.png actual/png-$f.png -width 35 -height 35 -filter catrom
 done
+
+# Test some grayscale optimizations. 
+$IW srcimg/g8.png actual/ccgray-4.png $SMALL -filter bspline -cc 4 -dither o
+$IW srcimg/g8.png actual/ccgray-16.png $SMALL -filter bspline -cc 16 -dither o
+$IW srcimg/g8.png actual/ccgray-17.png $SMALL -filter bspline -cc 17 -dither o
+$IW srcimg/g8a.png actual/ccgraya-4.png $SMALL -filter bspline -cc 4 -dither o
+
+# Test the decision between 4-bpp palette and 8-bpp grayscale.
+$IW srcimg/rgb8.png actual/ccgray-10.png $SMALL -filter gaussian -cc 10 -dither o -grayscale
+
+$IW srcimg/g4.png actual/condgray.png $SMALL -filter mitchell -cc 7 -ccgray 6 -ccred 5 -condgrayscale
 
 $IW srcimg/g2t.png actual/bkgd.png -width 35 -height 35 -filter catrom -bkgd e42
 $IW srcimg/rgb8a.png actual/bkgd2.png -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
