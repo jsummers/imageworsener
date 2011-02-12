@@ -138,6 +138,13 @@ $IW srcimg/rgb8.jpg actual/jpeg.jpg $SCALE -filter catrom
 $IW srcimg/g8.jpg actual/jpeggray.jpg $SCALE -filter catrom -jpegquality 60
 $IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom
 
+# Extra pixel density tests
+$IW srcimg/rgb8x1.png actual/dens-1.png $SCALE -filter mix
+$IW srcimg/rgb8x2.png actual/dens-2.png $SCALE -filter mix
+$IW srcimg/rgb8x1.png actual/dens-1ns.png
+$IW srcimg/rgb8x2.png actual/dens-2ns.png
+$IW srcimg/p4.png actual/dens-3ns.png
+$IW srcimg/p4.png actual/dens-3ns.jpg
 
 # Image with just 2 pixels can't have more than 2 colors. Test to see
 # if we optimize to a 1bpp palette (etc.).
