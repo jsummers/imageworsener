@@ -161,6 +161,21 @@ done:
 	return retval;
 }
 
+static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct *cinfo,
+	const struct iw_image *img)
+{
+	if(img->density_code==IW_DENSITY_UNITS_UNKNOWN) {
+		cinfo->density_unit=0; // unknown units
+		cinfo->X_density = (UINT16)(0.5+img->density_x);
+		cinfo->Y_density = (UINT16)(0.5+img->density_y);
+	}
+	else if(img->density_code==IW_DENSITY_UNITS_PER_METER) {
+		cinfo->density_unit=1; // dots/inch
+		cinfo->X_density = (UINT16)(0.5+ img->density_x*0.0254);
+		cinfo->Y_density = (UINT16)(0.5+ img->density_y*0.0254);
+	}
+}
+
 int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 {
 	int retval=0;
@@ -237,6 +252,8 @@ int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 	cinfo.in_color_space = jpeg_colortype;
 
 	jpeg_set_defaults(&cinfo);
+
+	iwjpg_set_density(ctx,&cinfo,&img);
 
 	jpeg_quality = iw_get_value(ctx,IW_VAL_JPEG_QUALITY);
 	if(jpeg_quality>0) {

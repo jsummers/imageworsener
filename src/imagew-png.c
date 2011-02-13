@@ -285,6 +285,22 @@ done:
 }
 
 ///////////////////////////////////////////////////////////////////////
+static void iwpng_set_phys(struct iw_context *ctx,
+	png_structp png_ptr, png_infop info_ptr, const struct iw_image *img)
+{
+	png_uint_32 pngres_x, pngres_y;
+
+	if(img->density_code==IW_DENSITY_UNITS_UNKNOWN) {
+		pngres_x = (png_uint_32)(0.5+img->density_x);
+		pngres_y = (png_uint_32)(0.5+img->density_y);
+		png_set_pHYs(png_ptr, info_ptr, pngres_x, pngres_y, PNG_RESOLUTION_UNKNOWN);
+	}
+	else if(img->density_code==IW_DENSITY_UNITS_PER_METER) {
+		pngres_x = (png_uint_32)(0.5+img->density_x);
+		pngres_y = (png_uint_32)(0.5+img->density_y);
+		png_set_pHYs(png_ptr, info_ptr, pngres_x, pngres_y, PNG_RESOLUTION_METER);
+	}
+}
 
 static void iwpng_set_palette(struct iw_context *ctx,
 	png_structp png_ptr, png_infop info_ptr,
@@ -408,6 +424,8 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	else { // Assume IW_CSTYPE_SRGB
 		png_set_sRGB(png_ptr, info_ptr, csdescr.sRGB_intent);
 	}
+
+	iwpng_set_phys(ctx, png_ptr, info_ptr, &img);
 
 	if(png_color_type==PNG_COLOR_TYPE_PALETTE) {
 		iwpng_set_palette(ctx, png_ptr, info_ptr, iwpal);

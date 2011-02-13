@@ -1254,6 +1254,27 @@ static void init_channel_info(struct iw_context *ctx)
 	}
 }
 
+static void iw_convert_density_info(struct iw_context *ctx)
+{
+	double factor;
+
+	if(ctx->img1.density_code==IW_DENSITY_UNKNOWN) return;
+
+	// TODO: Decide what to do with pixel density info when the image size is
+	// being changed.
+	if(ctx->img1.width!=ctx->img2.width || ctx->img1.height!=ctx->img2.height) {
+		return;
+	}
+
+	ctx->img2.density_code = ctx->img1.density_code;
+
+	factor = ((double)ctx->img2.width)/(double)ctx->img1.width;
+	ctx->img2.density_x = ctx->img1.density_x * factor;
+
+	factor = ((double)ctx->img2.height)/(double)ctx->img1.height;
+	ctx->img2.density_y = ctx->img1.density_y * factor;
+}
+
 // Set up some things before we do the resize, and check to make
 // sure everything looks okay.
 static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
@@ -1445,6 +1466,8 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->resize_settings[IW_DIMENSION_V].family==IW_RESIZETYPE_AUTO) {
 		iw_set_auto_resizetype(ctx,ctx->img1.height,ctx->img2.height,IW_CHANNELTYPE_ALL,IW_DIMENSION_V);
 	}
+
+	iw_convert_density_info(ctx);
 
 	return 1;
 }

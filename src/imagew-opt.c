@@ -595,7 +595,6 @@ static void iwopt_make_gray_palette(struct iw_context *ctx, struct iw_opt_ctx *o
 static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int ret;
-	int to_grayscale=0;
 
 	if(!(ctx->output_profile&IW_PROFILE_PALETTE)) {
 		// Output format doesn't support palette images.

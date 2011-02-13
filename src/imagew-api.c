@@ -146,6 +146,9 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->bit_depth = ctx->optctx.bit_depth;
 	img->pixels = (unsigned char*)ctx->optctx.pixelsptr;
 	img->bpr = ctx->optctx.bpr;
+	img->density_code = ctx->img2.density_code;
+	img->density_x = ctx->img2.density_x;
+	img->density_y = ctx->img2.density_y;
 }
 
 void iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr)
