@@ -84,6 +84,7 @@ struct params_struct {
 	int edge_policy;
 	int grayscale_formula;
 	int no_cslabel;
+	int no_binarytrns;
 	int cs_in_set, cs_out_set;
 	struct iw_csdescr cs_in;
 	struct iw_csdescr cs_out;
@@ -193,6 +194,7 @@ static int run(struct params_struct *p)
 	if(p->no_gamma) iw_set_value(ctx,IW_VAL_DISABLE_GAMMA,1);
 	if(p->intclamp) iw_set_value(ctx,IW_VAL_INT_CLAMP,1);
 	if(p->no_cslabel) iw_set_value(ctx,IW_VAL_NO_CSLABEL,1);
+	if(p->no_binarytrns) iw_set_value(ctx,IW_VAL_NO_BINARYTRNS,1);
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 
@@ -799,6 +801,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 	}
 	else if(!_tcscmp(n,_T("nocslabel"))) {
 		p->no_cslabel=1;
+	}
+	else if(!_tcscmp(n,_T("nobinarytrns"))) {
+		p->no_binarytrns=1;
 	}
 	else if(!_tcscmp(n,_T("interlace"))) {
 		p->interlace=1;

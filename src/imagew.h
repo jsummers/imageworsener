@@ -50,6 +50,10 @@
 // 0=standard formula, 1=compatibility formula
 #define IW_VAL_GRAYSCALE_FORMULA 16
 
+// If ==1, do not use PNG binary transparency (use alpha or palette transaprency
+// instead).
+#define IW_VAL_NO_BINARYTRNS     17
+
 // Test whether the input image was encoded as grayscale.
 // (Assumes the image-reading function set the iw_image::native_grayscale
 // flag correctly.)

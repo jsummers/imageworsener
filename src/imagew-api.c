@@ -443,6 +443,9 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_NO_CSLABEL:
 		ctx->no_cslabel = n;
 		break;
+	case IW_VAL_NO_BINARYTRNS:
+		ctx->no_binarytrns = n;
+		break;
 	case IW_VAL_INT_CLAMP:
 		ctx->intclamp = n;
 		break;
@@ -486,6 +489,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_NO_CSLABEL:
 		ret = ctx->no_cslabel;
+		break;
+	case IW_VAL_NO_BINARYTRNS:
+		ret = ctx->no_binarytrns;
 		break;
 	case IW_VAL_INT_CLAMP:
 		ret = ctx->intclamp;

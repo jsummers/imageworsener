@@ -440,6 +440,12 @@ Options:
  -interlace
    Write an interlaced PNG image, or a progressive JPEG image.
 
+ -nobinarytrns
+   Do not write PNG images that use binary transparency. (Use palette
+   transparency or a full alpha channel instead.) The only reason to use this
+   option is if you use a PNG viewer that has a problem with binary
+   transparency.
+
  -jpegquality <n>
    libjpeg-style quality setting to use if a JPEG file is written. Default is
    (probably) 75.

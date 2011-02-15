@@ -185,6 +185,7 @@ struct iw_context {
 	int no_cslabel; // Disable writing of a colorspace label to the output file.
 	int edge_policy;
 	int grayscale_formula;
+	int no_binarytrns; // Do not use PNG binary transparency.
 
 	int charset; // 0=ASCII, 1=Unicode
 	const TCHAR *symbol_times;
