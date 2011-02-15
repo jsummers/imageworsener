@@ -100,7 +100,7 @@ for f in auto nearest mix box triangle quadratic gaussian hermite \
 do
  $IW srcimg/4x4.png "actual/us-$f.png" $SCALE -filter "$f"
 done
-$IW srcimg/4x4.png "actual/us-cubic01.png" $SCALE -filter "cubic0,1"
+$IW srcimg/4x4.png "actual/us-cubic01.png" $SCALE -filter "cubic0,1" -interlace
 
 $IW srcimg/4x4.png actual/us-mixed.png $SCALE -filterx catrom -filtery nearest
 $IW srcimg/4x4.png actual/blur.png $SCALE -filter catrom -blur 1.5
@@ -135,8 +135,9 @@ $IW srcimg/4x4.png actual/dither-gray.png $SCALE -filter catrom -cc 2 -grayscale
 # test reading/writing JPEG
 
 $IW srcimg/rgb8.jpg actual/jpeg.jpg $SCALE -filter catrom
+$IW srcimg/rgb8.jpg actual/jpegsf.jpg $SCALE -filter catrom -jpegsampling 1,1
 $IW srcimg/g8.jpg actual/jpeggray.jpg $SCALE -filter catrom -jpegquality 60
-$IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom
+$IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace
 
 # Extra pixel density tests
 $IW srcimg/rgb8x1.png actual/dens-1.png $SCALE -filter mix
