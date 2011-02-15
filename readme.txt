@@ -437,10 +437,17 @@ Options:
    "r" means to use a different random seed every time.
    Default is 0.
 
- -jpegquality
+ -jpegquality <n>
    libjpeg-style quality setting to use if a JPEG file is written. Default is
    (probably) 75.
-		
+
+ -jpegsampling <x>,<y>
+   The sampling factors to use if a color JPEG file is written. For example, 2
+   means the chroma channels will have 1/2 as many samples as the luma
+   channel. For highest quality, use "1,1". Default is (probably) "2,2".
+   Each factor must be between 1 and 4. Not all combinations are allowed, for
+   reasons unknown to the author of IW.
+
  -quiet
    Suppress informational messages and warnings.
 

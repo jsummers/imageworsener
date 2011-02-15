@@ -191,6 +191,7 @@ int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 	int j;
 	struct iw_image img;
 	int jpeg_quality;
+	int samp_factor_h, samp_factor_v;
 
 	memset(&cinfo,0,sizeof(struct jpeg_compress_struct));
 	memset(&jerr,0,sizeof(struct my_error_mgr));
@@ -259,6 +260,21 @@ int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 	if(jpeg_quality>0) {
 		jpeg_set_quality(&cinfo,jpeg_quality,0);
 	}
+
+	if(jpeg_cmpts>1) {
+		samp_factor_h = iw_get_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H);
+		samp_factor_v = iw_get_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V);
+
+		if(samp_factor_h>0) {
+			if(samp_factor_h>4) samp_factor_h=4;
+			cinfo.comp_info[0].h_samp_factor = samp_factor_h;
+		}
+		if(samp_factor_v>0) {
+			if(samp_factor_v>4) samp_factor_v=4;
+			cinfo.comp_info[0].v_samp_factor = samp_factor_v;
+		}
+	}
+
 	//if(ctx->output_interlaced) jpeg_simple_progression(&cinfo);
 
 	row_pointers = (JSAMPROW*)iw_malloc(ctx, img.height * sizeof(JSAMPROW));

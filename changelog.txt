@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added "-jpegsampling" option.
  - Retain pixel density information if the image isn't being resized.
  - Support for optimizing to a 4- or 16-color grayscale image.
 

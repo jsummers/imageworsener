@@ -73,6 +73,7 @@ struct params_struct {
 	struct rgb_color bkgd;
 	struct rgb_color bkgd2;
 	int jpeg_quality;
+	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	int randomize;
 	int random_seed;
 	int infmt;
@@ -340,6 +341,10 @@ static int run(struct params_struct *p)
 
 	if(p->outfmt==IWCMD_FMT_JPEG) {
 		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
+		if(p->jpeg_samp_factor_h>0)
+			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
+		if(p->jpeg_samp_factor_v>0)
+			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
 		if(!iw_write_jpeg_file(ctx,p->outfn)) goto done;
 	}
 	else {
@@ -693,7 +698,8 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
- PT_JPEGQUALITY, PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA
+ PT_JPEGQUALITY, PT_JPEGSAMPLING,
+ PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA
 };
 
 struct parsestate_struct {
@@ -749,6 +755,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("offsetvblue"),PT_OFFSET_B_V},
 		{_T("offsetvrb"),PT_OFFSET_RB_V},
 		{_T("jpegquality"),PT_JPEGQUALITY},
+		{_T("jpegsampling"),PT_JPEGSAMPLING},
 		{_T("randseed"),PT_RANDSEED},
 		{_T("infmt"),PT_INFMT},
 		{_T("outfmt"),PT_OUTFMT},
@@ -947,6 +954,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_JPEGQUALITY:
 		p->jpeg_quality=_tstoi(v);
+		break;
+	case PT_JPEGSAMPLING:
+		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
 		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {

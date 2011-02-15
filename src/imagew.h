@@ -64,6 +64,8 @@
 #define IW_VAL_INPUT_DEPTH       24
 
 #define IW_VAL_JPEG_QUALITY      30
+#define IW_VAL_JPEG_SAMP_FACTOR_H  31
+#define IW_VAL_JPEG_SAMP_FACTOR_V  32
 
 // Nonzero if the palette is a fully-populated and sorted 1-, 2-, 4,
 // or 8-bit grayscale palette.
