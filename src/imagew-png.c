@@ -335,8 +335,8 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	int i;
 	jmp_buf jbuf;
 	struct errstruct errinfo;
-	int png_color_type;
-	int png_bit_depth;
+	int lpng_color_type;
+	int lpng_bit_depth;
 	int lpng_interlace_type;
 	FILE *outfp = NULL;
 	int retval=0;
@@ -376,34 +376,34 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 
 	png_init_io(png_ptr, outfp);
 
-	png_color_type = -1;
+	lpng_color_type = -1;
 
 	switch(img.imgtype) {
-	case IW_IMGTYPE_RGBA:  png_color_type=PNG_COLOR_TYPE_RGB_ALPHA;  break;
-	case IW_IMGTYPE_RGB:   png_color_type=PNG_COLOR_TYPE_RGB;        break;
-	case IW_IMGTYPE_GRAYA: png_color_type=PNG_COLOR_TYPE_GRAY_ALPHA; break;
-	case IW_IMGTYPE_GRAY:  png_color_type=PNG_COLOR_TYPE_GRAY;       break;
-	case IW_IMGTYPE_PALETTE: png_color_type=PNG_COLOR_TYPE_PALETTE;  break;
-	case IW_IMGTYPE_GRAY1: png_color_type=PNG_COLOR_TYPE_GRAY;       break;
+	case IW_IMGTYPE_RGBA:  lpng_color_type=PNG_COLOR_TYPE_RGB_ALPHA;  break;
+	case IW_IMGTYPE_RGB:   lpng_color_type=PNG_COLOR_TYPE_RGB;        break;
+	case IW_IMGTYPE_GRAYA: lpng_color_type=PNG_COLOR_TYPE_GRAY_ALPHA; break;
+	case IW_IMGTYPE_GRAY:  lpng_color_type=PNG_COLOR_TYPE_GRAY;       break;
+	case IW_IMGTYPE_PALETTE: lpng_color_type=PNG_COLOR_TYPE_PALETTE;  break;
+	case IW_IMGTYPE_GRAY1: lpng_color_type=PNG_COLOR_TYPE_GRAY;       break;
 	}
 
-	if(png_color_type == -1) {
+	if(lpng_color_type == -1) {
 		iw_seterror(ctx,_T("Internal: Don't know how to write this image"));
 		goto done;
 	}
 
-	png_bit_depth = img.bit_depth;
+	lpng_bit_depth = img.bit_depth;
 
-	if(png_color_type==PNG_COLOR_TYPE_PALETTE) {
+	if(lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
 		iwpal = iw_get_output_palette(ctx);
 		if(!iwpal) goto done;
-		if(iwpal->num_entries <= 2) png_bit_depth=1;
-		else if(iwpal->num_entries <= 4) png_bit_depth=2;
-		else if(iwpal->num_entries <= 16) png_bit_depth=4;
+		if(iwpal->num_entries <= 2) lpng_bit_depth=1;
+		else if(iwpal->num_entries <= 4) lpng_bit_depth=2;
+		else if(iwpal->num_entries <= 16) lpng_bit_depth=4;
 
 		palette_is_gray = iw_get_value(ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE);
 		if(palette_is_gray) {
-			png_color_type = PNG_COLOR_TYPE_GRAY;
+			lpng_color_type = PNG_COLOR_TYPE_GRAY;
 		}
 	}
 
@@ -413,7 +413,7 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	}
 
 	png_set_IHDR(png_ptr, info_ptr, img.width, img.height,
-		png_bit_depth, png_color_type, lpng_interlace_type,
+		lpng_bit_depth, lpng_color_type, lpng_interlace_type,
 		PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
 	no_cslabel = iw_get_value(ctx,IW_VAL_NO_CSLABEL);
@@ -433,7 +433,7 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 
 	iwpng_set_phys(ctx, png_ptr, info_ptr, &img);
 
-	if(png_color_type==PNG_COLOR_TYPE_PALETTE) {
+	if(lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
 		iwpng_set_palette(ctx, png_ptr, info_ptr, iwpal);
 	}
 
@@ -446,7 +446,7 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 		row_pointers[i] = &img.pixels[img.bpr*i];
 	}
 
-	if(png_bit_depth<8) {
+	if(lpng_bit_depth<8) {
 		png_set_packing(png_ptr);
 	}
 
