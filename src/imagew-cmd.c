@@ -74,6 +74,7 @@ struct params_struct {
 	struct rgb_color bkgd2;
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
+	int interlace;
 	int randomize;
 	int random_seed;
 	int infmt;
@@ -338,6 +339,10 @@ static int run(struct params_struct *p)
 
 	iw_set_output_canvas_size(ctx,p->new_width,p->new_height);
 	if(!iw_process_image(ctx)) goto done;
+
+	if(p->interlace) {
+		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
+	}
 
 	if(p->outfmt==IWCMD_FMT_JPEG) {
 		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
@@ -698,7 +703,7 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
- PT_JPEGQUALITY, PT_JPEGSAMPLING,
+ PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA
 };
 
@@ -794,6 +799,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 	}
 	else if(!_tcscmp(n,_T("nocslabel"))) {
 		p->no_cslabel=1;
+	}
+	else if(!_tcscmp(n,_T("interlace"))) {
+		p->interlace=1;
 	}
 	else if(!_tcscmp(n,_T("quiet"))) {
 		p->quiet=1;

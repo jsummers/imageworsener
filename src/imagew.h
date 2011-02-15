@@ -71,6 +71,7 @@
 // or 8-bit grayscale palette.
 #define IW_VAL_OUTPUT_PALETTE_GRAYSCALE 35
 
+#define IW_VAL_OUTPUT_INTERLACED 36
 
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.

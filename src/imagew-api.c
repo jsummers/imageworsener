@@ -464,6 +464,9 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
 		ctx->jpeg_samp_factor_v = n;
 		break;
+	case IW_VAL_OUTPUT_INTERLACED:
+		ctx->interlaced = n;
+		break;
 	}
 }
 
@@ -521,6 +524,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_OUTPUT_PALETTE_GRAYSCALE:
 		ret = ctx->optctx.palette_is_grayscale;
+		break;
+	case IW_VAL_OUTPUT_INTERLACED:
+		ret = ctx->interlaced;
 		break;
 	}
 

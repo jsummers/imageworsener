@@ -337,6 +337,7 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	struct errstruct errinfo;
 	int png_color_type;
 	int png_bit_depth;
+	int lpng_interlace_type;
 	FILE *outfp = NULL;
 	int retval=0;
 	png_structp png_ptr = NULL;
@@ -406,8 +407,13 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 		}
 	}
 
+	lpng_interlace_type = PNG_INTERLACE_NONE;
+	if(iw_get_value(ctx,IW_VAL_OUTPUT_INTERLACED)) {
+		lpng_interlace_type = PNG_INTERLACE_ADAM7;
+	}
+
 	png_set_IHDR(png_ptr, info_ptr, img.width, img.height,
-		png_bit_depth, png_color_type, PNG_INTERLACE_NONE,
+		png_bit_depth, png_color_type, lpng_interlace_type,
 		PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
 	no_cslabel = iw_get_value(ctx,IW_VAL_NO_CSLABEL);

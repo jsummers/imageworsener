@@ -275,7 +275,9 @@ int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 		}
 	}
 
-	//if(ctx->output_interlaced) jpeg_simple_progression(&cinfo);
+	if(iw_get_value(ctx,IW_VAL_OUTPUT_INTERLACED)) {
+		jpeg_simple_progression(&cinfo);
+	}
 
 	row_pointers = (JSAMPROW*)iw_malloc(ctx, img.height * sizeof(JSAMPROW));
 	if(!row_pointers) goto done;

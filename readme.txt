@@ -437,6 +437,9 @@ Options:
    "r" means to use a different random seed every time.
    Default is 0.
 
+ -interlace
+   Write an interlaced PNG image, or a progressive JPEG image.
+
  -jpegquality <n>
    libjpeg-style quality setting to use if a JPEG file is written. Default is
    (probably) 75.
