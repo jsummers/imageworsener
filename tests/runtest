@@ -61,11 +61,17 @@ rm -f actual/*.png actual/*.jpg
 echo "Creating images..."
 
 # PNG reading tests.
-for f in g1 g1t g2 g2t g4 g4t g8 g8t g16 g16t \
+for f in g1 g2 g4 g8 g16 \
  p1 p1t p2 p2t p4 p4t p8 p8t \
- rgb8 rgb8t rgb16 rgb16t g8a g16a rgb8a rgb16a
+ rgb8 rgb16 g8a g16a rgb8a rgb16a
 do
  $IW srcimg/$f.png actual/png-$f.png -width 35 -height 35 -filter catrom
+done
+
+# Images for which binary transparency can be retained.
+for f in g1t g2t g4t g8t g16t rgb8t rgb16t
+do
+ $IW srcimg/$f.png actual/png-${f}ns.png
 done
 
 # Test some grayscale optimizations. 
