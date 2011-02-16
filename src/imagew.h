@@ -87,8 +87,9 @@
 #define IW_PROFILE_4BPP          0x0020
 #define IW_PROFILE_16BPP         0x0040
 #define IW_PROFILE_ALWAYSSRGB    0x0080
+#define IW_PROFILE_BINARYTRNS    0x0100 // Supports color-keyed transparency
 
-#define IW_PROFILE_PNG   0x007f // all but ALWAYSSRGB
+#define IW_PROFILE_PNG   0x017f // all but ALWAYSSRGB
 #define IW_PROFILE_BMP   0x00ac // pal,1bpp,4bpp,ALWAYSSRGB
 #define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
 
@@ -182,6 +183,8 @@ struct iw_image {
 	int native_grayscale; // For input images: Was the image encoded as grayscale?
 	int density_code; // IW_DENSITY_*
 	double density_x, density_y;
+	int has_colorkey_trns;
+	unsigned int colorkey_r, colorkey_g, colorkey_b;
 };
 
 struct iw_rgba8color {

@@ -386,6 +386,288 @@ static int iw_opt_scanpixels(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 
 ////////////////////
 
+// Returns 0 if nothing found.
+static int iwopt_find_unused(const unsigned char *flags, int count, unsigned char *unused_clr)
+{
+	int i;
+	int found=0;
+	int found_dist=0; // Distance from our preferred value (192)
+	int d;
+
+	for(i=0;i<count;i++) {
+		if(flags[i]==0) {
+			d=abs(i-192);
+			if(!found || d<found_dist) {
+				*unused_clr = (unsigned char)i;
+				found = 1;
+				found_dist = d;
+			}
+		}
+	}
+
+	if(found) {
+		return 1;
+	}
+	*unused_clr = 0;
+	return 0;
+}
+
+// Try to convert from RGBA to RGB+binary trns.
+// Assumes we already know there is transparency, but no partial transparency.
+static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
+{
+	int i,j;
+	const unsigned char *ptr;
+	unsigned char *ptr2;
+	unsigned char clr_used[256];
+	unsigned char key_clr; // Red component of the key color
+	unsigned char *trns_mask = NULL;
+
+	// Try to find a color that's not used in the image.
+	// Looking for all 2^24 possible colors is too much work.
+	// We will just look for 256 predefined colors: R={0-255},G=192,B=192
+	memset(&clr_used,0,256*sizeof(unsigned char));
+
+	// Hard to decide how to do this. I don't want the optimization phase
+	// to modify img2.pixels, though that would be the easiest method.
+	// Another option would be to make a version of iw_opt_copychannels_8()
+	// that sets the transparent pixels to a certain value, but that would
+	// get messy.
+	// Instead, I'll make a transparency mask, then strip the alpha
+	// channel, then use the mask to patch up the new image.
+	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
+	if(!trns_mask) goto done;
+
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr = &optctx->pixelsptr[j*optctx->bpr+i*4];
+			if(ptr[3]==0) {
+				// transparent pixel
+				trns_mask[j*optctx->width+i] = 0; // Remember which pixels are transparent.
+				continue;
+			}
+			else {
+				trns_mask[j*optctx->width+i] = 1;
+			}
+			if(ptr[1]!=192 || ptr[2]!=192) continue;
+			clr_used[(int)ptr[0]] = 1;
+		}
+	}
+
+	if(!iwopt_find_unused(clr_used,256,&key_clr)) {
+		goto done;
+	}
+
+	// Strip the alpha channel:
+	iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_RGB,0,1,2);
+	if(!optctx->tmp_pixels) goto done;
+
+	// Change the color of all transparent pixels to the key color
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr2 = &optctx->tmp_pixels[j*optctx->bpr+i*3];
+			if(trns_mask[j*optctx->width+i]==0) {
+				ptr2[0] = key_clr;
+				ptr2[1] = 192;
+				ptr2[2] = 192;
+			}
+		}
+	}
+
+	optctx->has_colorkey_trns = 1;
+	optctx->colorkey_r = key_clr;
+	optctx->colorkey_g = 192;
+	optctx->colorkey_b = 192;
+
+done:
+	if(trns_mask) iw_free(trns_mask);
+}
+
+static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
+{
+	int i,j;
+	const unsigned char *ptr;
+	unsigned char *ptr2;
+	unsigned char clr_used[256];
+	unsigned char key_clr; // low 8-bits of red component of the key color
+	unsigned char *trns_mask = NULL;
+
+	memset(&clr_used,0,256*sizeof(unsigned char));
+
+	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
+	if(!trns_mask) goto done;
+
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr = &optctx->pixelsptr[j*optctx->bpr+(i*2)*4];
+			if(ptr[6]==0 && ptr[7]==0) {
+				// Transparent pixel
+				trns_mask[j*optctx->width+i] = 0;
+				continue;
+			}
+			else {
+				// Nontransparent pixel
+				trns_mask[j*optctx->width+i] = 1;
+			}
+			// For the colors we look for, all bytes are 192 except possibly the low-red byte.
+			if(ptr[0]!=192 || ptr[2]!=192 || ptr[3]!=192 || ptr[4]!=192 || ptr[5]!=192)
+				continue;
+			clr_used[(int)ptr[1]] = 1;
+		}
+	}
+
+	if(!iwopt_find_unused(clr_used,256,&key_clr)) {
+		goto done;
+	}
+
+	// Strip the alpha channel:
+	iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_RGB,0,1,2);
+	if(!optctx->tmp_pixels) goto done;
+
+	// Change the color of all transparent pixels to the key color
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr2 = &optctx->tmp_pixels[j*optctx->bpr+(i*2)*3];
+			if(trns_mask[j*optctx->width+i]==0) {
+				ptr2[0] = 192;
+				ptr2[1] = key_clr;
+				ptr2[2] = 192;
+				ptr2[3] = 192;
+				ptr2[4] = 192;
+				ptr2[5] = 192;
+			}
+		}
+	}
+
+	optctx->has_colorkey_trns = 1;
+	optctx->colorkey_r = 192*256+key_clr;
+	optctx->colorkey_g = 192*256+192;
+	optctx->colorkey_b = 192*256+192;
+
+done:
+	if(trns_mask) iw_free(trns_mask);
+}
+
+static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
+{
+	int i,j;
+	const unsigned char *ptr;
+	unsigned char *ptr2;
+	unsigned char clr_used[256];
+	unsigned char key_clr;
+	unsigned char *trns_mask = NULL;
+
+	memset(&clr_used,0,256*sizeof(unsigned char));
+
+	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
+	if(!trns_mask) goto done;
+
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr = &optctx->pixelsptr[j*optctx->bpr+i*2];
+			if(ptr[1]==0) {
+				// Transparent pixel
+				trns_mask[j*optctx->width+i] = 0;
+				continue;
+			}
+			else {
+				// Nontransparent pixel
+				trns_mask[j*optctx->width+i] = 1;
+			}
+			clr_used[(int)ptr[0]] = 1;
+		}
+	}
+
+	if(!iwopt_find_unused(clr_used,256,&key_clr)) {
+		goto done;
+	}
+
+	// Strip the alpha channel:
+	iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_GRAY,0,0,0);
+	if(!optctx->tmp_pixels) goto done;
+
+	// Change the color of all transparent pixels to the key color
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr2 = &optctx->tmp_pixels[j*optctx->bpr+i];
+			if(trns_mask[j*optctx->width+i]==0) {
+				ptr2[0] = key_clr;
+			}
+		}
+	}
+
+	optctx->has_colorkey_trns = 1;
+	optctx->colorkey_r = key_clr;
+	optctx->colorkey_g = key_clr;
+	optctx->colorkey_b = key_clr;
+
+done:
+	if(trns_mask) iw_free(trns_mask);
+}
+
+static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
+{
+	int i,j;
+	const unsigned char *ptr;
+	unsigned char *ptr2;
+	unsigned char clr_used[256];
+	unsigned char key_clr; // low 8-bits of the key color
+	unsigned char *trns_mask = NULL;
+
+	memset(&clr_used,0,256*sizeof(unsigned char));
+
+	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
+	if(!trns_mask) goto done;
+
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr = &optctx->pixelsptr[j*optctx->bpr+(i*2)*2];
+			if(ptr[2]==0 && ptr[3]==0) {
+				// Transparent pixel
+				trns_mask[j*optctx->width+i] = 0;
+				continue;
+			}
+			else {
+				// Nontransparent pixel
+				trns_mask[j*optctx->width+i] = 1;
+			}
+			// For the colors we look for, the high byte is always 192.
+			if(ptr[0]!=192)
+				continue;
+			clr_used[(int)ptr[1]] = 1;
+		}
+	}
+
+	if(!iwopt_find_unused(clr_used,256,&key_clr)) {
+		goto done;
+	}
+
+	// Strip the alpha channel:
+	iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_GRAY,0,0,0);
+	if(!optctx->tmp_pixels) goto done;
+
+	// Change the color of all transparent pixels to the key color
+	for(j=0;j<optctx->height;j++) {
+		for(i=0;i<optctx->width;i++) {
+			ptr2 = &optctx->tmp_pixels[j*optctx->bpr+(i*2)];
+			if(trns_mask[j*optctx->width+i]==0) {
+				ptr2[0] = 192;
+				ptr2[1] = key_clr;
+			}
+		}
+	}
+
+	optctx->has_colorkey_trns = 1;
+	optctx->colorkey_r = 192*256+key_clr;
+	optctx->colorkey_g = 192*256+key_clr;
+	optctx->colorkey_b = 192*256+key_clr;
+
+done:
+	if(trns_mask) iw_free(trns_mask);
+}
+
+////////////////////
+
 // returns palette entry, or -1 if not found
 static int iwopt_find_color(const struct iw_palette *pal, const struct iw_rgba8color *c)
 {
@@ -500,8 +782,14 @@ static void iwopt_convert_to_palette_image(struct iw_context *ctx, struct iw_opt
 				c.a = 255;
 			}
 
-			e = iwopt_find_color(optctx->palette,&c);
-			if(e<0) e=0; // shouldn't happen
+			if(optctx->has_colorkey_trns && c.a==0) {
+				// We'll only get here if the image is really grayscale.
+				e = optctx->colorkey_r;
+			}
+			else {
+				e = iwopt_find_color(optctx->palette,&c);
+				if(e<0) e=0; // shouldn't happen
+			}
 
 			newpixels[y*newbpr + x] = e;
 		}
@@ -549,25 +837,52 @@ static int iwopt_palsortfunc(const void* p1, const void* p2)
 	return 0; // Should be unreachable.
 }
 
-static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx *optctx, int bpp)
+static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx *optctx, int bpp,
+	int *pbinary_trns, unsigned int *ptrns_shade)
 {
 	int factor;
 	int i;
+	int max_entries;
+	unsigned char clr_used[256];
+	unsigned char key_clr=0;
+
+	*pbinary_trns = 0;
+	*ptrns_shade = 0;
 
 	if(optctx->has_color) return 0;
-	if(optctx->has_transparency) return 0;
+	if(optctx->has_partial_transparency) return 0;
+	if(optctx->has_transparency && ctx->no_binarytrns) return 0;
+	if(optctx->has_transparency && !(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return 0;
 
 	switch(bpp) {
-	case 1: factor=255; break;
-	case 2: factor=85; break;
-	case 4: factor=17; break;
-	case 8: factor=1; break;
+	case 1: factor=255; max_entries=2; break;
+	case 2: factor=85; max_entries=4; break;
+	case 4: factor=17; max_entries=16; break;
+	case 8: factor=1; max_entries=256; break;
 	default: return 0;
 	}
 
+	memset(&clr_used,0,256*sizeof(unsigned char));
+
 	for(i=0;i<optctx->palette->num_entries;i++) {
-		if(optctx->palette->entry[i].r % factor) return 0;
+		if(optctx->palette->entry[i].a>0) { // Look at all the nontransparent entries.
+			if(optctx->palette->entry[i].r % factor) return 0;
+
+			// Keep track of which shades were used.
+			clr_used[optctx->palette->entry[i].r / factor] = 1;
+		}
 	}
+
+	// In order for binary transparency to be usable, there must be at least
+	// one unused gray shade.
+	if(optctx->has_transparency) {
+		if(!iwopt_find_unused(clr_used,max_entries,&key_clr))
+			return 0;
+
+		*pbinary_trns = 1;
+		*ptrns_shade = (unsigned int)key_clr;
+	}
+
 	return 1;
 }
 
@@ -595,9 +910,18 @@ static void iwopt_make_gray_palette(struct iw_context *ctx, struct iw_opt_ctx *o
 static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int ret;
+	int binary_trns;
+	unsigned int trns_shade;
 
 	if(!(ctx->output_profile&IW_PROFILE_PALETTE)) {
 		// Output format doesn't support palette images.
+
+		// TODO: Currently, optimization to <8bpp grayscale is done by the
+		// palette optimization routines. Likewise for 8bpp grayscale with
+		// binary transparency. If we ever support a file format that supports
+		// these things but doesn't support palette images, we'll have to do
+		// something about that, because otherwise the palette routines won't
+		// be run.
 		return;
 	}
 
@@ -626,17 +950,36 @@ static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt
 		goto done;
 	}
 
-	if((ctx->output_profile&IW_PROFILE_1BPP) && iwopt_palette_is_valid_gray(ctx,optctx,1)) {
+	if((ctx->output_profile&IW_PROFILE_1BPP) && iwopt_palette_is_valid_gray(ctx,optctx,1,&binary_trns,&trns_shade)) {
 		// Replace the palette with a fully-populated grayscale palette.
 		// The palette might already be correct, but it might not be.
 		// It will be missing any gray shade that wasn't in the image.
 		iwopt_make_gray_palette(ctx,optctx,1);
+		if(binary_trns) {
+			optctx->has_colorkey_trns = 1;
+			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
+		}
 	}
-	else if((ctx->output_profile&IW_PROFILE_2BPP) && iwopt_palette_is_valid_gray(ctx,optctx,2)) {
+	else if((ctx->output_profile&IW_PROFILE_2BPP) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,2);
+		if(binary_trns) {
+			optctx->has_colorkey_trns = 1;
+			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
+		}
 	}
-	else if((ctx->output_profile&IW_PROFILE_4BPP) && iwopt_palette_is_valid_gray(ctx,optctx,4)) {
+	else if((ctx->output_profile&IW_PROFILE_4BPP) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,4);
+		if(binary_trns) {
+			optctx->has_colorkey_trns = 1;
+			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
+		}
+	}
+	else if(iwopt_palette_is_valid_gray(ctx,optctx,8,&binary_trns,&trns_shade)) {
+		// This image can be encoded as 8-bit grayscale with binary transparency
+		if(optctx->palette->num_entries>16) {
+			// ... so don't encode it as an 8-bit palette image.
+			return;
+		}
 	}
 
 	// Sort the palette
@@ -730,4 +1073,22 @@ void iw_optimize_image(struct iw_context *ctx)
 noscan:
 
 	iwopt_try_palette_optimization(ctx,optctx);
+
+	// Try to convert an alpha channel to binary transparency.
+
+	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==8 && !optctx->has_partial_transparency) {
+		iwopt_try_rgb8_binary_trns(ctx,optctx);
+	}
+
+	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==16 && !optctx->has_partial_transparency) {
+		iwopt_try_rgb16_binary_trns(ctx,optctx);
+	}
+
+	if(optctx->imgtype==IW_IMGTYPE_GRAYA && optctx->bit_depth==8 && !optctx->has_partial_transparency) {
+		iwopt_try_gray8_binary_trns(ctx,optctx);
+	}
+
+	if(optctx->imgtype==IW_IMGTYPE_GRAYA && optctx->bit_depth==16 && !optctx->has_partial_transparency) {
+		iwopt_try_gray16_binary_trns(ctx,optctx);
+	}
 }

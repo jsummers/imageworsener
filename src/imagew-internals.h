@@ -85,6 +85,9 @@ struct iw_opt_ctx {
 	int palette_is_grayscale;
 
 	struct iw_palette *palette;
+
+	int has_colorkey_trns;
+	unsigned int colorkey_r, colorkey_g, colorkey_b;
 };
 
 struct iw_context {

@@ -149,6 +149,10 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->density_code = ctx->img2.density_code;
 	img->density_x = ctx->img2.density_x;
 	img->density_y = ctx->img2.density_y;
+	img->has_colorkey_trns = ctx->optctx.has_colorkey_trns;
+	img->colorkey_r = ctx->optctx.colorkey_r;
+	img->colorkey_g = ctx->optctx.colorkey_g;
+	img->colorkey_b = ctx->optctx.colorkey_b;
 }
 
 void iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr)

@@ -302,6 +302,27 @@ static void iwpng_set_phys(struct iw_context *ctx,
 	}
 }
 
+static void iwpng_set_binary_trns(struct iw_context *ctx,
+	png_structp png_ptr, png_infop info_ptr, const struct iw_image *img, int lpng_color_type)
+{
+	png_color_16 newtrns;
+
+	memset(&newtrns,0,sizeof(png_color_16));
+
+	if(img->has_colorkey_trns) {
+		if(lpng_color_type==PNG_COLOR_TYPE_GRAY) {
+			newtrns.gray = (png_uint_16)img->colorkey_r;
+			png_set_tRNS(png_ptr, info_ptr, NULL, 1, &newtrns);
+		}
+		else if(lpng_color_type==PNG_COLOR_TYPE_RGB) {
+			newtrns.red   = (png_uint_16)img->colorkey_r;
+			newtrns.green = (png_uint_16)img->colorkey_g;
+			newtrns.blue  = (png_uint_16)img->colorkey_b;
+			png_set_tRNS(png_ptr, info_ptr, NULL, 1, &newtrns);
+		}
+	}
+}
+
 static void iwpng_set_palette(struct iw_context *ctx,
 	png_structp png_ptr, png_infop info_ptr,
 	const struct iw_palette *iwpal)
@@ -436,6 +457,8 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	if(lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
 		iwpng_set_palette(ctx, png_ptr, info_ptr, iwpal);
 	}
+
+	iwpng_set_binary_trns(ctx, png_ptr, info_ptr, &img, lpng_color_type);
 
 	png_write_info(png_ptr, info_ptr);
 

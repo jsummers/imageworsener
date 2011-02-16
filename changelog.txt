@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for optimizing to an image with binary transparency.
  - Added "-interlace" option.
  - Added "-jpegsampling" option.
  - Retain pixel density information if the image isn't being resized.
