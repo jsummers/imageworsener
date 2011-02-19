@@ -957,7 +957,7 @@ static void iw_set_out_channeltypes(struct iw_context *ctx)
 
 static void decide_output_bit_depth(struct iw_context *ctx)
 {
-	if(!(ctx->output_profile&IW_PROFILE_16BPP) && ctx->output_depth>8) {
+	if(!(ctx->output_profile&IW_PROFILE_16BPS) && ctx->output_depth>8) {
 		iw_warning(ctx,_T("Reducing depth to 8; required by the output format."));
 		ctx->output_depth=8;
 	}

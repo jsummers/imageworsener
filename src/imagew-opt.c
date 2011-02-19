@@ -907,21 +907,19 @@ static void iwopt_make_gray_palette(struct iw_context *ctx, struct iw_opt_ctx *o
 	optctx->palette_is_grayscale=1;
 }
 
-static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt_ctx *optctx)
+// Optimize to palette, or 1-, 2-, or 4-bpp grayscale.
+static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int ret;
 	int binary_trns;
 	unsigned int trns_shade;
 
-	if(!(ctx->output_profile&IW_PROFILE_PALETTE)) {
-		// Output format doesn't support palette images.
-
-		// TODO: Currently, optimization to <8bpp grayscale is done by the
-		// palette optimization routines. Likewise for 8bpp grayscale with
-		// binary transparency. If we ever support a file format that supports
-		// these things but doesn't support palette images, we'll have to do
-		// something about that, because otherwise the palette routines won't
-		// be run.
+	if(!(ctx->output_profile&IW_PROFILE_PALETTE) &&
+	   !(ctx->output_profile&IW_PROFILE_GRAY1) &&
+	   !(ctx->output_profile&IW_PROFILE_GRAY2) &&
+	   !(ctx->output_profile&IW_PROFILE_GRAY4) )
+	{
+		// Output format doesn't support anything that this optimization can provide.
 		return;
 	}
 
@@ -950,7 +948,7 @@ static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt
 		goto done;
 	}
 
-	if((ctx->output_profile&IW_PROFILE_1BPP) && iwopt_palette_is_valid_gray(ctx,optctx,1,&binary_trns,&trns_shade)) {
+	if((ctx->output_profile&IW_PROFILE_GRAY1) && iwopt_palette_is_valid_gray(ctx,optctx,1,&binary_trns,&trns_shade)) {
 		// Replace the palette with a fully-populated grayscale palette.
 		// The palette might already be correct, but it might not be.
 		// It will be missing any gray shade that wasn't in the image.
@@ -960,14 +958,14 @@ static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if((ctx->output_profile&IW_PROFILE_2BPP) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
+	else if((ctx->output_profile&IW_PROFILE_GRAY2) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,2);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if((ctx->output_profile&IW_PROFILE_4BPP) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
+	else if((ctx->output_profile&IW_PROFILE_GRAY4) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,4);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
@@ -978,12 +976,17 @@ static void iwopt_try_palette_optimization(struct iw_context *ctx, struct iw_opt
 		// This image can be encoded as 8-bit grayscale with binary transparency
 		if(optctx->palette->num_entries>16) {
 			// ... so don't encode it as an 8-bit palette image.
-			return;
+			goto done;
 		}
 	}
 
-	// Sort the palette
 	if(!optctx->palette_is_grayscale) {
+		// Bail out if palette images aren't supported.
+		if(!(ctx->output_profile&IW_PROFILE_PALETTE)) {
+			goto done;
+		}
+
+		// Sort the palette
 		qsort((void*)optctx->palette->entry,optctx->palette->num_entries,
 			sizeof(struct iw_rgba8color),iwopt_palsortfunc);
 	}
@@ -1054,25 +1057,33 @@ void iw_optimize_image(struct iw_context *ctx)
 		iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_GRAY,0, 0,0); // GA -> G
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_RGB && optctx->bit_depth==8 && !optctx->has_color) {
+	if(optctx->imgtype==IW_IMGTYPE_RGB && optctx->bit_depth==8 && !optctx->has_color &&
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	{
 		iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_GRAY,0, 0,0); // RGB -> G
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_RGB && optctx->bit_depth==16 && !optctx->has_color) {
+	if(optctx->imgtype==IW_IMGTYPE_RGB && optctx->bit_depth==16 && !optctx->has_color &&
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	{
 		iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_GRAY,0, 0,0); // RGB -> G (16)
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==8 && !optctx->has_color) {
+	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==8 && !optctx->has_color &&
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	{
 		iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_GRAYA,0,3, 0); // RGBA -> GA
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==16 && !optctx->has_color) {
+	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==16 && !optctx->has_color &&
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	{
 		iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_GRAYA,0,3, 0); // RGBA -> GA (16)
 	}
 
 noscan:
 
-	iwopt_try_palette_optimization(ctx,optctx);
+	iwopt_try_pal_lowgray_optimization(ctx,optctx);
 
 	// Try to convert an alpha channel to binary transparency.
 
