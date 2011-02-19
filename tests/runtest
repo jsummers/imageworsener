@@ -160,6 +160,8 @@ $IW srcimg/rgb8a.png actual/opt-04col.png -width 2 -height 2 -filter mix
 $IW srcimg/rgb8.png actual/opt-12col.png -width 4 -height 3 -filter mix
 $IW srcimg/rgb8a.png actual/opt-20col.png -width 5 -height 4 -filter mix
 
+$IW srcimg/p8t.png actual/crop-1.png -width 20  -crop 3,12,18,9
+
 
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
