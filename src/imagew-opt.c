@@ -862,6 +862,9 @@ static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx
 	default: return 0;
 	}
 
+	if(optctx->palette->num_entries > max_entries)
+		return 0;
+
 	memset(&clr_used,0,256*sizeof(unsigned char));
 
 	for(i=0;i<optctx->palette->num_entries;i++) {
@@ -941,12 +944,8 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 
 	// optctx->palette now contains a palette that can be used.
 
-	if(optctx->palette->num_entries>16 && optctx->imgtype==IW_IMGTYPE_GRAY)
-	{
-		// Image is already encoded as 8bpp grayscale; encoding it as
-		// 8bpp palette wouldn't be an improvement.
-		goto done;
-	}
+	// For images that have at most 256 (8-bit-compatible) colors, the order
+	// of preference is gray1, pal1, gray2, pal2, gray4, pal4, gray8, pal8.
 
 	if((ctx->output_profile&IW_PROFILE_GRAY1) && iwopt_palette_is_valid_gray(ctx,optctx,1,&binary_trns,&trns_shade)) {
 		// Replace the palette with a fully-populated grayscale palette.
@@ -958,12 +957,18 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
+	else if(optctx->palette->num_entries<=2) {
+		;
+	}
 	else if((ctx->output_profile&IW_PROFILE_GRAY2) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,2);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
+	}
+	else if(optctx->palette->num_entries<=4) {
+		;
 	}
 	else if((ctx->output_profile&IW_PROFILE_GRAY4) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,4);
@@ -972,12 +977,12 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if(iwopt_palette_is_valid_gray(ctx,optctx,8,&binary_trns,&trns_shade)) {
-		// This image can be encoded as 8-bit grayscale with binary transparency
-		if(optctx->palette->num_entries>16) {
-			// ... so don't encode it as an 8-bit palette image.
-			goto done;
-		}
+	else if(optctx->palette->num_entries<=16) {
+		;
+	}
+	else if((ctx->output_profile&IW_PROFILE_GRAYSCALE) && iwopt_palette_is_valid_gray(ctx,optctx,8,&binary_trns,&trns_shade)) {
+		// This image can best be encoded as 8-bit grayscale. We don't handle that here.
+		goto done;
 	}
 
 	if(!optctx->palette_is_grayscale) {
