@@ -139,16 +139,21 @@ static IW_INLINE IW_SAMPLE get_raw_sample_1(struct iw_context *ctx,
 	return 0.0;
 }
 
-// channel is the input channel number.
+// Channel is the input channel number.
+// x and y are logical coordinates.
 static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
+	int rx,ry; // physical coordinates
+	rx = ctx->input_start_x+x;
+	ry = ctx->input_start_y+y;
+
 	switch(ctx->img1.bit_depth) {
-	case 8: return get_raw_sample_8(ctx,x,y,channel);
-	case 1: return get_raw_sample_1(ctx,x,y);
-	case 16: return get_raw_sample_16(ctx,x,y,channel);
-	case 4: return get_raw_sample_4(ctx,x,y);
-	case 2: return get_raw_sample_2(ctx,x,y);
+	case 8: return get_raw_sample_8(ctx,rx,ry,channel);
+	case 1: return get_raw_sample_1(ctx,rx,ry);
+	case 16: return get_raw_sample_16(ctx,rx,ry,channel);
+	case 4: return get_raw_sample_4(ctx,rx,ry);
+	case 2: return get_raw_sample_2(ctx,rx,ry);
 	}
 	return 0.0; 
 }
@@ -569,7 +574,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
 
-	ctx->num_in_pix = ctx->img1.height;
+	ctx->num_in_pix = ctx->input_h;
 	inpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_in_pix * sizeof(IW_SAMPLE));
 	if(!inpix) goto done;
 	ctx->in_pix = inpix;
@@ -579,10 +584,10 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	if(!outpix) goto done;
 	ctx->out_pix = outpix;
 
-	for(i=0;i<ctx->img1.width;i++) {
+	for(i=0;i<ctx->input_w;i++) {
 
 		// Read a column of pixels into ctx->in_pix
-		for(j=0;j<ctx->img1.height;j++) {
+		for(j=0;j<ctx->input_h;j++) {
 
 			ctx->in_pix[j] = get_sample_cvt_to_linear(ctx,i,j,channel,in_csdescr);
 
@@ -830,7 +835,7 @@ static int iw_process_internal(struct iw_context *ctx)
 	ctx->intermediate=NULL;
 	ctx->intermediate_alpha=NULL;
 	ctx->final_alpha=NULL;
-	ctx->intermed_width = ctx->img1.width;
+	ctx->intermed_width = ctx->input_w;
 	ctx->intermed_height = ctx->img2.height;
 
 	csdescr_linear.cstype=IW_CSTYPE_LINEAR;
@@ -1262,16 +1267,16 @@ static void iw_convert_density_info(struct iw_context *ctx)
 
 	// TODO: Decide what to do with pixel density info when the image size is
 	// being changed.
-	if(ctx->img1.width!=ctx->img2.width || ctx->img1.height!=ctx->img2.height) {
+	if(ctx->input_w!=ctx->img2.width || ctx->input_h!=ctx->img2.height) {
 		return;
 	}
 
 	ctx->img2.density_code = ctx->img1.density_code;
 
-	factor = ((double)ctx->img2.width)/(double)ctx->img1.width;
+	factor = ((double)ctx->img2.width)/(double)ctx->input_w;
 	ctx->img2.density_x = ctx->img1.density_x * factor;
 
-	factor = ((double)ctx->img2.height)/(double)ctx->img1.height;
+	factor = ((double)ctx->img2.height)/(double)ctx->input_h;
 	ctx->img2.density_y = ctx->img1.density_y * factor;
 }
 
@@ -1305,6 +1310,18 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	ctx->img2.width = w;
 	ctx->img2.height = h;
+
+	// Figure out the region of the source image to read from.
+	if(ctx->input_start_x<0) ctx->input_start_x=0;
+	if(ctx->input_start_y<0) ctx->input_start_y=0;
+	if(ctx->input_start_x>ctx->img1.width-1) ctx->input_start_x=ctx->img1.width-1;
+	if(ctx->input_start_y>ctx->img1.height-1) ctx->input_start_x=ctx->img1.height-1;
+	if(ctx->input_w<0) ctx->input_w = ctx->img1.width - ctx->input_start_x;
+	if(ctx->input_h<0) ctx->input_h = ctx->img1.height - ctx->input_start_y;
+	if(ctx->input_w<1) ctx->input_w = 1;
+	if(ctx->input_h<1) ctx->input_h = 1;
+	if(ctx->input_w>(ctx->img1.width-ctx->input_start_x)) ctx->input_w=ctx->img1.width-ctx->input_start_x;
+	if(ctx->input_h>(ctx->img1.height-ctx->input_start_y)) ctx->input_h=ctx->img1.height-ctx->input_start_y;
 
 	if((ctx->output_profile&IW_PROFILE_ALWAYSSRGB) && ctx->img2cs.cstype!=IW_CSTYPE_SRGB) {
 		if(ctx->warn_invalid_output_csdescr) {
@@ -1461,10 +1478,10 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->resize_settings[IW_DIMENSION_H].family==IW_RESIZETYPE_AUTO) {
-		iw_set_auto_resizetype(ctx,ctx->img1.width,ctx->img2.width,IW_CHANNELTYPE_ALL,IW_DIMENSION_H);
+		iw_set_auto_resizetype(ctx,ctx->input_w,ctx->img2.width,IW_CHANNELTYPE_ALL,IW_DIMENSION_H);
 	}
 	if(ctx->resize_settings[IW_DIMENSION_V].family==IW_RESIZETYPE_AUTO) {
-		iw_set_auto_resizetype(ctx,ctx->img1.height,ctx->img2.height,IW_CHANNELTYPE_ALL,IW_DIMENSION_V);
+		iw_set_auto_resizetype(ctx,ctx->input_h,ctx->img2.height,IW_CHANNELTYPE_ALL,IW_DIMENSION_V);
 	}
 
 	iw_convert_density_info(ctx);

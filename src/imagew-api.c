@@ -105,6 +105,8 @@ static void init_context(struct iw_context *ctx)
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_H]);
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
 	default_resize_settings(&ctx->resize_settings_alpha);
+	ctx->input_w = -1;
+	ctx->input_h = -1;
 	ctx->img1cs.cstype = IW_CSTYPE_SRGB;
 	ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 	ctx->to_grayscale=0;
@@ -169,6 +171,14 @@ void iw_set_output_canvas_size(struct iw_context *ctx, int w, int h)
 {
 	ctx->canvas_width = w;
 	ctx->canvas_height = h;
+}
+
+void iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h)
+{
+	ctx->input_start_x = x;
+	ctx->input_start_y = y;
+	ctx->input_w = w;
+	ctx->input_h = h;
 }
 
 void iw_set_output_profile(struct iw_context *ctx, unsigned int n)

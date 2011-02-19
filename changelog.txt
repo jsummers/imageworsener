@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added a crop feature.
  - Support for optimizing to an image with binary transparency.
  - Added "-interlace" option.
  - Added "-jpegsampling" option.

@@ -235,6 +235,9 @@ void iw_set_max_malloc(struct iw_context *ctx, size_t n);
 
 void iw_set_output_canvas_size(struct iw_context *ctx, int w, int h);
 
+// Crop before resizing.
+void iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h);
+
 void iw_set_output_profile(struct iw_context *ctx, unsigned int n);
 
 void iw_set_output_depth(struct iw_context *ctx, int bps);

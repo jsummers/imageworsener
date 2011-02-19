@@ -194,6 +194,7 @@ struct iw_context {
 	const TCHAR *symbol_times;
 
 	int canvas_width, canvas_height;
+	int input_start_x, input_start_y, input_w, input_h;
 
 	// Not used by the core library, but codecs may use this:
 	int jpeg_quality;

@@ -261,7 +261,14 @@ Options:
    the vertical-resize operation. This is not the *correct* thing to do,
    though the difference usually isn't noticeable. The purpose of this option
    is to let you try to replicate what some other applications do.
-  
+ 
+ -crop <x>,<y>,<width>,<height>
+   Crop the source image before processing it. Pixels outside the specified
+   area will be ignored.
+   The parameters are in pixels. (0,0) is the upper-left pixel.
+   If <width> or <height> is -1 or is not given, the area will extend to the
+   right or bottom edge of the image.
+
  -grayscale
    Convert the image to grayscale.
    

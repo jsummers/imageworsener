@@ -70,6 +70,7 @@ struct params_struct {
 	int bkgd_checkerboard;
 	int bkgd_check_size;
 	int bkgd_check_origin_x, bkgd_check_origin_y;
+	int use_crop, crop_x, crop_y, crop_w, crop_h;
 	struct rgb_color bkgd;
 	struct rgb_color bkgd2;
 	int jpeg_quality;
@@ -296,6 +297,21 @@ static int run(struct params_struct *p)
 	old_width=iw_get_value(ctx,IW_VAL_INPUT_WIDTH);
 	old_height=iw_get_value(ctx,IW_VAL_INPUT_HEIGHT);
 
+	if(p->use_crop) {
+		// If we're cropping, adjust some things so that "bestfit" works.
+		if(p->crop_x<0) p->crop_x=0;
+		if(p->crop_y<0) p->crop_y=0;
+		if(p->crop_x>old_width-1) p->crop_x=old_width-1;
+		if(p->crop_y>old_height-1) p->crop_y=old_height-1;
+		if(p->crop_w<0 || p->crop_w>old_width-p->crop_x) p->crop_w=old_width-p->crop_x;
+		if(p->crop_h<0 || p->crop_h>old_height-p->crop_y) p->crop_h=old_height-p->crop_y;
+		if(p->crop_w<1) p->crop_w=1;
+		if(p->crop_h<1) p->crop_h=1;
+
+		old_width = p->crop_w;
+		old_height = p->crop_h;
+	}
+
 	if(p->new_width<0) p->new_width = -1;
 	if(p->new_height<0) p->new_height = -1;
 	if(p->new_width==0) p->new_width = 1;
@@ -340,6 +356,10 @@ static int run(struct params_struct *p)
 	}
 
 	iw_set_output_canvas_size(ctx,p->new_width,p->new_height);
+	if(p->use_crop) {
+		iw_set_input_crop(ctx,p->crop_x,p->crop_y,p->crop_w,p->crop_h);
+	}
+
 	if(!iw_process_image(ctx)) goto done;
 
 	if(p->interlace) {
@@ -381,6 +401,28 @@ static void iwcmd_parse_int_pair(const TCHAR *s, int *i1, int *i2)
 	cpos = _tcschr(s,',');
 	if(!cpos) return;
 	*i2 = _tstoi(cpos+1);
+}
+
+// Parse four integers separated by commas.
+static void iwcmd_parse_int_4(const TCHAR *s, int *i1, int *i2, int *i3, int *i4)
+{
+	TCHAR *cpos;
+
+	*i1 = _tstoi(s);
+	*i2 = 0;
+	*i3 = -1;
+	*i4 = -1;
+	cpos = _tcschr(s,',');
+	if(!cpos) return;
+	*i2 = _tstoi(cpos+1);
+
+	cpos = _tcschr(cpos+1,',');
+	if(!cpos) return;
+	*i3 = _tstoi(cpos+1);
+
+	cpos = _tcschr(cpos+1,',');
+	if(!cpos) return;
+	*i4 = _tstoi(cpos+1);
 }
 
 static int hexdigit_value(TCHAR d)
@@ -702,7 +744,7 @@ enum iwcmd_param_types {
  PT_BLUR_FACTOR, PT_BLUR_FACTOR_X, PT_BLUR_FACTOR_Y, PT_BLUR_FACTOR_ALPHA,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
  PT_CC, PT_CCCOLOR, PT_CCALPHA, PT_CCRED, PT_CCGREEN, PT_CCBLUE, PT_CCGRAY,
- PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG,
+ PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_INTERLACE,
@@ -757,6 +799,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("bkgd"),PT_BKGD,1},
 		{_T("checkersize"),PT_CHECKERSIZE,1},
 		{_T("checkerorigin"),PT_CHECKERORG,1},
+		{_T("crop"),PT_CROP,1},
 		{_T("offsetred"),PT_OFFSET_R_H,1},
 		{_T("offsetgreen"),PT_OFFSET_G_H,1},
 		{_T("offsetblue"),PT_OFFSET_B_H,1},
@@ -950,6 +993,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_CHECKERORG:
 		iwcmd_parse_int_pair(v,&p->bkgd_check_origin_x,&p->bkgd_check_origin_y);
+		break;
+	case PT_CROP:
+		iwcmd_parse_int_4(v,&p->crop_x,&p->crop_y,&p->crop_w,&p->crop_h);
+		p->use_crop=1;
 		break;
 	case PT_CCRED:
 		p->color_count_red=_tstoi(v);
