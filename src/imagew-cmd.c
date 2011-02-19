@@ -706,7 +706,10 @@ enum iwcmd_param_types {
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_INTERLACE,
- PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA
+ PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
+ PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
+ PT_INTCLAMP, PT_NOCSLABEL, PT_NOBINARYTRNS,
+ PT_QUIET, PT_VERSION, PT_HELP
 };
 
 struct parsestate_struct {
@@ -721,103 +724,126 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 	struct opt_struct {
 		const TCHAR *name;
 		enum iwcmd_param_types code;
+		int has_param;
 	};
-	static const struct opt_struct opts_with_params[] = {
-		{_T("width"),PT_WIDTH},
-		{_T("height"),PT_HEIGHT},
-		{_T("depth"),PT_DEPTH},
-		{_T("inputcs"),PT_INPUTCS},
-		{_T("cs"),PT_CS},
-		{_T("filter"),PT_RESIZETYPE},
-		{_T("filterx"),PT_RESIZETYPE_X},
-		{_T("filtery"),PT_RESIZETYPE_Y},
-		{_T("filteralpha"),PT_RESIZETYPE_ALPHA},
-		{_T("blur"),PT_BLUR_FACTOR},
-		{_T("blurx"),PT_BLUR_FACTOR_X},
-		{_T("blury"),PT_BLUR_FACTOR_Y},
-		{_T("bluralpha"),PT_BLUR_FACTOR_ALPHA},
-		{_T("dither"),PT_DITHER},
-		{_T("dithercolor"),PT_DITHERCOLOR},
-		{_T("ditheralpha"),PT_DITHERALPHA},
-		{_T("ditherred"),PT_DITHERRED},
-		{_T("dithergreen"),PT_DITHERGREEN},
-		{_T("ditherblue"),PT_DITHERBLUE},
-		{_T("dithergray"),PT_DITHERGRAY},
-		{_T("cc"),PT_CC},
-		{_T("cccolor"),PT_CCCOLOR},
-		{_T("ccalpha"),PT_CCALPHA},
-		{_T("ccred"),PT_CCRED},
-		{_T("ccgreen"),PT_CCGREEN},
-		{_T("ccblue"),PT_CCBLUE},
-		{_T("ccgray"),PT_CCGRAY},
-		{_T("bkgd"),PT_BKGD},
-		{_T("checkersize"),PT_CHECKERSIZE},
-		{_T("checkerorigin"),PT_CHECKERORG},
-		{_T("offsetred"),PT_OFFSET_R_H},
-		{_T("offsetgreen"),PT_OFFSET_G_H},
-		{_T("offsetblue"),PT_OFFSET_B_H},
-		{_T("offsetrb"),PT_OFFSET_RB_H},
-		{_T("offsetvred"),PT_OFFSET_R_V},
-		{_T("offsetvgreen"),PT_OFFSET_G_V},
-		{_T("offsetvblue"),PT_OFFSET_B_V},
-		{_T("offsetvrb"),PT_OFFSET_RB_V},
-		{_T("jpegquality"),PT_JPEGQUALITY},
-		{_T("jpegsampling"),PT_JPEGSAMPLING},
-		{_T("randseed"),PT_RANDSEED},
-		{_T("infmt"),PT_INFMT},
-		{_T("outfmt"),PT_OUTFMT},
-		{_T("edge"),PT_EDGE_POLICY},
-		{_T("grayscaleformula"),PT_GRAYSCALEFORMULA},
-		{NULL,PT_NONE}
+	static const struct opt_struct opt_info[] = {
+		{_T("width"),PT_WIDTH,1},
+		{_T("height"),PT_HEIGHT,1},
+		{_T("depth"),PT_DEPTH,1},
+		{_T("inputcs"),PT_INPUTCS,1},
+		{_T("cs"),PT_CS,1},
+		{_T("filter"),PT_RESIZETYPE,1},
+		{_T("filterx"),PT_RESIZETYPE_X,1},
+		{_T("filtery"),PT_RESIZETYPE_Y,1},
+		{_T("filteralpha"),PT_RESIZETYPE_ALPHA,1},
+		{_T("blur"),PT_BLUR_FACTOR,1},
+		{_T("blurx"),PT_BLUR_FACTOR_X,1},
+		{_T("blury"),PT_BLUR_FACTOR_Y,1},
+		{_T("bluralpha"),PT_BLUR_FACTOR_ALPHA,1},
+		{_T("dither"),PT_DITHER,1},
+		{_T("dithercolor"),PT_DITHERCOLOR,1},
+		{_T("ditheralpha"),PT_DITHERALPHA,1},
+		{_T("ditherred"),PT_DITHERRED,1},
+		{_T("dithergreen"),PT_DITHERGREEN,1},
+		{_T("ditherblue"),PT_DITHERBLUE,1},
+		{_T("dithergray"),PT_DITHERGRAY,1},
+		{_T("cc"),PT_CC,1},
+		{_T("cccolor"),PT_CCCOLOR,1},
+		{_T("ccalpha"),PT_CCALPHA,1},
+		{_T("ccred"),PT_CCRED,1},
+		{_T("ccgreen"),PT_CCGREEN,1},
+		{_T("ccblue"),PT_CCBLUE,1},
+		{_T("ccgray"),PT_CCGRAY,1},
+		{_T("bkgd"),PT_BKGD,1},
+		{_T("checkersize"),PT_CHECKERSIZE,1},
+		{_T("checkerorigin"),PT_CHECKERORG,1},
+		{_T("offsetred"),PT_OFFSET_R_H,1},
+		{_T("offsetgreen"),PT_OFFSET_G_H,1},
+		{_T("offsetblue"),PT_OFFSET_B_H,1},
+		{_T("offsetrb"),PT_OFFSET_RB_H,1},
+		{_T("offsetvred"),PT_OFFSET_R_V,1},
+		{_T("offsetvgreen"),PT_OFFSET_G_V,1},
+		{_T("offsetvblue"),PT_OFFSET_B_V,1},
+		{_T("offsetvrb"),PT_OFFSET_RB_V,1},
+		{_T("jpegquality"),PT_JPEGQUALITY,1},
+		{_T("jpegsampling"),PT_JPEGSAMPLING,1},
+		{_T("randseed"),PT_RANDSEED,1},
+		{_T("infmt"),PT_INFMT,1},
+		{_T("outfmt"),PT_OUTFMT,1},
+		{_T("edge"),PT_EDGE_POLICY,1},
+		{_T("grayscaleformula"),PT_GRAYSCALEFORMULA,1},
+		{_T("interlace"),PT_INTERLACE,0},
+		{_T("bestfit"),PT_BESTFIT,0},
+		{_T("nobestfit"),PT_NOBESTFIT,0},
+		{_T("grayscale"),PT_GRAYSCALE,0},
+		{_T("condgrayscale"),PT_CONDGRAYSCALE,0},
+		{_T("nogamma"),PT_NOGAMMA,0},
+		{_T("intclamp"),PT_INTCLAMP,0},
+		{_T("nocslabel"),PT_NOCSLABEL,0},
+		{_T("nobinarytrns"),PT_NOBINARYTRNS,0},
+		{_T("quiet"),PT_QUIET,0},
+		{_T("version"),PT_VERSION,0},
+		{_T("help"),PT_HELP,0},
+		{NULL,PT_NONE,0}
 	};
+	enum iwcmd_param_types pt;
 	int i;
 
-	// Handle options with parameters:
-	for(i=0;opts_with_params[i].name;i++) {
-		if(!_tcscmp(n,opts_with_params[i].name)) {
-			ps->param_type=opts_with_params[i].code;
-			return 1;
+	pt=PT_NONE;
+
+	// Search for the option name.
+	for(i=0;opt_info[i].name;i++) {
+		if(!_tcscmp(n,opt_info[i].name)) {
+			if(opt_info[i].has_param) {
+				// Found option with a parameter. Record it and return.
+				ps->param_type=opt_info[i].code;
+				return 1;
+			}
+			// Found parameterless option.
+			pt=opt_info[i].code;
+			break;
 		}
 	}
 
-	// Handle options with no parameters:
-	if(!_tcscmp(n,_T("bestfit"))) {
+	// Handle parameterless options.
+	switch(pt) {
+	case PT_BESTFIT:
 		p->bestfit=1;
-	}
-	else if(!_tcscmp(n,_T("nobestfit"))) {
+		break;
+	case PT_NOBESTFIT:
 		p->bestfit=0;
-	}
-	else if(!_tcscmp(n,_T("grayscale"))) {
+		break;
+	case PT_GRAYSCALE:
 		p->grayscale=1;
-	}
-	else if(!_tcscmp(n,_T("condgrayscale"))) {
+		break;
+	case PT_CONDGRAYSCALE:
 		p->condgrayscale=1;
-	}
-	else if(!_tcscmp(n,_T("nogamma"))) {
+		break;
+	case PT_NOGAMMA:
 		p->no_gamma=1;
-	}
-	else if(!_tcscmp(n,_T("intclamp"))) {
+		break;
+	case PT_INTCLAMP:
 		p->intclamp=1;
-	}
-	else if(!_tcscmp(n,_T("nocslabel"))) {
+		break;
+	case PT_NOCSLABEL:
 		p->no_cslabel=1;
-	}
-	else if(!_tcscmp(n,_T("nobinarytrns"))) {
+		break;
+	case PT_NOBINARYTRNS:
 		p->no_binarytrns=1;
-	}
-	else if(!_tcscmp(n,_T("interlace"))) {
+		break;
+	case PT_INTERLACE:
 		p->interlace=1;
-	}
-	else if(!_tcscmp(n,_T("quiet"))) {
+		break;
+	case PT_QUIET:
 		p->quiet=1;
-	}
-	else if(!_tcscmp(n,_T("version"))) {
+		break;
+	case PT_VERSION:
 		ps->printversion=1;
-	}
-	else if(!_tcscmp(n,_T("help"))) {
+		break;
+	case PT_HELP:
 		ps->showhelp=1;
-	}
-	else {
+		break;
+	default:
 		_tprintf(_T("Unknown option %s%s%s.\n"),p->symbol_ldquo,n,p->symbol_rdquo);
 		return 0;
 	}
