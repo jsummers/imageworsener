@@ -1,4 +1,7 @@
 Unreleased changes
+ - (none yet)
+
+Version 0.9.1 - 22 Feb 2011
  - Added a crop feature.
  - Support for optimizing to an image with binary transparency.
  - Added "-interlace" option.
@@ -6,6 +9,6 @@ Unreleased changes
  - Retain pixel density information if the image isn't being resized.
  - Support for optimizing to a 4- or 16-color grayscale image.
 
-version 0.9.0 - 6 Feb 2011
+Version 0.9.0 - 6 Feb 2011
  - Initial public release.
 
