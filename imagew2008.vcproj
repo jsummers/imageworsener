@@ -65,7 +65,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng-1.5.1\Debug\libpng.lib ..\zlib-1.2.5\Debug\zlib.lib ..\jpeg-8b\Debug\libjpeg.lib"
+				AdditionalDependencies="..\libpng-1.5.1\Debug\libpng.lib ..\zlib-1.2.5\Debug\zlib.lib ..\jpeg-8c\Debug\libjpeg.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -140,7 +140,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng-1.5.1\Debug64\libpng.lib ..\zlib-1.2.5\Debug64\zlib.lib ..\jpeg-8b\Debug64\libjpeg.lib"
+				AdditionalDependencies="..\libpng-1.5.1\Debug64\libpng.lib ..\zlib-1.2.5\Debug64\zlib.lib ..\jpeg-8c\Debug64\libjpeg.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -215,7 +215,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng-1.5.1\Release\libpng.lib ..\zlib-1.2.5\Release\zlib.lib ..\jpeg-8b\Release\libjpeg.lib"
+				AdditionalDependencies="..\libpng-1.5.1\Release\libpng.lib ..\zlib-1.2.5\Release\zlib.lib ..\jpeg-8c\Release\libjpeg.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -293,7 +293,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng-1.5.1\Release64\libpng.lib ..\zlib-1.2.5\Release64\zlib.lib ..\jpeg-8b\Release64\libjpeg.lib"
+				AdditionalDependencies="..\libpng-1.5.1\Release64\libpng.lib ..\zlib-1.2.5\Release64\zlib.lib ..\jpeg-8c\Release64\libjpeg.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
