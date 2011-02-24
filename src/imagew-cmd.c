@@ -1102,6 +1102,7 @@ int _tmain(int argc, TCHAR* argv[])
 	int ret;
 	int i;
 	int unicode_output=0;
+	const TCHAR *optname;
 
 	memset(&ps,0,sizeof(struct parsestate_struct));
 	ps.param_type=PT_NONE;
@@ -1138,7 +1139,11 @@ int _tmain(int argc, TCHAR* argv[])
 
 	for(i=1;i<argc;i++) {
 		if(argv[i][0]=='-' && ps.param_type==PT_NONE) {
-			if(!process_option_name(&p, &ps, &argv[i][1])) {
+			optname = &argv[i][1];
+			// If the second char is also a '-', ignore it.
+			if(argv[i][1]=='-')
+				optname = &argv[i][2];
+			if(!process_option_name(&p, &ps, optname)) {
 				return 1;
 			}
 		}
