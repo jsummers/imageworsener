@@ -86,12 +86,6 @@
 // Means the format supports 8-bit or 16-bit grayscale.
 #define IW_PROFILE_GRAYSCALE     0x0002
 
-// IW_PROFILE_PALETTE means that palettes of 256 colors or fewer are
-// supported. The core library doesn't need to know exactly what sizes of
-// palettes are supported, because it never reduces the bits-per-pixel below
-// 8. The module for the file format has to do that.
-#define IW_PROFILE_PALETTE       0x0004
-
 // Unlike palette images, the core library does need to know exactly what bit
 // depths of grayscale images are supported.
 #define IW_PROFILE_GRAY1         0x0008
@@ -105,8 +99,17 @@
 #define IW_PROFILE_ALWAYSSRGB    0x0080
 #define IW_PROFILE_BINARYTRNS    0x0100 // Supports color-keyed transparency
 
-#define IW_PROFILE_PNG   0x017f // all but ALWAYSSRGB
-#define IW_PROFILE_BMP   0x0084 // palette,ALWAYSSRGB
+// The core library doesn't reduce the bits-per-pixel below 8 (the module for
+// the file format must do that), but if it knows exactly what bit depths are
+// suported by the output format, it can make a better optimization decision
+// between palette and grayscale.
+#define IW_PROFILE_PAL1       0x0200
+#define IW_PROFILE_PAL2       0x0400
+#define IW_PROFILE_PAL4       0x0800
+#define IW_PROFILE_PAL8       0x1000
+
+#define IW_PROFILE_PNG   0x1f7b // all but ALWAYSSRGB
+#define IW_PROFILE_BMP   0x1a80 // PAL1,PAL4,PAL8,ALWAYSSRGB
 #define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
 
 #define IW_RESIZETYPE_AUTO          0x01

@@ -917,7 +917,10 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 	int binary_trns;
 	unsigned int trns_shade;
 
-	if(!(ctx->output_profile&IW_PROFILE_PALETTE) &&
+	if(!(ctx->output_profile&IW_PROFILE_PAL1) &&
+	   !(ctx->output_profile&IW_PROFILE_PAL2) &&
+	   !(ctx->output_profile&IW_PROFILE_PAL4) &&
+	   !(ctx->output_profile&IW_PROFILE_PAL8) &&
 	   !(ctx->output_profile&IW_PROFILE_GRAY1) &&
 	   !(ctx->output_profile&IW_PROFILE_GRAY2) &&
 	   !(ctx->output_profile&IW_PROFILE_GRAY4) )
@@ -957,7 +960,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if(optctx->palette->num_entries<=2) {
+	else if((ctx->output_profile&IW_PROFILE_PAL1) && optctx->palette->num_entries<=2) {
 		;
 	}
 	else if((ctx->output_profile&IW_PROFILE_GRAY2) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
@@ -967,7 +970,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if(optctx->palette->num_entries<=4) {
+	else if((ctx->output_profile&IW_PROFILE_PAL2) && optctx->palette->num_entries<=4) {
 		;
 	}
 	else if((ctx->output_profile&IW_PROFILE_GRAY4) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
@@ -977,20 +980,22 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if(optctx->palette->num_entries<=16) {
+	else if((ctx->output_profile&IW_PROFILE_PAL4) && optctx->palette->num_entries<=16) {
 		;
 	}
 	else if((ctx->output_profile&IW_PROFILE_GRAYSCALE) && iwopt_palette_is_valid_gray(ctx,optctx,8,&binary_trns,&trns_shade)) {
 		// This image can best be encoded as 8-bit grayscale. We don't handle that here.
 		goto done;
 	}
+	else if(ctx->output_profile&IW_PROFILE_PAL8) {
+		;
+	}
+	else {
+		// Found no optimizations that we can perform.
+		goto done;
+	}
 
 	if(!optctx->palette_is_grayscale) {
-		// Bail out if palette images aren't supported.
-		if(!(ctx->output_profile&IW_PROFILE_PALETTE)) {
-			goto done;
-		}
-
 		// Sort the palette
 		qsort((void*)optctx->palette->entry,optctx->palette->num_entries,
 			sizeof(struct iw_rgba8color),iwopt_palsortfunc);
