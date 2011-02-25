@@ -203,7 +203,12 @@ struct iw_context {
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
 	int interlaced;
 
+	// Color correction tables, to improve performance.
 	double *input_color_corr_table;
+	// This is not for converting linear to the output colorspace; it's the
+	// same as input_color_corr_table except that it might have a different
+	// number of entries (and might be from a different colorspace).
+	double *output_rev_color_corr_table;
 };
 
 // Defined in imagew-main.c

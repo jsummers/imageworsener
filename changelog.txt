@@ -1,5 +1,5 @@
 Unreleased changes
- - (none yet)
+ - Improved speed of colorspace conversion.
 
 Version 0.9.1 - 22 Feb 2011
  - Added a crop feature.

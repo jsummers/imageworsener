@@ -185,6 +185,7 @@ static IW_SAMPLE iw_color_to_grayscale_noinline(struct iw_context *ctx,
 	return iw_color_to_grayscale(ctx,r,g,b);
 }
 
+// Based on color depth of the input image.
 static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 	unsigned int v, const struct iw_csdescr *csdescr)
 {
@@ -202,6 +203,24 @@ static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 	}
 
 	s = ((double)v) / ctx->input_maxcolorcode;
+	return x_to_linear_sample(s,csdescr);
+}
+
+// Based on color depth of the output image.
+// TODO: Merge this with cvt_int_sample_to_linear().
+static IW_SAMPLE cvt_int_sample_to_linear_output(struct iw_context *ctx,
+	unsigned int v, const struct iw_csdescr *csdescr)
+{
+	IW_SAMPLE s;
+
+	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
+		return ((double)v) / ctx->output_maxcolorcode;
+	}
+	else if(ctx->output_rev_color_corr_table) {
+		return ctx->output_rev_color_corr_table[v];
+	}
+
+	s = ((double)v) / ctx->output_maxcolorcode;
 	return x_to_linear_sample(s,csdescr);
 }
 
@@ -465,6 +484,7 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 {
 	IW_SAMPLE samp_cvt;
 	double samp_cvt_expanded;
+	unsigned int floor_int, ceil_int;
 
 	// A prelimary conversion to the target color space.
 	samp_cvt = linear_to_x_sample(samp_lin,csdescr);
@@ -506,14 +526,15 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 		*s_cvt_ceil_full  = floor(0.5000000001 + ceil (samp_cvt_expanded) * (ctx->output_maxcolorcode/maxcolorcode));
 	}
 
-	if(*s_cvt_floor_full == *s_cvt_ceil_full) {
+	floor_int = (unsigned int)(*s_cvt_floor_full);
+	ceil_int  = (unsigned int)(*s_cvt_ceil_full);
+	if(floor_int == ceil_int) {
 		return 1;
 	}
 
 	// Convert the candidates to our linear color space
-	// TODO: This could be done with a lookup table.
-	*s_lin_floor_1 = x_to_linear_sample((*s_cvt_floor_full)/ctx->output_maxcolorcode,csdescr);
-	*s_lin_ceil_1  = x_to_linear_sample((*s_cvt_ceil_full )/ctx->output_maxcolorcode,csdescr);
+	*s_lin_floor_1 = cvt_int_sample_to_linear_output(ctx,floor_int,csdescr);
+	*s_lin_ceil_1 =  cvt_int_sample_to_linear_output(ctx,ceil_int ,csdescr);
 
 	return 0;
 }
@@ -855,6 +876,32 @@ static int iw_init_random_dither(struct iw_context *ctx)
 	return 1;
 }
 
+// Potentially make a lookup table for color correction.
+static void iw_make_x_to_linear_table(struct iw_context *ctx, double **ptable,
+	const struct iw_image *img, const struct iw_csdescr *csdescr)
+{
+	int ncolors;
+	int i;
+	double *tbl;
+
+	if(csdescr->cstype==IW_CSTYPE_LINEAR) return;
+
+	ncolors = (1 << img->bit_depth);
+	if(ncolors>256) return;
+
+	// Don't make a table if the image is really small.
+	if( ((size_t)img->width)*img->height <= 512 ) return;
+
+	tbl = iw_malloc(ctx,ncolors*sizeof(double));
+	if(!tbl) return;
+
+	for(i=0;i<ncolors;i++) {
+		tbl[i] = x_to_linear_sample(((double)i)/(ncolors-1), csdescr);
+	}
+
+	*ptable = tbl;
+}
+
 static int iw_process_internal(struct iw_context *ctx)
 {
 	int channel;
@@ -903,6 +950,8 @@ static int iw_process_internal(struct iw_context *ctx)
 	if(ctx->uses_r2dither) {
 		if(!iw_init_random_dither(ctx)) goto done;
 	}
+
+	iw_make_x_to_linear_table(ctx,&ctx->output_rev_color_corr_table,&ctx->img2,&ctx->img2cs);
 
 	// If an alpha channel is present, we have to process it first.
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {
@@ -1312,25 +1361,6 @@ static void iw_convert_density_info(struct iw_context *ctx)
 	ctx->img2.density_y = ctx->img1.density_y * factor;
 }
 
-// Potentially make a lookup table for color correction on input.
-static void iw_make_input_color_corr_table(struct iw_context *ctx)
-{
-	int ncolors;
-	int i;
-
-	if(ctx->img1cs.cstype==IW_CSTYPE_LINEAR) return;
-
-	ncolors = (1 << ctx->img1.bit_depth);
-	if(ncolors>256) return;
-
-	ctx->input_color_corr_table = iw_malloc(ctx,ncolors*sizeof(double));
-	if(!ctx->input_color_corr_table) return;
-
-	for(i=0;i<ncolors;i++) {
-		ctx->input_color_corr_table[i] = x_to_linear_sample(((double)i)/(ncolors-1), &ctx->img1cs);
-	}
-}
-
 // Set up some things before we do the resize, and check to make
 // sure everything looks okay.
 static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
@@ -1539,7 +1569,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	iw_convert_density_info(ctx);
 
-	iw_make_input_color_corr_table(ctx);
+	iw_make_x_to_linear_table(ctx,&ctx->input_color_corr_table,&ctx->img1,&ctx->img1cs);
 	return 1;
 }
 
