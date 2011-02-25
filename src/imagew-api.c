@@ -136,6 +136,7 @@ void iw_destroy_context(struct iw_context *ctx)
 	if(ctx->error_msg) iw_free(ctx->error_msg);
 	if(ctx->optctx.tmp_pixels) iw_free(ctx->optctx.tmp_pixels);
 	if(ctx->optctx.palette) iw_free(ctx->optctx.palette);
+	if(ctx->input_color_corr_table) iw_free(ctx->input_color_corr_table);
 	iw_free(ctx);
 }
 

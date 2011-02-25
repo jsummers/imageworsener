@@ -88,26 +88,26 @@ static IW_INLINE IW_SAMPLE linear_to_gamma_sample(IW_SAMPLE v_linear, double gam
 	return pow(v_linear,1.0/gamma);
 }
 
-static IW_INLINE IW_SAMPLE get_raw_sample_16(struct iw_context *ctx,
+static IW_INLINE unsigned int get_raw_sample_16(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	size_t z;
 	unsigned short tmpui16;
 	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*2;
 	tmpui16 = ( ((unsigned short)(ctx->img1.pixels[z+0])) <<8) | ctx->img1.pixels[z+1];
-	return ((double)tmpui16)/65535.0;
+	return tmpui16;
 }
 
-static IW_INLINE IW_SAMPLE get_raw_sample_8(struct iw_context *ctx,
+static IW_INLINE unsigned int get_raw_sample_8(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	unsigned short tmpui8;
 	tmpui8 = ctx->img1.pixels[y*ctx->img1.bpr + ctx->img1_numchannels*x + channel];
-	return ((double)tmpui8)/255.0;
+	return tmpui8;
 }
 
 // 4 bits/pixel
-static IW_INLINE IW_SAMPLE get_raw_sample_4(struct iw_context *ctx,
+static IW_INLINE unsigned int get_raw_sample_4(struct iw_context *ctx,
 	   int x, int y)
 {
 	unsigned short tmpui8;
@@ -116,32 +116,32 @@ static IW_INLINE IW_SAMPLE get_raw_sample_4(struct iw_context *ctx,
 		tmpui8 = tmpui8&0x0f;
 	else
 		tmpui8 = tmpui8>>4;
-	return ((double)tmpui8)/15.0;
+	return tmpui8;
 }
 
 // 2 bits/pixel
-static IW_INLINE IW_SAMPLE get_raw_sample_2(struct iw_context *ctx,
+static IW_INLINE unsigned int get_raw_sample_2(struct iw_context *ctx,
 	   int x, int y)
 {
 	unsigned short tmpui8;
 	tmpui8 = ctx->img1.pixels[y*ctx->img1.bpr + x/4];
 	tmpui8 = ( tmpui8 >> ((3-x%4)*2) ) & 0x03;
-	return ((double)tmpui8)/3.0;
+	return tmpui8;
 }
 
 // 1 bit/pixel
-static IW_INLINE IW_SAMPLE get_raw_sample_1(struct iw_context *ctx,
+static IW_INLINE unsigned int get_raw_sample_1(struct iw_context *ctx,
 	   int x, int y)
 {
 	unsigned short tmpui8;
 	tmpui8 = ctx->img1.pixels[y*ctx->img1.bpr + x/8];
-	if(tmpui8 & (1<<(7-x%8))) return 1.0;
-	return 0.0;
+	if(tmpui8 & (1<<(7-x%8))) return 1;
+	return 0;
 }
 
-// Channel is the input channel number.
+// Returns a value from 0 to 2^(ctx->img1.bit_depth)-1.
 // x and y are logical coordinates.
-static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
+static unsigned int get_raw_sample_int(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	int rx,ry; // physical coordinates
@@ -155,7 +155,17 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	case 4: return get_raw_sample_4(ctx,rx,ry);
 	case 2: return get_raw_sample_2(ctx,rx,ry);
 	}
-	return 0.0; 
+	return 0;
+}
+
+// Channel is the input channel number.
+// x and y are logical coordinates.
+static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
+	   int x, int y, int channel)
+{
+	unsigned int v;
+	v = get_raw_sample_int(ctx,x,y,channel);
+	return ((double)v) / ctx->input_maxcolorcode;
 }
 
 static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
@@ -175,28 +185,49 @@ static IW_SAMPLE iw_color_to_grayscale_noinline(struct iw_context *ctx,
 	return iw_color_to_grayscale(ctx,r,g,b);
 }
 
+static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
+	unsigned int v, const struct iw_csdescr *csdescr)
+{
+	IW_SAMPLE s;
+
+	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
+		// Sort of a hack: This is not just an optimization for linear colorspaces,
+		// but is necessary to handle alpha channels correctly.
+		// The lookup table is not correct for alpha channels.
+		return ((double)v) / ctx->input_maxcolorcode;
+	}
+	else if(ctx->input_color_corr_table) {
+		// If the colorspace is not LINEAR, assume we can use the lookup table.
+		return ctx->input_color_corr_table[v];
+	}
+
+	s = ((double)v) / ctx->input_maxcolorcode;
+	return x_to_linear_sample(s,csdescr);
+}
+
 // Return a sample, converted to a linear colorspace if it isn't already in one.
 // Channel is the output channel number.
 static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
 					   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
-	IW_SAMPLE s;
+	unsigned int v1,v2,v3;
+	IW_SAMPLE r,g,b;
+	int ch;
+
+	ch = ctx->intermed_ci[channel].corresponding_input_channel;
 
 	if(ctx->intermed_ci[channel].cvt_to_grayscale) {
-		IW_SAMPLE r,g,b;
-		r = get_raw_sample(ctx,x,y,ctx->intermed_ci[channel].corresponding_input_channel+0);
-		g = get_raw_sample(ctx,x,y,ctx->intermed_ci[channel].corresponding_input_channel+1);
-		b = get_raw_sample(ctx,x,y,ctx->intermed_ci[channel].corresponding_input_channel+2);
-		r = x_to_linear_sample(r,csdescr);
-		g = x_to_linear_sample(g,csdescr);
-		b = x_to_linear_sample(b,csdescr);
+		v1 = get_raw_sample_int(ctx,x,y,ch+0);
+		v2 = get_raw_sample_int(ctx,x,y,ch+1);
+		v3 = get_raw_sample_int(ctx,x,y,ch+2);
+		r = cvt_int_sample_to_linear(ctx,v1,csdescr);
+		g = cvt_int_sample_to_linear(ctx,v2,csdescr);
+		b = cvt_int_sample_to_linear(ctx,v3,csdescr);
 		return iw_color_to_grayscale(ctx,r,g,b);
 	}
-	else {
-		s = get_raw_sample(ctx,x,y,ctx->intermed_ci[channel].corresponding_input_channel);
-	}
 
-	return x_to_linear_sample(s,csdescr);
+	v1 = get_raw_sample_int(ctx,x,y,ch);
+	return cvt_int_sample_to_linear(ctx,v1,csdescr);
 }
 
 // s is from 0.0 to 65535.0
@@ -480,6 +511,7 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 	}
 
 	// Convert the candidates to our linear color space
+	// TODO: This could be done with a lookup table.
 	*s_lin_floor_1 = x_to_linear_sample((*s_cvt_floor_full)/ctx->output_maxcolorcode,csdescr);
 	*s_lin_ceil_1  = x_to_linear_sample((*s_cvt_ceil_full )/ctx->output_maxcolorcode,csdescr);
 
@@ -1280,6 +1312,25 @@ static void iw_convert_density_info(struct iw_context *ctx)
 	ctx->img2.density_y = ctx->img1.density_y * factor;
 }
 
+// Potentially make a lookup table for color correction on input.
+static void iw_make_input_color_corr_table(struct iw_context *ctx)
+{
+	int ncolors;
+	int i;
+
+	if(ctx->img1cs.cstype==IW_CSTYPE_LINEAR) return;
+
+	ncolors = (1 << ctx->img1.bit_depth);
+	if(ncolors>256) return;
+
+	ctx->input_color_corr_table = iw_malloc(ctx,ncolors*sizeof(double));
+	if(!ctx->input_color_corr_table) return;
+
+	for(i=0;i<ncolors;i++) {
+		ctx->input_color_corr_table[i] = x_to_linear_sample(((double)i)/(ncolors-1), &ctx->img1cs);
+	}
+}
+
 // Set up some things before we do the resize, and check to make
 // sure everything looks okay.
 static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
@@ -1329,6 +1380,8 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 		ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 	}
+
+	ctx->input_maxcolorcode = (double)((1 << ctx->img1.bit_depth)-1);
 
 	decide_output_bit_depth(ctx);
 
@@ -1486,6 +1539,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	iw_convert_density_info(ctx);
 
+	iw_make_input_color_corr_table(ctx);
 	return 1;
 }
 

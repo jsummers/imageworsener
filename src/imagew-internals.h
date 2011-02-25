@@ -167,6 +167,8 @@ struct iw_context {
 	int output_depth; // TODO: This is the same as img2.bit_depth. We could remove one of them.
 	double output_maxcolorcode;
 
+	double input_maxcolorcode;
+
 #define IW_DITHER_MAXROWS 3 // Max number of rows for FS-like dithering, including current row.
 	// Error accumulators for Floyd-Steinberg and similar dithering methods.
 	IW_SAMPLE *dither_errors[IW_DITHER_MAXROWS]; // 0 is the current row.
@@ -200,6 +202,8 @@ struct iw_context {
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
 	int interlaced;
+
+	double *input_color_corr_table;
 };
 
 // Defined in imagew-main.c
