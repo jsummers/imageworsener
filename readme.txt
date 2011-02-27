@@ -453,6 +453,10 @@ Options:
    option is if you use a PNG viewer that has a problem with binary
    transparency.
 
+ -pngcmprlevel <n>
+   zlib-style compression level setting for PNG files, from 0 (no compression)
+   to 9 (best, slowest). Default is (probably) 6.
+
  -jpegquality <n>
    libjpeg-style quality setting to use if a JPEG file is written. Default is
    (probably) 75.

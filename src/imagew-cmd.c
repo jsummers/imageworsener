@@ -75,6 +75,7 @@ struct params_struct {
 	struct rgb_color bkgd2;
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
+	int pngcmprlevel;
 	int interlace;
 	int randomize;
 	int random_seed;
@@ -375,6 +376,8 @@ static int run(struct params_struct *p)
 		if(!iw_write_jpeg_file(ctx,p->outfn)) goto done;
 	}
 	else {
+		if(p->pngcmprlevel >= 0)
+			iw_set_value(ctx,IW_VAL_PNG_CMPR_LEVEL,p->pngcmprlevel);
 		if(!iw_write_png_file(ctx,p->outfn)) goto done;
 	}
 
@@ -747,7 +750,7 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
- PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_INTERLACE,
+ PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOBINARYTRNS,
@@ -810,6 +813,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("offsetvrb"),PT_OFFSET_RB_V,1},
 		{_T("jpegquality"),PT_JPEGQUALITY,1},
 		{_T("jpegsampling"),PT_JPEGSAMPLING,1},
+		{_T("pngcmprlevel"),PT_PNGCMPRLEVEL,1},
 		{_T("randseed"),PT_RANDSEED,1},
 		{_T("infmt"),PT_INFMT,1},
 		{_T("outfmt"),PT_OUTFMT,1},
@@ -1044,6 +1048,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_JPEGSAMPLING:
 		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
 		break;
+	case PT_PNGCMPRLEVEL:
+		p->pngcmprlevel=_tstoi(v);
+		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {
 			p->randomize = 1;
@@ -1134,6 +1141,7 @@ int _tmain(int argc, TCHAR* argv[])
 	p.resize_alg_x.blur = 1.0;
 	p.resize_alg_y.blur = 1.0;
 	p.resize_alg_alpha.blur = 1.0;
+	p.pngcmprlevel = -1;
 
 	iwcmd_init_characters(&p);
 

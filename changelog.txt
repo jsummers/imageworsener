@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added option to set the PNG compression level.
  - Improved speed of colorspace conversion.
 
 Version 0.9.1 - 22 Feb 2011

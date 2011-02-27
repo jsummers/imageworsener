@@ -115,6 +115,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
+	ctx->pngcmprlevel = -1;
 	iw_set_value(ctx,IW_VAL_CHARSET,0); // Default to ASCII
 }
 
@@ -483,6 +484,9 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
 		ctx->jpeg_samp_factor_v = n;
 		break;
+	case IW_VAL_PNG_CMPR_LEVEL:
+		ctx->pngcmprlevel = n;
+		break;
 	case IW_VAL_OUTPUT_INTERLACED:
 		ctx->interlaced = n;
 		break;
@@ -543,6 +547,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
 		ret = ctx->jpeg_samp_factor_v;
+		break;
+	case IW_VAL_PNG_CMPR_LEVEL:
+		ret = ctx->pngcmprlevel;
 		break;
 	case IW_VAL_OUTPUT_PALETTE_GRAYSCALE:
 		ret = ctx->optctx.palette_is_grayscale;

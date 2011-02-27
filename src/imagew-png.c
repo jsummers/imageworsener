@@ -368,6 +368,7 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	const struct iw_palette *iwpal = NULL;
 	int no_cslabel;
 	int palette_is_gray;
+	int cmprlevel;
 
 	iw_get_output_image(ctx,&img);
 	iw_get_output_colorspace(ctx,&csdescr);
@@ -390,6 +391,10 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 		my_png_error_fn, my_png_warning_fn);
 	if(!png_ptr) goto done;
 
+	cmprlevel = iw_get_value(ctx,IW_VAL_PNG_CMPR_LEVEL);
+	if(cmprlevel >= 0) {
+		png_set_compression_level(png_ptr, cmprlevel);
+	}
 	png_set_compression_buffer_size(png_ptr, 1048576);
 
 	info_ptr = png_create_info_struct(png_ptr);

@@ -201,6 +201,7 @@ struct iw_context {
 	// Not used by the core library, but codecs may use this:
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
+	int pngcmprlevel;
 	int interlaced;
 
 	// Color correction tables, to improve performance.
