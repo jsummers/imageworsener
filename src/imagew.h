@@ -349,5 +349,6 @@ TCHAR *iw_get_zlib_version_string(TCHAR *s, int s_len, int cset);
 int iw_read_jpeg_file(struct iw_context *ctx, const TCHAR *fn);
 int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn);
 TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset);
+int iw_write_bmp_file(struct iw_context *ctx, const TCHAR *fn);
 
 #endif // IMAGEW_H

@@ -36,6 +36,7 @@
 #define IWCMD_FMT_UNKNOWN 0
 #define IWCMD_FMT_PNG  1
 #define IWCMD_FMT_JPEG 2
+#define IWCMD_FMT_BMP  3
 
 struct rgb_color {
 	double r,g,b;
@@ -112,6 +113,7 @@ static int get_fmt_from_name(const TCHAR *s)
 	if(!_tcscmp(s,_T("png"))) return IWCMD_FMT_PNG;
 	if(!_tcscmp(s,_T("jpg"))) return IWCMD_FMT_JPEG;
 	if(!_tcscmp(s,_T("jpeg"))) return IWCMD_FMT_JPEG;
+	if(!_tcscmp(s,_T("bmp"))) return IWCMD_FMT_BMP;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -121,6 +123,7 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 	s=_tcsrchr(fn,'.');
 	if(s) {
 		if(s[1]=='j' || s[1]=='J') return IWCMD_FMT_JPEG;
+		if(s[1]=='b' || s[1]=='B') return IWCMD_FMT_BMP;
 	}
 	return IWCMD_FMT_PNG;
 }
@@ -221,6 +224,9 @@ static int run(struct params_struct *p)
 	// kinds of images are allowed (e.g. whether transparency is allowed).
 	if(p->outfmt==IWCMD_FMT_JPEG) {
 		iw_set_output_profile(ctx,IW_PROFILE_JPEG);
+	}
+	else if(p->outfmt==IWCMD_FMT_BMP) {
+		iw_set_output_profile(ctx,IW_PROFILE_BMP);
 	}
 	else {
 		iw_set_output_profile(ctx,IW_PROFILE_PNG);
@@ -374,6 +380,9 @@ static int run(struct params_struct *p)
 		if(p->jpeg_samp_factor_v>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
 		if(!iw_write_jpeg_file(ctx,p->outfn)) goto done;
+	}
+	else if(p->outfmt==IWCMD_FMT_BMP) {
+		if(!iw_write_bmp_file(ctx,p->outfn)) goto done;
 	}
 	else {
 		if(p->pngcmprlevel >= 0)

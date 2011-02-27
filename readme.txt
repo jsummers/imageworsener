@@ -120,6 +120,7 @@ Options:
    Valid values for <fmt>:
      png: PNG
      jpeg, jpg: JPEG
+     bmp: BMP (-outfmt only)
 
  -depth <n>
    The general number of bits of precision used per color channel in the
