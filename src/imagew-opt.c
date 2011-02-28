@@ -751,7 +751,7 @@ static void iwopt_convert_to_palette_image(struct iw_context *ctx, struct iw_opt
 
 	spp = iw_imgtype_num_channels(optctx->imgtype);
 
-	newbpr = iw_calc_bytesperrow(optctx->width,8*spp);
+	newbpr = optctx->width;
 	newpixels = iw_malloc_large(ctx, newbpr, optctx->height);
 	if(!newpixels) return;
 
