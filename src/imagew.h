@@ -341,14 +341,41 @@ size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
 void iw_snprintf(TCHAR *buf, size_t buflen, const TCHAR *fmt, ...);
 
 
-int iw_read_png_file(struct iw_context *ctx, const TCHAR *fn);
-int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn);
+struct iw_iodescr;
+typedef int (*iw_readfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes, size_t *pbytesread);
+typedef int (*iw_writefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes);
+typedef int (*iw_closefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr);
+// I/O descriptor
+struct iw_iodescr {
+	// An arbitrary pointer the app can use.
+	void *fp;
+
+	// Application-defined I/O functions:
+
+	// Must read and return all bytes requested, except on end-of-file or error.
+	// On success, set *pbytesread to nbytes, and return 1.
+	// On end of file, set *pbytesread to the number of bytes read (0 to nbytes-1),
+	// and return 1.
+	// On error, return 0.
+	iw_readfn_type read_fn;
+
+	// Must write all bytes supplied.
+	// On success, return 1.
+	// On error, return 0.
+	iw_writefn_type write_fn;
+
+	// Optional "close" function.
+	iw_closefn_type close_fn;
+};
+
+int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 TCHAR *iw_get_libpng_version_string(TCHAR *s, int s_len, int cset);
 TCHAR *iw_get_zlib_version_string(TCHAR *s, int s_len, int cset);
 
-int iw_read_jpeg_file(struct iw_context *ctx, const TCHAR *fn);
-int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn);
+int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset);
-int iw_write_bmp_file(struct iw_context *ctx, const TCHAR *fn);
+int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 
 #endif // IMAGEW_H

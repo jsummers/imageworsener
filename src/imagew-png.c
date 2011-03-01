@@ -12,12 +12,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <errno.h>
 
 #include <png.h>
 #include <zlib.h>
 
 #include "imagew.h"
+
+struct iw_pngrctx {
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+};
 
 struct errstruct {
 	jmp_buf *jbufp;
@@ -47,6 +51,26 @@ static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 static void my_png_warning_fn(png_structp png_ptr, const char *warn_msg)
 {
 	return;
+}
+
+static void my_png_read_fn(png_structp png_ptr,
+      png_bytep buf, png_size_t length)
+{
+	struct iw_pngrctx *pngrctx;
+	int ret;
+	size_t bytesread = 0;
+
+	pngrctx = (struct iw_pngrctx*)png_get_io_ptr(png_ptr);
+
+	ret = (*pngrctx->iodescr->read_fn)(pngrctx->ctx,pngrctx->iodescr,buf,(size_t)length,&bytesread);
+	if(!ret) {
+		png_error(png_ptr,"Read error");
+		return;
+	}
+	if(bytesread != (size_t)length) {
+		png_error(png_ptr,"Unexpected end of file");
+		return;
+	}
 }
 
 // In PNG files, gamma values are stored as fixed-precision decimals, with
@@ -133,7 +157,7 @@ static void iw_read_ancillary_data(struct iw_context *ctx,
 	iwpng_read_density(ctx,img,png_ptr,info_ptr);
 }
 
-int iw_read_png_file(struct iw_context *ctx, const TCHAR *fn)
+int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	png_uint_32 width, height;
 	int bit_depth, color_type, interlace_type;
@@ -146,21 +170,17 @@ int iw_read_png_file(struct iw_context *ctx, const TCHAR *fn)
 	int need_update_info;
 	int numchannels=0;
 	struct iw_image img;
-	FILE *infp = NULL;
 	int retval=0;
 	png_structp png_ptr = NULL;
 	png_infop  info_ptr = NULL;
+	struct iw_pngrctx pngrctx;
+
+	memset(&pngrctx,0,sizeof(struct iw_pngrctx));
 
 	memset(&img,0,sizeof(struct iw_image));
 	errinfo.jbufp = &jbuf;
 	errinfo.ctx = ctx;
 	errinfo.write_flag=0;
-
-	infp = _tfopen(fn,_T("rb"));
-	if(!infp) {
-		iw_seterror(ctx,_T("Failed to open for reading (error code=%d)"),(int)errno);
-		goto done;
-	}
 
 	if(setjmp(jbuf)) {
 		goto done;
@@ -173,7 +193,10 @@ int iw_read_png_file(struct iw_context *ctx, const TCHAR *fn)
 	info_ptr = png_create_info_struct(png_ptr);
 	if(!info_ptr) goto done;
 
-	png_init_io(png_ptr, infp);
+	pngrctx.ctx = ctx;
+	pngrctx.iodescr = iodescr;
+	png_set_read_fn(png_ptr, (void*)&pngrctx, my_png_read_fn);
+
 	png_read_info(png_ptr, info_ptr);
 
 	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
@@ -279,12 +302,19 @@ done:
 	if(png_ptr) {
 		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
 	}
-	if(infp) fclose(infp);
+	if(iodescr->close_fn)
+		(*iodescr->close_fn)(ctx,iodescr);
 	if(row_pointers) iw_free(row_pointers);
 	return retval;
 }
 
 ///////////////////////////////////////////////////////////////////////
+
+struct iw_pngwctx {
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+};
+
 static void iwpng_set_phys(struct iw_context *ctx,
 	png_structp png_ptr, png_infop info_ptr, const struct iw_image *img)
 {
@@ -350,7 +380,20 @@ static void iwpng_set_palette(struct iw_context *ctx,
 	}
 }
 
-int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
+
+static void my_png_write_fn(png_structp png_ptr, png_bytep data, png_size_t length)
+{
+	struct iw_pngwctx *pngwctx;
+
+	pngwctx = (struct iw_pngwctx*)png_get_io_ptr(png_ptr);
+	(*pngwctx->iodescr->write_fn)(pngwctx->ctx,pngwctx->iodescr,(void*)data,(size_t)length);
+}
+
+static void my_png_flush_fn(png_structp png_ptr)
+{
+}
+
+int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	unsigned char **row_pointers = NULL;
 	int i;
@@ -359,7 +402,6 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	int lpng_color_type;
 	int lpng_bit_depth;
 	int lpng_interlace_type;
-	FILE *outfp = NULL;
 	int retval=0;
 	png_structp png_ptr = NULL;
 	png_infop  info_ptr = NULL;
@@ -369,6 +411,9 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	int no_cslabel;
 	int palette_is_gray;
 	int cmprlevel;
+	struct iw_pngwctx pngwctx;
+
+	memset(&pngwctx,0,sizeof(struct iw_pngwctx));
 
 	iw_get_output_image(ctx,&img);
 	iw_get_output_colorspace(ctx,&csdescr);
@@ -376,12 +421,6 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	errinfo.jbufp = &jbuf;
 	errinfo.ctx = ctx;
 	errinfo.write_flag = 1;
-
-	outfp = _tfopen(fn,_T("wb"));
-	if(!outfp) {
-		iw_seterror(ctx,_T("Failed to open for writing (error code=%d)"),(int)errno);
-		goto done;
-	}
 
 	if(setjmp(jbuf)) {
 		goto done;
@@ -400,7 +439,9 @@ int iw_write_png_file(struct iw_context *ctx, const TCHAR *fn)
 	info_ptr = png_create_info_struct(png_ptr);
 	if(!info_ptr) goto done;
 
-	png_init_io(png_ptr, outfp);
+	pngwctx.ctx = ctx;
+	pngwctx.iodescr = iodescr;
+	png_set_write_fn(png_ptr, (void*)&pngwctx, my_png_write_fn, my_png_flush_fn);
 
 	lpng_color_type = -1;
 
@@ -491,7 +532,8 @@ done:
 	if(png_ptr) {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 	}
-	if(outfp) fclose(outfp);
+	if(iodescr->close_fn)
+		(*iodescr->close_fn)(ctx,iodescr);
 	if(row_pointers) iw_free(row_pointers);
 	return retval;
 }

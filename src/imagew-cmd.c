@@ -14,12 +14,14 @@
 #endif
 
 #ifdef IW_WINDOWS
+#define _CRT_SECURE_NO_WARNINGS
 #include <tchar.h>
 #endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #ifdef IW_WINDOWS
 #include <fcntl.h>
@@ -172,6 +174,19 @@ static void iwcmd_set_resize(struct iw_context *ctx, int channel, int dimension,
 	}
 }
 
+static int my_readfn(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes,
+   size_t *pbytesread)
+{
+	*pbytesread = fread(buf,1,nbytes,(FILE*)iodescr->fp);
+	return 1;
+}
+
+static int my_writefn(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes)
+{
+	fwrite(buf,1,nbytes,(FILE*)iodescr->fp);
+	return 1;
+}
+
 static int run(struct params_struct *p)
 {
 	int retval = 0;
@@ -180,7 +195,12 @@ static int run(struct params_struct *p)
 	int input_depth;
 	int output_depth;
 	int old_width,old_height;
+	struct iw_iodescr readdescr;
+	struct iw_iodescr writedescr;
 	TCHAR errmsg[200];
+
+	memset(&readdescr,0,sizeof(struct iw_iodescr));
+	memset(&writedescr,0,sizeof(struct iw_iodescr));
 
 	if(!p->quiet) _tprintf(_T("%s %s %s\n"),p->infn,p->symbol_arrow,p->outfn);
 
@@ -206,12 +226,22 @@ static int run(struct params_struct *p)
 	if(p->infmt==IWCMD_FMT_UNKNOWN)
 		p->infmt=detect_fmt_from_filename(p->infn);
 
+	readdescr.read_fn = my_readfn;
+	readdescr.fp = (void*)_tfopen(p->infn,_T("rb"));
+	if(!readdescr.fp) {
+		iw_seterror(ctx,_T("Failed to open for reading (error code=%d)"),(int)errno);
+		goto done;
+	}
+
 	if(p->infmt==IWCMD_FMT_JPEG) {
-		if(!iw_read_jpeg_file(ctx,p->infn)) goto done;
+		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
 	}
 	else {
-		if(!iw_read_png_file(ctx,p->infn)) goto done;
+		if(!iw_read_png_file(ctx,&readdescr)) goto done;
 	}
+
+	fclose((FILE*)readdescr.fp);
+	readdescr.fp=NULL;
 
 	imgtype_read = iw_get_value(ctx,IW_VAL_INPUT_IMAGE_TYPE);
 	input_depth = iw_get_value(ctx,IW_VAL_INPUT_DEPTH);
@@ -373,26 +403,40 @@ static int run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
 	}
 
+
+	writedescr.write_fn = my_writefn;
+	writedescr.fp = (void*)_tfopen(p->outfn,_T("wb"));
+	if(!writedescr.fp) {
+		iw_seterror(ctx,_T("Failed to open for writing (error code=%d)"),(int)errno);
+		goto done;
+	}
+
 	if(p->outfmt==IWCMD_FMT_JPEG) {
 		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
 		if(p->jpeg_samp_factor_h>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
 		if(p->jpeg_samp_factor_v>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
-		if(!iw_write_jpeg_file(ctx,p->outfn)) goto done;
+		if(!iw_write_jpeg_file(ctx,&writedescr)) goto done;
 	}
 	else if(p->outfmt==IWCMD_FMT_BMP) {
-		if(!iw_write_bmp_file(ctx,p->outfn)) goto done;
+		if(!iw_write_bmp_file(ctx,&writedescr)) goto done;
 	}
 	else {
 		if(p->pngcmprlevel >= 0)
 			iw_set_value(ctx,IW_VAL_PNG_CMPR_LEVEL,p->pngcmprlevel);
-		if(!iw_write_png_file(ctx,p->outfn)) goto done;
+		if(!iw_write_png_file(ctx,&writedescr)) goto done;
 	}
+
+	fclose((FILE*)writedescr.fp);
+	writedescr.fp=NULL;
 
 	retval = 1;
 
 done:
+	if(readdescr.fp) fclose((FILE*)readdescr.fp);
+	if(writedescr.fp) fclose((FILE*)writedescr.fp);
+
 	if(ctx) {
 		if(iw_get_errorflag(ctx)) {
 			_tprintf(_T("imagew error: %s\n"),iw_get_errormsg(ctx,errmsg,200));

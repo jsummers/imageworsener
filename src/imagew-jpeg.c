@@ -4,14 +4,12 @@
 
 #include "imagew-config.h"
 
-#define _CRT_SECURE_NO_WARNINGS
 #ifdef IW_WINDOWS
 #include <tchar.h>
 #endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 #include <setjmp.h>
 
 #include <jpeglib.h>
@@ -28,12 +26,9 @@ struct my_error_mgr {
 	jmp_buf setjmp_buffer;
 };
 
-typedef struct my_error_mgr * my_error_ptr;
-
-
 static void my_error_exit(j_common_ptr cinfo)
 {
-	my_error_ptr myerr = (my_error_ptr)cinfo->err;
+	struct my_error_mgr* myerr = (struct my_error_mgr*)cinfo->err;
 	longjmp(myerr->setjmp_buffer, 1);
 }
 
@@ -43,6 +38,14 @@ static void my_output_message(j_common_ptr cinfo)
 {
 	return;
 }
+
+struct iw_jpegrctx {
+	struct jpeg_source_mgr pub; // This field must be first.
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+	JOCTET *buffer;
+	size_t buffer_len;
+};
 
 static void iwjpeg_read_density(struct iw_context *ctx, struct iw_image *img,
 				struct jpeg_decompress_struct *cinfo)
@@ -65,10 +68,74 @@ static void iwjpeg_read_density(struct iw_context *ctx, struct iw_image *img,
 	}
 }
 
-int iw_read_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
+static void my_init_source_fn(j_decompress_ptr cinfo)
+{
+	struct iw_jpegrctx *jpegrctx = (struct iw_jpegrctx*)cinfo->src;
+	jpegrctx->pub.next_input_byte = jpegrctx->buffer;
+	jpegrctx->pub.bytes_in_buffer = 0;
+}
+
+static boolean my_fill_input_buffer_fn(j_decompress_ptr cinfo)
+{
+	struct iw_jpegrctx *jpegrctx = (struct iw_jpegrctx*)cinfo->src;
+	size_t bytesread = 0;
+	int ret;
+
+	ret = (*jpegrctx->iodescr->read_fn)(jpegrctx->ctx,jpegrctx->iodescr,
+		jpegrctx->buffer,jpegrctx->buffer_len,&bytesread);
+	if(!ret) return FALSE;
+
+	jpegrctx->pub.next_input_byte = jpegrctx->buffer;
+	jpegrctx->pub.bytes_in_buffer = bytesread;
+
+	if(bytesread<1) return FALSE;
+	return TRUE;
+}
+
+static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes)
+{
+	struct iw_jpegrctx *jpegrctx = (struct iw_jpegrctx*)cinfo->src;
+	size_t bytes_still_to_skip;
+	size_t nbytes;
+	int ret;
+	size_t bytesread;
+
+	if(num_bytes<=0) return;
+	bytes_still_to_skip = (size_t)num_bytes;
+
+	while(bytes_still_to_skip>0) {
+		if(jpegrctx->pub.bytes_in_buffer>0) {
+			// There are some bytes in the buffer. Skip up to
+			// 'bytes_still_to_skip' of them.
+			nbytes = jpegrctx->pub.bytes_in_buffer;
+			if(nbytes>bytes_still_to_skip)
+				nbytes = bytes_still_to_skip;
+
+			jpegrctx->pub.bytes_in_buffer -= nbytes;
+			jpegrctx->pub.next_input_byte += nbytes;
+			bytes_still_to_skip -= nbytes;
+		}
+
+		if(bytes_still_to_skip<1) return;
+
+		// Need to read from the file (or do a seek, but we currently don't
+		// support seeking).
+		ret = (*jpegrctx->iodescr->read_fn)(jpegrctx->ctx,jpegrctx->iodescr,
+			jpegrctx->buffer,jpegrctx->buffer_len,&bytesread);
+		if(!ret) bytesread=0;
+
+		jpegrctx->pub.next_input_byte = jpegrctx->buffer;
+		jpegrctx->pub.bytes_in_buffer = bytesread;
+	}
+}
+
+static void my_term_source_fn(j_decompress_ptr cinfo)
+{
+}
+
+int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	int retval=0;
-	FILE *f = NULL;
 	struct jpeg_decompress_struct cinfo;
 	struct my_error_mgr jerr;
 	int cinfo_valid=0;
@@ -77,16 +144,12 @@ int iw_read_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 	JSAMPLE *jsamprow;
 	int numchannels=0;
 	struct iw_image img;
+	struct iw_jpegrctx jpegrctx;
 
 	memset(&img,0,sizeof(struct iw_image));
 	memset(&cinfo,0,sizeof(struct jpeg_decompress_struct));
 	memset(&jerr,0,sizeof(struct my_error_mgr));
-
-	f=_tfopen(fn,_T("rb"));
-	if(!f) {
-		iw_seterror(ctx,_T("Can't open jpeg file"));
-		goto done;
-	}
+	memset(&jpegrctx,0,sizeof(struct iw_jpegrctx));
 
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = my_error_exit;
@@ -109,7 +172,19 @@ int iw_read_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 	jpeg_create_decompress(&cinfo);
 	cinfo_valid=1;
 
-	jpeg_stdio_src(&cinfo, f);
+	// Set up our custom source manager.
+	jpegrctx.pub.init_source = my_init_source_fn;
+	jpegrctx.pub.fill_input_buffer = my_fill_input_buffer_fn;
+	jpegrctx.pub.skip_input_data = my_skip_input_data_fn;
+	jpegrctx.pub.resync_to_restart = jpeg_resync_to_restart; // libjpeg default
+	jpegrctx.pub.term_source = my_term_source_fn;
+	jpegrctx.ctx = ctx;
+	jpegrctx.iodescr = iodescr;
+	jpegrctx.buffer_len = 32768;
+	jpegrctx.buffer = iw_malloc(ctx, jpegrctx.buffer_len);
+	if(!jpegrctx.buffer) goto done;
+	cinfo.src = (struct jpeg_source_mgr*)&jpegrctx;
+
 	jpeg_read_header(&cinfo, TRUE);
 
 	iwjpeg_read_density(ctx,&img,&cinfo);
@@ -157,9 +232,21 @@ int iw_read_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 
 done:
 	if(cinfo_valid) jpeg_destroy_decompress(&cinfo);
-	if(f) fclose(f);
+	if(iodescr->close_fn)
+		(*iodescr->close_fn)(ctx,iodescr);
+	if(jpegrctx.buffer) iw_free(jpegrctx.buffer);
 	return retval;
 }
+
+////////////////////////////////////
+
+struct iw_jpegwctx {
+	struct jpeg_destination_mgr pub; // This field must be first.
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+	JOCTET *buffer;
+	size_t buffer_len;
+};
 
 static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct *cinfo,
 	const struct iw_image *img)
@@ -176,7 +263,42 @@ static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct
 	}
 }
 
-int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
+static void my_init_destination_fn(j_compress_ptr cinfo)
+{
+	struct iw_jpegwctx *jpegwctx = (struct iw_jpegwctx*)cinfo->dest;
+
+	// Configure the destination manager to use our buffer.
+	jpegwctx->pub.next_output_byte = jpegwctx->buffer;
+	jpegwctx->pub.free_in_buffer = jpegwctx->buffer_len;
+}
+
+static boolean my_empty_output_buffer_fn(j_compress_ptr cinfo)
+{
+	struct iw_jpegwctx *jpegwctx = (struct iw_jpegwctx*)cinfo->dest;
+
+	// Write out the entire buffer
+	(*jpegwctx->iodescr->write_fn)(jpegwctx->ctx,jpegwctx->iodescr,
+		jpegwctx->buffer,jpegwctx->buffer_len);
+	// Change the data pointer and free-space indicator to reflect the
+	// data we wrote.
+	jpegwctx->pub.next_output_byte = jpegwctx->buffer;
+	jpegwctx->pub.free_in_buffer = jpegwctx->buffer_len;
+	return TRUE;
+}
+
+static void my_term_destination_fn(j_compress_ptr cinfo)
+{
+	struct iw_jpegwctx *jpegwctx = (struct iw_jpegwctx*)cinfo->dest;
+	size_t bytesleft;
+
+	bytesleft = jpegwctx->buffer_len - jpegwctx->pub.free_in_buffer;
+	if(bytesleft>0) {
+		(*jpegwctx->iodescr->write_fn)(jpegwctx->ctx,jpegwctx->iodescr,
+			jpegwctx->buffer,bytesleft);
+	}
+}
+
+int iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
 {
 	int retval=0;
 	struct jpeg_compress_struct cinfo;
@@ -186,15 +308,16 @@ int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 	int compress_created = 0;
 	int compress_started = 0;
 	JSAMPROW *row_pointers = NULL;
-	FILE *f = NULL;
 	int is_grayscale;
 	int j;
 	struct iw_image img;
 	int jpeg_quality;
 	int samp_factor_h, samp_factor_v;
+	struct iw_jpegwctx jpegwctx;
 
 	memset(&cinfo,0,sizeof(struct jpeg_compress_struct));
 	memset(&jerr,0,sizeof(struct my_error_mgr));
+	memset(&jpegwctx,0,sizeof(struct iw_jpegwctx));
 
 	iw_get_output_image(ctx,&img);
 
@@ -219,7 +342,6 @@ int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 		jpeg_cmpts=3;
 	}
 
-
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = my_error_exit;
 
@@ -240,12 +362,18 @@ int iw_write_jpeg_file(struct iw_context *ctx, const TCHAR *fn)
 	jpeg_create_compress(&cinfo);
 	compress_created=1;
 
-	f=_tfopen(fn,_T("wb"));
-	if(!f) {
-		iw_seterror(ctx,_T("Failed to open for writing (error code=%d)"),(int)errno);
-		goto done;
-	}
-	jpeg_stdio_dest(&cinfo, f);
+	// Set up our custom destination manager.
+	jpegwctx.pub.init_destination = my_init_destination_fn;
+	jpegwctx.pub.empty_output_buffer = my_empty_output_buffer_fn;
+	jpegwctx.pub.term_destination = my_term_destination_fn;
+	jpegwctx.ctx = ctx;
+	jpegwctx.iodescr = iodescr;
+	jpegwctx.buffer_len = 32768;
+	jpegwctx.buffer = iw_malloc(ctx,jpegwctx.buffer_len);
+	if(!jpegwctx.buffer) goto done;
+	// Our jpegwctx is organized so it can double as a
+	// 'struct jpeg_destination_mgr'.
+	cinfo.dest = (struct jpeg_destination_mgr*)&jpegwctx;
 
 	cinfo.image_width = img.width;
 	cinfo.image_height = img.height;
@@ -300,8 +428,11 @@ done:
 	if(compress_created)
 		jpeg_destroy_compress(&cinfo);
 
-	if(f) fclose(f);
+	if(iodescr->close_fn)
+		(*iodescr->close_fn)(ctx,iodescr);
 	if(row_pointers) iw_free(row_pointers);
+
+	if(jpegwctx.buffer) iw_free(jpegwctx.buffer);
 
 	return retval;
 }

@@ -5,13 +5,11 @@
 #include "imagew-config.h"
 
 #ifdef IW_WINDOWS
-#define _CRT_SECURE_NO_WARNINGS
 #include <tchar.h>
 #endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
 
 #include "imagew.h"
 
@@ -21,7 +19,7 @@ struct iwbmpwritecontext {
 	int palentries;
 	size_t palsize;
 	size_t bitssize;
-	FILE *f;
+	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
 	const struct iw_palette *pal;
@@ -34,7 +32,7 @@ static size_t iwbmp_calc_bpr(int bpp, size_t width)
 
 static void iwbmp_write(struct iwbmpwritecontext *bmpctx, const void *buf, size_t n)
 {
-	fwrite(buf,1,n,bmpctx->f);
+	(*bmpctx->iodescr->write_fn)(bmpctx->ctx,bmpctx->iodescr,buf,n);
 }
 
 static void iwbmp_set_ui16(unsigned char *b, unsigned int n)
@@ -228,7 +226,7 @@ done:
 	return 1;
 }
 
-int iw_write_bmp_file(struct iw_context *ctx, const TCHAR *fn)
+int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iwbmpwritecontext bmpctx;
 	int retval=0;
@@ -241,11 +239,7 @@ int iw_write_bmp_file(struct iw_context *ctx, const TCHAR *fn)
 	bmpctx.ctx = ctx;
 	bmpctx.include_file_header = 1;
 
-	bmpctx.f=_tfopen(fn,_T("wb"));
-	if(!bmpctx.f) {
-		iw_seterror(ctx,_T("Failed to open for writing (error code=%d)"),(int)errno);
-		goto done;
-	}
+	bmpctx.iodescr=iodescr;
 
 	iw_get_output_image(ctx,&img1);
 	bmpctx.img = &img1;
@@ -258,6 +252,7 @@ int iw_write_bmp_file(struct iw_context *ctx, const TCHAR *fn)
 	iwbmp_write_main(&bmpctx);
 
 done:
-	if(bmpctx.f) fclose(bmpctx.f);
+	if(bmpctx.iodescr->close_fn)
+		(*bmpctx.iodescr->close_fn)(ctx,bmpctx.iodescr);
 	return retval;
 }
