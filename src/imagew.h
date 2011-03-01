@@ -23,6 +23,10 @@
 #endif
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // The version of the IW header files.
 // Use iw_get_version_int() to get the version at runtime.
 #define IW_VERSION_INT           0x000901
@@ -377,5 +381,9 @@ int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset);
 int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // IMAGEW_H
