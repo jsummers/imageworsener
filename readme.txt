@@ -351,6 +351,7 @@ Options:
    Dither types available:
     "f" or "fs": Floyd-Steinberg.
     "o": 8x8 Ordered dither.
+    "halftone": A sample 8x8 halftone dither.
     "r": Random dither. See also the -randseed option.
     "r2": "Random2" dither - Same as Random, except that all color channels
           (but not alpha) use the same random pattern. The colors will be more

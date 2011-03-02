@@ -680,6 +680,7 @@ static int iwcmd_string_to_dithertype(struct params_struct *p,const TCHAR *s)
 		{_T("f"),IW_DITHERTYPE_FS},
 		{_T("fs"),IW_DITHERTYPE_FS},
 		{_T("o"),IW_DITHERTYPE_ORDERED},
+		{_T("halftone"),IW_DITHERTYPE_HALFTONE},
 		{_T("r"),IW_DITHERTYPE_RANDOM},
 		{_T("r2"),IW_DITHERTYPE_RANDOM2},
 		{_T("jjn"),IW_DITHERTYPE_JJN},

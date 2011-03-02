@@ -168,6 +168,7 @@ extern "C" {
 #define IW_DITHERTYPE_ORDERED      0x002
 #define IW_DITHERTYPE_RANDOM       0x003 // color channels use different patterns
 #define IW_DITHERTYPE_RANDOM2      0x004 // color channels use the same pattern
+#define IW_DITHERTYPE_HALFTONE     0x005 // A sample "halftone" ordered dither
 #define IW_DITHERTYPE_FS           0x101
 #define IW_DITHERTYPE_JJN          0x102 // Jarvis, Judice, and Ninke filter
 #define IW_DITHERTYPE_STUCKI       0x103

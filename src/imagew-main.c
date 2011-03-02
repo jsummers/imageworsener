@@ -324,9 +324,11 @@ static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr 
 // Returns 0 if we should round down, 1 if we should round up.
 // TODO: It might be good to use a different-sized matrix for alpha channels
 // (e.g. 9x7), but I don't know how to make a good one.
-static int iw_ordered_dither(double fraction, int x, int y)
+static int iw_ordered_dither(int patternnum, double fraction, int x, int y)
 {
-	static const double ordered_dither_8x8[] = {
+	double threshhold;
+	static const float pattern[2][64] = {
+	 { // Dispersed ordered dither
 		 0.5/64,48.5/64,12.5/64,60.5/64, 3.5/64,51.5/64,15.5/64,63.5/64,
 		32.5/64,16.5/64,44.5/64,28.5/64,35.5/64,19.5/64,47.5/64,31.5/64,
 		 8.5/64,56.5/64, 4.5/64,52.5/64,11.5/64,59.5/64, 7.5/64,55.5/64,
@@ -334,10 +336,20 @@ static int iw_ordered_dither(double fraction, int x, int y)
 		 2.5/64,50.5/64,14.5/64,62.5/64, 1.5/64,49.5/64,13.5/64,61.5/64,
 		34.5/64,18.5/64,46.5/64,30.5/64,33.5/64,17.5/64,45.5/64,29.5/64,
 		10.5/64,58.5/64, 6.5/64,54.5/64, 9.5/64,57.5/64, 5.5/64,53.5/64,
-		42.5/64,26.5/64,38.5/64,22.5/64,41.5/64,25.5/64,37.5/64,21.5/64};
-	double threshhold;
+		42.5/64,26.5/64,38.5/64,22.5/64,41.5/64,25.5/64,37.5/64,21.5/64
+	 },
+	 { // Halftone ordered dither
+		 3.5/64, 9.5/64,17.5/64,27.5/64,25.5/64,15.5/64, 7.5/64, 1.5/64,
+		11.5/64,29.5/64,37.5/64,45.5/64,43.5/64,35.5/64,23.5/64, 5.5/64,
+		19.5/64,39.5/64,51.5/64,57.5/64,55.5/64,49.5/64,33.5/64,13.5/64,
+		31.5/64,47.5/64,59.5/64,63.5/64,61.5/64,53.5/64,41.5/64,21.5/64,
+		30.5/64,46.5/64,58.5/64,62.5/64,60.5/64,52.5/64,40.5/64,20.5/64,
+		18.5/64,38.5/64,50.5/64,56.5/64,54.5/64,48.5/64,32.5/64,12.5/64,
+		10.5/64,28.5/64,36.5/64,44.5/64,42.5/64,34.5/64,22.5/64, 4.5/64,
+		 2.5/64, 8.5/64,16.5/64,26.5/64,24.5/64,14.5/64, 6.5/64, 0.5/64
+	 }};
 
-	threshhold = ordered_dither_8x8[(x%8) + 8*(y%8)];
+	threshhold = pattern[patternnum][(x%8) + 8*(y%8)];
 	return (fraction >= threshhold);
 }
 
@@ -526,6 +538,7 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 	int is_exact;
 	double s_full;
 	int dithertype;
+	int dd; // Dither decision: 0 to use floor, 1 to use ceil.
 
 	if(IW_DITHER_IS_FS_LIKE(ctx->img2_ci[channel].dithertype)) {
 		samp_lin += ctx->dither_errors[0][x];
@@ -564,13 +577,15 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 			}
 		}
 		else if(dithertype==IW_DITHERTYPE_ORDERED) {
-			int dd; // Dither decision: 0 to use floor, 1 to use ceil.
-			dd=iw_ordered_dither(d_floor/(d_floor+d_ceil),x,y);
+			dd=iw_ordered_dither(0, d_floor/(d_floor+d_ceil),x,y);
+			s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
+		}
+		else if(dithertype==IW_DITHERTYPE_HALFTONE) {
+			dd=iw_ordered_dither(1, d_floor/(d_floor+d_ceil),x,y);
 			s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
 		}
 		else if(dithertype==IW_DITHERTYPE_RANDOM || dithertype==IW_DITHERTYPE_RANDOM2)
 		{
-			int dd;
 			dd=iw_random_dither(ctx,d_floor/(d_floor+d_ceil),x,y,dithertype,
 				(ctx->img2_ci[channel].channeltype==IW_CHANNELTYPE_ALPHA));
 			s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
