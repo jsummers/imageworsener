@@ -247,6 +247,12 @@ void iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimensio
 	ctx->resize_settings[dimension].channel_offset[channeltype] = offs;
 }
 
+void iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d)
+{
+	if(channeltype<0 || channeltype>4) return;
+	ctx->significant_bits[channeltype] = d;
+}
+
 int iw_get_input_image_density(struct iw_context *ctx,
    double *px, double *py, int *pcode)
 {

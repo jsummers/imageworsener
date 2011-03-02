@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for reduced input bitdepths; respect PNG sBIT chunks.
  - The image format modules now use abstracted I/O.
  - Support for writing BMP files.
  - Added option to set the PNG compression level.

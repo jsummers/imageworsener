@@ -266,6 +266,9 @@ void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, i
 //            IW_DIMENSION_V: Vertical, positive=down
 void iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimension, double offs);
 
+// Set the significant bits to something less than is stored in the file.
+void iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d);
+
 // 'cs' indicates the colorspace of the samples given by the caller (IW_BKGDCOLORSPACE_*).
 void iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b);
 

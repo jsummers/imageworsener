@@ -168,6 +168,11 @@ struct iw_context {
 	double output_maxcolorcode;
 
 	double input_maxcolorcode;
+	
+	int support_reduced_input_bitdepths; // Set this to use the next 3 fields.
+	int significant_bits[5];     // 0 means default. Indexed by IW_CHANNELTYPE_[Red..Gray]
+	int insignificant_bits[5];   // How much we have to shift the samples.
+	double input_maxcolorcode_ext[5];
 
 #define IW_DITHER_MAXROWS 3 // Max number of rows for FS-like dithering, including current row.
 	// Error accumulators for Floyd-Steinberg and similar dithering methods.

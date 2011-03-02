@@ -150,6 +150,38 @@ static void iwpng_read_density(struct iw_context *ctx,
 	img->density_code = density_code;
 }
 
+static void iwpng_read_sbit(struct iw_context *ctx,
+	png_structp png_ptr, png_infop info_ptr, int color_type)
+{
+	png_uint_32 ret;
+	png_color_8p sbit;
+
+	ret = png_get_sBIT(png_ptr, info_ptr, &sbit);
+	if(!ret) return;
+
+	if(color_type & PNG_COLOR_MASK_COLOR) {
+		iw_set_input_sbit(ctx,IW_CHANNELTYPE_RED  ,sbit->red);
+		iw_set_input_sbit(ctx,IW_CHANNELTYPE_GREEN,sbit->green);
+		iw_set_input_sbit(ctx,IW_CHANNELTYPE_BLUE ,sbit->blue);
+	}
+	else {
+		iw_set_input_sbit(ctx,IW_CHANNELTYPE_GRAY ,sbit->gray);
+	}
+	
+	if(color_type & PNG_COLOR_MASK_ALPHA) {
+		iw_set_input_sbit(ctx,IW_CHANNELTYPE_ALPHA,sbit->alpha);
+		// Apparently, it's not possible for a PNG file to indicate
+		// the significant bits of the alpha values of a palette image.
+	}
+}
+
+static void iw_read_ancillary_data1(struct iw_context *ctx,
+   struct iw_image *img, png_structp png_ptr, png_infop info_ptr,
+   int color_type)
+{
+	iwpng_read_sbit(ctx,png_ptr,info_ptr,color_type);
+}
+
 static void iw_read_ancillary_data(struct iw_context *ctx,
    struct iw_image *img, png_structp png_ptr, png_infop info_ptr)
 {
@@ -205,6 +237,10 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	if(!iw_check_image_dimensons(ctx,width,height)) {
 		goto done;
 	}
+
+	// I'm not sure I know everything that png_read_update_info() does,
+	// so to be safe, read some things before calling it.
+	iw_read_ancillary_data1(ctx, &img, png_ptr, info_ptr, color_type);
 
 	if(!(color_type&PNG_COLOR_MASK_COLOR)) {
 		// Remember whether the image was originally encoded as grayscale.

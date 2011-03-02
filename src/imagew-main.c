@@ -164,8 +164,14 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	unsigned int v;
+	int chtype;
 	v = get_raw_sample_int(ctx,x,y,channel);
-	return ((double)v) / ctx->input_maxcolorcode;
+	if(!ctx->support_reduced_input_bitdepths)
+		return ((double)v) / ctx->input_maxcolorcode;
+
+	chtype = ctx->img1_ci[channel].channeltype;
+	v >>= ctx->insignificant_bits[chtype];
+	return ((double)v) / ctx->input_maxcolorcode_ext[chtype];
 }
 
 static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
@@ -235,6 +241,19 @@ static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
 
 	ch = ctx->intermed_ci[channel].corresponding_input_channel;
 
+	if(ctx->support_reduced_input_bitdepths) {
+		// The slow way...
+		if(ctx->intermed_ci[channel].cvt_to_grayscale) {
+			r = x_to_linear_sample(get_raw_sample(ctx,x,y,ch+0),csdescr);
+			g = x_to_linear_sample(get_raw_sample(ctx,x,y,ch+1),csdescr);
+			b = x_to_linear_sample(get_raw_sample(ctx,x,y,ch+2),csdescr);
+			return iw_color_to_grayscale(ctx,r,g,b);
+		}
+		return x_to_linear_sample(get_raw_sample(ctx,x,y,ch),csdescr);
+	}
+
+	// This method is faster, because it may use a gamma lookup table.
+	// But all channels have to have the nominal input bitdepth.
 	if(ctx->intermed_ci[channel].cvt_to_grayscale) {
 		v1 = get_raw_sample_int(ctx,x,y,ch+0);
 		v2 = get_raw_sample_int(ctx,x,y,ch+1);
@@ -1413,6 +1432,18 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	ctx->input_maxcolorcode = (double)((1 << ctx->img1.bit_depth)-1);
 
+	for(i=0;i<5;i++) {
+		if(ctx->significant_bits[i]>0 && ctx->significant_bits[i]<ctx->img1.bit_depth) {
+			ctx->support_reduced_input_bitdepths = 1; // Set this flag for later.
+			ctx->insignificant_bits[i] = ctx->img1.bit_depth - ctx->significant_bits[i];
+			ctx->input_maxcolorcode_ext[i] = (double)((1 << ctx->significant_bits[i])-1);
+		}
+		else {
+			ctx->insignificant_bits[i] = 0;
+			ctx->input_maxcolorcode_ext[i] = ctx->input_maxcolorcode;
+		}
+	}
+
 	decide_output_bit_depth(ctx);
 
 	maxcolorcode_int = (1 << ctx->output_depth)-1;
@@ -1569,7 +1600,9 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	iw_convert_density_info(ctx);
 
-	iw_make_x_to_linear_table(ctx,&ctx->input_color_corr_table,&ctx->img1,&ctx->img1cs);
+	if(!ctx->support_reduced_input_bitdepths) {
+		iw_make_x_to_linear_table(ctx,&ctx->input_color_corr_table,&ctx->img1,&ctx->img1cs);
+	}
 	return 1;
 }
 
