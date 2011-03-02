@@ -145,6 +145,9 @@ $IW srcimg/rgb8.jpg actual/jpegsf.jpg $SCALE -filter catrom -jpegsampling 1,1
 $IW srcimg/g8.jpg actual/jpeggray.jpg $SCALE -filter catrom -jpegquality 60
 $IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace
 
+# Test writing BMP
+$IW srcimg/g2.png actual/bmp1.bmp -width 11
+
 # Extra pixel density tests
 $IW srcimg/rgb8x1.png actual/dens-1.png $SCALE -filter mix
 $IW srcimg/rgb8x2.png actual/dens-2.png $SCALE -filter mix
@@ -161,6 +164,9 @@ $IW srcimg/rgb8.png actual/opt-12col.png -width 4 -height 3 -filter mix
 $IW srcimg/rgb8a.png actual/opt-20col.png -width 5 -height 4 -filter mix
 
 $IW srcimg/p8t.png actual/crop-1.png -width 20  -crop 3,12,18,9
+
+# Test input sBIT support, and -pngcmprlevel
+$IW srcimg/rgb8a-sbit.png actual/sbit1.png -pngcmprlevel 9
 
 
 # Compare the expected and actual files.
