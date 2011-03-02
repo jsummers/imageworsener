@@ -298,45 +298,6 @@ static IW_INLINE void put_raw_sample_8(struct iw_context *ctx, double s,
 	ctx->img2.pixels[y*ctx->img2.bpr + ctx->img2_numchannels*x + channel] = tmpui8;
 }
 
-#if 0
-// s is from 0.0 to 15.0
-static IW_INLINE void put_raw_sample_4(struct iw_context *ctx, double s,
-					   int x, int y)
-{
-	unsigned char tmpui8;
-
-	tmpui8 = (unsigned char)(0.5+s);
-	tmpui8 = tmpui8 << ((1-x%2)*4);
-	ctx->img2.pixels[y*ctx->img2.bpr + x/2] |= tmpui8;
-}
-#endif
-
-#if 0
-// s is from 0.0 to 3.0
-static IW_INLINE void put_raw_sample_2(struct iw_context *ctx, double s,
-					   int x, int y)
-{
-	unsigned char tmpui8;
-
-	tmpui8 = (unsigned char)(0.5+s);
-	tmpui8 = tmpui8 << ((3-x%4)*2);
-	ctx->img2.pixels[y*ctx->img2.bpr + x/4] |= tmpui8;
-}
-#endif
-
-#if 0
-static IW_INLINE void put_raw_sample_1(struct iw_context *ctx, double s,
-					   int x, int y)
-{
-	unsigned char tmpui8;
-
-	tmpui8 = (unsigned char)(0.5+s);
-	if(tmpui8) {
-		ctx->img2.pixels[y*ctx->img2.bpr + x/8] |= tmpui8 << (7-x%8);
-	}
-}
-#endif
-
 // Sample must already be scaled and in the target colorspace. E.g. 255.0 might be white.
 static void put_raw_sample(struct iw_context *ctx, double s,
 				int x, int y, int channel)
@@ -344,9 +305,6 @@ static void put_raw_sample(struct iw_context *ctx, double s,
 	switch(ctx->output_depth) {
 	case 8:  put_raw_sample_8(ctx,s,x,y,channel); break;
 	case 16: put_raw_sample_16(ctx,s,x,y,channel); break;
-	//case 1:  put_raw_sample_1(ctx,s,x,y); break;
-	//case 2:  put_raw_sample_2(ctx,s,x,y); break;
-	//case 4:  put_raw_sample_4(ctx,s,x,y); break;
 	}
 }
 
