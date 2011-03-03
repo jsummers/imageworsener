@@ -254,6 +254,8 @@ static void iw_opt_16_to_8(struct iw_context *ctx, struct iw_opt_ctx *optctx, in
 	size_t newbpr;
 	int i,j;
 
+	if(!ctx->opt_16_to_8) return;
+
 	newbpr = iw_calc_bytesperrow(optctx->width,8*spp);
 	newpixels = iw_malloc_large(ctx, newbpr, optctx->height);
 	if(!newpixels) return;
@@ -423,6 +425,8 @@ static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx
 	unsigned char key_clr; // Red component of the key color
 	unsigned char *trns_mask = NULL;
 
+	if(!ctx->opt_binary_trns) return;
+
 	// Try to find a color that's not used in the image.
 	// Looking for all 2^24 possible colors is too much work.
 	// We will just look for 256 predefined colors: R={0-255},G=192,B=192
@@ -492,6 +496,8 @@ static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	unsigned char key_clr; // low 8-bits of red component of the key color
 	unsigned char *trns_mask = NULL;
 
+	if(!ctx->opt_binary_trns) return;
+
 	memset(&clr_used,0,256*sizeof(unsigned char));
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
@@ -557,6 +563,8 @@ static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	unsigned char key_clr;
 	unsigned char *trns_mask = NULL;
 
+	if(!ctx->opt_binary_trns) return;
+
 	memset(&clr_used,0,256*sizeof(unsigned char));
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
@@ -613,6 +621,8 @@ static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_c
 	unsigned char clr_used[256];
 	unsigned char key_clr; // low 8-bits of the key color
 	unsigned char *trns_mask = NULL;
+
+	if(!ctx->opt_binary_trns) return;
 
 	memset(&clr_used,0,256*sizeof(unsigned char));
 
@@ -851,7 +861,7 @@ static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx
 
 	if(optctx->has_color) return 0;
 	if(optctx->has_partial_transparency) return 0;
-	if(optctx->has_transparency && ctx->no_binarytrns) return 0;
+	if(optctx->has_transparency && !ctx->opt_binary_trns) return 0;
 	if(optctx->has_transparency && !(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return 0;
 
 	switch(bpp) {
@@ -950,7 +960,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 	// For images that have at most 256 (8-bit-compatible) colors, the order
 	// of preference is gray1, pal1, gray2, pal2, gray4, pal4, gray8, pal8.
 
-	if((ctx->output_profile&IW_PROFILE_GRAY1) && iwopt_palette_is_valid_gray(ctx,optctx,1,&binary_trns,&trns_shade)) {
+	if(ctx->opt_grayscale && (ctx->output_profile&IW_PROFILE_GRAY1) && iwopt_palette_is_valid_gray(ctx,optctx,1,&binary_trns,&trns_shade)) {
 		// Replace the palette with a fully-populated grayscale palette.
 		// The palette might already be correct, but it might not be.
 		// It will be missing any gray shade that wasn't in the image.
@@ -960,34 +970,34 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if((ctx->output_profile&IW_PROFILE_PAL1) && optctx->palette->num_entries<=2) {
+	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL1) && optctx->palette->num_entries<=2) {
 		;
 	}
-	else if((ctx->output_profile&IW_PROFILE_GRAY2) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
+	else if(ctx->opt_grayscale && (ctx->output_profile&IW_PROFILE_GRAY2) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,2);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if((ctx->output_profile&IW_PROFILE_PAL2) && optctx->palette->num_entries<=4) {
+	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL2) && optctx->palette->num_entries<=4) {
 		;
 	}
-	else if((ctx->output_profile&IW_PROFILE_GRAY4) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
+	else if(ctx->opt_grayscale && (ctx->output_profile&IW_PROFILE_GRAY4) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
 		iwopt_make_gray_palette(ctx,optctx,4);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if((ctx->output_profile&IW_PROFILE_PAL4) && optctx->palette->num_entries<=16) {
+	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL4) && optctx->palette->num_entries<=16) {
 		;
 	}
-	else if((ctx->output_profile&IW_PROFILE_GRAYSCALE) && iwopt_palette_is_valid_gray(ctx,optctx,8,&binary_trns,&trns_shade)) {
+	else if(ctx->opt_grayscale && (ctx->output_profile&IW_PROFILE_GRAYSCALE) && iwopt_palette_is_valid_gray(ctx,optctx,8,&binary_trns,&trns_shade)) {
 		// This image can best be encoded as 8-bit grayscale. We don't handle that here.
 		goto done;
 	}
-	else if(ctx->output_profile&IW_PROFILE_PAL8) {
+	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL8)) {
 		;
 	}
 	else {
@@ -1051,42 +1061,42 @@ void iw_optimize_image(struct iw_context *ctx)
 		iw_opt_16_to_8(ctx,optctx,1);
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==8 && !optctx->has_transparency) {
+	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==8 && !optctx->has_transparency && ctx->opt_strip_alpha) {
 		iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_RGB,0,1,2); // RGBA -> RGB
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==16 && !optctx->has_transparency) {
+	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==16 && !optctx->has_transparency && ctx->opt_strip_alpha) {
 		iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_RGB,0,1,2); // RGBA -> RGB (16)
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_GRAYA && optctx->bit_depth==16 && !optctx->has_transparency) {
+	if(optctx->imgtype==IW_IMGTYPE_GRAYA && optctx->bit_depth==16 && !optctx->has_transparency && ctx->opt_strip_alpha) {
 		iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_GRAY,0, 0,0); // GA -> G (16)
 	}
 
-	if(optctx->imgtype==IW_IMGTYPE_GRAYA && optctx->bit_depth==8 && !optctx->has_transparency) {
+	if(optctx->imgtype==IW_IMGTYPE_GRAYA && optctx->bit_depth==8 && !optctx->has_transparency && ctx->opt_strip_alpha) {
 		iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_GRAY,0, 0,0); // GA -> G
 	}
 
 	if(optctx->imgtype==IW_IMGTYPE_RGB && optctx->bit_depth==8 && !optctx->has_color &&
-	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE) && ctx->opt_grayscale)
 	{
 		iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_GRAY,0, 0,0); // RGB -> G
 	}
 
 	if(optctx->imgtype==IW_IMGTYPE_RGB && optctx->bit_depth==16 && !optctx->has_color &&
-	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE) && ctx->opt_grayscale)
 	{
 		iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_GRAY,0, 0,0); // RGB -> G (16)
 	}
 
 	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==8 && !optctx->has_color &&
-	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE) && ctx->opt_grayscale)
 	{
 		iw_opt_copychannels_8(ctx,optctx,IW_IMGTYPE_GRAYA,0,3, 0); // RGBA -> GA
 	}
 
 	if(optctx->imgtype==IW_IMGTYPE_RGBA && optctx->bit_depth==16 && !optctx->has_color &&
-	   (ctx->output_profile&IW_PROFILE_GRAYSCALE))
+	   (ctx->output_profile&IW_PROFILE_GRAYSCALE) && ctx->opt_grayscale)
 	{
 		iw_opt_copychannels_16(ctx,optctx,IW_IMGTYPE_GRAYA,0,3, 0); // RGBA -> GA (16)
 	}

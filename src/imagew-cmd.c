@@ -219,7 +219,7 @@ static int run(struct params_struct *p)
 	if(p->no_gamma) iw_set_value(ctx,IW_VAL_DISABLE_GAMMA,1);
 	if(p->intclamp) iw_set_value(ctx,IW_VAL_INT_CLAMP,1);
 	if(p->no_cslabel) iw_set_value(ctx,IW_VAL_NO_CSLABEL,1);
-	if(p->no_binarytrns) iw_set_value(ctx,IW_VAL_NO_BINARYTRNS,1);
+	if(p->no_binarytrns) iw_set_allow_opt(ctx,IW_OPT_BINARY_TRNS,0);
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 

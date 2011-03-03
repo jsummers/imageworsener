@@ -54,10 +54,6 @@ extern "C" {
 // 0=standard formula, 1=compatibility formula
 #define IW_VAL_GRAYSCALE_FORMULA 16
 
-// If ==1, do not use PNG binary transparency (use alpha or palette transaprency
-// instead).
-#define IW_VAL_NO_BINARYTRNS     17
-
 // Test whether the input image was encoded as grayscale.
 // (Assumes the image-reading function set the iw_image::native_grayscale
 // flag correctly.)
@@ -191,6 +187,12 @@ extern "C" {
 #define IW_BKGDCOLORSPACE_LINEAR       1
 #define IW_BKGDCOLORSPACE_SAMEASOUTPUT 10
 
+#define IW_OPT_GRAYSCALE    1   // optimize color to grayscale
+#define IW_OPT_PALETTE      2   // optimize to paletted images
+#define IW_OPT_16_to_8      3   // reduce >8 bits to 8 bits if possible
+#define IW_OPT_STRIP_ALPHA  4   // strip superfluous alpha channels
+#define IW_OPT_BINARY_TRNS  5   // optimize to color-keyed binary transparency
+
 // Colorspace descriptor
 struct iw_csdescr {
 	int cstype; // IW_CSTYPE_
@@ -290,6 +292,8 @@ int iw_get_input_image_density(struct iw_context *ctx,
    double *px, double *py, int *pcode);
 
 void iw_set_random_seed(struct iw_context *ctx, int randomize, int rand_seed);
+
+void iw_set_allow_opt(struct iw_context *ctx, int opt, int n);
 
 // Caller allocates the pixels with (preferably) iw_malloc_large().
 // The memory will be freed by IW.

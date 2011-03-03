@@ -117,6 +117,11 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
 	ctx->pngcmprlevel = -1;
 	iw_set_value(ctx,IW_VAL_CHARSET,0); // Default to ASCII
+	ctx->opt_grayscale = 1;
+	ctx->opt_palette = 1;
+	ctx->opt_16_to_8 = 1;
+	ctx->opt_strip_alpha = 1;
+	ctx->opt_binary_trns = 1;
 }
 
 struct iw_context *iw_create_context(void)
@@ -451,6 +456,20 @@ static void iw_set_charset(struct iw_context *ctx, int cset)
 	}
 }
 
+void iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
+{
+	unsigned char v;
+	v = n?1:0;
+
+	switch(opt) {
+	case IW_OPT_GRAYSCALE: ctx->opt_grayscale = v; break;
+	case IW_OPT_PALETTE: ctx->opt_palette = v; break;
+	case IW_OPT_16_to_8: ctx->opt_16_to_8 = v; break;
+	case IW_OPT_STRIP_ALPHA: ctx->opt_strip_alpha = v; break;
+	case IW_OPT_BINARY_TRNS: ctx->opt_binary_trns = v; break;
+	}
+}
+
 void iw_set_value(struct iw_context *ctx, int code, int n)
 {
 	switch(code) {
@@ -465,9 +484,6 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 		break;
 	case IW_VAL_NO_CSLABEL:
 		ctx->no_cslabel = n;
-		break;
-	case IW_VAL_NO_BINARYTRNS:
-		ctx->no_binarytrns = n;
 		break;
 	case IW_VAL_INT_CLAMP:
 		ctx->intclamp = n;
@@ -515,9 +531,6 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_NO_CSLABEL:
 		ret = ctx->no_cslabel;
-		break;
-	case IW_VAL_NO_BINARYTRNS:
-		ret = ctx->no_binarytrns;
 		break;
 	case IW_VAL_INT_CLAMP:
 		ret = ctx->intclamp;

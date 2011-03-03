@@ -195,7 +195,13 @@ struct iw_context {
 	int no_cslabel; // Disable writing of a colorspace label to the output file.
 	int edge_policy;
 	int grayscale_formula;
-	int no_binarytrns; // Do not use PNG binary transparency.
+
+	// Optimization codes. Can be set to 0 to disallow this optimization
+	unsigned char opt_grayscale; // RGB-to-grayscale
+	unsigned char opt_palette;   // Palette images
+	unsigned char opt_16_to_8;   // Reduce >8 bitdepth to 8
+	unsigned char opt_strip_alpha; // RGBA->RGB or GA->G
+	unsigned char opt_binary_trns; // Color-keyed binary transparency
 
 	int charset; // 0=ASCII, 1=Unicode
 	const TCHAR *symbol_times;
