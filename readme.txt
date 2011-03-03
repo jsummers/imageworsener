@@ -145,8 +145,7 @@ Options:
    reducing it in the other.
 
    The -filteralpha option lets you use a different algorithm for the alpha
-   channel. It seemed like a good idea for a feature, but it turned out not to
-   work very well in most cases.
+   channel.
 
    IW uses the filter even if the image size isn't being changed. Many
    filters will leave the image unchanged in that case, but some (such as
@@ -185,7 +184,7 @@ Options:
      exceed that range).
 
      Note that the term "cubic" or "bicubic" means different things to
-     different applciations. Sometimes it's IW "bspline" filter, sometimes
+     different applications. Sometimes it's IW's "bspline" filter, sometimes
      "mitchell", sometimes "catrom", and occasionally "cubic0,1" or something
      else.
 
@@ -328,10 +327,9 @@ Options:
    The maximum number of different values (brightness levels, opacity levels)
    to use in each channel, including the alpha channel if present.
    The available values will be distributed as evenly as possible from among
-   the possible values (based on -depth). An optimized palette is not used.
-   The values are distributed evenly within the output color space, so
-   changing the output color space will affect which values are used.
-   If you use "-cc", consider also using "-dither".
+   the possible values (based on -depth) in the output color space. An
+   optimized palette is not used. If you use "-cc", consider also using
+   "-dither".
 
    The -ccX options let you have a different setting for different channels.
    If you specify overlapping options, the most specific option will have
@@ -439,7 +437,7 @@ Options:
    select a background color that you probably won't like.
 
    Checkerboard backgrounds are currently not supported when -offsetX is used.
-		
+
  -randseed <n>
    n is either an integer or the letter "r".
    The seed to use if IW needs to generate random numbers.
