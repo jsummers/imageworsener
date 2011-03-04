@@ -89,7 +89,8 @@ struct params_struct {
 	int edge_policy;
 	int grayscale_formula;
 	int no_cslabel;
-	int no_binarytrns;
+	int noopt_grayscale,noopt_binarytrns,noopt_palette;
+	int noopt_reduceto8,noopt_stripalpha;
 	int cs_in_set, cs_out_set;
 	struct iw_csdescr cs_in;
 	struct iw_csdescr cs_out;
@@ -219,7 +220,11 @@ static int run(struct params_struct *p)
 	if(p->no_gamma) iw_set_value(ctx,IW_VAL_DISABLE_GAMMA,1);
 	if(p->intclamp) iw_set_value(ctx,IW_VAL_INT_CLAMP,1);
 	if(p->no_cslabel) iw_set_value(ctx,IW_VAL_NO_CSLABEL,1);
-	if(p->no_binarytrns) iw_set_allow_opt(ctx,IW_OPT_BINARY_TRNS,0);
+	if(p->noopt_grayscale) iw_set_allow_opt(ctx,IW_OPT_GRAYSCALE,0);
+	if(p->noopt_palette) iw_set_allow_opt(ctx,IW_OPT_PALETTE,0);
+	if(p->noopt_reduceto8) iw_set_allow_opt(ctx,IW_OPT_16_TO_8,0);
+	if(p->noopt_stripalpha) iw_set_allow_opt(ctx,IW_OPT_STRIP_ALPHA,0);
+	if(p->noopt_binarytrns) iw_set_allow_opt(ctx,IW_OPT_BINARY_TRNS,0);
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 
@@ -739,6 +744,38 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 	return 1;
 }
 
+static int iwcmd_process_noopt(struct params_struct *p, const TCHAR *s)
+{
+	if(!_tcscmp(s,_T("all"))) {
+		p->noopt_grayscale=1;
+		p->noopt_palette=1;
+		p->noopt_reduceto8=1;
+		p->noopt_stripalpha=1;
+		p->noopt_binarytrns=1;
+	}
+	else if(!_tcscmp(s,_T("grayscale"))) {
+		p->noopt_grayscale=1;
+	}
+	else if(!_tcscmp(s,_T("palette"))) {
+		p->noopt_palette=1;
+	}
+	else if(!_tcscmp(s,_T("reduceto8"))) {
+		p->noopt_reduceto8=1;
+	}
+	else if(!_tcscmp(s,_T("stripalpha"))) {
+		p->noopt_stripalpha=1;
+	}
+	else if(!_tcscmp(s,_T("binarytrns"))) {
+		p->noopt_binarytrns=1;
+	}
+	else {
+		_tprintf(_T("Unknown optimization %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+		return 0;
+	}
+
+	return 1;
+}
+
 static void usage_message(void)
 {
 	_tprintf(
@@ -807,7 +844,7 @@ enum iwcmd_param_types {
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
- PT_INTCLAMP, PT_NOCSLABEL, PT_NOBINARYTRNS,
+ PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT,
  PT_QUIET, PT_VERSION, PT_HELP
 };
 
@@ -873,6 +910,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("outfmt"),PT_OUTFMT,1},
 		{_T("edge"),PT_EDGE_POLICY,1},
 		{_T("grayscaleformula"),PT_GRAYSCALEFORMULA,1},
+		{_T("noopt"),PT_NOOPT,1},
 		{_T("interlace"),PT_INTERLACE,0},
 		{_T("bestfit"),PT_BESTFIT,0},
 		{_T("nobestfit"),PT_NOBESTFIT,0},
@@ -881,7 +919,6 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("nogamma"),PT_NOGAMMA,0},
 		{_T("intclamp"),PT_INTCLAMP,0},
 		{_T("nocslabel"),PT_NOCSLABEL,0},
-		{_T("nobinarytrns"),PT_NOBINARYTRNS,0},
 		{_T("quiet"),PT_QUIET,0},
 		{_T("version"),PT_VERSION,0},
 		{_T("help"),PT_HELP,0},
@@ -928,9 +965,6 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_NOCSLABEL:
 		p->no_cslabel=1;
-		break;
-	case PT_NOBINARYTRNS:
-		p->no_binarytrns=1;
 		break;
 	case PT_INTERLACE:
 		p->interlace=1;
@@ -1134,6 +1168,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 			_tprintf(_T("Unknown grayscale formula\n"));
 			return 0;
 		}
+		break;
+	case PT_NOOPT:
+		if(!iwcmd_process_noopt(p,v))
+			return 0;
 		break;
 
 	case PT_NONE:

@@ -1576,6 +1576,17 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(!ctx->support_reduced_input_bitdepths) {
 		iw_make_x_to_linear_table(ctx,&ctx->input_color_corr_table,&ctx->img1,&ctx->img1cs);
 	}
+
+	if(IW_IMGTYPE_HAS_ALPHA(ctx->img2.imgtype)) {
+		if(!ctx->opt_strip_alpha) {
+			// If we're not allowed to strip the alpha channel, also disable
+			// other optimizations that would implicitly remove the alpha
+			// channel. (The optimization routines may do weird things if we
+			// were to allow this.)
+			ctx->opt_palette = 0;
+			ctx->opt_binary_trns = 0;
+		}
+	}
 	return 1;
 }
 

@@ -189,7 +189,7 @@ extern "C" {
 
 #define IW_OPT_GRAYSCALE    1   // optimize color to grayscale
 #define IW_OPT_PALETTE      2   // optimize to paletted images
-#define IW_OPT_16_to_8      3   // reduce >8 bits to 8 bits if possible
+#define IW_OPT_16_TO_8      3   // reduce >8 bits to 8 bits if possible
 #define IW_OPT_STRIP_ALPHA  4   // strip superfluous alpha channels
 #define IW_OPT_BINARY_TRNS  5   // optimize to color-keyed binary transparency
 

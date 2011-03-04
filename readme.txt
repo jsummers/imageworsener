@@ -447,11 +447,21 @@ Options:
  -interlace
    Write an interlaced PNG image, or a progressive JPEG image.
 
- -nobinarytrns
-   Do not write PNG images that use binary transparency. (Use palette
-   transparency or a full alpha channel instead.) The only reason to use this
-   option is if you use a PNG viewer that has a problem with binary
-   transparency.
+ -noopt <name>
+   Disable a class of image storage optimizations. This option can be used
+   more than once, to disable multiple optimizations.
+   This is based on the properties of the unoptimized output image, not on
+   the properties of the input image.
+   Optimization names:
+    "grayscale": Do not reduce color images to grayscale, even if all pixels
+     are gray.
+    "palette": Never convert to a paletted image.
+    "reduceto8": Do not reduce an image with a bit depth of 16 to one with a
+     bit depth of 8, even if it can be done losslessly.
+    "stripalpha": Do not strip a superfluous alpha channel, or use binary or
+     palette-based transparency.
+    "binarytrns": Never use binary (color-keyed) transparency.
+    "all": All of the above.
 
  -pngcmprlevel <n>
    zlib-style compression level setting for PNG files, from 0 (no compression)

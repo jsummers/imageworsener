@@ -1,4 +1,5 @@
 Unreleased changes
+ - Replaced "-nobinarytrn" option with "-noopt".
  - Added a "halftone" ordered dither.
  - Support for reduced input bitdepths; respect PNG sBIT chunks.
  - The image format modules now use abstracted I/O.
