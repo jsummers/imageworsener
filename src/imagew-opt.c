@@ -425,6 +425,7 @@ static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx
 	unsigned char key_clr; // Red component of the key color
 	unsigned char *trns_mask = NULL;
 
+	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
 	// Try to find a color that's not used in the image.
@@ -496,6 +497,7 @@ static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	unsigned char key_clr; // low 8-bits of red component of the key color
 	unsigned char *trns_mask = NULL;
 
+	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
 	memset(&clr_used,0,256*sizeof(unsigned char));
@@ -563,6 +565,7 @@ static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	unsigned char key_clr;
 	unsigned char *trns_mask = NULL;
 
+	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
 	memset(&clr_used,0,256*sizeof(unsigned char));
@@ -622,6 +625,7 @@ static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_c
 	unsigned char key_clr; // low 8-bits of the key color
 	unsigned char *trns_mask = NULL;
 
+	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
 	memset(&clr_used,0,256*sizeof(unsigned char));
@@ -847,6 +851,37 @@ static int iwopt_palsortfunc(const void* p1, const void* p2)
 	return 0; // Should be unreachable.
 }
 
+// Figure out if we can do palette optimization at the given bitdepth.
+static int iwopt_palette_opt_ok(struct iw_context *ctx, struct iw_opt_ctx *optctx, int bpp)
+{
+	if(!ctx->opt_palette) return 0;
+
+	if(optctx->has_transparency && !(ctx->output_profile&IW_PROFILE_PALETTETRNS)) return 0;
+
+	switch(bpp) {
+	case 1:
+		if(!(ctx->output_profile&IW_PROFILE_PAL1)) return 0;
+		if(optctx->palette->num_entries>2) return 0;
+		break;
+	case 2:
+		if(!(ctx->output_profile&IW_PROFILE_PAL2)) return 0;
+		if(optctx->palette->num_entries>4) return 0;
+		break;
+	case 4:
+		if(!(ctx->output_profile&IW_PROFILE_PAL4)) return 0;
+		if(optctx->palette->num_entries>16) return 0;
+		break;
+	case 8:
+		if(!(ctx->output_profile&IW_PROFILE_PAL8)) return 0;
+		if(optctx->palette->num_entries>256) return 0;
+		break;
+	default:
+		return 0;
+	}
+
+	return 1;
+}
+
 static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx *optctx, int bpp,
 	int *pbinary_trns, unsigned int *ptrns_shade)
 {
@@ -970,7 +1005,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL1) && optctx->palette->num_entries<=2) {
+	else if(iwopt_palette_opt_ok(ctx,optctx,1)) {
 		;
 	}
 	else if(ctx->opt_grayscale && (ctx->output_profile&IW_PROFILE_GRAY2) && iwopt_palette_is_valid_gray(ctx,optctx,2,&binary_trns,&trns_shade)) {
@@ -980,7 +1015,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL2) && optctx->palette->num_entries<=4) {
+	else if(iwopt_palette_opt_ok(ctx,optctx,2)) {
 		;
 	}
 	else if(ctx->opt_grayscale && (ctx->output_profile&IW_PROFILE_GRAY4) && iwopt_palette_is_valid_gray(ctx,optctx,4,&binary_trns,&trns_shade)) {
@@ -990,14 +1025,14 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
 		}
 	}
-	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL4) && optctx->palette->num_entries<=16) {
+	else if(iwopt_palette_opt_ok(ctx,optctx,4)) {
 		;
 	}
 	else if(ctx->opt_grayscale && (ctx->output_profile&IW_PROFILE_GRAYSCALE) && iwopt_palette_is_valid_gray(ctx,optctx,8,&binary_trns,&trns_shade)) {
 		// This image can best be encoded as 8-bit grayscale. We don't handle that here.
 		goto done;
 	}
-	else if(ctx->opt_palette && (ctx->output_profile&IW_PROFILE_PAL8)) {
+	else if(iwopt_palette_opt_ok(ctx,optctx,8)) {
 		;
 	}
 	else {

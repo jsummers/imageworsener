@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for writing uncompressed TIFF files.
  - Replaced "-nobinarytrn" option with "-noopt".
  - Added a "halftone" ordered dither.
  - Support for reduced input bitdepths; respect PNG sBIT chunks.

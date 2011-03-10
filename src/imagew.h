@@ -87,6 +87,9 @@ extern "C" {
 // Means the format supports 8-bit or 16-bit grayscale.
 #define IW_PROFILE_GRAYSCALE     0x0002
 
+// Means each palette entry can include an alpha component.
+#define IW_PROFILE_PALETTETRNS   0x0004
+
 // Unlike palette images, the core library does need to know exactly what bit
 // depths of grayscale images are supported.
 #define IW_PROFILE_GRAY1         0x0008
@@ -109,9 +112,10 @@ extern "C" {
 #define IW_PROFILE_PAL4       0x0800
 #define IW_PROFILE_PAL8       0x1000
 
-#define IW_PROFILE_PNG   0x1f7b // all but ALWAYSSRGB
+#define IW_PROFILE_PNG   0x1f7f // all but ALWAYSSRGB
 #define IW_PROFILE_BMP   0x1a80 // PAL1,PAL4,PAL8,ALWAYSSRGB
 #define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
+#define IW_PROFILE_TIFF  0x186b // TRANSPARENCY,GRAYSCALE,GRAY{1,4},16BPS,PAL{4,8}
 
 #define IW_RESIZETYPE_AUTO          0x01
 #define IW_RESIZETYPE_NULL          0x02
@@ -389,6 +393,7 @@ int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset);
 int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 
 #ifdef __cplusplus
 }

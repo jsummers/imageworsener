@@ -309,6 +309,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\imagew-tiff.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\imagew-util.c"
 				>
 			</File>

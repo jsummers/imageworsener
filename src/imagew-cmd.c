@@ -39,6 +39,7 @@
 #define IWCMD_FMT_PNG  1
 #define IWCMD_FMT_JPEG 2
 #define IWCMD_FMT_BMP  3
+#define IWCMD_FMT_TIFF 4
 
 struct rgb_color {
 	double r,g,b;
@@ -117,6 +118,8 @@ static int get_fmt_from_name(const TCHAR *s)
 	if(!_tcscmp(s,_T("jpg"))) return IWCMD_FMT_JPEG;
 	if(!_tcscmp(s,_T("jpeg"))) return IWCMD_FMT_JPEG;
 	if(!_tcscmp(s,_T("bmp"))) return IWCMD_FMT_BMP;
+	if(!_tcscmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
+	if(!_tcscmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -127,6 +130,7 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 	if(s) {
 		if(s[1]=='j' || s[1]=='J') return IWCMD_FMT_JPEG;
 		if(s[1]=='b' || s[1]=='B') return IWCMD_FMT_BMP;
+		if(s[1]=='t' || s[1]=='T') return IWCMD_FMT_TIFF;
 	}
 	return IWCMD_FMT_PNG;
 }
@@ -262,6 +266,9 @@ static int run(struct params_struct *p)
 	}
 	else if(p->outfmt==IWCMD_FMT_BMP) {
 		iw_set_output_profile(ctx,IW_PROFILE_BMP);
+	}
+	else if(p->outfmt==IWCMD_FMT_TIFF) {
+		iw_set_output_profile(ctx,IW_PROFILE_TIFF);
 	}
 	else {
 		iw_set_output_profile(ctx,IW_PROFILE_PNG);
@@ -426,6 +433,9 @@ static int run(struct params_struct *p)
 	}
 	else if(p->outfmt==IWCMD_FMT_BMP) {
 		if(!iw_write_bmp_file(ctx,&writedescr)) goto done;
+	}
+	else if(p->outfmt==IWCMD_FMT_TIFF) {
+		if(!iw_write_tiff_file(ctx,&writedescr)) goto done;
 	}
 	else {
 		if(p->pngcmprlevel >= 0)
