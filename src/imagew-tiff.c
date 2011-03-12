@@ -140,13 +140,41 @@ static void iwtiff_write_file_header(struct iwtiffwritecontext *tiffctx)
 	tiffctx->curr_filepos = 8;
 }
 
+static void iwtiff_write_density(struct iwtiffwritecontext *tiffctx)
+{
+	unsigned char buf[16];
+	unsigned int denom;
+	unsigned int x,y;
+
+	if(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
+		x = (unsigned int)(0.5+25.4*tiffctx->img->density_x);
+		y = (unsigned int)(0.5+25.4*tiffctx->img->density_y);
+		denom=1000;
+	}
+	else if(tiffctx->img->density_code==IW_DENSITY_UNITS_UNKNOWN) {
+		x = (unsigned int)(0.5+1000.0*tiffctx->img->density_x);
+		y = (unsigned int)(0.5+1000.0*tiffctx->img->density_y);
+		denom=1000;
+	}
+	else {
+		x=1;
+		y=1;
+		denom=1;
+	}
+
+	iwtiff_set_ui32(&buf[0],x);
+	iwtiff_set_ui32(&buf[4],denom);
+	iwtiff_set_ui32(&buf[8],y);
+	iwtiff_set_ui32(&buf[12],denom);
+	iwtiff_write(tiffctx,buf,16);
+}
+
 static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 {
 	int c;
 	int i;
 	unsigned char *buf = NULL;
 	unsigned int v;
-
 
 	buf = iw_malloc(tiffctx->ctx,tiffctx->palette_size);
 	if(!buf) return;
@@ -188,20 +216,24 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 #define IWTIFF_TAG320_COLORMAP 320
 #define IWTIFF_TAG338_EXTRASAMPLES 338
 
+#define IWTIFF_UINT16   3 // "SHORT"
+#define IWTIFF_UINT32   4 // "LONG"
+#define IWTIFF_RATIONAL 5
+
 static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,unsigned char *buf)
 {
 	iwtiff_set_ui16(&buf[0],tagnum);
-	iwtiff_set_ui16(&buf[2],3); // tag type (default=short)
+	iwtiff_set_ui16(&buf[2],IWTIFF_UINT16); // tag type (default=short)
 	iwtiff_set_ui32(&buf[4],1); // value count (default=1)
 	iwtiff_set_ui32(&buf[8],0); // value or offset (default=0)
 
 	switch(tagnum) {
 	case IWTIFF_TAG256_IMAGEWIDTH:
-		iwtiff_set_ui16(&buf[2],4);
+		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
 		iwtiff_set_ui32(&buf[8],tiffctx->img->width);
 		break;
 	case IWTIFF_TAG257_IMAGELENGTH:
-		iwtiff_set_ui16(&buf[2],4);
+		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
 		iwtiff_set_ui32(&buf[8],tiffctx->img->height);
 		break;
 	case IWTIFF_TAG258_BITSPERSAMPLE:
@@ -217,24 +249,36 @@ static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,unsig
 		}
 		break;
 	case IWTIFF_TAG259_COMPRESSION:
-		iwtiff_set_ui32(&buf[8],1);
+		iwtiff_set_ui16(&buf[8],1);
 		break;
 	case IWTIFF_TAG262_PHOTOMETRIC:
-		iwtiff_set_ui32(&buf[8],tiffctx->photometric);
+		iwtiff_set_ui16(&buf[8],tiffctx->photometric);
+		break;
+	case IWTIFF_TAG282_XRESOLUTION:
+		iwtiff_set_ui16(&buf[2],IWTIFF_RATIONAL);
+		iwtiff_set_ui32(&buf[8],tiffctx->pixdens_offset);
+		break;
+	case IWTIFF_TAG283_YRESOLUTION:
+		iwtiff_set_ui16(&buf[2],IWTIFF_RATIONAL);
+		iwtiff_set_ui32(&buf[8],tiffctx->pixdens_offset+8);
+		break;
+	case IWTIFF_TAG296_RESOLUTIONUNIT:
+		// 1==no units, 2=pixels/inch
+		iwtiff_set_ui16(&buf[8],(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER)?2:1);
 		break;
 	case IWTIFF_TAG273_STRIPOFFSETS:
-		iwtiff_set_ui16(&buf[2],4);
+		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
 		iwtiff_set_ui32(&buf[8],tiffctx->bitmap_offset);
 		break;
 	case IWTIFF_TAG277_SAMPLESPERPIXEL:
-		iwtiff_set_ui32(&buf[8],tiffctx->samplesperpixel);
+		iwtiff_set_ui16(&buf[8],tiffctx->samplesperpixel);
 		break;
 	case IWTIFF_TAG278_ROWSPERSTRIP:
-		iwtiff_set_ui16(&buf[2],4);
+		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
 		iwtiff_set_ui32(&buf[8],tiffctx->img->height);
 		break;
 	case IWTIFF_TAG279_STRIPBYTECOUNTS:
-		iwtiff_set_ui16(&buf[2],4);
+		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
 		iwtiff_set_ui32(&buf[8],(unsigned int)tiffctx->bitmap_size);
 		break;
 	case IWTIFF_TAG320_COLORMAP:
@@ -242,7 +286,7 @@ static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,unsig
 		iwtiff_set_ui32(&buf[8],tiffctx->palette_offset);
 		break;
 	case IWTIFF_TAG338_EXTRASAMPLES:
-		iwtiff_set_ui32(&buf[8],2); // 2 = Unassociated alpha
+		iwtiff_set_ui16(&buf[8],2); // 2 = Unassociated alpha
 		break;
 	}
 }
@@ -347,7 +391,7 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 		}
 	}
 
-	// (XResolution and YResolution will go here.)
+	iwtiff_write_density(tiffctx);
 
 	// (TransferFunction will go here.)
 
@@ -427,7 +471,7 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 
 	tiffctx->bitmap_size = dstbpr * img->height;
 	tiffctx->palette_size = tiffctx->palentries*6;
-	tiffctx->pixdens_size = 0; // Two TIFF_RATIONAL values (FIXME: Should be 16)
+	tiffctx->pixdens_size = 16;
 	tiffctx->transferfunc_size = 0;
 
 	// File header
