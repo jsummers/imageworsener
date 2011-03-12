@@ -75,6 +75,12 @@ static IW_SAMPLE x_to_linear_sample(IW_SAMPLE v, const struct iw_csdescr *csdesc
 	return srgb_to_linear_sample(v);
 }
 
+// Public version of x_to_linear_sample().
+double iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr)
+{
+	return (double)x_to_linear_sample(v,csdescr);
+}
+
 static IW_INLINE IW_SAMPLE linear_to_srgb_sample(IW_SAMPLE v_linear)
 {
 	if(v_linear <= 0.0031308) {

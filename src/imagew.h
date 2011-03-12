@@ -312,6 +312,8 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img);
 // function fills in.
 void iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr);
 
+double iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
+
 const struct iw_palette *iw_get_output_palette(struct iw_context *ctx);
 
 void iw_set_value(struct iw_context *ctx, int code, int n);
