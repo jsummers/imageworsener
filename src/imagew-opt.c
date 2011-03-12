@@ -722,11 +722,13 @@ static int optctx_collect_palette_colors(struct iw_context *ctx, struct iw_opt_c
 				c.g = ptr[1];
 				c.b = ptr[2];
 				c.a = ptr[3];
+				// TODO: This check is probably no longer necessary.
 				if(c.a==0) { c.r = c.g = c.b = 0; } // all invisible colors are the same
 			}
 			else if(optctx->imgtype==IW_IMGTYPE_GRAYA) {
 				c.r = c.g = c.b = ptr[0];
 				c.a = ptr[1];
+				// TODO: This check is probably no longer necessary.
 				if(c.a==0) { c.r = c.g = c.b = 0; }
 			}
 			else { // optctx->imgtype==IW_IMGTYPE_GRAY(?)
@@ -1057,6 +1059,59 @@ done:
 
 ////////////////////
 
+static void make_transparent_pixels_black8(struct iw_context *ctx, struct iw_image *img, int nc)
+{
+	int i,j,k;
+	unsigned char *p;
+
+	for(j=0;j<img->height;j++) {
+		for(i=0;i<img->width;i++) {
+			p = &img->pixels[j*img->bpr + i*nc];
+			if(p[nc-1]==0) {
+				for(k=0;k<nc-1;k++) {
+					p[k]=0;
+				}
+			}
+		}
+	}
+}
+
+static void make_transparent_pixels_black16(struct iw_context *ctx, struct iw_image *img, int nc)
+{
+	int i,j,k;
+	unsigned char *p;
+
+	for(j=0;j<img->height;j++) {
+		for(i=0;i<img->width;i++) {
+			p = &img->pixels[j*img->bpr + i*nc*2];
+			if(p[(nc-1)*2]==0 && p[(nc-1)*2+1]==0) {
+				for(k=0;k<nc-1;k++) {
+					p[k*2  ]=0;
+					p[k*2+1]=0;
+				}
+			}
+		}
+	}
+}
+
+// Make all fully transparent pixels "black". This makes the other optimization
+// routines simpler, makes the output image more deterministic, and can make
+// the image look better in viewers that ignore the alpha channel.
+// Doing this in a separate pass is not the most efficient way to do it, but
+// it's easiest and safest.
+static void make_transparent_pixels_black(struct iw_context *ctx, struct iw_image *img)
+{
+	int nc;
+	if(!IW_IMGTYPE_HAS_ALPHA(img->imgtype)) return;
+
+	nc = iw_imgtype_num_channels(img->imgtype);
+
+	if(img->bit_depth>8)
+		make_transparent_pixels_black16(ctx,img,nc);
+	else
+		make_transparent_pixels_black8(ctx,img,nc);
+}
+
 // Strip alpha channel if there are no actual transparent pixels, etc.
 void iw_optimize_image(struct iw_context *ctx)
 {
@@ -1075,6 +1130,8 @@ void iw_optimize_image(struct iw_context *ctx)
 	optctx->has_partial_transparency=0;
 	optctx->has_16bit_precision=0;
 	optctx->has_color=0;
+
+	make_transparent_pixels_black(ctx,&ctx->img2);
 
 	if(!iw_opt_scanpixels(ctx,optctx)) {
 		goto noscan;
