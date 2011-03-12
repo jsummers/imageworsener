@@ -23,6 +23,7 @@ struct iwtiffwritecontext {
 
 	int palette_is_gray;
 	int palentries;
+	unsigned int transferfunc_numentries;
 	int has_alpha_channel;
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
@@ -51,6 +52,8 @@ struct iwtiffwritecontext {
 
 	unsigned short taglist[IWTIFF_MAX_TAGS];
 	int num_tags; // Number of tags in taglist that are used.
+
+	struct iw_csdescr csdescr;
 };
 
 static size_t iwtiff_calc_bpr(int bpp, size_t width)
@@ -169,6 +172,33 @@ static void iwtiff_write_density(struct iwtiffwritecontext *tiffctx)
 	iwtiff_write(tiffctx,buf,16);
 }
 
+// The TransferFunction tag is one of several ways to store colorspace
+// information in a TIFF file. It's a very inefficient way to do it, but
+// the other methods aren't really any better.
+static void iwtiff_write_transferfunction(struct iwtiffwritecontext *tiffctx)
+{
+	unsigned char *buf = NULL;
+	unsigned int i;
+	double targetsample;
+	double linear;
+	double maxvalue;
+
+	buf = iw_malloc(tiffctx->ctx,tiffctx->transferfunc_size);
+	if(!buf) return;
+	memset(buf,0,tiffctx->transferfunc_size);
+
+	maxvalue = (double)(tiffctx->transferfunc_numentries-1);
+	for(i=0;i<tiffctx->transferfunc_numentries;i++) {
+		targetsample = ((double)i)/maxvalue;
+
+		linear = iw_convert_sample_to_linear(targetsample,&tiffctx->csdescr);
+
+		iwtiff_set_ui16(&buf[i*2],(unsigned int)(0.5+65535.0*linear));
+	}
+	iwtiff_write(tiffctx,buf,tiffctx->transferfunc_size);
+	iw_free(buf);
+}
+
 static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 {
 	int c;
@@ -181,6 +211,11 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 
 	if(tiffctx->palentries<1) return;
 
+	// Palette samples are always 16-bit in TIFF files.
+	// IW does not support generating palettes which contain colors that can't
+	// be represented at 8 bits, so not every image that could be written
+	// as a paletted TIFF will be.
+
 	// Palette is organized so that all the red values go first,
 	// then green, blue.
 
@@ -190,14 +225,14 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 				if(c==2) v=tiffctx->pal->entry[i].b;
 				else if(c==1) v=tiffctx->pal->entry[i].g;
 				else v=tiffctx->pal->entry[i].r;
-				v |= (v<<8); // Palette entries are always 16-bit
+				v |= (v<<8);
 				iwtiff_set_ui16(&buf[c*tiffctx->palentries*2+i*2],v);
 			}
 		}
 	}
 	iwtiff_write(tiffctx,buf,tiffctx->palette_size);
 
-	if(buf) iw_free(buf);
+	iw_free(buf);
 }
 
 #define IWTIFF_TAG256_IMAGEWIDTH 256
@@ -284,6 +319,10 @@ static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,unsig
 	case IWTIFF_TAG320_COLORMAP:
 		iwtiff_set_ui32(&buf[4],3*tiffctx->palentries);
 		iwtiff_set_ui32(&buf[8],tiffctx->palette_offset);
+		break;
+	case IWTIFF_TAG301_TRANSFERFUNCTION:
+		iwtiff_set_ui32(&buf[4],tiffctx->transferfunc_numentries);
+		iwtiff_set_ui32(&buf[8],tiffctx->transferfunc_offset);
 		break;
 	case IWTIFF_TAG338_EXTRASAMPLES:
 		iwtiff_set_ui16(&buf[8],2); // 2 = Unassociated alpha
@@ -393,7 +432,7 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 
 	iwtiff_write_density(tiffctx);
 
-	// (TransferFunction will go here.)
+	iwtiff_write_transferfunction(tiffctx);
 
 	// Palette is always too large to be inlined.
 	iwtiff_write_palette(tiffctx);
@@ -472,7 +511,45 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 	tiffctx->bitmap_size = dstbpr * img->height;
 	tiffctx->palette_size = tiffctx->palentries*6;
 	tiffctx->pixdens_size = 16;
-	tiffctx->transferfunc_size = 0;
+
+	// Figure out whether we will write a TransferFunction table.
+
+	// If we do write such a table, this will be the size of it:
+	tiffctx->transferfunc_numentries = 1 << tiffctx->bitspersample;
+	// For paletted images, it is illogical that the number of entries in the
+	// table is based on the depth of the *indices* into the color table. It
+	// ought to be based on the depth of the *samples* in the color table
+	// (which is always 16 bits). Nevertheless, this is what the spec says to
+	// do. And, granted, a 128KB TransferFunction table would be inconveniently
+	// large for most paletted images, even if it is logical.
+
+	if(tiffctx->bitspersample==1) {
+		// TransferFunction is irrelevant for bilevel images.
+		tiffctx->transferfunc_numentries = 0;
+	}
+	else if(tiffctx->photometric==IWTIFF_PHOTO_MINISBLACK) {
+		// For some reason, grayscale TIFFs (in theory) default to a
+		// linear colorspace, while color TIFFs default to gamma=2.2.
+		// No real-world viewer can safely assume that grayscale
+		// TIFFs are linear, so we'll always write a TransferFunction
+		// table for grayscale TIFFs, even if they really are linear.
+		;
+	}
+	else {
+		if(tiffctx->csdescr.cstype==IW_CSTYPE_GAMMA && 
+			(tiffctx->csdescr.gamma>=2.199 && tiffctx->csdescr.gamma<=2.201))
+		{
+			// The TIFF default for color images is gamma=2.2, so no need to
+			// write a TransferFunction table.
+			tiffctx->transferfunc_numentries = 0;
+		}
+	}
+
+	if(iw_get_value(tiffctx->ctx,IW_VAL_NO_CSLABEL)) {
+		tiffctx->transferfunc_numentries = 0;
+	}
+
+	tiffctx->transferfunc_size = 2*tiffctx->transferfunc_numentries;
 
 	// File header
 	iwtiff_write_file_header(tiffctx);
@@ -531,6 +608,8 @@ int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	tiffctx->img = &img1;
 
 	tiffctx->palette_is_gray = iw_get_value(ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE);
+
+	iw_get_output_colorspace(ctx,&tiffctx->csdescr);
 
 	if(tiffctx->img->imgtype==IW_IMGTYPE_PALETTE) {
 		tiffctx->pal = iw_get_output_palette(ctx);
