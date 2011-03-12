@@ -554,7 +554,7 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 		else if(samp_lin<0.0) samp_lin=0.0;
 	}
 
-	is_exact = get_nearest_valid_colors(ctx,samp_lin,channel,csdescr, 
+	is_exact = get_nearest_valid_colors(ctx,samp_lin,channel,csdescr,
 		&s_lin_floor_1, &s_lin_ceil_1,
 		&s_cvt_floor_full, &s_cvt_ceil_full);
 
@@ -1131,7 +1131,7 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 #define IW_STRAT1_G_G       0x011 // source gray -> intermed gray
 #define IW_STRAT1_G_RGB     0x013 // e.g. when using a channel offset
 #define IW_STRAT1_GA_G      0x021 // could use if applying solid gray bkgd
-#define IW_STRAT1_GA_GA     0x022 // 
+#define IW_STRAT1_GA_GA     0x022 //
 #define IW_STRAT1_GA_RGB    0x023 // could use if applying solid color bkgd
 #define IW_STRAT1_GA_RGBA   0x024 // e.g. when using a channel offset
 #define IW_STRAT1_RGB_G     0x031 // e.g. -grayscale
@@ -1287,7 +1287,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 
 	// At this point, either Early or Late background application is
 	// possible, and *should* have exactly the same end result.
-	// TODO: Due to change elsewhere, it's now probably okay to set this
+	// TODO: Due to changes elsewhere, it's now probably okay to set this
 	// to EARLY always. Need to verify that.
 	ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_LATE;
 }

@@ -34,8 +34,7 @@ the web site at <http://entropymine.com/imageworsener/>.
 
 ===========================================================================
 
-If this package contains executable binaries, we're required to state the
-following:
+If this package contains executable binaries, we need to state the following:
 
 This software is based in part on the work of the Independent JPEG Group.
 
@@ -58,7 +57,8 @@ it runs very slowly. Among the things it (hopefully) does right:
  - All the image scaling algorithms that it implements.
 
 Other information:
- - The command-line utility supports PNG and JPEG file formats.
+ - The command-line utility fully supports PNG and JPEG files, and has partial
+   support for BMP and TIFF.
  - The library is (more or less) not specific to a particular file format.
  - Full support for high color depth (16 bits per sample).
  - Some options can be set differently for the different dimensions
@@ -116,7 +116,7 @@ Options:
  -infmt <fmt>  -outfmt <fmt>
    Specifies the image file format of the input or output file. If not used,
    imagew will try to guess the format from the filename extension.
-    
+
    Valid values for <fmt>:
      png: PNG
      jpeg, jpg: JPEG
@@ -168,7 +168,7 @@ Options:
 
     box
      Box filter.
-     
+
     triangle, linear
      Linear interpolation, a.k.a. bilinear interpolation, a.k.a. triangle
      filter, a.k.a. tent filter.
@@ -262,7 +262,7 @@ Options:
    the vertical-resize operation. This is not the *correct* thing to do,
    though the difference usually isn't noticeable. The purpose of this option
    is to let you try to replicate what some other applications do.
- 
+
  -crop <x>,<y>,<width>,<height>
    Crop the source image before processing it. Pixels outside the specified
    area will be ignored.
@@ -272,7 +272,7 @@ Options:
 
  -grayscale
    Convert the image to grayscale.
-   
+
    The image will be converted to grayscale early in the processing pipeline,
    and only a single grayscale channel (and possibly also an alpha channel)
    will be processed from then on. Occasionally that makes a difference, such

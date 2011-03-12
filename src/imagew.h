@@ -72,7 +72,7 @@ extern "C" {
 #define IW_VAL_JPEG_SAMP_FACTOR_V  32
 #define IW_VAL_PNG_CMPR_LEVEL    33
 
-// Nonzero if the palette is a fully-populated and sorted 1-, 2-, 4,
+// Nonzero if the palette is a fully-populated and sorted 1-, 2-, 4-,
 // or 8-bit grayscale palette.
 #define IW_VAL_OUTPUT_PALETTE_GRAYSCALE 35
 
@@ -90,8 +90,6 @@ extern "C" {
 // Means each palette entry can include an alpha component.
 #define IW_PROFILE_PALETTETRNS   0x0004
 
-// Unlike palette images, the core library does need to know exactly what bit
-// depths of grayscale images are supported.
 #define IW_PROFILE_GRAY1         0x0008
 #define IW_PROFILE_GRAY2         0x0010
 #define IW_PROFILE_GRAY4         0x0020
@@ -103,10 +101,6 @@ extern "C" {
 #define IW_PROFILE_ALWAYSSRGB    0x0080
 #define IW_PROFILE_BINARYTRNS    0x0100 // Supports color-keyed transparency
 
-// The core library doesn't reduce the bits-per-pixel below 8 (the module for
-// the file format must do that), but if it knows exactly what bit depths are
-// suported by the output format, it can make a better optimization decision
-// between palette and grayscale.
 #define IW_PROFILE_PAL1       0x0200
 #define IW_PROFILE_PAL2       0x0400
 #define IW_PROFILE_PAL4       0x0800
@@ -115,7 +109,7 @@ extern "C" {
 #define IW_PROFILE_PNG   0x1f7f // all but ALWAYSSRGB
 #define IW_PROFILE_BMP   0x1a80 // PAL1,PAL4,PAL8,ALWAYSSRGB
 #define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
-#define IW_PROFILE_TIFF  0x186b // TRANSPARENCY,GRAYSCALE,GRAY{1,4},16BPS,PAL{4,8}
+#define IW_PROFILE_TIFF  0x186b // TRANSPARENCY,GRAYSCALE,GRAY{1,4},PAL{4,8},16BPS
 
 #define IW_RESIZETYPE_AUTO          0x01
 #define IW_RESIZETYPE_NULL          0x02
@@ -191,6 +185,7 @@ extern "C" {
 #define IW_BKGDCOLORSPACE_LINEAR       1
 #define IW_BKGDCOLORSPACE_SAMEASOUTPUT 10
 
+// Optimizations that IW is allowed to do:
 #define IW_OPT_GRAYSCALE    1   // optimize color to grayscale
 #define IW_OPT_PALETTE      2   // optimize to paletted images
 #define IW_OPT_16_TO_8      3   // reduce >8 bits to 8 bits if possible

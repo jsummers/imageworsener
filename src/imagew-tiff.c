@@ -1,4 +1,3 @@
-
 // imagew-tiff.c
 // Part of ImageWorsener, Copyright (c) 2011 by Jason Summers.
 // For more information, see the readme.txt file.
@@ -536,7 +535,7 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 		;
 	}
 	else {
-		if(tiffctx->csdescr.cstype==IW_CSTYPE_GAMMA && 
+		if(tiffctx->csdescr.cstype==IW_CSTYPE_GAMMA &&
 			(tiffctx->csdescr.gamma>=2.199 && tiffctx->csdescr.gamma<=2.201))
 		{
 			// The TIFF default for color images is gamma=2.2, so no need to
@@ -585,7 +584,7 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 	}
 
 done:
-	if(dstrow) free(dstrow);
+	if(dstrow) iw_free(dstrow);
 	return 1;
 }
 

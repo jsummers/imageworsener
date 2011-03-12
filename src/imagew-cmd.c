@@ -1,4 +1,4 @@
-// imagew.c
+// imagew-cmd.c
 // Part of ImageWorsener, Copyright (c) 2011 by Jason Summers.
 // For more information, see the readme.txt file.
 

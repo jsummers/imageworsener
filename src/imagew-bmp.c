@@ -222,7 +222,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 	}
 
 done:
-	if(dstrow) free(dstrow);
+	if(dstrow) iw_free(dstrow);
 	return 1;
 }
 
