@@ -171,7 +171,7 @@ static void iwcmd_set_resize(struct iw_context *ctx, int channel, int dimension,
 		iw_set_resize_alg(ctx,channel,dimension,alg->family,alg->blur,alg->b,alg->c);
 		break;
 	case IW_RESIZETYPE_LANCZOS: case IW_RESIZETYPE_HANNING:
-	case IW_RESIZETYPE_BLACKMAN:
+	case IW_RESIZETYPE_BLACKMAN: case IW_RESIZETYPE_SINC:
 		iw_set_resize_alg(ctx,channel,dimension,alg->family,alg->blur,alg->lobes,0.0);
 		break;
 	default:
@@ -640,6 +640,14 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		else
 			alg->lobes = 4;
 		alg->family = IW_RESIZETYPE_BLACKMAN;
+		return 1;
+	}
+	else if(namelen==4 && !_tcsncmp(s,_T("sinc"),namelen)) {
+		if(len>namelen)
+			alg->lobes = _tstoi(&s[namelen]);
+		else
+			alg->lobes = 4;
+		alg->family = IW_RESIZETYPE_SINC;
 		return 1;
 	}
 	else if(!_tcscmp(s,_T("catrom"))) {

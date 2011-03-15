@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added "sinc" filter.
  - Support for writing uncompressed TIFF files.
  - Replaced "-nobinarytrn" option with "-noopt".
  - Added a "halftone" ordered dither.

@@ -219,6 +219,9 @@ Options:
      A Hanning filter. This is a windowed sinc filter, similar to Lanczos.
      n is the number of "lobes", and defaults to 4.
 
+    sinc<n>
+     An unwindowed sinc filter. n is the number of "lobes", and defaults to 4.
+
     auto
      The default. IW will select a filter to use. Currently uses "catrom" for
      enlarging, "mix" for reducing, and usually "null" if the size is not

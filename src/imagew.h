@@ -124,6 +124,7 @@ extern "C" {
 #define IW_RESIZETYPE_LANCZOS       0x30
 #define IW_RESIZETYPE_HANNING       0x31
 #define IW_RESIZETYPE_BLACKMAN      0x32
+#define IW_RESIZETYPE_SINC          0x33
 
 #define IW_IMGTYPE_GRAY    0x0001
 #define IW_IMGTYPE_GRAYA   0x0101

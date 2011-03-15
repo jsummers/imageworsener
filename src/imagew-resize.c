@@ -58,6 +58,14 @@ static double iw_filter_blackman(struct iw_resize_settings *params, double x)
 	return 0.0;
 }
 
+static double iw_filter_sinc(struct iw_resize_settings *params, double x)
+{
+	if(x<0.0) x = -x;
+	if(x<params->radius)
+		return iw_sinc(x);
+	return 0.0;
+}
+
 static double iw_filter_gaussian(struct iw_resize_settings *params, double x)
 {
 	//if(x>2.0 || x<=(-2.0)) return 0.0;
@@ -349,6 +357,9 @@ void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
 		break;
 	case IW_RESIZETYPE_BLACKMAN:
 		iw_resample_row(ctx,iw_filter_blackman,rs,offset);
+		break;
+	case IW_RESIZETYPE_SINC:
+		iw_resample_row(ctx,iw_filter_sinc,rs,offset);
 		break;
 	case IW_RESIZETYPE_GAUSSIAN:
 		rs->radius=2.0;

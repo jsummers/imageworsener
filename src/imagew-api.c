@@ -384,6 +384,7 @@ void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, i
 	case IW_RESIZETYPE_LANCZOS:
 	case IW_RESIZETYPE_HANNING:
 	case IW_RESIZETYPE_BLACKMAN:
+	case IW_RESIZETYPE_SINC:
 		rs->radius = floor(param1+0.5); // "lobes"
 		if(rs->radius<2.0) rs->radius=2.0;
 		if(rs->radius>10.0) rs->radius=10.0;
