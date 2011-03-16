@@ -112,6 +112,7 @@ static void my_warning_handler(struct iw_context *ctx, const TCHAR *msg)
 	}
 }
 
+// This is used to process the parameter of -infmt/-outfmt.
 static int get_fmt_from_name(const TCHAR *s)
 {
 	if(!_tcscmp(s,_T("png"))) return IWCMD_FMT_PNG;
@@ -127,12 +128,46 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 {
 	TCHAR *s;
 	s=_tcsrchr(fn,'.');
-	if(s) {
-		if(s[1]=='j' || s[1]=='J') return IWCMD_FMT_JPEG;
-		if(s[1]=='b' || s[1]=='B') return IWCMD_FMT_BMP;
-		if(s[1]=='t' || s[1]=='T') return IWCMD_FMT_TIFF;
+	if(!s) return IWCMD_FMT_UNKNOWN;
+	s++;
+
+	if(!_tcsicmp(s,_T("png"))) return IWCMD_FMT_PNG;
+	if(!_tcsicmp(s,_T("jpg"))) return IWCMD_FMT_JPEG;
+	if(!_tcsicmp(s,_T("jpeg"))) return IWCMD_FMT_JPEG;
+	if(!_tcsicmp(s,_T("bmp"))) return IWCMD_FMT_BMP;
+	if(!_tcsicmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
+	if(!_tcsicmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
+	return IWCMD_FMT_UNKNOWN;
+}
+
+// Reads the first few bytes in the file to try to figure out
+// the file format. Then sets the file pointer back to the
+// beginning of the file.
+static int detect_fmt_of_file(FILE *fp)
+{
+	unsigned char buf[2];
+	int fmt=IWCMD_FMT_UNKNOWN;
+	size_t n;
+
+	n=fread(buf,1,2,fp);
+	fseek(fp,0,SEEK_SET);
+	if(n<2) goto done;
+
+	if(buf[0]==0x89 && buf[1]==0x50) {
+		fmt=IWCMD_FMT_PNG;
 	}
-	return IWCMD_FMT_PNG;
+	else if(buf[0]==0xff && buf[1]==0xd8) {
+		fmt=IWCMD_FMT_JPEG;
+	}
+	else if(buf[0]==0x42 && buf[1]==0x4d) {
+		fmt=IWCMD_FMT_BMP;
+	}
+	else if((buf[0]==0x49 || buf[0]==0x4d) && buf[1]==buf[0]) {
+		fmt=IWCMD_FMT_TIFF;
+	}
+
+done:
+	return fmt;
 }
 
 // Updates p->new_width and p->new_height
@@ -232,13 +267,26 @@ static int run(struct params_struct *p)
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 
-	if(p->infmt==IWCMD_FMT_UNKNOWN)
-		p->infmt=detect_fmt_from_filename(p->infn);
-
 	readdescr.read_fn = my_readfn;
 	readdescr.fp = (void*)_tfopen(p->infn,_T("rb"));
 	if(!readdescr.fp) {
 		iw_seterror(ctx,_T("Failed to open for reading (error code=%d)"),(int)errno);
+		goto done;
+	}
+
+	if(p->infmt==IWCMD_FMT_UNKNOWN)
+		p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
+
+	if(p->infmt==IWCMD_FMT_UNKNOWN) {
+		iw_seterror(ctx,_T("Unsupported input file format."));
+		goto done;
+	}
+	else if(p->infmt==IWCMD_FMT_BMP) {
+		iw_seterror(ctx,_T("Reading BMP files is not supported."));
+		goto done;
+	}
+	else if(p->infmt==IWCMD_FMT_TIFF) {
+		iw_seterror(ctx,_T("Reading TIFF files is not supported."));
 		goto done;
 	}
 
@@ -258,6 +306,11 @@ static int run(struct params_struct *p)
 
 	if(p->outfmt==IWCMD_FMT_UNKNOWN)
 		p->outfmt=detect_fmt_from_filename(p->outfn);
+
+	if(p->outfmt==IWCMD_FMT_UNKNOWN) {
+		iw_seterror(ctx,_T("Unknown output format; use -outfmt."));
+		goto done;
+	}
 
 	// We have to tell the library the output format, so it can know what
 	// kinds of images are allowed (e.g. whether transparency is allowed).

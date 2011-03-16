@@ -1,4 +1,6 @@
 Unreleased changes
+ - Detect input file formats based on the contents of the file, instead of the
+   file name.
  - Added "sinc" filter.
  - Support for writing uncompressed TIFF files.
  - Replaced "-nobinarytrn" option with "-noopt".

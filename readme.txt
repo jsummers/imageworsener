@@ -115,7 +115,8 @@ Options:
 
  -infmt <fmt>  -outfmt <fmt>
    Specifies the image file format of the input or output file. If not used,
-   imagew will try to guess the format from the filename extension.
+   imagew will try to figure out the format based on the contents of the file,
+   or the file name.
 
    Valid values for <fmt>:
      png: PNG

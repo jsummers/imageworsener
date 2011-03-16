@@ -25,6 +25,7 @@
 #define _tprintf  printf
 #define _tcslen   strlen
 #define _tcscmp   strcmp
+#define _tcsicmp  strcasecmp
 #define _tcsncmp  strncmp
 #define _tstoi    atoi
 #define _tstof    atof
