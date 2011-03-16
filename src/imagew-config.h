@@ -22,7 +22,7 @@
 
 #ifndef IW_WINDOWS
 #define _T(x)     x
-#define _tprintf  printf
+#define _vftprintf vfprintf
 #define _tcslen   strlen
 #define _tcscmp   strcmp
 #define _tcsicmp  strcasecmp

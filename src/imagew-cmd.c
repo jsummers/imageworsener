@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <errno.h>
 
 #ifdef IW_WINDOWS
@@ -103,12 +104,41 @@ struct params_struct {
 	double xdens, ydens;
 };
 
+static void iwcmd_vprint(struct params_struct *p, const TCHAR *fmt, va_list ap)
+{
+	_vftprintf(stdout,fmt,ap);
+}
+
+static void iwcmd_message(struct params_struct *p, const TCHAR *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	iwcmd_vprint(p,fmt,ap);
+	va_end(ap);
+}
+
+static void iwcmd_warning(struct params_struct *p, const TCHAR *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	iwcmd_vprint(p,fmt,ap);
+	va_end(ap);
+}
+
+static void iwcmd_error(struct params_struct *p, const TCHAR *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	iwcmd_vprint(p,fmt,ap);
+	va_end(ap);
+}
+
 static void my_warning_handler(struct iw_context *ctx, const TCHAR *msg)
 {
 	struct params_struct *p;
 	p = (struct params_struct *)iw_get_userdata(ctx);
 	if(!p->quiet) {
-		_tprintf(_T("Warning: %s\n"),msg);
+		iwcmd_warning(p,_T("Warning: %s\n"),msg);
 	}
 }
 
@@ -242,7 +272,7 @@ static int run(struct params_struct *p)
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
 	memset(&writedescr,0,sizeof(struct iw_iodescr));
 
-	if(!p->quiet) _tprintf(_T("%s %s %s\n"),p->infn,p->symbol_arrow,p->outfn);
+	if(!p->quiet) iwcmd_message(p,_T("%s %s %s\n"),p->infn,p->symbol_arrow,p->outfn);
 
 	ctx = iw_create_context();
 	if(!ctx) goto done;
@@ -450,10 +480,10 @@ static int run(struct params_struct *p)
 		;
 	}
 	else if(p->new_width==old_width && p->new_height==old_height) {
-		_tprintf(_T("Processing (%d%s%d)\n"),p->new_width,p->symbol_times,p->new_height);
+		iwcmd_message(p,_T("Processing (%d%s%d)\n"),p->new_width,p->symbol_times,p->new_height);
 	}
 	else {
-		_tprintf(_T("Resizing (%d%s%d) %s (%d%s%d)\n"),old_width,p->symbol_times,old_height,
+		iwcmd_message(p,_T("Resizing (%d%s%d) %s (%d%s%d)\n"),old_width,p->symbol_times,old_height,
 			p->symbol_arrow,p->new_width,p->symbol_times,p->new_height);
 	}
 
@@ -507,7 +537,7 @@ done:
 
 	if(ctx) {
 		if(iw_get_errorflag(ctx)) {
-			_tprintf(_T("imagew error: %s\n"),iw_get_errormsg(ctx,errmsg,200));
+			iwcmd_error(p,_T("imagew error: %s\n"),iw_get_errormsg(ctx,errmsg,200));
 		}
 	}
 
@@ -741,7 +771,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 	}
 
 done:
-	_tprintf(_T("Unknown resize type %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+	iwcmd_error(p,_T("Unknown resize type %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
 	return -1;
 }
 
@@ -775,7 +805,7 @@ static int iwcmd_string_to_dithertype(struct params_struct *p,const TCHAR *s)
 			return dithertable[i].dithertype;
 	}
 
-	_tprintf(_T("Unknown dither type %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+	iwcmd_error(p,_T("Unknown dither type %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
 	return -1;
 }
 
@@ -809,7 +839,7 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 		}
 	}
 	else {
-		_tprintf(_T("Unknown color space %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+		iwcmd_error(p,_T("Unknown color space %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
 		return -1;
 	}
 	return 1;
@@ -840,16 +870,16 @@ static int iwcmd_process_noopt(struct params_struct *p, const TCHAR *s)
 		p->noopt_binarytrns=1;
 	}
 	else {
-		_tprintf(_T("Unknown optimization %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+		iwcmd_error(p,_T("Unknown optimization %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
 		return 0;
 	}
 
 	return 1;
 }
 
-static void usage_message(void)
+static void usage_message(struct params_struct *p)
 {
-	_tprintf(
+	iwcmd_message(p,
 		_T("Usage: imagew [-width <n>] [-height <n>] [options] <in-file> <out-file>\n")
 		_T("Options include -filter, -grayscale, -depth, -cc, -dither, -bkgd, -cs,\n")
 		_T(" -quiet, -version.\n")
@@ -867,15 +897,15 @@ static void do_printversion(struct params_struct *p)
 	u = p->unicode_output?1:0;
 
 	ver = iw_get_version_int();
-	_tprintf(_T("ImageWorsener version %s (%d-bit)\n"),
+	iwcmd_message(p,_T("ImageWorsener version %s (%d-bit)\n"),
 		iw_get_version_string(buf,buflen,u),
 		(int)(8*sizeof(void*)) );
 
-	_tprintf(_T("%s\n"),iw_get_copyright_string(buf,buflen,u));
+	iwcmd_message(p,_T("%s\n"),iw_get_copyright_string(buf,buflen,u));
 
-	_tprintf(_T("Uses libjpeg version %s\n"),iw_get_libjpeg_version_string(buf,buflen,u));
-	_tprintf(_T("Uses libpng version %s\n"),iw_get_libpng_version_string(buf,buflen,u));
-	_tprintf(_T("Uses zlib version %s\n"),iw_get_zlib_version_string(buf,buflen,u));
+	iwcmd_message(p,_T("Uses libjpeg version %s\n"),iw_get_libjpeg_version_string(buf,buflen,u));
+	iwcmd_message(p,_T("Uses libpng version %s\n"),iw_get_libpng_version_string(buf,buflen,u));
+	iwcmd_message(p,_T("Uses zlib version %s\n"),iw_get_zlib_version_string(buf,buflen,u));
 }
 
 static void iwcmd_init_characters(struct params_struct *p)
@@ -1050,7 +1080,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		ps->showhelp=1;
 		break;
 	default:
-		_tprintf(_T("Unknown option %s%s%s.\n"),p->symbol_ldquo,n,p->symbol_rdquo);
+		iwcmd_error(p,_T("Unknown option %s%s%s.\n"),p->symbol_ldquo,n,p->symbol_rdquo);
 		return 0;
 	}
 
@@ -1228,7 +1258,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(v[0]=='s') p->edge_policy=IW_EDGE_POLICY_STANDARD;
 		else if(v[0]=='r') p->edge_policy=IW_EDGE_POLICY_REPLICATE;
 		else {
-			_tprintf(_T("Unknown edge policy\n"));
+			iwcmd_error(p,_T("Unknown edge policy\n"));
 			return 0;
 		}
 		break;
@@ -1236,7 +1266,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(v[0]=='s') p->grayscale_formula=0;
 		else if(v[0]=='c') p->grayscale_formula=1;
 		else {
-			_tprintf(_T("Unknown grayscale formula\n"));
+			iwcmd_error(p,_T("Unknown grayscale formula\n"));
 			return 0;
 		}
 		break;
@@ -1258,7 +1288,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 
 	default:
-		_tprintf(_T("Internal error: unhandled param\n"));
+		iwcmd_error(p,_T("Internal error: unhandled param\n"));
 		return 0;
 	}
 
@@ -1330,7 +1360,7 @@ int _tmain(int argc, TCHAR* argv[])
 	}
 
 	if(ps.showhelp) {
-		usage_message();
+		usage_message(&p);
 		return 0;
 	}
 
@@ -1340,7 +1370,7 @@ int _tmain(int argc, TCHAR* argv[])
 	}
 
 	if(ps.untagged_param_count!=2 || ps.param_type!=PT_NONE) {
-		usage_message();
+		usage_message(&p);
 		return 1;
 	}
 
