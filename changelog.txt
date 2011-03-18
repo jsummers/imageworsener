@@ -1,4 +1,6 @@
 Unreleased changes
+ - Read the background color metadata from PNG files, and use it as the
+   background color in certain circumstances.
  - Detect input file formats based on the contents of the file, instead of the
    file name.
  - Added "sinc" filter.

@@ -123,6 +123,11 @@ struct iw_context {
 	int img1_numchannels;
 	int img1_alpha_channel_index;
 
+	// The suggested background color stored in the input file.
+	int img1_bkgd_label_set;
+	struct iw_rgb_color img1_bkgd_label; // img1.bkgd_color_* (source colorspace, then converted to linear)
+	int use_bkgd_label; // Prefer the bkgd color from the input file.
+
 	struct iw_channelinfo_intermed intermed_ci[4];
 	int intermed_imgtype;
 	int intermed_numchannels;
@@ -154,11 +159,12 @@ struct iw_context {
 	int apply_bkgd;
 	int apply_bkgd_strategy; // IW_BKGD_STRATEGY_*
 	int colorspace_of_bkgd;
-	struct iw_rgb_color bkgd;
+	int caller_set_bkgd; // FIXME: remove this
+	struct iw_rgb_color bkgd; // The (primary) background color that will be applied.
 	int bkgd_checkerboard; // valid if apply_bkgd is set. 0=solid, 1=checkerboard
 	int bkgd_check_size;
 	int bkgd_check_origin[2]; // Indexed by IW_DIMENSION_*
-	struct iw_rgb_color bkgd2;
+	struct iw_rgb_color bkgd2; // The secondary background color that will be applied.
 
 	void *userdata;
 	iw_warningfn_type warning_fn;

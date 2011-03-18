@@ -75,6 +75,7 @@ struct params_struct {
 	int bkgd_checkerboard;
 	int bkgd_check_size;
 	int bkgd_check_origin_x, bkgd_check_origin_y;
+	int use_bkgd_label;
 	int use_crop, crop_x, crop_y, crop_w, crop_h;
 	struct rgb_color bkgd;
 	struct rgb_color bkgd2;
@@ -422,6 +423,10 @@ static int run(struct params_struct *p)
 			iw_set_bkgd_checkerboard(ctx,p->bkgd_check_size,p->bkgd2.r,p->bkgd2.g,p->bkgd2.b);
 			iw_set_bkgd_checkerboard_origin(ctx,p->bkgd_check_origin_x,p->bkgd_check_origin_y);
 		}
+	}
+
+	if(p->use_bkgd_label) {
+		iw_set_value(ctx,IW_VAL_USE_BKGD_LABEL,1);
 	}
 
 	iw_get_input_image_density(ctx,&p->xdens,&p->ydens,&p->density_code);
@@ -945,7 +950,7 @@ enum iwcmd_param_types {
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
- PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT,
+ PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
  PT_QUIET, PT_VERSION, PT_HELP
 };
 
@@ -1020,6 +1025,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("nogamma"),PT_NOGAMMA,0},
 		{_T("intclamp"),PT_INTCLAMP,0},
 		{_T("nocslabel"),PT_NOCSLABEL,0},
+		{_T("usebkgdlabel"),PT_USEBKGDLABEL,0},
 		{_T("quiet"),PT_QUIET,0},
 		{_T("version"),PT_VERSION,0},
 		{_T("help"),PT_HELP,0},
@@ -1066,6 +1072,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_NOCSLABEL:
 		p->no_cslabel=1;
+		break;
+	case PT_USEBKGDLABEL:
+		p->use_bkgd_label=1;
 		break;
 	case PT_INTERLACE:
 		p->interlace=1;

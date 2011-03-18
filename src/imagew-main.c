@@ -1080,19 +1080,41 @@ static void cvt_bkgd_color_to_linear(struct iw_context *ctx,
 	}
 }
 
+// Make a final decision about what to use for the background color.
+// TODO: Maybe some of this should be moved to the decide_how_to_apply_bkgd()
+// function, or some other factoring should be done.
+// For example, decide_how_to_apply_bkgd() may warn you about checkerboard
+// backgrounds not being supported, even if a checkerboard background
+// would not actually have been used, because it would have been overridden in
+// this function.
 static void prepare_apply_bkgd(struct iw_context *ctx)
 {
 	struct iw_rgb_color bkgd1; // Main background color in linear colorspace
 	struct iw_rgb_color bkgd2; // Secondary background color ...
 	int i;
 
-	// Convert the target background color to linear colorspace.
-	bkgd1.c[0]=0.0; bkgd1.c[1]=0.0; bkgd1.c[2]=0.0;
-	cvt_bkgd_color_to_linear(ctx,&ctx->bkgd,&bkgd1);
+	if(ctx->img1_bkgd_label_set && !ctx->caller_set_bkgd) {
+		// If the user didn't give us a background color, and the file
+		// has one, use the file's background color as the default.
+		ctx->bkgd = ctx->img1_bkgd_label; // structure copy
+		ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
+	}
 
+	bkgd1.c[0]=0.0; bkgd1.c[1]=0.0; bkgd1.c[2]=0.0;
 	bkgd2.c[0]=0.0; bkgd2.c[1]=0.0; bkgd2.c[2]=0.0;
-	if(ctx->bkgd_checkerboard) {
-		cvt_bkgd_color_to_linear(ctx,&ctx->bkgd2,&bkgd2);
+
+	if(ctx->use_bkgd_label && ctx->img1_bkgd_label_set && ctx->apply_bkgd) {
+		// Override -bkgd with background color from file
+		bkgd1 = ctx->img1_bkgd_label; // sructure copy
+		ctx->bkgd_checkerboard = 0;
+	}
+	else {
+		// Convert the target background color to linear colorspace.
+		cvt_bkgd_color_to_linear(ctx,&ctx->bkgd,&bkgd1);
+
+		if(ctx->bkgd_checkerboard) {
+			cvt_bkgd_color_to_linear(ctx,&ctx->bkgd2,&bkgd2);
+		}
 	}
 
 	// Set up the channelinfo as needed according to the target image type
@@ -1251,7 +1273,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 
 	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) {
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,_T("This image may have transparency, which is incompatible with the output format. A default background color will be used."));
+			iw_warning(ctx,_T("This image may have transparency, which is incompatible with the output format. A background color will be applied."));
 			ctx->apply_bkgd=1;
 		}
 	}
@@ -1262,7 +1284,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		// it before resizing), regardless of whether
 		// the user asked for it or not. It's the only strategy we support.
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,_T("This image may have transparency, which is incompatible with a channel offset. A default background color will be used."));
+			iw_warning(ctx,_T("This image may have transparency, which is incompatible with a channel offset. A background color will be applied."));
 			ctx->apply_bkgd=1;
 		}
 
@@ -1566,6 +1588,17 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			ctx->uses_r2dither=1;
 	}
 
+	if(!ctx->support_reduced_input_bitdepths) {
+		iw_make_x_to_linear_table(ctx,&ctx->input_color_corr_table,&ctx->img1,&ctx->img1cs);
+	}
+
+	if(ctx->img1_bkgd_label_set) {
+		// Convert the background color to a linear colorspace (in-place).
+		for(i=0;i<3;i++) {
+			ctx->img1_bkgd_label.c[i] = x_to_linear_sample(ctx->img1_bkgd_label.c[i],&ctx->img1cs);
+		}
+	}
+
 	if(ctx->apply_bkgd) {
 		prepare_apply_bkgd(ctx);
 	}
@@ -1578,10 +1611,6 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	iw_convert_density_info(ctx);
-
-	if(!ctx->support_reduced_input_bitdepths) {
-		iw_make_x_to_linear_table(ctx,&ctx->input_color_corr_table,&ctx->img1,&ctx->img1cs);
-	}
 
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->img2.imgtype)) {
 		if(!ctx->opt_strip_alpha) {

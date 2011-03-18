@@ -115,6 +115,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
+	ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
 	ctx->pngcmprlevel = -1;
 	iw_set_value(ctx,IW_VAL_CHARSET,0); // Default to ASCII
 	ctx->opt_grayscale = 1;
@@ -258,6 +259,14 @@ void iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d)
 	ctx->significant_bits[channeltype] = d;
 }
 
+void iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b)
+{
+	ctx->img1_bkgd_label.c[0] = r;
+	ctx->img1_bkgd_label.c[1] = g;
+	ctx->img1_bkgd_label.c[2] = b;
+	ctx->img1_bkgd_label_set = 1;
+}
+
 int iw_get_input_image_density(struct iw_context *ctx,
    double *px, double *py, int *pcode)
 {
@@ -302,6 +311,7 @@ void iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *cs
 void iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b)
 {
 	ctx->apply_bkgd=1;
+	ctx->caller_set_bkgd=1;
 	ctx->colorspace_of_bkgd=cs;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=r;
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=g;
@@ -513,6 +523,9 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_OUTPUT_INTERLACED:
 		ctx->interlaced = n;
 		break;
+	case IW_VAL_USE_BKGD_LABEL:
+		ctx->use_bkgd_label = n;
+		break;
 	}
 }
 
@@ -576,6 +589,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_OUTPUT_INTERLACED:
 		ret = ctx->interlaced;
+		break;
+	case IW_VAL_USE_BKGD_LABEL:
+		ret = ctx->use_bkgd_label;
 		break;
 	}
 

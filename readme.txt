@@ -327,6 +327,13 @@ Options:
    For checkerboard backgrounds, adjust the position of the checkerboard
    background.
 
+ -usebkgdlabel
+   If the input file contains a background color label (a PNG bKGD chunk),
+   and you used the -bkgd option, IW has to decide which of those background
+   color to prefer. Normally, it prefers the color from the -bkgd option. But
+   if you use the -usebkgdlabel option, it will prefer the color from the
+   input file.
+
  -cc <n>  (-cccolor -ccalpha -ccred -ccgreen -ccblue -ccgray)
    Posterization. "cc" stands for "color count".
    The maximum number of different values (brightness levels, opacity levels)

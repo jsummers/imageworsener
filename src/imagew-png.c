@@ -175,6 +175,34 @@ static void iwpng_read_sbit(struct iw_context *ctx,
 	}
 }
 
+static void iwpng_read_bkgd(struct iw_context *ctx,
+   png_structp png_ptr, png_infop info_ptr, int color_type,
+   int bit_depth)
+{
+	png_color_16p bg_colorp;
+	double maxcolor;
+
+	if(!png_get_bKGD(png_ptr, info_ptr, &bg_colorp)) return;
+
+	maxcolor = (double)((1<<bit_depth)-1);
+	switch(color_type) {
+	case PNG_COLOR_TYPE_GRAY:
+	case PNG_COLOR_TYPE_GRAY_ALPHA:
+		iw_set_input_bkgd_label(ctx,
+			((double)bg_colorp->gray)/maxcolor,
+			((double)bg_colorp->gray)/maxcolor,
+			((double)bg_colorp->gray)/maxcolor);
+		break;
+	case PNG_COLOR_TYPE_RGB:
+	case PNG_COLOR_TYPE_RGB_ALPHA:
+		iw_set_input_bkgd_label(ctx,
+			((double)bg_colorp->red)/maxcolor,
+			((double)bg_colorp->green)/maxcolor,
+			((double)bg_colorp->blue)/maxcolor);
+		break;
+	}
+}
+
 static void iw_read_ancillary_data1(struct iw_context *ctx,
    struct iw_image *img, png_structp png_ptr, png_infop info_ptr,
    int color_type)
@@ -183,10 +211,12 @@ static void iw_read_ancillary_data1(struct iw_context *ctx,
 }
 
 static void iw_read_ancillary_data(struct iw_context *ctx,
-   struct iw_image *img, png_structp png_ptr, png_infop info_ptr)
+   struct iw_image *img, png_structp png_ptr, png_infop info_ptr,
+   int color_type, int bit_depth)
 {
 	iwpng_read_colorspace(ctx,png_ptr,info_ptr);
 	iwpng_read_density(ctx,img,png_ptr,info_ptr);
+	iwpng_read_bkgd(ctx,png_ptr,info_ptr,color_type,bit_depth);
 }
 
 int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
@@ -306,7 +336,7 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 		goto done;
 	}
 
-	iw_read_ancillary_data(ctx, &img, png_ptr, info_ptr);
+	iw_read_ancillary_data(ctx, &img, png_ptr, info_ptr, color_type, bit_depth);
 
 	img.width = width;
 	img.height = height;

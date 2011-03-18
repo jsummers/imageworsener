@@ -78,6 +78,10 @@ extern "C" {
 
 #define IW_VAL_OUTPUT_INTERLACED 36
 
+// If a solid color background is to be applied, and the input file contains
+// a suggested background color, use the suggested color.
+#define IW_VAL_USE_BKGD_LABEL    37
+
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.
 
@@ -271,6 +275,9 @@ void iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimensio
 
 // Set the significant bits to something less than is stored in the file.
 void iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d);
+
+// Color values are on a scale from 0 to 1, in the input colorspace.
+void iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b);
 
 // 'cs' indicates the colorspace of the samples given by the caller (IW_BKGDCOLORSPACE_*).
 void iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b);
