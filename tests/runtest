@@ -176,6 +176,11 @@ $IW srcimg/p4t.png actual/noopt-sa.png $CMPR -crop 0,0,6,6 -width 15 -noopt stri
 $IW srcimg/g8a.png actual/noopt-bt.png $CMPR -ccalpha 2 -dither f -width 15 -noopt binarytrns
 $IW srcimg/g8.png actual/noopt-r8.png $CMPR -depth 16 -crop 0,0,8,7 -noopt reduceto8
 
+# Test background color reading
+$IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2 -pngcmprlevel 9
+$IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebkgdlabel -pngcmprlevel 9
+$IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR
+
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
 
