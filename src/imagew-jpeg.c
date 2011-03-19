@@ -441,6 +441,7 @@ TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset)
 {
 	struct jpeg_error_mgr jerr;
 	const char *jv;
+	TCHAR *space_ptr;
 
 	jpeg_std_error(&jerr);
 	jv = jerr.jpeg_message_table[JMSG_VERSION];
@@ -449,5 +450,11 @@ TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset)
 #else
 	iw_snprintf(s,s_len,_T("%s"),jv);
 #endif
+
+	// The version is probably a string like "8c  16-Jan-2011", containing
+	// both the version number and the release date. We only need the version
+	// number, so chop it off at the first space.
+	space_ptr = _tcschr(s,' ');
+	if(space_ptr) *space_ptr = '\0';
 	return s;
 }
