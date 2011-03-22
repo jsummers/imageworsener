@@ -328,12 +328,14 @@ void iw_warning(struct iw_context *ctx, const TCHAR *fmt, ...);
 // Allocates a block of memory. Does not check the value of n.
 // Returns NULL on failure.
 void *iw_malloc_lowlevel(size_t n);
+void *iw_realloc_lowlevel(void *m, size_t n);
 
 // Allocates a block of memory of size n. On failure, generates an error
 // and returns NULL.
 // This function verifies that the memory block is not larger than the
 // amount set by iw_set_max_malloc().
 void *iw_malloc(struct iw_context *ctx, size_t n);
+void *iw_realloc(struct iw_context *ctx, void *m, size_t n);
 
 // Same as iw_malloc, but allocates a block of memory of size n1*n2.
 // This function is careful to avoid integer overflow.

@@ -130,7 +130,33 @@ static double iw_filter_box(struct iw_resize_settings *params, double x)
 	return 0.0;
 }
 
-static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
+static void weightlist_ensure_alloc(struct iw_context *ctx, int n)
+{
+	if(ctx->weightlist.alloc>=n) return;
+	ctx->weightlist.alloc = n+32;
+	if(ctx->weightlist.w) {
+		ctx->weightlist.w = iw_realloc(ctx,ctx->weightlist.w,sizeof(struct iw_weight_struct)*ctx->weightlist.alloc);
+	}
+	else {
+		ctx->weightlist.w = iw_malloc(ctx,sizeof(struct iw_weight_struct)*ctx->weightlist.alloc);
+	}
+	if(!ctx->weightlist.w) {
+		ctx->weightlist.alloc = 0;
+		ctx->weightlist.used = 0;
+	}
+}
+
+void iw_weightlist_free(struct iw_context *ctx)
+{
+	if(ctx->weightlist.w) {
+		iw_free(ctx->weightlist.w);
+		ctx->weightlist.w = NULL;
+		ctx->weightlist.alloc = 0;
+		ctx->weightlist.used = 0;
+	}
+}
+
+static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resamplefn_type rfn,
  struct iw_resize_settings *params, double offset)
 {
 	int out_pix;
@@ -141,10 +167,15 @@ static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
 	int first_input_pixel;
 	int last_input_pixel;
 	int pix_to_read;
-	double s;
 	double v;
 	double v_sum;
 	int v_count;
+	int start_weight_idx;
+	int est_nweights;
+	int i;
+
+	ctx->weightlist.used = 0;
+	ctx->weightlist.isvalid = 1;
 
 	if(ctx->num_out_pix<ctx->num_in_pix) {
 		reduction_factor = ((double)ctx->num_in_pix) / ctx->num_out_pix;
@@ -153,6 +184,13 @@ static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
 		reduction_factor = 1.0;
 	}
 	reduction_factor *= params->blur_factor;
+
+	// Estimate the size of the weight list we'll need.
+	est_nweights = (int)(2.0*params->radius*reduction_factor*ctx->num_out_pix);
+	weightlist_ensure_alloc(ctx,est_nweights);
+	if(!ctx->weightlist.w) {
+		return;
+	}
 
 	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
 
@@ -165,7 +203,10 @@ static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
 		first_input_pixel = (int)ceil(pos_in_inpix - params->radius*reduction_factor);
 		last_input_pixel = (int)floor(pos_in_inpix + params->radius*reduction_factor);
 
-		s=0.0;
+		// Remember which item in the weightlist was the first one for this
+		// target sample.
+		start_weight_idx = ctx->weightlist.used;
+
 		v_sum=0.0;
 		v_count=0;
 		for(input_pixel=first_input_pixel;input_pixel<=last_input_pixel;input_pixel++) {
@@ -182,12 +223,27 @@ static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
 			if(input_pixel<0) pix_to_read=0;
 			else if(input_pixel>ctx->num_in_pix-1) pix_to_read = ctx->num_in_pix-1;
 			else pix_to_read = input_pixel;
-			s += v*ctx->in_pix[pix_to_read];
+
+			if(v != 0.0) {
+				if(ctx->weightlist.used>=ctx->weightlist.alloc) {
+					weightlist_ensure_alloc(ctx,ctx->weightlist.used+1);
+					if(!ctx->weightlist.w) return;
+				}
+				ctx->weightlist.w[ctx->weightlist.used].src_pix = pix_to_read;
+				ctx->weightlist.w[ctx->weightlist.used].dst_pix = out_pix;
+				ctx->weightlist.w[ctx->weightlist.used].weight = v;
+				ctx->weightlist.used++;
+			}
 		}
 
 		if(v_count>0) {
+
 			if(v_sum!=0.0) {
-				ctx->out_pix[out_pix] = s/v_sum;
+				// Normalize the weights we just added to the list.
+				for(i=start_weight_idx;i<ctx->weightlist.used;i++) {
+					ctx->weightlist.w[i].weight /= v_sum;
+				}
+
 			}
 			else {
 				// This sum *should* never get very small (or negative).
@@ -200,19 +256,58 @@ static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
 				// the "Standard" edge policy (but we don't allow that).
 				// This code path is here to avoid dividing by zero,
 				// not to produce a correct sample value.
-				ctx->out_pix[out_pix] = 0.0;
+				//ctx->out_pix[out_pix] = 0.0;
+				for(i=start_weight_idx;i<ctx->weightlist.used;i++) {
+					ctx->weightlist.w[i].weight = 0.0;
+				}
 			}
 		}
 		else {
 			// No usable input samples were found. Just copy one of the edge samples.
-			if(first_input_pixel<0)
-				ctx->out_pix[out_pix] = ctx->in_pix[0];
-			else
-				ctx->out_pix[out_pix] = ctx->in_pix[ctx->num_in_pix-1];
+
+			if(ctx->weightlist.used>=ctx->weightlist.alloc) {
+				weightlist_ensure_alloc(ctx,ctx->weightlist.used+1);
+				if(!ctx->weightlist.w) return;
+			}
+
+			if(first_input_pixel<0) {
+				ctx->weightlist.w[ctx->weightlist.used].src_pix = 0;
+			}
+			else {
+				ctx->weightlist.w[ctx->weightlist.used].src_pix = ctx->num_in_pix-1;
+			}
+			ctx->weightlist.w[ctx->weightlist.used].dst_pix = out_pix;
+			ctx->weightlist.w[ctx->weightlist.used].weight = 1.0;
+			ctx->weightlist.used++;
 		}
 	}
 }
 
+ static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
+	struct iw_resize_settings *params, double offset)
+{
+	int i;
+	struct iw_weight_struct *w;
+
+	if(!ctx->weightlist.isvalid) {
+		iw_resample_row_create_weightlist(ctx,rfn,params,offset);
+	}
+	if(!ctx->weightlist.w) return;
+
+	// TODO: Maybe it would be faster to add up all the contributions to the
+	// target sample using a temporary variable, and set ctx->out_pix[x]
+	// only once. (The weightlist is sorted by target sample.)
+
+	for(i=0;i<ctx->num_out_pix;i++) {
+		ctx->out_pix[i] = 0.0;
+	}
+
+	for(i=0;i<ctx->weightlist.used;i++) {
+		w = &ctx->weightlist.w[i];
+		ctx->out_pix[w->dst_pix] += ctx->in_pix[w->src_pix] * w->weight;
+	}
+}
+	
 static void iw_resize_row_nearestneighbor(struct iw_context *ctx, double offset)
 {
 	int out_pix;
@@ -335,6 +430,10 @@ void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
 		offset=rs->channel_offset[channeltype];
 	else
 		offset=0.0;
+
+	// TODO: For algorithms that use a weightlist, reorganize the code so that
+	// a weightlist is explicitly created, then after that we don't even need to
+	// know what algorithm we're using.
 
 	// TODO: Maybe the radius should always be set when the resize algorithm is set.
 	switch(rs->family) {

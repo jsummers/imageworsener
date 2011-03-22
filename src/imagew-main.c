@@ -625,6 +625,8 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
 
+	ctx->weightlist.isvalid = 0;
+
 	ctx->num_in_pix = ctx->input_h;
 	inpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_in_pix * sizeof(IW_SAMPLE));
 	if(!inpix) goto done;
@@ -703,6 +705,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
+
+	ctx->weightlist.isvalid = 0;
 
 	ctx->num_in_pix = ctx->intermed_width;
 	ctx->num_out_pix = ctx->img2.width;
@@ -987,6 +991,7 @@ done:
 		if(ctx->dither_errors[k]) { iw_free(ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
 	}
 	if(ctx->random_dither_pattern) { iw_free(ctx->random_dither_pattern); ctx->random_dither_pattern=NULL; }
+	iw_weightlist_free(ctx);
 	return retval;
 }
 
@@ -1082,7 +1087,7 @@ static void cvt_bkgd_color_to_linear(struct iw_context *ctx,
 
 // Make a final decision about what to use for the background color.
 // TODO: Maybe some of this should be moved to the decide_how_to_apply_bkgd()
-// function, or some other factoring should be done.
+// function, or some other refactoring should be done.
 // For example, decide_how_to_apply_bkgd() may warn you about checkerboard
 // backgrounds not being supported, even if a checkerboard background
 // would not actually have been used, because it would have been overridden in

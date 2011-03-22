@@ -48,8 +48,8 @@ Primary features:
  - Apply background colors
  - "Channel offset"
 
-ImageWorsener is focused on correctness, and not on performance. Currently,
-it runs very slowly. Among the things it (hopefully) does right:
+ImageWorsener is focused on correctness, and not on performance. It is
+relatively slow. Among the things it (hopefully) does right:
  - Gamma correction, and the sRGB colorspace (not just the gamma=2.2
    approximation).
  - Conversion to grayscale.

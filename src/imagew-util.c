@@ -36,6 +36,11 @@ void *iw_malloc_lowlevel(size_t n)
 	return malloc(n);
 }
 
+void *iw_realloc_lowlevel(void *m, size_t n)
+{
+	return realloc(m,n);
+}
+
 void *iw_strdup(const TCHAR *s)
 {
 	return _tcsdup(s);
@@ -50,6 +55,22 @@ void *iw_malloc(struct iw_context *ctx, size_t n)
 		return NULL;
 	}
 	mem = iw_malloc_lowlevel(n);
+	if(!mem) {
+		iw_seterror(ctx,_T("Out of memory"));
+		return NULL;
+	}
+	return mem;
+}
+
+void *iw_realloc(struct iw_context *ctx, void *m, size_t n)
+{
+	void *mem;
+
+	if(n>ctx->max_malloc) {
+		iw_seterror(ctx,_T("Out of memory"));
+		return NULL;
+	}
+	mem = iw_realloc_lowlevel(m,n);
 	if(!mem) {
 		iw_seterror(ctx,_T("Out of memory"));
 		return NULL;

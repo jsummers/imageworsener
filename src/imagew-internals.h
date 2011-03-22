@@ -27,6 +27,19 @@ struct iw_rgb_color {
 	IW_SAMPLE c[3]; // Indexed by IW_CHANNELTYPE[Red..Blue]
 };
 
+struct iw_weight_struct {
+	int src_pix;
+	int dst_pix;
+	double weight;
+};
+
+struct iw_weightlist_struct {
+	int used;
+	int alloc;
+	int isvalid;
+	struct iw_weight_struct *w;
+};
+
 struct iw_resize_settings {
 	int family;
 	double radius; // Also = "lobes" in Lanczos, etc.
@@ -227,6 +240,8 @@ struct iw_context {
 	// same as input_color_corr_table except that it might have a different
 	// number of entries (and might be from a different colorspace).
 	double *output_rev_color_corr_table;
+
+	struct iw_weightlist_struct weightlist;
 };
 
 // Defined in imagew-main.c
@@ -240,6 +255,7 @@ void iw_util_randomize(void);
 
 // Defined in imagew-resize.c
 void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype);
+void iw_weightlist_free(struct iw_context *ctx);
 
 // Defined in imagew-opt.c
 void iw_optimize_image(struct iw_context *ctx);
