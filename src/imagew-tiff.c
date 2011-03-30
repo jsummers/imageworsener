@@ -522,26 +522,16 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 	// do. And, granted, a 128KB TransferFunction table would be inconveniently
 	// large for most paletted images, even if it is logical.
 
+	// We almost always always write a TransferFunction tag, even if it is the
+	// same as the default colorspace. According to the TIFF 6 spec, the default
+	// is gamma=2.2 for color images, and gamma=1.0 for grayscale images. But,
+	// realistically, most viewers have to assume the default is sRGB. (Note
+	// that the TIFF 6 spec predates sRGB, so you can't blame it for not
+	// mentioning sRGB.) So, it isn't really safe to assume any default.
+
 	if(tiffctx->bitspersample==1) {
 		// TransferFunction is irrelevant for bilevel images.
 		tiffctx->transferfunc_numentries = 0;
-	}
-	else if(tiffctx->photometric==IWTIFF_PHOTO_MINISBLACK) {
-		// For some reason, grayscale TIFFs (in theory) default to a
-		// linear colorspace, while color TIFFs default to gamma=2.2.
-		// No real-world viewer can safely assume that grayscale
-		// TIFFs are linear, so we'll always write a TransferFunction
-		// table for grayscale TIFFs, even if they really are linear.
-		;
-	}
-	else {
-		if(tiffctx->csdescr.cstype==IW_CSTYPE_GAMMA &&
-			(tiffctx->csdescr.gamma>=2.199 && tiffctx->csdescr.gamma<=2.201))
-		{
-			// The TIFF default for color images is gamma=2.2, so no need to
-			// write a TransferFunction table.
-			tiffctx->transferfunc_numentries = 0;
-		}
 	}
 
 	if(iw_get_value(tiffctx->ctx,IW_VAL_NO_CSLABEL)) {
