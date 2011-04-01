@@ -40,6 +40,8 @@ This software is based in part on the work of the Independent JPEG Group.
 
 ===========================================================================
 
+For additional information about ImageWorsener, see the file technical.txt.
+
 Primary features:
  - Resize
  - Posterize (reduce the number of colors)

@@ -1,0 +1,227 @@
+Additional technical documentation about ImageWorsener
+======================================================
+
+This file contains extra information about ImageWorsener. The main
+documentation is in readme.txt.
+
+Web site: <http://entropymine.com/imageworsener/>
+
+Acknowledgments
+---------------
+
+Some of the inspiration for this project came from these web pages:
+  "Gamma error in picture scaling"
+    http://www.4p8.com/eric.brasseur/gamma.html
+  "How to make a resampler that doesn't suck"
+    http://www.virtualdub.org/blog/pivot/entry.php?id=86
+
+Information about resampling functions and other algorithms was gathered from
+many sources, but ImageMagick's page on resizing was particularly helpful:
+  http://www.imagemagick.org/Usage/resize/
+
+Alternatives
+------------
+
+There are many applications and libraries that do image processing, but in the
+free software world, the leader is ImageMagick (http://www.imagemagick.org/).
+
+Building
+--------
+
+Dependencies:
+  libpng
+  zlib
+  libjpeg
+
+Sorry; I don't have any detailed build instructions. Under Windows, use Visual
+Studio 2008 or newer. In a Linux/Unix environment, try typing "make". It
+should build an executable file named "imagew" or "imagew.exe".
+
+Philosophy
+----------
+
+IW tries to be as accurate as possible. It never trades accuracy for speed.
+Really, it goes too far, as nearly everyone would rather have a program that
+works twice as fast and is imperceptibly less accurate. But there are lots
+of utilities that are optimized for speed, and there would be no reason for
+IW to exist if it worked the same as everything else.
+
+I don't intend to add millions of options to IW. I only want options that
+serve some purpose. It is nearly feature complete as it is.
+
+I've taken a lot of care to make sure the resizing algorithms are implemented
+correctly. I won't add an algorithm until I'm sure that I understand it. This
+isn't so easy. There's a lot of confusing and contradictory information out
+there.
+
+IW does not accept a sequence of image processing commands. Instead, tries to
+create the best image it can given the options you pass to it. For example, if
+you tell it to dither an image and resize it, it knows that it should resize
+the image first, then dither it, instead of doing it in the opposite order.
+
+In general, you don't have to tell it what color format to use. If you resize
+a bilevel image, you'll automatically get high quality grayscale image, not a
+low quality bilevel image. 
+
+IW usually does not care about how the input image is stored. A 1-bit image is
+treated the same as an 8-bit representation of the same image. There are,
+however, a few minor exceptions (which can be disabled):
+ - It will try to keep the image in the same colorspace.
+ - It will try to keep 16-bit images at 16-bits.
+ - The -condgrayscale option will keep grayscale images grayscale.
+
+ImageWorsener architecture
+--------------------------
+
+IW has three components: The core library, the auxiliary library, and the
+command-line utility.
+
+The core library does the image processing, but does not do any file I/O. It
+knows almost nothing about PNG and JPEG file formats. It has access to the
+internal data structures defined in imagew-internals.h. It does not make any
+direct calls to the auxiliary library.
+
+The auxiliary library consists of the file I/O code that is specific to file
+formats like PNG and JPEG. It does not use the internal data structures from
+imagew-internals.h.
+
+The public interface is completely defined in the imagew.h file. It includes
+declarations for both the core and auxiliary library.
+
+The command-line utility is implemented in imagew-cmd.c. It uses both the core
+library and the auxiliary library.
+
+The core and auxiliary libraries are separated in order to break dependencies.
+For example, if your application supports only PNG files, you can probably
+(given how most linkers work) build it without linking to libjpeg.
+
+Unicode
+-------
+
+Text files like this one notwithstanding, I've decided that ASCII must die. As
+simple as the text output from the command line utility is, it will use try to
+use Unicode quotation marks, arrows, etc., if possible. In a Unix environment,
+this can probably be turned off at runtime with environment variables, such as
+by setting "LANG=C". Whether the Windows version uses Unicode is determined at
+compile time.
+
+Colorspaces
+-----------
+
+Unless it has reason to believe otherwise, IW assumes that images use the sRGB
+colorspace. This is the colorspace that standard computer monitors use, and
+it's a reasonable assumption that most computer image files (whether by
+accident or design) are intended to be directly displayable on computer
+monitors.
+
+IW does not support ICC color profiles. I'll consider adding support for them
+someday, but I don't know how feasible that is.
+
+TIFF Colorspaces
+----------------
+
+When writing TIFF files, IW uses the TransferFunction TIFF tag to label the
+colorspace that the output image uses. I doubt that many TIFF viewers read
+this tag, and actually, I don't know how to test whether I'm using it
+correctly. You can disable the TransferFunction tag by using the "-nocslabel"
+option.
+
+TIFF output support
+-------------------
+
+IW mainly sticks to the "baseline" TIFF v6 specification, but it will write
+images with a sample depth of 16 bits, which is not part of the baseline spec.
+It writes transparent images using unassociated alpha, which is probably less
+common in TIFF files than associated alpha, and may not be supported as well
+by TIFF viewers.
+
+Nonsquare pixels
+----------------
+
+If you use one of the scaling options that doesn't change the aspect ratio, IW
+always writes an image with square pixels. Example: Suppose the input image is
+a fax with an X density of 204dpi and a Y density of 96dpi. It will scale the
+Y dimension by a factor that's 204/96 times larger than the X dimension's
+scaling factor.
+
+"Color" of transparent pixels
+-----------------------------
+
+In image formats that use unassociated alpha values to indicate transparency,
+pixels that are fully transparent still have "colors", but those colors are
+irrelevant. IW will not attempt to retain such colors, and will make fully-
+transparent pixels black in most cases. An exception is if the output image
+uses color-keyed transparency, in which case it uses a different strategy.
+
+PNG sBIT chunks
+---------------
+
+If a PNG image contains the rarely-used sBIT chunk, IW will ignore any bits
+that the sBIT chunk indicates are not significant.
+
+Suppose you have an 8-bit grayscale image with an sBIT chunk that says 3 bits
+are significant. If the app that wrote the file was not defective, there will
+probably be only 8 colors in the image. The image might contain these colors:
+
+00000000 =   0/255 = 0.00000000
+00100100 =  36/255 = 0.14117647
+01001001 =  73/255 = 0.28627450
+01101101 = 109/255 = 0.42745098
+10010010 = 146/255 = 0.57254901
+10110110 = 182/255 = 0.71372549
+11011011 = 219/255 = 0.85882352
+11111111 = 255/255 = 1.00000000
+
+IW, though, will see only the significant bits, and will interpret the image
+like this:
+
+000 = 0/7 = 0.00000000
+001 = 1/7 = 0.14285714
+010 = 2/7 = 0.28571428
+011 = 3/7 = 0.42857142
+100 = 4/7 = 0.57142857
+101 = 5/7 = 0.71428571
+110 = 6/7 = 0.85714285
+111 = 7/7 = 1.00000000
+
+So, the interpretation is slightly different (e.g. 0.14285714 instead of
+0.14117647).
+
+Ordered dithering + transparency
+--------------------------------
+
+Ordered (or halftone) dithering with IW can produce poor results when used
+with images that have partial transparency. If you ordered-dither both the
+colors and the alpha channel, you can have a situation where all the (say)
+darker pixels get made transparent, leaving only the lighter pixels visible,
+and making the image much lighter than it should be. This happens because the
+same dither pattern is used for two purposes (color threshholding and
+transparency threshholding).
+
+To do
+-----
+
+Features I'm considering adding:
+
+- More options for aligning the input pixels with the output pixels.
+
+- More options for virtual pixels (transparency, at least).
+
+- Support maintaining or adjusting the pixel density even when the image is
+  resized.
+
+- Options to maintain PNG background colors.
+
+- Internationalization. Maybe use UTF-8 internally. I'm not sure what can be
+  done about error messages that come from libpng or libjpeg.
+
+Contributing
+------------
+
+I may accept code contributions, if they fit the spirit of the project. I will
+probably not accept contributions on which you or someone else claims
+copyright. At this stage, I want to retain the ability to change the licensing
+terms unilaterally.
+
+Of course, the license allows you to fork your own version of ImageWorsener if
+you wish to.
