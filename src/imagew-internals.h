@@ -254,6 +254,7 @@ void iw_util_set_random_seed(int s);
 void iw_util_randomize(void);
 
 // Defined in imagew-resize.c
+void iw_resize_row_precalculate(struct iw_context *ctx, int dimension, int channeltype);
 void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype);
 void iw_weightlist_free(struct iw_context *ctx);
 

@@ -637,6 +637,8 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	if(!outpix) goto done;
 	ctx->out_pix = outpix;
 
+	iw_resize_row_precalculate(ctx,IW_DIMENSION_V,ctx->intermed_ci[channel].channeltype);
+
 	for(i=0;i<ctx->input_w;i++) {
 
 		// Read a column of pixels into ctx->in_pix
@@ -732,6 +734,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 			}
 		}
 	}
+
+	iw_resize_row_precalculate(ctx,IW_DIMENSION_H,ctx->intermed_ci[intermed_channel].channeltype);
 
 	for(j=0;j<ctx->intermed_height;j++) {
 		if(is_alpha_channel) {

@@ -283,20 +283,12 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 	}
 }
 
- static void iw_resample_row(struct iw_context *ctx, iw_resamplefn_type rfn,
-	struct iw_resize_settings *params, double offset)
+ static void iw_resample_row(struct iw_context *ctx)
 {
 	int i;
 	struct iw_weight_struct *w;
 
-	if(!ctx->weightlist.isvalid) {
-		iw_resample_row_create_weightlist(ctx,rfn,params,offset);
-	}
 	if(!ctx->weightlist.w) return;
-
-	// TODO: Maybe it would be faster to add up all the contributions to the
-	// target sample using a temporary variable, and set ctx->out_pix[x]
-	// only once. (The weightlist is sorted by target sample.)
 
 	for(i=0;i<ctx->num_out_pix;i++) {
 		ctx->out_pix[i] = 0.0;
@@ -415,66 +407,90 @@ static void resize_row_null(struct iw_context *ctx, double offset)
 	}
 }
 
-void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
+void iw_resize_row_precalculate(struct iw_context *ctx, int dimension, int channeltype)
 {
 	struct iw_resize_settings *rs;
-	int i;
 	double offset;
 
-	if(ctx->use_resize_settings_alpha &&channeltype==IW_CHANNELTYPE_ALPHA)
+	if(ctx->use_resize_settings_alpha && channeltype==IW_CHANNELTYPE_ALPHA)
 		rs=&ctx->resize_settings_alpha;
 	else
 		rs=&ctx->resize_settings[dimension];
+
+	if(rs->family<IW_FIRST_RESAMPLING_FILTER) return; // This algorithm doesn't precalculate anything.
 
 	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
 		offset=rs->channel_offset[channeltype];
 	else
 		offset=0.0;
 
-	// TODO: For algorithms that use a weightlist, reorganize the code so that
-	// a weightlist is explicitly created, then after that we don't even need to
-	// know what algorithm we're using.
-
 	// TODO: Maybe the radius should always be set when the resize algorithm is set.
 	switch(rs->family) {
-	case IW_RESIZETYPE_MIX:
-		resize_row_pixelmixing(ctx,offset);
-		break;
 	case IW_RESIZETYPE_HERMITE:
 		rs->radius=1.0;
-		iw_resample_row(ctx,iw_filter_hermite,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_hermite,rs,offset);
 		break;
 	case IW_RESIZETYPE_CUBIC:
 		rs->radius=2.0;
-		iw_resample_row(ctx,iw_filter_generalcubic,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_generalcubic,rs,offset);
 		break;
 	case IW_RESIZETYPE_LANCZOS:
-		iw_resample_row(ctx,iw_filter_lanczos,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_lanczos,rs,offset);
 		break;
 	case IW_RESIZETYPE_HANNING:
-		iw_resample_row(ctx,iw_filter_hann,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_hann,rs,offset);
 		break;
 	case IW_RESIZETYPE_BLACKMAN:
-		iw_resample_row(ctx,iw_filter_blackman,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_blackman,rs,offset);
 		break;
 	case IW_RESIZETYPE_SINC:
-		iw_resample_row(ctx,iw_filter_sinc,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_sinc,rs,offset);
 		break;
 	case IW_RESIZETYPE_GAUSSIAN:
 		rs->radius=2.0;
-		iw_resample_row(ctx,iw_filter_gaussian,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_gaussian,rs,offset);
 		break;
 	case IW_RESIZETYPE_LINEAR:
 		rs->radius=1.0;
-		iw_resample_row(ctx,iw_filter_triangle,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_triangle,rs,offset);
 		break;
 	case IW_RESIZETYPE_QUADRATIC:
 		rs->radius=1.5;
-		iw_resample_row(ctx,iw_filter_quadratic,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_quadratic,rs,offset);
 		break;
 	case IW_RESIZETYPE_BOX:
 		rs->radius=1.0;
-		iw_resample_row(ctx,iw_filter_box,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_box,rs,offset);
+		break;
+	}
+}
+
+void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
+{
+	struct iw_resize_settings *rs;
+	int i;
+	double offset;
+
+	// TODO: We shouldn't have to figure out rs and offset repeatedly for each
+	// row, and this code shouldn't be duplicated in iw_resize_row_precalculate().
+	if(ctx->use_resize_settings_alpha && channeltype==IW_CHANNELTYPE_ALPHA)
+		rs=&ctx->resize_settings_alpha;
+	else
+		rs=&ctx->resize_settings[dimension];
+
+	if(rs->family>=IW_FIRST_RESAMPLING_FILTER) {
+		iw_resample_row(ctx);
+		goto resizedone;
+	}
+
+	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
+		offset=rs->channel_offset[channeltype];
+	else
+		offset=0.0;
+
+	switch(rs->family) {
+	case IW_RESIZETYPE_MIX:
+		resize_row_pixelmixing(ctx,offset);
 		break;
 	case IW_RESIZETYPE_NEAREST:
 		iw_resize_row_nearestneighbor(ctx,offset);
@@ -487,6 +503,7 @@ void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
 		break;
 	}
 
+resizedone:
 	// The horizontal dimension is always resized last.
 	// After it's done, we can always clamp the pixels to the [0.0,1.0] range.
 	// If the intclamp flag is set, we clamp after every stage.

@@ -119,6 +119,7 @@ extern "C" {
 #define IW_RESIZETYPE_NULL          0x02
 #define IW_RESIZETYPE_NEAREST       0x03
 #define IW_RESIZETYPE_MIX           0x04
+#define IW_FIRST_RESAMPLING_FILTER  0x10
 #define IW_RESIZETYPE_BOX           0x10
 #define IW_RESIZETYPE_LINEAR        0x11
 #define IW_RESIZETYPE_QUADRATIC     0x12
