@@ -10,7 +10,13 @@
 
 #define IW_ERRMSG_MAX 200
 
+#if defined(IW_SAMPLETYPE_DOUBLE)
 #define IW_SAMPLE double
+#elif defined(IW_SAMPLETYPE_FLOAT)
+#define IW_SAMPLE float
+#else
+#define IW_SAMPLE double
+#endif
 
 #ifdef IW_64BIT
 #define IW_MAX_DIMENSION 1000000

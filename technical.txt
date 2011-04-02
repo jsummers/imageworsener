@@ -95,6 +95,29 @@ The core and auxiliary libraries are separated in order to break dependencies.
 For example, if your application supports only PNG files, you can probably
 (given how most linkers work) build it without linking to libjpeg.
 
+Double-precision floating point?
+--------------------------------
+
+IW can be compiled to use any available floating point type for its internal
+representation of samples. (Unfortunately, it's impractical to make this a
+run-time option.) Its default is currently set to be "double", which is
+usually an 8-byte floating-point number. This may seem like overkill, and I
+admit, it probably is, at least for 8-bit target images.
+
+For 8-bit target images, switching to 4-byte floating point might affect only
+one pixel in every 50,000. For 16-bit target images, it's more like one pixel
+in every few hundred.
+
+Using double precision shouldn't have too much effect on performance, at least
+if it's compiled as a 64-bit application. But it will use a lot more memory.
+
+4-byte floating-point number give you about 7 significant digits, which in
+extreme cases may not be quite enough. Particularly for 16-bit target images,
+when working in a linear colorspace, bright samples are much, much brighter
+than the dimmest pixels. If IW has to add a huge number of dim pixels together
+with just a few bright pixels, 7 significant digits might not be enough to
+do the kind of accurate calculations it strives for.
+
 Unicode
 -------
 
