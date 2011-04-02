@@ -6,7 +6,11 @@
 
 #define IW_COPYRIGHT_YEAR _T("2011")
 
+#ifdef IW_WINDOWS
 #define IW_INLINE __inline
+#else
+#define IW_INLINE inline
+#endif
 
 #define IW_ERRMSG_MAX 200
 

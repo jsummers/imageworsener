@@ -156,6 +156,19 @@ void iw_weightlist_free(struct iw_context *ctx)
 	}
 }
 
+static void iw_add_to_weightlist(struct iw_context *ctx, int src_pix, int dst_pix, double v)
+{
+	if(v==0.0) return;
+	if(ctx->weightlist.used>=ctx->weightlist.alloc) {
+		weightlist_ensure_alloc(ctx,ctx->weightlist.used+1);
+		if(!ctx->weightlist.w) return;
+	}
+	ctx->weightlist.w[ctx->weightlist.used].src_pix = src_pix;
+	ctx->weightlist.w[ctx->weightlist.used].dst_pix = dst_pix;
+	ctx->weightlist.w[ctx->weightlist.used].weight = v;
+	ctx->weightlist.used++;
+}
+
 static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resamplefn_type rfn,
  struct iw_resize_settings *params, double offset)
 {
@@ -224,16 +237,7 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 			else if(input_pixel>ctx->num_in_pix-1) pix_to_read = ctx->num_in_pix-1;
 			else pix_to_read = input_pixel;
 
-			if(v != 0.0) {
-				if(ctx->weightlist.used>=ctx->weightlist.alloc) {
-					weightlist_ensure_alloc(ctx,ctx->weightlist.used+1);
-					if(!ctx->weightlist.w) return;
-				}
-				ctx->weightlist.w[ctx->weightlist.used].src_pix = pix_to_read;
-				ctx->weightlist.w[ctx->weightlist.used].dst_pix = out_pix;
-				ctx->weightlist.w[ctx->weightlist.used].weight = v;
-				ctx->weightlist.used++;
-			}
+			iw_add_to_weightlist(ctx,pix_to_read,out_pix,v);
 		}
 
 		if(v_count>0) {
@@ -256,7 +260,6 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 				// the "Standard" edge policy (but we don't allow that).
 				// This code path is here to avoid dividing by zero,
 				// not to produce a correct sample value.
-				//ctx->out_pix[out_pix] = 0.0;
 				for(i=start_weight_idx;i<ctx->weightlist.used;i++) {
 					ctx->weightlist.w[i].weight = 0.0;
 				}
@@ -264,21 +267,11 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 		}
 		else {
 			// No usable input samples were found. Just copy one of the edge samples.
-
-			if(ctx->weightlist.used>=ctx->weightlist.alloc) {
-				weightlist_ensure_alloc(ctx,ctx->weightlist.used+1);
-				if(!ctx->weightlist.w) return;
-			}
-
-			if(first_input_pixel<0) {
-				ctx->weightlist.w[ctx->weightlist.used].src_pix = 0;
-			}
-			else {
-				ctx->weightlist.w[ctx->weightlist.used].src_pix = ctx->num_in_pix-1;
-			}
-			ctx->weightlist.w[ctx->weightlist.used].dst_pix = out_pix;
-			ctx->weightlist.w[ctx->weightlist.used].weight = 1.0;
-			ctx->weightlist.used++;
+			if(first_input_pixel<0)
+				pix_to_read = 0;
+			else
+				pix_to_read = ctx->num_in_pix-1;
+			iw_add_to_weightlist(ctx,pix_to_read,out_pix,1.0);
 		}
 	}
 }
@@ -319,18 +312,22 @@ static void iw_resize_row_nearestneighbor(struct iw_context *ctx, double offset)
 	}
 }
 
-static void resize_row_pixelmixing(struct iw_context *ctx, double offset)
+static void iw_pixmix_create_weightlist(struct iw_context *ctx, double offset)
 {
-	int i;
 	int cur_in_pix, cur_out_pix;
 	int safe_in_pix;
 	double in_pix_right_pos;
 	double out_pix_right_pos;
 	double cur_pos;
+	int est_nweights;
 
-	// Zero out the new pixels
-	for(i=0;i<ctx->num_out_pix;i++)
-		ctx->out_pix[i]=0.0;
+	ctx->weightlist.used = 0;
+	ctx->weightlist.isvalid = 1;
+	est_nweights = ctx->num_out_pix + ctx->num_in_pix;
+	weightlist_ensure_alloc(ctx,est_nweights);
+	if(!ctx->weightlist.w) {
+		return;
+	}
 
 	cur_in_pix = 0;
 	cur_out_pix = 0;
@@ -359,7 +356,8 @@ static void resize_row_pixelmixing(struct iw_context *ctx, double offset)
 		if(in_pix_right_pos<=out_pix_right_pos) {
 			// Next border is of an input pixel.
 			// Put remainder of this pixel into the output pixel.
-			ctx->out_pix[cur_out_pix] += ctx->in_pix[safe_in_pix]*(in_pix_right_pos - cur_pos);
+
+			iw_add_to_weightlist(ctx,safe_in_pix,cur_out_pix, (in_pix_right_pos - cur_pos)*ctx->num_out_pix );
 
 			// Advance to the next input pixel.
 			// Advance cur_pos to what will be the left edge of the next input pixel.
@@ -373,7 +371,8 @@ static void resize_row_pixelmixing(struct iw_context *ctx, double offset)
 		else {
 			// Next border is of an output pixel.
 			// Put part of the input pixel into the output pixel.
-			ctx->out_pix[cur_out_pix] += ctx->in_pix[safe_in_pix]*(out_pix_right_pos - cur_pos);
+
+			iw_add_to_weightlist(ctx,safe_in_pix,cur_out_pix, (out_pix_right_pos - cur_pos)*ctx->num_out_pix );
 
 			// Advance to the next output pixel.
 			// Advance cur_pos to what will be the left edge of the next output pixel.
@@ -382,15 +381,6 @@ static void resize_row_pixelmixing(struct iw_context *ctx, double offset)
 			out_pix_right_pos = (-offset+(double)(cur_out_pix+1))/(double)ctx->num_out_pix;
 		}
 	}
-
-	// Output values are currently biased. Need to multiply them by
-	// ctx->num_out_pixels.
-	// (We could correct for this in the main pass, instead of using a separate
-	// pass. I don't know if that would be faster or slower.)
-	for(i=0;i<ctx->num_out_pix;i++) {
-		ctx->out_pix[i] *= ((double)ctx->num_out_pix);
-	}
-
 }
 
 // Caution: Does not support offsets.
@@ -417,7 +407,7 @@ void iw_resize_row_precalculate(struct iw_context *ctx, int dimension, int chann
 	else
 		rs=&ctx->resize_settings[dimension];
 
-	if(rs->family<IW_FIRST_RESAMPLING_FILTER) return; // This algorithm doesn't precalculate anything.
+	if(rs->family<IW_FIRST_PRECALC_FILTER) return; // This algorithm doesn't precalculate anything.
 
 	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
 		offset=rs->channel_offset[channeltype];
@@ -426,6 +416,10 @@ void iw_resize_row_precalculate(struct iw_context *ctx, int dimension, int chann
 
 	// TODO: Maybe the radius should always be set when the resize algorithm is set.
 	switch(rs->family) {
+	case IW_RESIZETYPE_MIX:
+		rs->radius=1.0;
+		iw_pixmix_create_weightlist(ctx,offset);
+		break;
 	case IW_RESIZETYPE_HERMITE:
 		rs->radius=1.0;
 		iw_resample_row_create_weightlist(ctx,iw_filter_hermite,rs,offset);
@@ -478,7 +472,7 @@ void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
 	else
 		rs=&ctx->resize_settings[dimension];
 
-	if(rs->family>=IW_FIRST_RESAMPLING_FILTER) {
+	if(rs->family>=IW_FIRST_PRECALC_FILTER) {
 		iw_resample_row(ctx);
 		goto resizedone;
 	}
@@ -489,9 +483,6 @@ void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
 		offset=0.0;
 
 	switch(rs->family) {
-	case IW_RESIZETYPE_MIX:
-		resize_row_pixelmixing(ctx,offset);
-		break;
 	case IW_RESIZETYPE_NEAREST:
 		iw_resize_row_nearestneighbor(ctx,offset);
 		break;
