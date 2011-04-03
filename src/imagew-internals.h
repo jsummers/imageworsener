@@ -75,7 +75,8 @@ struct iw_channelinfo_intermed {
 };
 
 struct iw_channelinfo_out {
-	int dithertype;
+	int ditherfamily;
+	int dithersubtype;
 	int channeltype;
 
 	// If restricting to a number of colors, colors are evenly
@@ -162,8 +163,9 @@ struct iw_context {
 	struct iw_channelinfo_out img2_ci[4];
 	int img2_numchannels;
 
-	int dithertype_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
-	int uses_fsdither;
+	int ditherfamily_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
+	int dithersubtype_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
+	int uses_errdiffdither;
 	int uses_r2dither;
 
 	// Algorithms to use when changing the horizontal size.
@@ -203,8 +205,9 @@ struct iw_context {
 	int insignificant_bits[5];   // How much we have to shift the samples.
 	double input_maxcolorcode_ext[5];
 
-#define IW_DITHER_MAXROWS 3 // Max number of rows for FS-like dithering, including current row.
-	// Error accumulators for Floyd-Steinberg and similar dithering methods.
+	// Max number of rows for error-diffusion dithering, including current row.
+#define IW_DITHER_MAXROWS 3
+	// Error accumulators for error-diffusion dithering.
 	IW_SAMPLE *dither_errors[IW_DITHER_MAXROWS]; // 0 is the current row.
 
 	float *random_dither_pattern;

@@ -203,25 +203,29 @@ void iw_set_output_depth(struct iw_context *ctx, int bps)
 		ctx->output_depth = 16;
 }
 
-void iw_set_dither_type(struct iw_context *ctx, int channeltype, int d)
+void iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)
 {
-
 	if(channeltype>=0 && channeltype<=4) {
-		ctx->dithertype_by_channeltype[channeltype] = d;
+		ctx->ditherfamily_by_channeltype[channeltype] = f;
+		ctx->dithersubtype_by_channeltype[channeltype] = s;
 	}
 
 	switch(channeltype) {
 	case IW_CHANNELTYPE_ALL:
-		ctx->dithertype_by_channeltype[IW_CHANNELTYPE_ALPHA] = d;
+		ctx->ditherfamily_by_channeltype[IW_CHANNELTYPE_ALPHA] = f;
+		ctx->dithersubtype_by_channeltype[IW_CHANNELTYPE_ALPHA] = s;
 		// fall thru
 	case IW_CHANNELTYPE_NONALPHA:
-		ctx->dithertype_by_channeltype[IW_CHANNELTYPE_RED] = d;
-		ctx->dithertype_by_channeltype[IW_CHANNELTYPE_GREEN] = d;
-		ctx->dithertype_by_channeltype[IW_CHANNELTYPE_BLUE] = d;
-		ctx->dithertype_by_channeltype[IW_CHANNELTYPE_GRAY] = d;
+		ctx->ditherfamily_by_channeltype[IW_CHANNELTYPE_RED] = f;
+		ctx->dithersubtype_by_channeltype[IW_CHANNELTYPE_RED] = s;
+		ctx->ditherfamily_by_channeltype[IW_CHANNELTYPE_GREEN] = f;
+		ctx->dithersubtype_by_channeltype[IW_CHANNELTYPE_GREEN] = s;
+		ctx->ditherfamily_by_channeltype[IW_CHANNELTYPE_BLUE] = f;
+		ctx->dithersubtype_by_channeltype[IW_CHANNELTYPE_BLUE] = s;
+		ctx->ditherfamily_by_channeltype[IW_CHANNELTYPE_GRAY] = f;
+		ctx->dithersubtype_by_channeltype[IW_CHANNELTYPE_GRAY] = s;
 		break;
 	}
-
 }
 
 void iw_set_color_count(struct iw_context *ctx, int channeltype, int c)

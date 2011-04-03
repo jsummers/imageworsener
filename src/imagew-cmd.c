@@ -67,8 +67,10 @@ struct params_struct {
 	int grayscale, condgrayscale;
 	double offset_r_h, offset_g_h, offset_b_h;
 	double offset_r_v, offset_g_v, offset_b_v;
-	int dither_type_all, dither_type_nonalpha, dither_type_alpha;
-	int dither_type_red, dither_type_green, dither_type_blue, dither_type_gray;
+	int dither_family_all, dither_family_nonalpha, dither_family_alpha;
+	int dither_family_red, dither_family_green, dither_family_blue, dither_family_gray;
+	int dither_subtype_all, dither_subtype_nonalpha, dither_subtype_alpha;
+	int dither_subtype_red, dither_subtype_green, dither_subtype_blue, dither_subtype_gray;
 	int color_count_all, color_count_nonalpha, color_count_alpha;
 	int color_count_red, color_count_green, color_count_blue, color_count_gray;
 	int apply_bkgd;
@@ -385,13 +387,13 @@ static int run(struct params_struct *p)
 		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALPHA,IW_DIMENSION_V,&p->resize_alg_alpha);
 	}
 
-	if(p->dither_type_all)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_type_all);
-	if(p->dither_type_nonalpha) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_type_nonalpha);
-	if(p->dither_type_red)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_type_red);
-	if(p->dither_type_green) iw_set_dither_type(ctx,IW_CHANNELTYPE_GREEN,p->dither_type_green);
-	if(p->dither_type_blue)  iw_set_dither_type(ctx,IW_CHANNELTYPE_BLUE ,p->dither_type_blue);
-	if(p->dither_type_gray)  iw_set_dither_type(ctx,IW_CHANNELTYPE_GRAY ,p->dither_type_gray);
-	if(p->dither_type_alpha) iw_set_dither_type(ctx,IW_CHANNELTYPE_ALPHA,p->dither_type_alpha);
+	if(p->dither_family_all)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_family_all  ,p->dither_subtype_all);
+	if(p->dither_family_nonalpha) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_family_nonalpha,p->dither_subtype_nonalpha);
+	if(p->dither_family_red)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_family_red  ,p->dither_subtype_red);
+	if(p->dither_family_green) iw_set_dither_type(ctx,IW_CHANNELTYPE_GREEN,p->dither_family_green,p->dither_subtype_green);
+	if(p->dither_family_blue)  iw_set_dither_type(ctx,IW_CHANNELTYPE_BLUE ,p->dither_family_blue ,p->dither_subtype_blue);
+	if(p->dither_family_gray)  iw_set_dither_type(ctx,IW_CHANNELTYPE_GRAY ,p->dither_family_gray ,p->dither_subtype_gray);
+	if(p->dither_family_alpha) iw_set_dither_type(ctx,IW_CHANNELTYPE_ALPHA,p->dither_family_alpha,p->dither_subtype_alpha);
 
 	if(p->color_count_all) iw_set_color_count  (ctx,IW_CHANNELTYPE_ALL  ,p->color_count_all);
 	if(p->color_count_nonalpha) iw_set_color_count(ctx,IW_CHANNELTYPE_NONALPHA,p->color_count_nonalpha);
@@ -780,37 +782,41 @@ done:
 	return -1;
 }
 
-static int iwcmd_string_to_dithertype(struct params_struct *p,const TCHAR *s)
+static int iwcmd_string_to_dithertype(struct params_struct *p,const TCHAR *s,int *psubtype)
 {
 	int i;
 	struct dithertable_struct {
 		const TCHAR *name;
-		int dithertype;
+		int ditherfamily;
+		int dithersubtype;
 	};
 	static const struct dithertable_struct dithertable[] = {
-		{_T("f"),IW_DITHERTYPE_FS},
-		{_T("fs"),IW_DITHERTYPE_FS},
-		{_T("o"),IW_DITHERTYPE_ORDERED},
-		{_T("halftone"),IW_DITHERTYPE_HALFTONE},
-		{_T("r"),IW_DITHERTYPE_RANDOM},
-		{_T("r2"),IW_DITHERTYPE_RANDOM2},
-		{_T("jjn"),IW_DITHERTYPE_JJN},
-		{_T("stucki"),IW_DITHERTYPE_STUCKI},
-		{_T("burkes"),IW_DITHERTYPE_BURKES},
-		{_T("sierra"),IW_DITHERTYPE_SIERRA3},
-		{_T("sierra3"),IW_DITHERTYPE_SIERRA3},
-		{_T("sierra2"),IW_DITHERTYPE_SIERRA2},
-		{_T("sierralite"),IW_DITHERTYPE_SIERRA42A},
-		{_T("atkinson"),IW_DITHERTYPE_ATKINSON},
-		{_T("none"),IW_DITHERTYPE_NONE} // This line must be last.
+	 {_T("f")         ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_FS},
+	 {_T("fs")        ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_FS},
+	 {_T("o")         ,IW_DITHERFAMILY_ORDERED,IW_DITHERSUBTYPE_DEFAULT},
+	 {_T("halftone")  ,IW_DITHERFAMILY_ORDERED,IW_DITHERSUBTYPE_HALFTONE},
+	 {_T("r")         ,IW_DITHERFAMILY_RANDOM ,IW_DITHERSUBTYPE_DEFAULT},
+	 {_T("r2")        ,IW_DITHERFAMILY_RANDOM ,IW_DITHERSUBTYPE_SAMEPATTERN},
+	 {_T("jjn")       ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_JJN},
+	 {_T("stucki")    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_STUCKI},
+	 {_T("burkes")    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_BURKES},
+	 {_T("sierra")    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA3},
+	 {_T("sierra3")   ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA3},
+	 {_T("sierra2")   ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA2},
+	 {_T("sierralite"),IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA42A},
+	 {_T("atkinson")  ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_ATKINSON},
+	 {_T("none")      ,IW_DITHERFAMILY_NONE   ,IW_DITHERSUBTYPE_DEFAULT} // This line must be last.
 	};
 
-	for(i=0; dithertable[i].dithertype!=IW_DITHERTYPE_NONE; i++) {
-		if(!_tcscmp(s,dithertable[i].name))
-			return dithertable[i].dithertype;
+	for(i=0; dithertable[i].ditherfamily!=IW_DITHERFAMILY_NONE; i++) {
+		if(!_tcscmp(s,dithertable[i].name)) {
+			*psubtype = dithertable[i].dithersubtype;
+			return dithertable[i].ditherfamily;
+		}
 	}
 
 	iwcmd_error(p,_T("Unknown dither type %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+	*psubtype = IW_DITHERSUBTYPE_DEFAULT;
 	return -1;
 }
 
@@ -1150,32 +1156,32 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->resize_alg_alpha.blur = _tstof(v);
 		break;
 	case PT_DITHER:
-		p->dither_type_all=iwcmd_string_to_dithertype(p,v);
-		if(p->dither_type_all<0) return 0;
+		p->dither_family_all=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_all);
+		if(p->dither_family_all<0) return 0;
 		break;
 	case PT_DITHERCOLOR:
-		p->dither_type_nonalpha=iwcmd_string_to_dithertype(p,v);
-		if(p->dither_type_nonalpha<0) return 0;
+		p->dither_family_nonalpha=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_nonalpha);
+		if(p->dither_family_nonalpha<0) return 0;
 		break;
 	case PT_DITHERALPHA:
-		p->dither_type_alpha=iwcmd_string_to_dithertype(p,v);
-		if(p->dither_type_alpha<0) return 0;
+		p->dither_family_alpha=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_alpha);
+		if(p->dither_family_alpha<0) return 0;
 		break;
 	case PT_DITHERRED:
-		p->dither_type_red=iwcmd_string_to_dithertype(p,v);
-		if(p->dither_type_red<0) return 0;
+		p->dither_family_red=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_red);
+		if(p->dither_family_red<0) return 0;
 		break;
 	case PT_DITHERGREEN:
-		p->dither_type_green=iwcmd_string_to_dithertype(p,v);
-		if(p->dither_type_green<0) return 0;
+		p->dither_family_green=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_green);
+		if(p->dither_family_green<0) return 0;
 		break;
 	case PT_DITHERBLUE:
-		p->dither_type_blue=iwcmd_string_to_dithertype(p,v);
-		if(p->dither_type_blue<0) return 0;
+		p->dither_family_blue=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_blue);
+		if(p->dither_family_blue<0) return 0;
 		break;
 	case PT_DITHERGRAY:
-		p->dither_type_gray=iwcmd_string_to_dithertype(p,v);
-		if(p->dither_type_gray<0) return 0;
+		p->dither_family_gray=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_gray);
+		if(p->dither_family_gray<0) return 0;
 		break;
 	case PT_CC:
 		p->color_count_all=_tstoi(v);

@@ -164,21 +164,22 @@ extern "C" {
 #define IW_DIMENSION_H 0 // The horizontal (x) dimension.
 #define IW_DIMENSION_V 1 // The vertical (y) dimension.
 
-#define IW_DITHERTYPE_NONE         0x000
-#define IW_DITHERTYPE_ORDERED      0x002
-#define IW_DITHERTYPE_RANDOM       0x003 // color channels use different patterns
-#define IW_DITHERTYPE_RANDOM2      0x004 // color channels use the same pattern
-#define IW_DITHERTYPE_HALFTONE     0x005 // A sample "halftone" ordered dither
-#define IW_DITHERTYPE_FS           0x101
-#define IW_DITHERTYPE_JJN          0x102 // Jarvis, Judice, and Ninke filter
-#define IW_DITHERTYPE_STUCKI       0x103
-#define IW_DITHERTYPE_BURKES       0x104
-#define IW_DITHERTYPE_SIERRA3      0x105
-#define IW_DITHERTYPE_SIERRA2      0x106
-#define IW_DITHERTYPE_SIERRA42A    0x107
-#define IW_DITHERTYPE_ATKINSON     0x108
-
-#define IW_DITHER_IS_FS_LIKE(x) (((x)&0x100)?1:0)
+// Do not modify the SUBTYPE definitions. They may be used as array indices, etc.
+#define IW_DITHERFAMILY_NONE         0
+#define  IW_DITHERSUBTYPE_DEFAULT      0
+#define IW_DITHERFAMILY_ORDERED      1 // (default subtype = 8x8 dispersed pattern)
+#define  IW_DITHERSUBTYPE_HALFTONE     1 // A sample "halftone" pattern.
+#define IW_DITHERFAMILY_ERRDIFF      2 // Error-diffusion dithering
+#define  IW_DITHERSUBTYPE_FS           0
+#define  IW_DITHERSUBTYPE_JJN          1 // Jarvis, Judice, and Ninke filter
+#define  IW_DITHERSUBTYPE_STUCKI       2
+#define  IW_DITHERSUBTYPE_BURKES       3
+#define  IW_DITHERSUBTYPE_SIERRA3      4
+#define  IW_DITHERSUBTYPE_SIERRA2      5
+#define  IW_DITHERSUBTYPE_SIERRA42A    6
+#define  IW_DITHERSUBTYPE_ATKINSON     7
+#define IW_DITHERFAMILY_RANDOM       3 // (default subtype = color channels use different patterns)
+#define  IW_DITHERSUBTYPE_SAMEPATTERN  1 // color channels use the same pattern
 
 #define IW_DENSITY_UNKNOWN         0
 #define IW_DENSITY_UNITS_UNKNOWN   1
@@ -258,7 +259,7 @@ void iw_set_output_profile(struct iw_context *ctx, unsigned int n);
 
 void iw_set_output_depth(struct iw_context *ctx, int bps);
 
-void iw_set_dither_type(struct iw_context *ctx, int channeltype, int d);
+void iw_set_dither_type(struct iw_context *ctx, int channeltype, int family, int subtype);
 
 // Set the max number of shades per color (or alpha) channel.
 // The shades are evenly distributed in the target color space.

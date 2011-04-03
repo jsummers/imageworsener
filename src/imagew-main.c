@@ -330,7 +330,7 @@ static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr 
 // Returns 0 if we should round down, 1 if we should round up.
 // TODO: It might be good to use a different-sized matrix for alpha channels
 // (e.g. 9x7), but I don't know how to make a good one.
-static int iw_ordered_dither(int patternnum, double fraction, int x, int y)
+static int iw_ordered_dither(int dithersubtype, double fraction, int x, int y)
 {
 	double threshhold;
 	static const float pattern[2][64] = {
@@ -355,17 +355,19 @@ static int iw_ordered_dither(int patternnum, double fraction, int x, int y)
 		 2.5/64, 8.5/64,16.5/64,26.5/64,24.5/64,14.5/64, 6.5/64, 0.5/64
 	 }};
 
-	threshhold = pattern[patternnum][(x%8) + 8*(y%8)];
+	threshhold = pattern[dithersubtype][(x%8) + 8*(y%8)];
 	return (fraction >= threshhold);
 }
 
 // Returns 0 if we should round down, 1 if we should round up.
 static int iw_random_dither(struct iw_context *ctx, double fraction, int x, int y,
-			int dithertype, int is_alpha_channel)
+			int dithersubtype, int channel)
 {
 	double threshhold;
-
-	if(dithertype==IW_DITHERTYPE_RANDOM || is_alpha_channel || !ctx->random_dither_pattern) {
+	
+	if(dithersubtype==IW_DITHERSUBTYPE_DEFAULT || !ctx->random_dither_pattern ||
+	   ctx->img2_ci[channel].channeltype==IW_CHANNELTYPE_ALPHA)
+	{
 		// If there's no common pattern allocated, assume we should not use one.
 		// And if this is an alpha channel, we never use a common pattern.
 		threshhold = ((double)rand()) / (double)RAND_MAX;
@@ -379,7 +381,7 @@ static int iw_random_dither(struct iw_context *ctx, double fraction, int x, int 
 	return 0;
 }
 
-static IW_INLINE void iw_fslike_dither(struct iw_context *ctx,int dithertype,
+static void iw_errdiff_dither(struct iw_context *ctx,int dithersubtype,
 				double err,int x,int y)
 {
 	int fwd;
@@ -389,62 +391,37 @@ static IW_INLINE void iw_fslike_dither(struct iw_context *ctx,int dithertype,
 	//  2  3  4  5  6
 	//  7  8  9 10 11
 
-	static const double iw_matrix_null[12] = {
-	                  0.0, 0.0,
-	   0.0, 0.0, 0.0, 0.0, 0.0,
-	   0.0, 0.0, 0.0, 0.0, 0.0 };
-
-	static const double iw_matrix_fs[12] = {
-	                        7.0/16, 0.0,
-	   0.0, 3.0/16, 5.0/16, 1.0/16, 0.0,
-	   0.0,    0.0,    0.0,    0.0, 0.0 };
-
-	static const double iw_matrix_jjn[12] = {
-	                           7.0/48, 5.0/48,
+	static const double matrix_list[][12] = {
+	{                          7.0/16, 0.0,     // 0 = Floyd-Steinberg
+	   0.0   , 3.0/16, 5.0/16, 1.0/16, 0.0,
+	   0.0   ,    0.0,    0.0, 0.0   , 0.0    },
+	{                          7.0/48, 5.0/48,  // 1 = JJN
 	   3.0/48, 5.0/48, 7.0/48, 5.0/48, 3.0/48,
-	   1.0/48, 3.0/48, 5.0/48, 3.0/48, 1.0/48 };
-
-	static const double iw_matrix_stucki[12] = {
-	                           8.0/42, 4.0/42,
+	   1.0/48, 3.0/48, 5.0/48, 3.0/48, 1.0/48 },
+	{                          8.0/42, 4.0/42,  // 2 = Stucki
 	   2.0/42, 4.0/42, 8.0/42, 4.0/42, 2.0/42,
-	   1.0/42, 2.0/42, 4.0/42, 2.0/42, 1.0/42 };
-
-	static const double iw_matrix_burkes[12] = {
-	                           8.0/32, 4.0/32,
+	   1.0/42, 2.0/42, 4.0/42, 2.0/42, 1.0/42 },
+	{                          8.0/32, 4.0/32,  // 3 = Burkes
 	   2.0/32, 4.0/32, 8.0/32, 4.0/32, 2.0/32,
-	   0.0, 0.0, 0.0, 0.0, 0.0 };
-
-	static const double iw_matrix_sierra3[12] = {
-	                           5.0/32, 3.0/32,
+	   0.0   , 0.0   , 0.0   , 0.0   , 0.0    },
+	{                          5.0/32, 3.0/32,  // 4 = Sierra3
 	   2.0/32, 4.0/32, 5.0/32, 4.0/32, 2.0/32,
-	      0.0, 2.0/32, 3.0/32, 2.0/32,    0.0 };
-
-	static const double iw_matrix_sierra2[12] = {
-	                           4.0/16, 3.0/16,
+	      0.0, 2.0/32, 3.0/32, 2.0/32, 0.0    },
+	{                          4.0/16, 3.0/16,  // 5 = Sierra2
 	   1.0/16, 2.0/16, 3.0/16, 2.0/16, 1.0/16,
-	   0.0, 0.0, 0.0, 0.0, 0.0 };
+	   0.0   , 0.0   , 0.0   , 0.0   , 0.0    },
+	{                          2.0/4 , 0.0,     // 6 = Sierra42a
+	   0.0   , 1.0/4 , 1.0/4 , 0.0   , 0.0,
+	   0.0   , 0.0   , 0.0   , 0.0   , 0.0    },
+	{                          1.0/8 , 1.0/8,   // 7 = Atkinson
+	   0.0   , 1.0/8 , 1.0/8 , 1.0/8 , 0.0,
+	   0.0   , 0.0   , 1.0/8 , 0.0   , 0.0    }
+	};
 
-	static const double iw_matrix_sierra42a[12] = {
-	                      2.0/4, 0.0,
-	   0.0, 1.0/4, 1.0/4,   0.0, 0.0,
-	   0.0, 0.0, 0.0, 0.0, 0.0 };
-
-	static const double iw_matrix_atkinson[12] = {
-	                      1.0/8, 1.0/8,
-	   0.0, 1.0/8, 1.0/8, 1.0/8,   0.0,
-	   0.0, 0.0,   1.0/8,   0.0,   0.0 };
-
-	switch(dithertype) {
-	case IW_DITHERTYPE_FS: m = iw_matrix_fs; break;
-	case IW_DITHERTYPE_JJN: m = iw_matrix_jjn; break;
-	case IW_DITHERTYPE_STUCKI: m = iw_matrix_stucki; break;
-	case IW_DITHERTYPE_BURKES: m = iw_matrix_burkes; break;
-	case IW_DITHERTYPE_SIERRA3: m = iw_matrix_sierra3; break;
-	case IW_DITHERTYPE_SIERRA2: m = iw_matrix_sierra2; break;
-	case IW_DITHERTYPE_SIERRA42A: m = iw_matrix_sierra42a; break;
-	case IW_DITHERTYPE_ATKINSON: m = iw_matrix_atkinson; break;
-	default: m = iw_matrix_null;
-	}
+	if(dithersubtype<=7)
+		m = matrix_list[dithersubtype];
+	else
+		m = matrix_list[0];
 
 	fwd = (y%2)?(-1):1;
 
@@ -543,10 +520,12 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 	double d_floor, d_ceil;
 	int is_exact;
 	double s_full;
-	int dithertype;
+	int ditherfamily;
 	int dd; // Dither decision: 0 to use floor, 1 to use ceil.
 
-	if(IW_DITHER_IS_FS_LIKE(ctx->img2_ci[channel].dithertype)) {
+	ditherfamily=ctx->img2_ci[channel].ditherfamily;
+
+	if(ditherfamily==IW_DITHERFAMILY_ERRDIFF) {
 		samp_lin += ctx->dither_errors[0][x];
 		// If the prior error makes the ideal brightness out of the available range,
 		// just throw away any extra.
@@ -563,49 +542,40 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 		goto okay;
 	}
 
-	// samp_lin should be between those numbers. Figure out which is closer,
-	// and use the final pixel value we figured out earlier.
+	// samp_lin should be between s_lin_floor_1 and s_lin_ceil_1. Figure out
+	// which is closer, and use the final pixel value we figured out earlier
+	// (either s_cvt_floor_full or s_cvt_ceil_full).
 	d_floor = samp_lin-s_lin_floor_1;
 	d_ceil  = s_lin_ceil_1-samp_lin;
 
-	dithertype=ctx->img2_ci[channel].dithertype;
-	if(dithertype!=IW_DITHERTYPE_NONE) {
-		if(IW_DITHER_IS_FS_LIKE(dithertype)) {
-			if(d_ceil<=d_floor) {
-				// Ceiling is closer. This pixel wil be lighter than ideal.
-				// so the error is negative, to make other pixels darker.
-				iw_fslike_dither(ctx,dithertype,-d_ceil,x,y);
-				s_full=s_cvt_ceil_full;
-			}
-			else {
-				iw_fslike_dither(ctx,dithertype,d_floor,x,y);
-				s_full=s_cvt_floor_full;
-			}
-		}
-		else if(dithertype==IW_DITHERTYPE_ORDERED) {
-			dd=iw_ordered_dither(0, d_floor/(d_floor+d_ceil),x,y);
-			s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
-		}
-		else if(dithertype==IW_DITHERTYPE_HALFTONE) {
-			dd=iw_ordered_dither(1, d_floor/(d_floor+d_ceil),x,y);
-			s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
-		}
-		else if(dithertype==IW_DITHERTYPE_RANDOM || dithertype==IW_DITHERTYPE_RANDOM2)
-		{
-			dd=iw_random_dither(ctx,d_floor/(d_floor+d_ceil),x,y,dithertype,
-				(ctx->img2_ci[channel].channeltype==IW_CHANNELTYPE_ALPHA));
-			s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
-		}
-		else {
-
-			// Unsupported dither method.
-			s_full = 0.0;
-		}
-	}
-	else {
+	if(ditherfamily==IW_DITHERFAMILY_NONE) {
 		// Not dithering. Just choose closest value.
 		if(d_ceil<=d_floor) s_full=s_cvt_ceil_full;
 		else s_full=s_cvt_floor_full;
+	}
+	else if(ditherfamily==IW_DITHERFAMILY_ERRDIFF) {
+		if(d_ceil<=d_floor) {
+			// Ceiling is closer. This pixel will be lighter than ideal.
+			// so the error is negative, to make other pixels darker.
+			iw_errdiff_dither(ctx,ctx->img2_ci[channel].dithersubtype,-d_ceil,x,y);
+			s_full=s_cvt_ceil_full;
+		}
+		else {
+			iw_errdiff_dither(ctx,ctx->img2_ci[channel].dithersubtype,d_floor,x,y);
+			s_full=s_cvt_floor_full;
+		}
+	}
+	else if(ditherfamily==IW_DITHERFAMILY_ORDERED) {
+		dd=iw_ordered_dither(ctx->img2_ci[channel].dithersubtype, d_floor/(d_floor+d_ceil),x,y);
+		s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
+	}
+	else if(ditherfamily==IW_DITHERFAMILY_RANDOM) {
+		dd=iw_random_dither(ctx,d_floor/(d_floor+d_ceil),x,y,ctx->img2_ci[channel].dithersubtype,channel);
+		s_full = dd ? s_cvt_ceil_full : s_cvt_floor_full;
+	}
+	else {
+		// Unsupported dither method.
+		s_full = 0.0;
 	}
 
 okay:
@@ -701,8 +671,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	IW_SAMPLE tmpsamp;
 	IW_SAMPLE alphasamp = 0.0;
 	IW_SAMPLE *outpix = NULL;
-	int fsdither_flag[3]; // Flags for up to 3 channels (normally 1).
-	int using_fsdither = 0; // Do any of the output channels use F-S dithering?
+	// Do any of the output channels use error-diffusion dithering?
+	int using_errdiffdither = 0;
 	int output_channel;
 
 	ctx->in_pix = NULL;
@@ -724,10 +694,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	}
 
 	// Initialize Floyd-Steinberg dithering.
-	fsdither_flag[0] = 0;
-	if(output_channel>=0 && IW_DITHER_IS_FS_LIKE(ctx->img2_ci[output_channel].dithertype)) {
-		fsdither_flag[0] = 1;
-		using_fsdither = 1;
+	if(output_channel>=0 && ctx->img2_ci[output_channel].ditherfamily==IW_DITHERFAMILY_ERRDIFF) {
+		using_errdiffdither = 1;
 		for(i=0;i<ctx->img2.width;i++) {
 			for(k=0;k<IW_DITHER_MAXROWS;k++) {
 				ctx->dither_errors[k][i] = 0.0;
@@ -762,7 +730,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		for(z=0;z<ctx->img2.width;z++) {
 			// For decent Floyd-Steinberg dithering, we need to process alternate
 			// rows in reverse order.
-			if(using_fsdither && (j%2))
+			if(using_errdiffdither && (j%2))
 				i=ctx->img2.width-1-z;
 			else
 				i=z;
@@ -801,7 +769,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 		}
 
-		if(using_fsdither) {
+		if(using_errdiffdither) {
 			// Move "next row" error data to "this row", and clear the "next row".
 			// TODO: Obviously, it would be more efficient to just swap pointers
 			// to the rows.
@@ -946,7 +914,7 @@ static int iw_process_internal(struct iw_context *ctx)
 		goto done;
 	}
 
-	if(ctx->uses_fsdither) {
+	if(ctx->uses_errdiffdither) {
 		for(k=0;k<IW_DITHER_MAXROWS;k++) {
 			ctx->dither_errors[k] = (IW_SAMPLE*)iw_malloc(ctx, ctx->img2.width * sizeof(IW_SAMPLE));
 			if(!ctx->dither_errors[k]) goto done;
@@ -1573,28 +1541,23 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	iw_set_intermed_channeltypes(ctx);
 	iw_set_out_channeltypes(ctx);
 
-	// TODO: This conditional probably has no effect anymore, due to changes
-	// elsewhere. Need to verify that.
-	// (We used to try to process as grayscale sometimes, even if the
-	// caller didn't request it.)
-	if(!ctx->to_grayscale) {
-		ctx->color_count[IW_CHANNELTYPE_GRAY] = ctx->color_count[IW_CHANNELTYPE_RED];
-		ctx->dithertype_by_channeltype[IW_CHANNELTYPE_GRAY] =
-			ctx->dithertype_by_channeltype[IW_CHANNELTYPE_RED];
-	}
-
 	for(i=0;i<ctx->img2_numchannels;i++) {
 		ctx->img2_ci[i].color_count = ctx->color_count[ctx->img2_ci[i].channeltype];
 
-		ctx->img2_ci[i].dithertype = ctx->dithertype_by_channeltype[ctx->img2_ci[i].channeltype];
+		ctx->img2_ci[i].ditherfamily = ctx->ditherfamily_by_channeltype[ctx->img2_ci[i].channeltype];
+		ctx->img2_ci[i].dithersubtype = ctx->dithersubtype_by_channeltype[ctx->img2_ci[i].channeltype];
 	}
 
 	// Scan the output channels to see whether certain types of dithering are used.
 	for(i=0;i<ctx->img2_numchannels;i++) {
-		if(IW_DITHER_IS_FS_LIKE(ctx->img2_ci[i].dithertype))
-			ctx->uses_fsdither=1;
-		else if(ctx->img2_ci[i].dithertype==IW_DITHERTYPE_RANDOM2)
+		if(ctx->img2_ci[i].ditherfamily==IW_DITHERFAMILY_ERRDIFF) {
+			ctx->uses_errdiffdither=1;
+		}
+		else if(ctx->img2_ci[i].ditherfamily==IW_DITHERFAMILY_RANDOM &&
+			ctx->img2_ci[i].dithersubtype==IW_DITHERSUBTYPE_SAMEPATTERN)
+		{
 			ctx->uses_r2dither=1;
+		}
 	}
 
 	if(!ctx->support_reduced_input_bitdepths) {
