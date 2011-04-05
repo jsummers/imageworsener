@@ -316,6 +316,27 @@ static void put_raw_sample(struct iw_context *ctx, double s,
 
 static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr *csdescr)
 {
+	if(samp_lin > 0.999999999) {
+		// This check is not for optimization; it's an attempt to work around a
+		// defect in glibc's pow() function.
+		// In 64-bit builds, bases very close to (but not equal to) 1.0 can,
+		// in rare-but-not-rare-enough cases, cause pow to take about 10,000 (!)
+		// times longer to run than it normally does. Incredible as it sounds,
+		// this is not a bug. It is by design that glibc sometimes takes 2
+		// million clock cycles to perform a single elementary math operation.
+		// Here are some examples that will trigger this problem:
+		//   pow(1.0000000000000002 , 1.5  )
+		//   pow(1.00000000000002   , 1.05 )
+		//   pow(1.0000000000000004 , 0.25 )
+		//   pow(1.0000000000000004 , 1.25 )
+		//   pow(0.999999999999994  , 0.25 )
+		//   pow(0.999999999999994  , 0.41666666666666 )
+		// Note that the last exponent is 1/2.4, which is the exponent needed for
+		// conversion to sRGB. And values very close to 1.0 are inevitably
+		// produced when resizing images with many white pixels.
+		return 1.0;
+	}
+
 	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
 		return samp_lin;
 	}
