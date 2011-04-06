@@ -6,9 +6,6 @@
 
 #include "imagew-config.h"
 
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
@@ -17,9 +14,9 @@
 #include "imagew-internals.h"
 
 // Call the caller's warning function, if defined.
-void iw_warning(struct iw_context *ctx, const TCHAR *fmt, ...)
+void iw_warning(struct iw_context *ctx, const char *fmt, ...)
 {
-	TCHAR buf[IW_ERRMSG_MAX];
+	char buf[IW_ERRMSG_MAX];
 
 	va_list ap;
 	if(!ctx->warning_fn) return;
@@ -31,7 +28,7 @@ void iw_warning(struct iw_context *ctx, const TCHAR *fmt, ...)
 	(*ctx->warning_fn)(ctx,buf);
 }
 
-void iw_seterror(struct iw_context *ctx, const TCHAR *fmt, ...)
+void iw_seterror(struct iw_context *ctx, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -39,7 +36,7 @@ void iw_seterror(struct iw_context *ctx, const TCHAR *fmt, ...)
 	ctx->error_flag = 1;
 
 	if(!ctx->error_msg) {
-		ctx->error_msg=iw_malloc_lowlevel(IW_ERRMSG_MAX*sizeof(TCHAR));
+		ctx->error_msg=iw_malloc_lowlevel(IW_ERRMSG_MAX*sizeof(char));
 		if(!ctx->error_msg) {
 			return;
 		}
@@ -50,13 +47,13 @@ void iw_seterror(struct iw_context *ctx, const TCHAR *fmt, ...)
 	va_end(ap);
 }
 
-const TCHAR *iw_get_errormsg(struct iw_context *ctx, TCHAR *buf, int buflen)
+const char *iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen)
 {
 	if(ctx->error_msg) {
-		iw_snprintf(buf,buflen,_T("%s"),ctx->error_msg);
+		iw_snprintf(buf,buflen,"%s",ctx->error_msg);
 	}
 	else {
-		iw_snprintf(buf,buflen,_T("Error message not available"));
+		iw_snprintf(buf,buflen,"Error message not available");
 	}
 
 	return buf;
@@ -75,12 +72,12 @@ size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 int iw_check_image_dimensons(struct iw_context *ctx, int w, int h)
 {
 	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
-		iw_seterror(ctx,_T("Image dimensions too large (%d%s%d)"),w,ctx->symbol_times,h);
+		iw_seterror(ctx,"Image dimensions too large (%d\xc3\x97%d)",w,h);
 		return 0;
 	}
 
 	if(w<1 || h<1) {
-		iw_seterror(ctx,_T("Invalid image dimensions (%d%s%d)"),w,ctx->symbol_times,h);
+		iw_seterror(ctx,"Invalid image dimensions (%d\xc3\x97%d)",w,h);
 		return 0;
 	}
 
@@ -117,7 +114,6 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
 	ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
 	ctx->pngcmprlevel = -1;
-	iw_set_value(ctx,IW_VAL_CHARSET,0); // Default to ASCII
 	ctx->opt_grayscale = 1;
 	ctx->opt_palette = 1;
 	ctx->opt_16_to_8 = 1;
@@ -423,52 +419,20 @@ int iw_get_version_int(void)
 	return IW_VERSION_INT;
 }
 
-TCHAR *iw_get_version_string(TCHAR *s, int s_len, int cset)
+char *iw_get_version_string(char *s, int s_len)
 {
 	int ver;
 	ver = iw_get_version_int();
-	iw_snprintf(s,s_len,_T("%d.%d.%d"),
+	iw_snprintf(s,s_len,"%d.%d.%d",
 		(ver&0xff0000)>>16, (ver&0xff00)>>8, (ver&0xff) );
 	return s;
 }
 
-// flag 0x1 = Allow Unicode characters (UTF-8 if charset is single-byte)
-TCHAR *iw_get_copyright_string(TCHAR *s, int s_len, int cset)
+char *iw_get_copyright_string(char *s, int s_len)
 {
-	const TCHAR *symbol_cpr;
-
-	if(cset==1) {
-#ifdef _UNICODE
-		symbol_cpr = _T("\xa9");
-#else
-		symbol_cpr = _T("\xc2\xa9");
-#endif
-	}
-	else {
-		symbol_cpr = _T("(c)");
-	}
-
-	iw_snprintf(s,s_len,_T("Copyright %s %s by Jason Summers"),
-		symbol_cpr,IW_COPYRIGHT_YEAR);
+	iw_snprintf(s,s_len,"Copyright \xc2\xa9 %s by Jason Summers",
+		IW_COPYRIGHT_YEAR);
 	return s;
-}
-
-static void iw_set_charset(struct iw_context *ctx, int cset)
-{
-	ctx->charset = cset;
-
-	if(cset==1) { // Unicode
-#ifdef _UNICODE
-		// UTF-16
-		ctx->symbol_times = _T("\xd7");
-#else
-		// UTF-8
-		ctx->symbol_times = _T("\xc3\x97");
-#endif
-	}
-	else {
-		ctx->symbol_times = _T("x");
-	}
 }
 
 void iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
@@ -488,9 +452,6 @@ void iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 void iw_set_value(struct iw_context *ctx, int code, int n)
 {
 	switch(code) {
-	case IW_VAL_CHARSET:
-		iw_set_charset(ctx,n);
-		break;
 	case IW_VAL_CVT_TO_GRAYSCALE:
 		ctx->to_grayscale = n;
 		break;
@@ -538,9 +499,6 @@ int iw_get_value(struct iw_context *ctx, int code)
 	int ret=0;
 
 	switch(code) {
-	case IW_VAL_CHARSET:
-		ret = ctx->charset;
-		break;
 	case IW_VAL_CVT_TO_GRAYSCALE:
 		ret = ctx->to_grayscale;
 		break;

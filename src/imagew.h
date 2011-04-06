@@ -15,14 +15,6 @@
 #endif
 #endif
 
-#ifndef TCHAR
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#else
-#define TCHAR     char
-#endif
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -33,9 +25,6 @@ extern "C" {
 
 
 //// Codes for use with iw_get_value/iw_set_value.
-
-// 0=US-ASCII, 1=Unicode (UTF8 or UTF16, depending on whether TCHAR is 1 or 2 bytes)
-#define IW_VAL_CHARSET           10
 
 // If ==1, convert to grayscale.
 #define IW_VAL_CVT_TO_GRAYSCALE  11
@@ -237,14 +226,14 @@ void iw_destroy_context(struct iw_context *ctx);
 int iw_process_image(struct iw_context *ctx);
 
 // Returns an extra pointer to buf.
-// buflen = buf size in TCHARs.
-const TCHAR *iw_get_errormsg(struct iw_context *ctx, TCHAR *buf, int buflen);
+// buflen = buf size in char's.
+const char *iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen);
 int iw_get_errorflag(struct iw_context *ctx);
 
 void iw_set_userdata(struct iw_context *ctx, void *userdata);
 void *iw_get_userdata(struct iw_context *ctx);
 
-typedef void (*iw_warningfn_type)(struct iw_context *ctx, const TCHAR *msg);
+typedef void (*iw_warningfn_type)(struct iw_context *ctx, const char *msg);
 void iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warnfn);
 
 // Set the maximum amount to allocate at one time.
@@ -324,8 +313,8 @@ const struct iw_palette *iw_get_output_palette(struct iw_context *ctx);
 void iw_set_value(struct iw_context *ctx, int code, int n);
 int iw_get_value(struct iw_context *ctx, int code);
 
-void iw_seterror(struct iw_context *ctx, const TCHAR *fmt, ...);
-void iw_warning(struct iw_context *ctx, const TCHAR *fmt, ...);
+void iw_seterror(struct iw_context *ctx, const char *fmt, ...);
+void iw_warning(struct iw_context *ctx, const char *fmt, ...);
 
 // Allocates a block of memory. Does not check the value of n.
 // Returns NULL on failure.
@@ -355,15 +344,14 @@ int iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
 // For example, 0x010203 would be version 1.2.3.
 int iw_get_version_int(void);
 
-// cset: See documentation of IW_VAL_CHARSET.
 // Returns a pointer to s.
-TCHAR *iw_get_version_string(TCHAR *s, int s_len, int cset);
-TCHAR *iw_get_copyright_string(TCHAR *s, int s_len, int cset);
+char *iw_get_version_string(char *s, int s_len);
+char *iw_get_copyright_string(char *s, int s_len);
 
 
 // These shouldn't really be public, but are used by the png/jpeg modules.
 size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
-void iw_snprintf(TCHAR *buf, size_t buflen, const TCHAR *fmt, ...);
+void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
 
 
 struct iw_iodescr;
@@ -395,14 +383,18 @@ struct iw_iodescr {
 
 int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-TCHAR *iw_get_libpng_version_string(TCHAR *s, int s_len, int cset);
-TCHAR *iw_get_zlib_version_string(TCHAR *s, int s_len, int cset);
+char *iw_get_libpng_version_string(char *s, int s_len);
+char *iw_get_zlib_version_string(char *s, int s_len);
 
 int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset);
+char *iw_get_libjpeg_version_string(char *s, int s_len);
 int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+
+// A helper function you can use to help deal with strings received
+// from the IW library.
+void iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
 
 #ifdef __cplusplus
 }

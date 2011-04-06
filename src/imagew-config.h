@@ -20,20 +20,4 @@
 #endif
 #endif
 
-#ifndef IW_WINDOWS
-#define _T(x)     x
-#define _vftprintf vfprintf
-#define _tcslen   strlen
-#define _tcscmp   strcmp
-#define _tcsicmp  strcasecmp
-#define _tcsncmp  strncmp
-#define _tstoi    atoi
-#define _tstof    atof
-#define _tfopen   fopen
-#define _tcschr   strchr
-#define _tcsrchr  strrchr
-#define _tcsdup   strdup
-#define _tmain    main
-#endif
-
 #endif // IMAGEW_CONFIG_H

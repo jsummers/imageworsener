@@ -128,6 +128,9 @@ this can probably be turned off at runtime with environment variables, such as
 by setting "LANG=C". Whether the Windows version uses Unicode is determined at
 compile time.
 
+All strings produced by the library (e.g. error messages) are encoded in UTF-8.
+Applications must convert them if necessary.
+
 Colorspaces
 -----------
 

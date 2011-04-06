@@ -6,9 +6,6 @@
 
 #include "imagew-config.h"
 
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#endif
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>

@@ -4,9 +4,6 @@
 
 #include "imagew-config.h"
 
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -179,7 +176,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 			bmpctx->bitcount=8;
 	}
 	else {
-		iw_seterror(bmpctx->ctx,_T("Internal: Bad image type for BMP"));
+		iw_seterror(bmpctx->ctx,"Internal: Bad image type for BMP");
 		goto done;
 	}
 

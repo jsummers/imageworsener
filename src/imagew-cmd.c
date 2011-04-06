@@ -16,6 +16,7 @@
 #ifdef IW_WINDOWS
 #define _CRT_SECURE_NO_WARNINGS
 #include <tchar.h>
+#include <windows.h>
 #endif
 
 #include <stdio.h>
@@ -35,6 +36,27 @@
 #endif
 
 #include "imagew.h"
+
+#ifdef IW_WINDOWS
+#include <strsafe.h>
+#endif
+
+#ifndef IW_WINDOWS
+#define TCHAR     char
+#define _T(x)     x
+#define _vftprintf vfprintf
+#define _tcslen   strlen
+#define _tcscmp   strcmp
+#define _tcsicmp  strcasecmp
+#define _tcsncmp  strncmp
+#define _tstoi    atoi
+#define _tstof    atof
+#define _tfopen   fopen
+#define _tcschr   strchr
+#define _tcsrchr  strrchr
+#define _tcsdup   strdup
+#define _tmain    main
+#endif
 
 #define IWCMD_FMT_UNKNOWN 0
 #define IWCMD_FMT_PNG  1
@@ -100,48 +122,125 @@ struct params_struct {
 	struct iw_csdescr cs_in;
 	struct iw_csdescr cs_out;
 	int unicode_output;
-	const TCHAR *symbol_arrow;
-	const TCHAR *symbol_times;
-	const TCHAR *symbol_ldquo, *symbol_rdquo;
 	int density_code;
 	double xdens, ydens;
 };
 
-static void iwcmd_vprint(struct params_struct *p, const TCHAR *fmt, va_list ap)
+// The *_native functions are used for printing user-supplied strings
+// (filenames and other command-line parameters). The *_utf8 functions are
+// used for everthing else.
+
+static void iwcmd_vprint_native(struct params_struct *p, const TCHAR *fmt, va_list ap)
 {
 	_vftprintf(stdout,fmt,ap);
 }
 
-static void iwcmd_message(struct params_struct *p, const TCHAR *fmt, ...)
+static void iwcmd_message_native(struct params_struct *p, const TCHAR *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	iwcmd_vprint(p,fmt,ap);
+	iwcmd_vprint_native(p,fmt,ap);
 	va_end(ap);
 }
 
-static void iwcmd_warning(struct params_struct *p, const TCHAR *fmt, ...)
+#if 0
+static void iwcmd_warning_native(struct params_struct *p, const TCHAR *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	iwcmd_vprint(p,fmt,ap);
+	iwcmd_vprint_native(p,fmt,ap);
 	va_end(ap);
 }
+#endif
 
-static void iwcmd_error(struct params_struct *p, const TCHAR *fmt, ...)
+static void iwcmd_error_native(struct params_struct *p, const TCHAR *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	iwcmd_vprint(p,fmt,ap);
+	iwcmd_vprint_native(p,fmt,ap);
 	va_end(ap);
 }
 
-static void my_warning_handler(struct iw_context *ctx, const TCHAR *msg)
+
+#ifdef _UNICODE
+static void iwcmd_utf8_to_utf16(const char *src, WCHAR *dst, int dstlen)
+{
+	MultiByteToWideChar(CP_UTF8,0,src,-1,dst,dstlen);
+}
+#endif
+
+#ifdef IW_WINDOWS
+static void iwcmd_utf8_to_tchar(const char *src, TCHAR *dst, int dstlen)
+{
+#ifdef _UNICODE
+	iwcmd_utf8_to_utf16(src,dst,dstlen);
+#else
+	iw_utf8_to_ascii(src,dst,dstlen);
+#endif
+}
+#endif
+
+static void iwcmd_vprint_utf8(struct params_struct *p, const char *fmt, va_list ap)
+{
+	char buf[500];
+	TCHAR buf2[500];
+
+#ifdef IW_WINDOWS
+
+	StringCbVPrintfA(buf,sizeof(buf),fmt,ap);
+#if _UNICODE
+	iwcmd_utf8_to_tchar(buf,buf2,sizeof(buf2)/sizeof(TCHAR));
+#else
+	iw_utf8_to_ascii(buf,buf2,sizeof(buf2)/sizeof(TCHAR));
+#endif
+	_tprintf(_T("%s"),buf2);
+
+#else
+
+	if(p->unicode_output) {
+		vfprintf(stdout,fmt,ap);
+	}
+	else {
+		vsnprintf(buf,sizeof(buf),fmt,ap);
+		buf[499]='\0';
+		iw_utf8_to_ascii(buf,buf2,sizeof(buf2));
+		fputs(buf2,stdout);
+	}
+
+#endif
+}
+
+static void iwcmd_message_utf8(struct params_struct *p, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	iwcmd_vprint_utf8(p,fmt,ap);
+	va_end(ap);
+}
+
+static void iwcmd_warning_utf8(struct params_struct *p, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	iwcmd_vprint_utf8(p,fmt,ap);
+	va_end(ap);
+}
+
+static void iwcmd_error_utf8(struct params_struct *p, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	iwcmd_vprint_utf8(p,fmt,ap);
+	va_end(ap);
+}
+
+
+static void my_warning_handler(struct iw_context *ctx, const char *msg)
 {
 	struct params_struct *p;
 	p = (struct params_struct *)iw_get_userdata(ctx);
 	if(!p->quiet) {
-		iwcmd_warning(p,_T("Warning: %s\n"),msg);
+		iwcmd_warning_utf8(p,"Warning: %s\n",msg);
 	}
 }
 
@@ -270,20 +369,22 @@ static int run(struct params_struct *p)
 	int old_width,old_height;
 	struct iw_iodescr readdescr;
 	struct iw_iodescr writedescr;
-	TCHAR errmsg[200];
+	char errmsg[200];
 
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
 	memset(&writedescr,0,sizeof(struct iw_iodescr));
 
-	if(!p->quiet) iwcmd_message(p,_T("%s %s %s\n"),p->infn,p->symbol_arrow,p->outfn);
+	if(!p->quiet) {
+		iwcmd_message_native(p,_T("%s "),p->infn);
+		iwcmd_message_utf8(p,"\xe2\x86\x92");
+		iwcmd_message_native(p,_T(" %s\n"),p->outfn);
+	}
 
 	ctx = iw_create_context();
 	if(!ctx) goto done;
 
 	iw_set_userdata(ctx,(void*)p);
 	iw_set_warning_fn(ctx,my_warning_handler);
-	if(p->unicode_output)
-		iw_set_value(ctx,IW_VAL_CHARSET,1);
 
 	if(p->random_seed!=0 || p->randomize) {
 		iw_set_random_seed(ctx,p->randomize, p->random_seed);
@@ -303,7 +404,7 @@ static int run(struct params_struct *p)
 	readdescr.read_fn = my_readfn;
 	readdescr.fp = (void*)_tfopen(p->infn,_T("rb"));
 	if(!readdescr.fp) {
-		iw_seterror(ctx,_T("Failed to open for reading (error code=%d)"),(int)errno);
+		iw_seterror(ctx,"Failed to open for reading (error code=%d)",(int)errno);
 		goto done;
 	}
 
@@ -311,15 +412,15 @@ static int run(struct params_struct *p)
 		p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
 
 	if(p->infmt==IWCMD_FMT_UNKNOWN) {
-		iw_seterror(ctx,_T("Unsupported input file format."));
+		iw_seterror(ctx,"Unsupported input file format.");
 		goto done;
 	}
 	else if(p->infmt==IWCMD_FMT_BMP) {
-		iw_seterror(ctx,_T("Reading BMP files is not supported."));
+		iw_seterror(ctx,"Reading BMP files is not supported.");
 		goto done;
 	}
 	else if(p->infmt==IWCMD_FMT_TIFF) {
-		iw_seterror(ctx,_T("Reading TIFF files is not supported."));
+		iw_seterror(ctx,"Reading TIFF files is not supported.");
 		goto done;
 	}
 
@@ -341,7 +442,7 @@ static int run(struct params_struct *p)
 		p->outfmt=detect_fmt_from_filename(p->outfn);
 
 	if(p->outfmt==IWCMD_FMT_UNKNOWN) {
-		iw_seterror(ctx,_T("Unknown output format; use -outfmt."));
+		iw_seterror(ctx,"Unknown output format; use -outfmt.");
 		goto done;
 	}
 
@@ -487,11 +588,11 @@ static int run(struct params_struct *p)
 		;
 	}
 	else if(p->new_width==old_width && p->new_height==old_height) {
-		iwcmd_message(p,_T("Processing (%d%s%d)\n"),p->new_width,p->symbol_times,p->new_height);
+		iwcmd_message_utf8(p,"Processing (%d\xc3\x97%d)\n",p->new_width,p->new_height);
 	}
 	else {
-		iwcmd_message(p,_T("Resizing (%d%s%d) %s (%d%s%d)\n"),old_width,p->symbol_times,old_height,
-			p->symbol_arrow,p->new_width,p->symbol_times,p->new_height);
+		iwcmd_message_utf8(p,"Resizing (%d\xc3\x97%d) \xe2\x86\x92 (%d\xc3\x97%d)\n",old_width,old_height,
+			p->new_width,p->new_height);
 	}
 
 	iw_set_output_canvas_size(ctx,p->new_width,p->new_height);
@@ -509,7 +610,7 @@ static int run(struct params_struct *p)
 	writedescr.write_fn = my_writefn;
 	writedescr.fp = (void*)_tfopen(p->outfn,_T("wb"));
 	if(!writedescr.fp) {
-		iw_seterror(ctx,_T("Failed to open for writing (error code=%d)"),(int)errno);
+		iw_seterror(ctx,"Failed to open for writing (error code=%d)",(int)errno);
 		goto done;
 	}
 
@@ -544,7 +645,7 @@ done:
 
 	if(ctx) {
 		if(iw_get_errorflag(ctx)) {
-			iwcmd_error(p,_T("imagew error: %s\n"),iw_get_errormsg(ctx,errmsg,200));
+			iwcmd_error_utf8(p,"imagew error: %s\n",iw_get_errormsg(ctx,errmsg,200));
 		}
 	}
 
@@ -778,7 +879,9 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 	}
 
 done:
-	iwcmd_error(p,_T("Unknown resize type %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+	iwcmd_error_utf8(p,"Unknown resize type \xe2\x80\x9c");
+	iwcmd_error_native(p,_T("%s"),s);
+	iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
 	return -1;
 }
 
@@ -815,7 +918,9 @@ static int iwcmd_string_to_dithertype(struct params_struct *p,const TCHAR *s,int
 		}
 	}
 
-	iwcmd_error(p,_T("Unknown dither type %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+	iwcmd_message_utf8(p,"Unknown dither type \xe2\x80\x9c");
+	iwcmd_message_native(p,_T("%s"),s);
+	iwcmd_message_utf8(p,"\xe2\x80\x9d\n");
 	*psubtype = IW_DITHERSUBTYPE_DEFAULT;
 	return -1;
 }
@@ -850,7 +955,9 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 		}
 	}
 	else {
-		iwcmd_error(p,_T("Unknown color space %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+		iwcmd_error_utf8(p,"Unknown color space \xe2\x80\x9c");
+		iwcmd_error_native(p,_T("%s"),s);
+		iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
 		return -1;
 	}
 	return 1;
@@ -881,7 +988,9 @@ static int iwcmd_process_noopt(struct params_struct *p, const TCHAR *s)
 		p->noopt_binarytrns=1;
 	}
 	else {
-		iwcmd_error(p,_T("Unknown optimization %s%s%s\n"),p->symbol_ldquo,s,p->symbol_rdquo);
+		iwcmd_error_utf8(p,"Unknown optimization \xe2\x80\x9c");
+		iwcmd_error_native(p,_T("%s"),s);
+		iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
 		return 0;
 	}
 
@@ -890,58 +999,32 @@ static int iwcmd_process_noopt(struct params_struct *p, const TCHAR *s)
 
 static void usage_message(struct params_struct *p)
 {
-	iwcmd_message(p,
-		_T("Usage: imagew [-width <n>] [-height <n>] [options] <in-file> <out-file>\n")
-		_T("Options include -filter, -grayscale, -depth, -cc, -dither, -bkgd, -cs,\n")
-		_T(" -quiet, -version.\n")
-		_T("See the readme.txt file for more information.\n")
+	iwcmd_message_utf8(p,
+		"Usage: imagew [-width <n>] [-height <n>] [options] <in-file> <out-file>\n"
+		"Options include -filter, -grayscale, -depth, -cc, -dither, -bkgd, -cs,\n"
+		" -quiet, -version.\n"
+		"See the readme.txt file for more information.\n"
 	);
 }
 
 static void do_printversion(struct params_struct *p)
 {
-	TCHAR buf[200];
-	int buflen, u;
+	char buf[200];
+	int buflen;
 	int ver;
 
 	buflen = (int)(sizeof(buf)/sizeof(TCHAR));
-	u = p->unicode_output?1:0;
 
 	ver = iw_get_version_int();
-	iwcmd_message(p,_T("ImageWorsener version %s (%d-bit)\n"),
-		iw_get_version_string(buf,buflen,u),
+	iwcmd_message_utf8(p,"ImageWorsener version %s (%d-bit)\n",
+		iw_get_version_string(buf,buflen),
 		(int)(8*sizeof(void*)) );
 
-	iwcmd_message(p,_T("%s\n"),iw_get_copyright_string(buf,buflen,u));
+	iwcmd_message_utf8(p,"%s\n",iw_get_copyright_string(buf,buflen));
 
-	iwcmd_message(p,_T("Uses libjpeg version %s\n"),iw_get_libjpeg_version_string(buf,buflen,u));
-	iwcmd_message(p,_T("Uses libpng version %s\n"),iw_get_libpng_version_string(buf,buflen,u));
-	iwcmd_message(p,_T("Uses zlib version %s\n"),iw_get_zlib_version_string(buf,buflen,u));
-}
-
-static void iwcmd_init_characters(struct params_struct *p)
-{
-	if(p->unicode_output) {
-#ifdef _UNICODE
-		// UTF-16
-		p->symbol_arrow = _T("\x2192");
-		p->symbol_times = _T("\xd7");
-		p->symbol_ldquo = _T("\x201c");
-		p->symbol_rdquo = _T("\x201d");
-#else
-		// UTF-8
-		p->symbol_arrow = _T("\xe2\x86\x92");
-		p->symbol_times = _T("\xc3\x97");
-		p->symbol_ldquo = _T("\xe2\x80\x9c");
-		p->symbol_rdquo = _T("\xe2\x80\x9d");
-#endif
-	}
-	else {
-		p->symbol_arrow = _T("->");
-		p->symbol_times = _T("x");
-		p->symbol_ldquo = _T("\"");
-		p->symbol_rdquo = _T("\"");
-	}
+	iwcmd_message_utf8(p,"Uses libjpeg version %s\n",iw_get_libjpeg_version_string(buf,buflen));
+	iwcmd_message_utf8(p,"Uses libpng version %s\n",iw_get_libpng_version_string(buf,buflen));
+	iwcmd_message_utf8(p,"Uses zlib version %s\n",iw_get_zlib_version_string(buf,buflen));
 }
 
 enum iwcmd_param_types {
@@ -1095,7 +1178,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		ps->showhelp=1;
 		break;
 	default:
-		iwcmd_error(p,_T("Unknown option %s%s%s.\n"),p->symbol_ldquo,n,p->symbol_rdquo);
+		iwcmd_error_utf8(p,"Unknown option \xe2\x80\x9c");
+		iwcmd_error_native(p,_T("%s"),n);
+		iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
 		return 0;
 	}
 
@@ -1273,7 +1358,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(v[0]=='s') p->edge_policy=IW_EDGE_POLICY_STANDARD;
 		else if(v[0]=='r') p->edge_policy=IW_EDGE_POLICY_REPLICATE;
 		else {
-			iwcmd_error(p,_T("Unknown edge policy\n"));
+			iwcmd_error_utf8(p,"Unknown edge policy\n");
 			return 0;
 		}
 		break;
@@ -1281,7 +1366,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(v[0]=='s') p->grayscale_formula=0;
 		else if(v[0]=='c') p->grayscale_formula=1;
 		else {
-			iwcmd_error(p,_T("Unknown grayscale formula\n"));
+			iwcmd_error_utf8(p,"Unknown grayscale formula\n");
 			return 0;
 		}
 		break;
@@ -1303,7 +1388,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 
 	default:
-		iwcmd_error(p,_T("Internal error: unhandled param\n"));
+		iwcmd_error_utf8(p,"Internal error: unhandled param\n");
 		return 0;
 	}
 
@@ -1350,8 +1435,6 @@ int _tmain(int argc, TCHAR* argv[])
 	p.resize_alg_y.blur = 1.0;
 	p.resize_alg_alpha.blur = 1.0;
 	p.pngcmprlevel = -1;
-
-	iwcmd_init_characters(&p);
 
 	for(i=1;i<argc;i++) {
 		if(argv[i][0]=='-' && ps.param_type==PT_NONE) {

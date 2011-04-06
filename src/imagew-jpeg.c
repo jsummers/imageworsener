@@ -4,9 +4,6 @@
 
 #include "imagew-config.h"
 
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -160,11 +157,7 @@ int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
 
-#ifdef _UNICODE
-		iw_seterror(ctx,_T("libjpeg reports error: %S"),buffer);
-#else
 		iw_seterror(ctx,"libjpeg reports error: %s",buffer);
-#endif
 
 		goto done;
 	}
@@ -202,7 +195,7 @@ int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 		img.imgtype = IW_IMGTYPE_RGB;
 	}
 	else {
-		iw_seterror(ctx,_T("Unsupported type of JPEG"));
+		iw_seterror(ctx,"Unsupported type of JPEG");
 		goto done;
 	}
 
@@ -322,12 +315,12 @@ int iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
 	iw_get_output_image(ctx,&img);
 
 	if(IW_IMGTYPE_HAS_ALPHA(img.imgtype)) {
-		iw_seterror(ctx,_T("Internal: Transparency not supported with JPEG output"));
+		iw_seterror(ctx,"Internal: Transparency not supported with JPEG output");
 		goto done;
 	}
 
 	if(img.bit_depth!=8) {
-		iw_seterror(ctx,_T("Internal: Precision %d not supported with JPEG output"),img.bit_depth);
+		iw_seterror(ctx,"Internal: Precision %d not supported with JPEG output",img.bit_depth);
 		goto done;
 	}
 
@@ -350,11 +343,7 @@ int iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
 
 		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
 
-#ifdef _UNICODE
-		iw_seterror(ctx,_T("libjpeg reports error: %S"),buffer);
-#else
 		iw_seterror(ctx,"libjpeg reports error: %s",buffer);
-#endif
 
 		goto done;
 	}
@@ -437,24 +426,20 @@ done:
 	return retval;
 }
 
-TCHAR *iw_get_libjpeg_version_string(TCHAR *s, int s_len, int cset)
+char *iw_get_libjpeg_version_string(char *s, int s_len)
 {
 	struct jpeg_error_mgr jerr;
 	const char *jv;
-	TCHAR *space_ptr;
+	char *space_ptr;
 
 	jpeg_std_error(&jerr);
 	jv = jerr.jpeg_message_table[JMSG_VERSION];
-#ifdef UNICODE
-	iw_snprintf(s,s_len,_T("%S"),jv);
-#else
-	iw_snprintf(s,s_len,_T("%s"),jv);
-#endif
+	iw_snprintf(s,s_len,"%s",jv);
 
 	// The version is probably a string like "8c  16-Jan-2011", containing
 	// both the version number and the release date. We only need the version
 	// number, so chop it off at the first space.
-	space_ptr = _tcschr(s,' ');
+	space_ptr = strchr(s,' ');
 	if(space_ptr) *space_ptr = '\0';
 	return s;
 }

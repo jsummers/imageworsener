@@ -4,9 +4,6 @@
 
 #include "imagew-config.h"
 
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -498,7 +495,7 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 		tiffctx->has_alpha_channel = 1;
 	}
 	else {
-		iw_seterror(tiffctx->ctx,_T("Internal: Bad image type for TIFF"));
+		iw_seterror(tiffctx->ctx,"Internal: Bad image type for TIFF");
 		goto done;
 	}
 

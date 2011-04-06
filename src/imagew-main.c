@@ -4,10 +4,6 @@
 
 #include "imagew-config.h"
 
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1040,7 +1036,7 @@ static void iw_set_out_channeltypes(struct iw_context *ctx)
 static void decide_output_bit_depth(struct iw_context *ctx)
 {
 	if(!(ctx->output_profile&IW_PROFILE_16BPS) && ctx->output_depth>8) {
-		iw_warning(ctx,_T("Reducing depth to 8; required by the output format."));
+		iw_warning(ctx,"Reducing depth to 8; required by the output format.");
 		ctx->output_depth=8;
 	}
 
@@ -1271,7 +1267,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 
 	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) {
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,_T("This image may have transparency, which is incompatible with the output format. A background color will be applied."));
+			iw_warning(ctx,"This image may have transparency, which is incompatible with the output format. A background color will be applied.");
 			ctx->apply_bkgd=1;
 		}
 	}
@@ -1282,12 +1278,12 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		// it before resizing), regardless of whether
 		// the user asked for it or not. It's the only strategy we support.
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,_T("This image may have transparency, which is incompatible with a channel offset. A background color will be applied."));
+			iw_warning(ctx,"This image may have transparency, which is incompatible with a channel offset. A background color will be applied.");
 			ctx->apply_bkgd=1;
 		}
 
 		if(ctx->bkgd_checkerboard) {
-			iw_warning(ctx,_T("Checkerboard backgrounds are not supported when using a channel offset."));
+			iw_warning(ctx,"Checkerboard backgrounds are not supported when using a channel offset.");
 			ctx->bkgd_checkerboard=0;
 		}
 		ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_EARLY;
@@ -1388,7 +1384,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	int strategy1, strategy2;
 
 	if(ctx->output_profile==0) {
-		iw_seterror(ctx,_T("Output profile not set"));
+		iw_seterror(ctx,"Output profile not set");
 	}
 
 	if(ctx->randomize) {
@@ -1424,7 +1420,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	if((ctx->output_profile&IW_PROFILE_ALWAYSSRGB) && ctx->img2cs.cstype!=IW_CSTYPE_SRGB) {
 		if(ctx->warn_invalid_output_csdescr) {
-			iw_warning(ctx,_T("Forcing output colorspace to sRGB; required by the output format."));
+			iw_warning(ctx,"Forcing output colorspace to sRGB; required by the output format.");
 		}
 		ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 	}
@@ -1454,7 +1450,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->offset_color_channels && ctx->to_grayscale) {
-		iw_warning(ctx,_T("Disabling channel offset, due to grayscale output."));
+		iw_warning(ctx,"Disabling channel offset, due to grayscale output.");
 		ctx->offset_color_channels=0;
 	}
 
@@ -1519,7 +1515,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->intermed_ci[0].corresponding_input_channel=0;
 		break;
 	default:
-		iw_seterror(ctx,_T("Internal error, unknown strategy %d"),strategy1);
+		iw_seterror(ctx,"Internal error, unknown strategy %d",strategy1);
 		return 0;
 	}
 
@@ -1553,7 +1549,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->intermed_ci[1].corresponding_output_channel= -1;
 		break;
 	default:
-		iw_seterror(ctx,_T("Internal error"));
+		iw_seterror(ctx,"Internal error");
 		return 0;
 	}
 

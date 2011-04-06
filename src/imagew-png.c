@@ -5,9 +5,6 @@
 #include "imagew-config.h"
 
 #define _CRT_SECURE_NO_WARNINGS
-#ifdef IW_WINDOWS
-#include <tchar.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,11 +36,7 @@ static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 	j = errinfop->jbufp;
 	ctx = errinfop->ctx;
 
-#ifdef _UNICODE
-	iw_seterror(ctx,_T("libpng reports %s error: %S"),errinfop->write_flag?_T("write"):_T("read"),err_msg);
-#else
-	iw_seterror(ctx,"libpng reports %s error: %s",errinfop->write_flag?_T("write"):_T("read"),err_msg);
-#endif
+	iw_seterror(ctx,"libpng reports %s error: %s",errinfop->write_flag?"write":"read",err_msg);
 
 	longjmp(*j, -1);
 }
@@ -332,7 +325,7 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	}
 
 	if(!is_supported) {
-		iw_seterror(ctx,_T("This PNG image type (color type=%d, bit depth=%d) is not supported"),(int)color_type,(int)bit_depth);
+		iw_seterror(ctx,"This PNG image type (color type=%d, bit depth=%d) is not supported",(int)color_type,(int)bit_depth);
 		goto done;
 	}
 
@@ -363,7 +356,7 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,_T("Read failed (png)"));
+		iw_seterror(ctx,"Read failed (png)");
 	}
 	if(png_ptr) {
 		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
@@ -521,7 +514,7 @@ int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	}
 
 	if(lpng_color_type == -1) {
-		iw_seterror(ctx,_T("Internal: Don't know how to write this image"));
+		iw_seterror(ctx,"Internal: Don't know how to write this image");
 		goto done;
 	}
 
@@ -593,7 +586,7 @@ int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,_T("Write failed"));
+		iw_seterror(ctx,"Write failed");
 	}
 	if(png_ptr) {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
@@ -604,26 +597,18 @@ done:
 	return retval;
 }
 
-TCHAR *iw_get_libpng_version_string(TCHAR *s, int s_len, int cset)
+char *iw_get_libpng_version_string(char *s, int s_len)
 {
 	const char *pv;
 	pv = png_get_libpng_ver(NULL);
-#ifdef _UNICODE
-	iw_snprintf(s,s_len,_T("%S"),pv);
-#else
-	iw_snprintf(s,s_len,_T("%s"),pv);
-#endif
+	iw_snprintf(s,s_len,"%s",pv);
 	return s;
 }
 
-TCHAR *iw_get_zlib_version_string(TCHAR *s, int s_len, int cset)
+char *iw_get_zlib_version_string(char *s, int s_len)
 {
 	const char *zv;
 	zv = zlibVersion();
-#ifdef _UNICODE
-	iw_snprintf(s,s_len,_T("%S"),zv);
-#else
-	iw_snprintf(s,s_len,_T("%s"),zv);
-#endif
+	iw_snprintf(s,s_len,"%s",zv);
 	return s;
 }

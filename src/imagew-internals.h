@@ -4,7 +4,7 @@
 
 #include "imagew.h"
 
-#define IW_COPYRIGHT_YEAR _T("2011")
+#define IW_COPYRIGHT_YEAR "2011"
 
 #ifdef IW_WINDOWS
 #define IW_INLINE __inline
@@ -218,7 +218,7 @@ struct iw_context {
 	size_t max_malloc;
 
 	int error_flag;
-	TCHAR *error_msg;
+	char *error_msg;
 
 	struct iw_opt_ctx optctx;
 
@@ -235,8 +235,8 @@ struct iw_context {
 	unsigned char opt_strip_alpha; // RGBA->RGB or GA->G
 	unsigned char opt_binary_trns; // Color-keyed binary transparency
 
-	int charset; // 0=ASCII, 1=Unicode
-	const TCHAR *symbol_times;
+	//int charset; // 0=ASCII, 1=Unicode
+	//const TCHAR *symbol_times;
 
 	int canvas_width, canvas_height;
 	int input_start_x, input_start_y, input_w, input_h;
@@ -261,8 +261,8 @@ struct iw_context {
 int iw_imgtype_num_channels(int t);
 
 // Defined imagew-util.c
-void *iw_strdup(const TCHAR *s);
-void iw_vsnprintf(TCHAR *buf, size_t buflen, const TCHAR *fmt, va_list ap);
+void *iw_strdup(const char *s);
+void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
 void iw_util_set_random_seed(int s);
 void iw_util_randomize(void);
 

@@ -1,4 +1,5 @@
 Unreleased changes
+ - Made the library use only UTF-8 for character encoding.
  - Improved resampling speed.
  - Read the background color metadata from PNG files, and use it as the
    background color in certain circumstances.
