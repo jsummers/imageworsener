@@ -14,7 +14,6 @@
 #endif
 
 #ifdef IW_WINDOWS
-#define _CRT_SECURE_NO_WARNINGS
 #include <tchar.h>
 #include <windows.h>
 #endif
@@ -27,7 +26,7 @@
 
 #ifdef IW_WINDOWS
 #include <fcntl.h>
-#include <io.h>
+#include <io.h> // for _setmode
 #endif
 
 #ifndef IW_NO_LOCALE
@@ -51,7 +50,6 @@
 #define _tcsncmp  strncmp
 #define _tstoi    atoi
 #define _tstof    atof
-#define _tfopen   fopen
 #define _tcschr   strchr
 #define _tcsrchr  strrchr
 #define _tcsdup   strdup
@@ -234,6 +232,23 @@ static void iwcmd_error_utf8(struct params_struct *p, const char *fmt, ...)
 	va_end(ap);
 }
 
+// Wrapper for fopen()
+static FILE* iwcmd_fopen(const TCHAR *fn, const TCHAR *mode)
+{
+#ifdef IW_WINDOWS
+	FILE *f = NULL;
+	errno_t ret;
+	ret = _tfopen_s(&f,fn,mode);
+	if(ret!=0) {
+		// failure
+		if(f) fclose(f);
+		f=NULL;
+	}
+	return f;
+#else
+	return fopen(fn,mode);
+#endif
+}
 
 static void my_warning_handler(struct iw_context *ctx, const char *msg)
 {
@@ -402,7 +417,7 @@ static int run(struct params_struct *p)
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 
 	readdescr.read_fn = my_readfn;
-	readdescr.fp = (void*)_tfopen(p->infn,_T("rb"));
+	readdescr.fp = (void*)iwcmd_fopen(p->infn,_T("rb"));
 	if(!readdescr.fp) {
 		iw_seterror(ctx,"Failed to open for reading (error code=%d)",(int)errno);
 		goto done;
@@ -608,7 +623,7 @@ static int run(struct params_struct *p)
 
 
 	writedescr.write_fn = my_writefn;
-	writedescr.fp = (void*)_tfopen(p->outfn,_T("wb"));
+	writedescr.fp = (void*)iwcmd_fopen(p->outfn,_T("wb"));
 	if(!writedescr.fp) {
 		iw_seterror(ctx,"Failed to open for writing (error code=%d)",(int)errno);
 		goto done;
