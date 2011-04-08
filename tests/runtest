@@ -57,7 +57,7 @@ then
 	mkdir actual
 fi
 
-rm -f actual/*.png actual/*.jpg
+rm -f actual/*.png actual/*.jpg actual/*.bmp actual/*.tif
 
 echo "Creating images..."
 
@@ -149,6 +149,9 @@ $IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace
 # Test writing BMP
 $IW srcimg/g2.png actual/bmp1.bmp -width 11
 
+# Test writing TIFF
+$IW srcimg/g4.png actual/tiff1.tif -width 11 -cc 16 -grayscale
+
 # Extra pixel density tests
 $IW srcimg/rgb8x1.png actual/dens-1.png $SCALE -filter mix
 $IW srcimg/rgb8x2.png actual/dens-2.png $SCALE -filter mix
@@ -187,7 +190,7 @@ $IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR
 echo "Checking images..."
 
 FAIL=0
-for ff in expected/*.png expected/*.jpg
+for ff in expected/*.png expected/*.jpg expected/*.bmp expected/*.tif
 do
 	f=${ff#expected/}
 	#echo $f
