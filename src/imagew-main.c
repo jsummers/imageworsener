@@ -600,19 +600,21 @@ okay:
 }
 
 static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
-		const struct iw_csdescr *in_csdescr,
-		int is_alpha_channel, int handle_alpha_flag)
+		const struct iw_csdescr *in_csdescr, int handle_alpha_flag)
 {
 	int i,j;
 	int retval=0;
 	IW_SAMPLE tmp_alpha;
 	IW_SAMPLE *inpix = NULL;
 	IW_SAMPLE *outpix = NULL;
+	int is_alpha_channel;
+	struct iw_resize_settings *rs;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
 
 	ctx->weightlist.isvalid = 0;
+	is_alpha_channel = ctx->intermed_ci[channel].channeltype==IW_CHANNELTYPE_ALPHA;
 
 	ctx->num_in_pix = ctx->input_h;
 	inpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_in_pix * sizeof(IW_SAMPLE));
@@ -624,7 +626,12 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	if(!outpix) goto done;
 	ctx->out_pix = outpix;
 
-	iw_resize_row_precalculate(ctx,IW_DIMENSION_V,ctx->intermed_ci[channel].channeltype);
+	if(ctx->use_resize_settings_alpha && is_alpha_channel)
+		rs=&ctx->resize_settings_alpha;
+	else
+		rs=&ctx->resize_settings[IW_DIMENSION_V];
+
+	iw_resize_row_precalculate(ctx,rs,ctx->intermed_ci[channel].channeltype);
 
 	for(i=0;i<ctx->input_w;i++) {
 
@@ -653,7 +660,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// Now we have a row in the right format.
 		// Resize it and store it in the right place in the intermediate array.
 
-		iw_resize_row_main(ctx,IW_DIMENSION_V,ctx->intermed_ci[channel].channeltype);
+		iw_resize_row_main(ctx,rs,IW_DIMENSION_V);
 
 		// The intermediate pixels are in ctx->out_pix. Copy them to the intermediate array.
 		for(j=0;j<ctx->intermed_height;j++) {
@@ -679,7 +686,7 @@ done:
 // 'handle_alpha_flag' must be set if an alpha channel exists and this is not
 // the alpha channel.
 static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int intermed_channel,
-		const struct iw_csdescr *out_csdescr, int is_alpha_channel, int handle_alpha_flag)
+		const struct iw_csdescr *out_csdescr, int handle_alpha_flag)
 {
 	int i,j;
 	int z;
@@ -691,6 +698,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	// Do any of the output channels use error-diffusion dithering?
 	int using_errdiffdither = 0;
 	int output_channel;
+	int is_alpha_channel;
+	struct iw_resize_settings *rs;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
@@ -700,6 +709,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	ctx->num_in_pix = ctx->intermed_width;
 	ctx->num_out_pix = ctx->img2.width;
 
+	is_alpha_channel = ctx->intermed_ci[intermed_channel].channeltype==IW_CHANNELTYPE_ALPHA;
 	output_channel = ctx->intermed_ci[intermed_channel].corresponding_output_channel;
 
 	if(!is_alpha_channel) {
@@ -720,7 +730,12 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		}
 	}
 
-	iw_resize_row_precalculate(ctx,IW_DIMENSION_H,ctx->intermed_ci[intermed_channel].channeltype);
+	if(ctx->use_resize_settings_alpha && is_alpha_channel)
+		rs=&ctx->resize_settings_alpha;
+	else
+		rs=&ctx->resize_settings[IW_DIMENSION_H];
+
+	iw_resize_row_precalculate(ctx,rs,ctx->intermed_ci[intermed_channel].channeltype);
 
 	for(j=0;j<ctx->intermed_height;j++) {
 		if(is_alpha_channel) {
@@ -733,7 +748,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 		// Resize it to out_pix
 
-		iw_resize_row_main(ctx,IW_DIMENSION_H,ctx->intermed_ci[intermed_channel].channeltype);
+		iw_resize_row_main(ctx,rs,IW_DIMENSION_H);
 
 		// Now convert the out_pix and put them in the final image.
 
@@ -820,19 +835,17 @@ static int iw_process_one_channel(struct iw_context *ctx, int channel,
 {
 	int retval = 0;
 	int handle_alpha_flag;
-	int is_alpha_channel;
-
-	is_alpha_channel = ctx->intermed_ci[channel].channeltype==IW_CHANNELTYPE_ALPHA;
 
 	// Color channels need special handling when an alpha channel is present
-	handle_alpha_flag = (IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype) && !is_alpha_channel);
+	handle_alpha_flag = (IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype) &&
+		ctx->intermed_ci[channel].channeltype!=IW_CHANNELTYPE_ALPHA);
 
-	if(!iw_process_cols_to_intermediate(ctx,channel,in_csdescr,is_alpha_channel,handle_alpha_flag))
+	if(!iw_process_cols_to_intermediate(ctx,channel,in_csdescr,handle_alpha_flag))
 	{
 		goto done;
 	}
 
-	if(!iw_process_rows_intermediate_to_final(ctx,channel,out_csdescr,is_alpha_channel, handle_alpha_flag))
+	if(!iw_process_rows_intermediate_to_final(ctx,channel,out_csdescr,handle_alpha_flag))
 	{
 		goto done;
 	}

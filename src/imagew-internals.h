@@ -255,6 +255,7 @@ struct iw_context {
 	double *output_rev_color_corr_table;
 
 	struct iw_weightlist_struct weightlist;
+	double cur_offset;
 };
 
 // Defined in imagew-main.c
@@ -267,8 +268,8 @@ void iw_util_set_random_seed(int s);
 void iw_util_randomize(void);
 
 // Defined in imagew-resize.c
-void iw_resize_row_precalculate(struct iw_context *ctx, int dimension, int channeltype);
-void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype);
+void iw_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype);
+void iw_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension);
 void iw_weightlist_free(struct iw_context *ctx);
 
 // Defined in imagew-opt.c

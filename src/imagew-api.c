@@ -381,15 +381,23 @@ void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, i
 
 	rs->family = family;
 	rs->blur_factor = blur;
+	rs->radius = 1.0; // default
 
 	switch(family) {
+	case IW_RESIZETYPE_QUADRATIC:
+		rs->radius = 1.5;
+		break;
 	case IW_RESIZETYPE_CUBIC:
+		rs->radius = 2.0;
 		if(param1 < -10.0) param1= -10.0;
 		if(param1 >  10.0) param1=  10.0;
 		if(param2 < -10.0) param2= -10.0;
 		if(param2 >  10.0) param2=  10.0;
 		ctx->resize_settings[dimension].param1 = param1; // B
 		ctx->resize_settings[dimension].param2 = param2; // C
+		break;
+	case IW_RESIZETYPE_GAUSSIAN:
+		rs->radius = 2.0;
 		break;
 	case IW_RESIZETYPE_LANCZOS:
 	case IW_RESIZETYPE_HANNING:

@@ -167,7 +167,7 @@ static void iw_add_to_weightlist(struct iw_context *ctx, int src_pix, int dst_pi
 }
 
 static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resamplefn_type rfn,
- struct iw_resize_settings *params, double offset)
+ struct iw_resize_settings *params)
 {
 	int out_pix;
 	double reduction_factor;
@@ -204,7 +204,7 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 
 	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
 
-		out_pix_center = (0.5+(double)out_pix-offset)/(double)ctx->num_out_pix;
+		out_pix_center = (0.5+(double)out_pix-ctx->cur_offset)/(double)ctx->num_out_pix;
 		pos_in_inpix = out_pix_center*(double)ctx->num_in_pix -0.5;
 
 		// There are up to radius*reduction_factor input pixels input pixels on
@@ -309,7 +309,7 @@ static void iw_resize_row_nearestneighbor(struct iw_context *ctx, double offset)
 	}
 }
 
-static void iw_pixmix_create_weightlist(struct iw_context *ctx, double offset)
+static void iw_pixmix_create_weightlist(struct iw_context *ctx)
 {
 	int cur_in_pix, cur_out_pix;
 	int safe_in_pix;
@@ -329,8 +329,8 @@ static void iw_pixmix_create_weightlist(struct iw_context *ctx, double offset)
 	cur_in_pix = 0;
 	cur_out_pix = 0;
 
-	cur_pos = (-offset)/(double)ctx->num_out_pix;
-	out_pix_right_pos = (-offset+1.0)/(double)ctx->num_out_pix;
+	cur_pos = (-ctx->cur_offset)/(double)ctx->num_out_pix;
+	out_pix_right_pos = (-ctx->cur_offset+1.0)/(double)ctx->num_out_pix;
 
 	in_pix_right_pos = ((double)(cur_in_pix+1))/(double)ctx->num_in_pix;
 	while(in_pix_right_pos<cur_pos) {
@@ -375,13 +375,13 @@ static void iw_pixmix_create_weightlist(struct iw_context *ctx, double offset)
 			// Advance cur_pos to what will be the left edge of the next output pixel.
 			cur_out_pix++;
 			cur_pos = out_pix_right_pos;
-			out_pix_right_pos = (-offset+(double)(cur_out_pix+1))/(double)ctx->num_out_pix;
+			out_pix_right_pos = (-ctx->cur_offset+(double)(cur_out_pix+1))/(double)ctx->num_out_pix;
 		}
 	}
 }
 
 // Caution: Does not support offsets.
-static void resize_row_null(struct iw_context *ctx, double offset)
+static void resize_row_null(struct iw_context *ctx)
 {
 	int i;
 	for(i=0;i<ctx->num_out_pix;i++) {
@@ -394,100 +394,72 @@ static void resize_row_null(struct iw_context *ctx, double offset)
 	}
 }
 
-void iw_resize_row_precalculate(struct iw_context *ctx, int dimension, int channeltype)
+void iw_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype)
 {
-	struct iw_resize_settings *rs;
-	double offset;
-
-	if(ctx->use_resize_settings_alpha && channeltype==IW_CHANNELTYPE_ALPHA)
-		rs=&ctx->resize_settings_alpha;
-	else
-		rs=&ctx->resize_settings[dimension];
-
-	if(rs->family<IW_FIRST_PRECALC_FILTER) return; // This algorithm doesn't precalculate anything.
-
+	// Set ctx->cur_offset, to be used as the offset until this function is
+	// called again.
 	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
-		offset=rs->channel_offset[channeltype];
+		ctx->cur_offset=rs->channel_offset[channeltype];
 	else
-		offset=0.0;
+		ctx->cur_offset=0.0;
 
-	// TODO: Maybe the radius should always be set when the resize algorithm is set.
+	if(rs->family<IW_FIRST_PRECALC_FILTER) return; // This algorithm doesn't precalculate weights.
+
 	switch(rs->family) {
 	case IW_RESIZETYPE_MIX:
-		rs->radius=1.0;
-		iw_pixmix_create_weightlist(ctx,offset);
+		iw_pixmix_create_weightlist(ctx);
 		break;
 	case IW_RESIZETYPE_HERMITE:
-		rs->radius=1.0;
-		iw_resample_row_create_weightlist(ctx,iw_filter_hermite,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_hermite,rs);
 		break;
 	case IW_RESIZETYPE_CUBIC:
-		rs->radius=2.0;
-		iw_resample_row_create_weightlist(ctx,iw_filter_generalcubic,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_generalcubic,rs);
 		break;
 	case IW_RESIZETYPE_LANCZOS:
-		iw_resample_row_create_weightlist(ctx,iw_filter_lanczos,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_lanczos,rs);
 		break;
 	case IW_RESIZETYPE_HANNING:
-		iw_resample_row_create_weightlist(ctx,iw_filter_hann,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_hann,rs);
 		break;
 	case IW_RESIZETYPE_BLACKMAN:
-		iw_resample_row_create_weightlist(ctx,iw_filter_blackman,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_blackman,rs);
 		break;
 	case IW_RESIZETYPE_SINC:
-		iw_resample_row_create_weightlist(ctx,iw_filter_sinc,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_sinc,rs);
 		break;
 	case IW_RESIZETYPE_GAUSSIAN:
-		rs->radius=2.0;
-		iw_resample_row_create_weightlist(ctx,iw_filter_gaussian,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_gaussian,rs);
 		break;
 	case IW_RESIZETYPE_LINEAR:
-		rs->radius=1.0;
-		iw_resample_row_create_weightlist(ctx,iw_filter_triangle,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_triangle,rs);
 		break;
 	case IW_RESIZETYPE_QUADRATIC:
-		rs->radius=1.5;
-		iw_resample_row_create_weightlist(ctx,iw_filter_quadratic,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_quadratic,rs);
 		break;
 	case IW_RESIZETYPE_BOX:
-		rs->radius=1.0;
-		iw_resample_row_create_weightlist(ctx,iw_filter_box,rs,offset);
+		iw_resample_row_create_weightlist(ctx,iw_filter_box,rs);
 		break;
 	}
 }
 
-void iw_resize_row_main(struct iw_context *ctx, int dimension, int channeltype)
+void iw_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension)
 {
-	struct iw_resize_settings *rs;
 	int i;
-	double offset;
-
-	// TODO: We shouldn't have to figure out rs and offset repeatedly for each
-	// row, and this code shouldn't be duplicated in iw_resize_row_precalculate().
-	if(ctx->use_resize_settings_alpha && channeltype==IW_CHANNELTYPE_ALPHA)
-		rs=&ctx->resize_settings_alpha;
-	else
-		rs=&ctx->resize_settings[dimension];
 
 	if(rs->family>=IW_FIRST_PRECALC_FILTER) {
 		iw_resample_row(ctx);
 		goto resizedone;
 	}
 
-	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
-		offset=rs->channel_offset[channeltype];
-	else
-		offset=0.0;
-
 	switch(rs->family) {
 	case IW_RESIZETYPE_NEAREST:
-		iw_resize_row_nearestneighbor(ctx,offset);
+		iw_resize_row_nearestneighbor(ctx,ctx->cur_offset);
 		break;
 	case IW_RESIZETYPE_NULL:
-		resize_row_null(ctx,offset);
+		resize_row_null(ctx);
 		break;
 	default:
-		iw_resize_row_nearestneighbor(ctx,offset);
+		iw_resize_row_nearestneighbor(ctx,ctx->cur_offset);
 		break;
 	}
 
