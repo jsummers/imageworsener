@@ -97,6 +97,7 @@ The order of the options usually does not matter.
 Options:
 
  -width <n>  -height <n>
+ -w <n>  -h <n>
    The height and width of the output image, in pixels.
 
    If neither -width nor -height are specified, the dimensions of the source

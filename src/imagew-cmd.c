@@ -1073,7 +1073,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		int has_param;
 	};
 	static const struct opt_struct opt_info[] = {
+		{_T("w"),PT_WIDTH,1},
 		{_T("width"),PT_WIDTH,1},
+		{_T("h"),PT_HEIGHT,1},
 		{_T("height"),PT_HEIGHT,1},
 		{_T("depth"),PT_DEPTH,1},
 		{_T("inputcs"),PT_INPUTCS,1},
