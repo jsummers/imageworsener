@@ -59,7 +59,7 @@ create the best image it can given the options you pass to it. For example, if
 you tell it to dither an image and resize it, it knows that it should resize
 the image first, then dither it, instead of doing it in the opposite order.
 
-In general, you don't have to tell it what color format to use. If you resize
+In general, you don't have to tell IW what color format to use. If you resize
 a bilevel image, you'll automatically get high quality grayscale image, not a
 low quality bilevel image. 
 
@@ -70,8 +70,8 @@ however, a few minor exceptions (which can be disabled):
  - It will try to keep 16-bit images at 16-bits.
  - The -condgrayscale option will keep grayscale images grayscale.
 
-ImageWorsener architecture
---------------------------
+Architecture
+------------
 
 IW has three components: The core library, the auxiliary library, and the
 command-line utility.
@@ -104,14 +104,14 @@ run-time option.) Its default is currently set to be "double", which is
 usually an 8-byte floating-point number. This may seem like overkill, and I
 admit, it probably is, at least for 8-bit target images.
 
-For 8-bit target images, switching to 4-byte floating point might affect only
-one pixel in every 50,000. For 16-bit target images, it's more like one pixel
-in every few hundred.
+For 8-bit target images, switching to 4-byte floating point affects very
+roughly one pixel in every 50,000. For 16-bit target images, it's more like one
+pixel in every few hundred.
 
 Using double precision shouldn't have too much effect on performance, at least
 if it's compiled as a 64-bit application. But it will use a lot more memory.
 
-4-byte floating-point number give you about 7 significant digits, which in
+4-byte floating-point numbers give you about 7 significant digits, which in
 extreme cases may not be quite enough. Particularly for 16-bit target images,
 when working in a linear colorspace, bright samples are much, much brighter
 than the dimmest pixels. If IW has to add a huge number of dim pixels together
@@ -122,7 +122,7 @@ Unicode
 -------
 
 Text files like this one notwithstanding, I've decided that ASCII must die. As
-simple as the text output from the command line utility is, it will use try to
+simple as the text output from the command line utility is, IW will try to
 use Unicode quotation marks, arrows, etc., if possible. In a Unix environment,
 this can probably be turned off at runtime with environment variables, such as
 by setting "LANG=C". Whether the Windows version uses Unicode is determined at
@@ -224,6 +224,16 @@ and making the image much lighter than it should be. This happens because the
 same dither pattern is used for two purposes (color threshholding and
 transparency threshholding).
 
+Cropping
+--------
+
+IW's -crop option crops the image before resizing it, completely ignoring any
+pixels outside the region to crop. This is not quite ideal. Ideally, any pixel
+that could have an effect on the pixels at the edge of the image should be kept
+around until after the resize, then the crop should be completed. This is not
+difficult in theory, but coding it would be messy enough that I haven't
+attempted it.
+
 To do
 -----
 
@@ -238,8 +248,8 @@ Features I'm considering adding:
 
 - Options to maintain PNG background colors.
 
-- Internationalization. Maybe use UTF-8 internally. I'm not sure what can be
-  done about error messages that come from libpng or libjpeg.
+- Internationalization. But I'm not sure what can be done about error messages
+  that come from libpng or libjpeg.
 
 Contributing
 ------------
