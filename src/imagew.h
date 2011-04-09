@@ -340,6 +340,10 @@ void iw_free(void *mem);
 // considered valid by IW. If not, generates a warning and returns 0.
 int iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
 
+// Returns the number of bytes in the data type used to store a sample
+// internally.
+int iw_get_sample_size(void);
+
 // Returns an integer representing the IW version.
 // For example, 0x010203 would be version 1.2.3.
 int iw_get_version_int(void);

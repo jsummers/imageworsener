@@ -422,6 +422,11 @@ void iw_set_resize_withradius(struct iw_context *ctx, int dimension, int r, int 
 	rs->radius = (double)lobes;
 }
 
+int iw_get_sample_size(void)
+{
+	return (int)sizeof(IW_SAMPLE);
+}
+
 int iw_get_version_int(void)
 {
 	return IW_VERSION_INT;

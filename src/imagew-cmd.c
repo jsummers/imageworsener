@@ -1031,9 +1031,9 @@ static void do_printversion(struct params_struct *p)
 	buflen = (int)(sizeof(buf)/sizeof(TCHAR));
 
 	ver = iw_get_version_int();
-	iwcmd_message_utf8(p,"ImageWorsener version %s (%d-bit)\n",
+	iwcmd_message_utf8(p,"ImageWorsener version %s (%d-bit, %d bits/sample)\n",
 		iw_get_version_string(buf,buflen),
-		(int)(8*sizeof(void*)) );
+		(int)(8*sizeof(void*)), 8*iw_get_sample_size() );
 
 	iwcmd_message_utf8(p,"%s\n",iw_get_copyright_string(buf,buflen));
 
