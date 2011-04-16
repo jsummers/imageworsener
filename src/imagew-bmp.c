@@ -248,6 +248,8 @@ int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	iwbmp_write_main(&bmpctx);
 
+	retval=1;
+
 done:
 	if(bmpctx.iodescr->close_fn)
 		(*bmpctx.iodescr->close_fn)(ctx,bmpctx.iodescr);

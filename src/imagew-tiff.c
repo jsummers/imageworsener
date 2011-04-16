@@ -604,6 +604,8 @@ int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	iwtiff_write_main(tiffctx);
 
+	retval=1;
+
 done:
 	if(tiffctx->iodescr->close_fn)
 		(*tiffctx->iodescr->close_fn)(ctx,tiffctx->iodescr);
