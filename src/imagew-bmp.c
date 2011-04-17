@@ -116,7 +116,7 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *bmpctx)
 	iwbmp_set_ui16(&header[12],1);    // biPlanes
 	iwbmp_set_ui16(&header[14],bmpctx->bitcount);   // biBitCount
 	//iwbmp_set_ui32(&header[16],0);    // biCompression = BI_RGB
-	//iwbmp_set_ui32(&header[20],0);    // biSizeImage
+	iwbmp_set_ui32(&header[20],(unsigned int)bmpctx->bitssize); // biSizeImage
 
 	if(bmpctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
 		dens_x = (unsigned int)(0.5+bmpctx->img->density_x);
