@@ -348,9 +348,11 @@ int iw_get_sample_size(void);
 // For example, 0x010203 would be version 1.2.3.
 int iw_get_version_int(void);
 
+// Next two functions:
+// The ctx param is to allow for the possibility of localization. It can be NULL.
 // Returns a pointer to s.
-char *iw_get_version_string(char *s, int s_len);
-char *iw_get_copyright_string(char *s, int s_len);
+char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len);
+char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len);
 
 
 // These shouldn't really be public, but are used by the png/jpeg modules.
@@ -399,6 +401,22 @@ int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 // A helper function you can use to help deal with strings received
 // from the IW library.
 void iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
+
+#define IW_STRINGTABLENUM_CORE 0
+#define IW_STRINGTABLENUM_PNG  1
+#define IW_STRINGTABLENUM_JPEG 2
+#define IW_STRINGTABLENUM_BMP  3
+#define IW_STRINGTABLENUM_TIFF 4
+#define IW_NUMSTRINGTABLES 5
+
+struct iw_stringtableentry {
+	int n;
+	const char *s;
+};
+
+void iw_set_string_table(struct iw_context *ctx, int tablenum, const struct iw_stringtableentry *st);
+const char *iw_get_string_direct(const struct iw_stringtableentry *st, int n);
+const char *iw_get_string(struct iw_context *ctx, int tablenum, int n);
 
 #ifdef __cplusplus
 }

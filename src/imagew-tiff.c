@@ -52,6 +52,20 @@ struct iwtiffwritecontext {
 	struct iw_csdescr csdescr;
 };
 
+enum iwtiff_string {
+	iws_tiff_internal_bad_type=1
+};
+
+struct iw_stringtableentry iwtiff_stringtable[] = {
+	{ iws_tiff_internal_bad_type, "Internal: Bad image type for TIFF" },
+	{ 0, NULL }
+};
+
+static const char *iwtiff_get_string(struct iw_context *ctx, int n)
+{
+	return iw_get_string(ctx,IW_STRINGTABLENUM_TIFF,n);
+}
+
 static size_t iwtiff_calc_bpr(int bpp, size_t width)
 {
 	return (bpp*width+7)/8;
@@ -495,7 +509,7 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 		tiffctx->has_alpha_channel = 1;
 	}
 	else {
-		iw_seterror(tiffctx->ctx,"Internal: Bad image type for TIFF");
+		iw_seterror(tiffctx->ctx,iwtiff_get_string(tiffctx->ctx,iws_tiff_internal_bad_type));
 		goto done;
 	}
 
@@ -580,6 +594,8 @@ int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	struct iwtiffwritecontext *tiffctx = NULL;
 	int retval=0;
 	struct iw_image img1;
+
+	iw_set_string_table(ctx,IW_STRINGTABLENUM_TIFF,iwtiff_stringtable);
 
 	memset(&img1,0,sizeof(struct iw_image));
 

@@ -53,7 +53,7 @@ const char *iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen)
 		iw_snprintf(buf,buflen,"%s",ctx->error_msg);
 	}
 	else {
-		iw_snprintf(buf,buflen,"Error message not available");
+		iw_snprintf(buf,buflen,iwcore_get_string(ctx,iws_err_msg_not_avail));
 	}
 
 	return buf;
@@ -72,12 +72,12 @@ size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 int iw_check_image_dimensons(struct iw_context *ctx, int w, int h)
 {
 	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
-		iw_seterror(ctx,"Image dimensions too large (%d\xc3\x97%d)",w,h);
+		iw_seterror(ctx,iwcore_get_string(ctx,iws_dimensions_too_large),w,h);
 		return 0;
 	}
 
 	if(w<1 || h<1) {
-		iw_seterror(ctx,"Invalid image dimensions (%d\xc3\x97%d)",w,h);
+		iw_seterror(ctx,iwcore_get_string(ctx,iws_dimensions_invalid),w,h);
 		return 0;
 	}
 
@@ -94,11 +94,32 @@ static void default_resize_settings(struct iw_resize_settings *rs)
 	}
 }
 
+struct iw_stringtableentry iw_corestringtable[] = {
+	{ iws_nomem, "Out of memory" },
+	{ iws_warn_reduce_to_8, "Reducing depth to 8; required by the output format." },
+	{ iws_warn_disable_offset_grayscale, "Disabling channel offset, due to grayscale output." },
+	{ iws_warn_trans_incomp_format, "This image may have transparency, which is incompatible with the output format. A background color will be applied." },
+	{ iws_warn_trans_incomp_offset, "This image may have transparency, which is incompatible with a channel offset. A background color will be applied." },
+	{ iws_warn_chkb_incomp_offset, "Checkerboard backgrounds are not supported when using a channel offset." },
+	{ iws_warn_output_forced_srgb, "Forcing output colorspace to sRGB; required by the output format." },
+	{ iws_output_prof_not_set, "Output profile not set" },
+	{ iws_internal_error, "Internal error" },
+	{ iws_internal_unk_strategy, "Internal error, unknown strategy %d" },
+	{ iws_image_too_large, "Image too large to process" },
+	{ iws_dimensions_too_large, "Image dimensions too large (%d\xc3\x97%d)" },
+	{ iws_dimensions_invalid, "Invalid image dimensions (%d\xc3\x97%d)" },
+	{ iws_copyright, "Copyright \xc2\xa9 %s by Jason Summers" },
+	{ iws_err_msg_not_avail, "Error message not available" },
+	{ 0, NULL }
+};
+
 static void init_context(struct iw_context *ctx)
 {
 	memset(ctx,0,sizeof(struct iw_context));
 
 	ctx->max_malloc = IW_DEFAULT_MAX_MALLOC;
+	iw_set_string_table(ctx,IW_STRINGTABLENUM_CORE,iw_corestringtable);
+
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_H]);
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
 	default_resize_settings(&ctx->resize_settings_alpha);
@@ -432,7 +453,7 @@ int iw_get_version_int(void)
 	return IW_VERSION_INT;
 }
 
-char *iw_get_version_string(char *s, int s_len)
+char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len)
 {
 	int ver;
 	ver = iw_get_version_int();
@@ -441,10 +462,14 @@ char *iw_get_version_string(char *s, int s_len)
 	return s;
 }
 
-char *iw_get_copyright_string(char *s, int s_len)
+char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
 {
-	iw_snprintf(s,s_len,"Copyright \xc2\xa9 %s by Jason Summers",
-		IW_COPYRIGHT_YEAR);
+	if(ctx) {
+		iw_snprintf(s,s_len,iwcore_get_string(ctx,iws_copyright),IW_COPYRIGHT_YEAR);
+	}
+	else {
+		iw_snprintf(s,s_len,iw_get_string_direct(iw_corestringtable,iws_copyright),IW_COPYRIGHT_YEAR);
+	}
 	return s;
 }
 
@@ -459,6 +484,18 @@ void iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 	case IW_OPT_16_TO_8: ctx->opt_16_to_8 = v; break;
 	case IW_OPT_STRIP_ALPHA: ctx->opt_strip_alpha = v; break;
 	case IW_OPT_BINARY_TRNS: ctx->opt_binary_trns = v; break;
+	}
+}
+
+// Set a string table if it's not already set.
+// You can always reset a string table by setting st=NULL.
+void iw_set_string_table(struct iw_context *ctx, int tablenum,
+	const struct iw_stringtableentry *st)
+{
+	if(tablenum<0 || tablenum>=IW_NUMSTRINGTABLES) return;
+
+	if(st==NULL || ctx->stringtable[tablenum]==NULL) {
+		ctx->stringtable[tablenum] = st;
 	}
 }
 
@@ -571,4 +608,32 @@ int iw_get_value(struct iw_context *ctx, int code)
 	}
 
 	return ret;
+}
+
+// Get a string, given a pointer to a string table.
+const char *iw_get_string_direct(const struct iw_stringtableentry *st, int n)
+{
+	int i;
+
+	if(!st) {
+		return "[missing string table]";
+	}
+
+	for(i=0; st[i].s!=NULL; i++) {
+		if(st[i].n==n) {
+			return st[i].s;
+		}
+	}
+	return "[missing string]";
+
+}
+
+// Get a string, given a string table number
+const char *iw_get_string(struct iw_context *ctx, int tablenum, int n)
+{
+	if(tablenum<0 || tablenum>=IW_NUMSTRINGTABLES || !ctx) {
+		return "[missing string table]";
+	}
+
+	return iw_get_string_direct(ctx->stringtable[tablenum],n);
 }

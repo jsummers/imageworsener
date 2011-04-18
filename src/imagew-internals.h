@@ -256,6 +256,8 @@ struct iw_context {
 
 	struct iw_weightlist_struct weightlist;
 	double cur_offset;
+
+	const struct iw_stringtableentry *stringtable[IW_NUMSTRINGTABLES];
 };
 
 // Defined in imagew-main.c
@@ -274,3 +276,23 @@ void iw_weightlist_free(struct iw_context *ctx);
 
 // Defined in imagew-opt.c
 void iw_optimize_image(struct iw_context *ctx);
+
+enum iw_corestrings {
+	iws_nomem=1,
+	iws_warn_reduce_to_8,
+	iws_warn_disable_offset_grayscale,
+	iws_warn_trans_incomp_format,
+	iws_warn_trans_incomp_offset,
+	iws_warn_chkb_incomp_offset,
+	iws_warn_output_forced_srgb,
+	iws_output_prof_not_set,
+	iws_internal_error,
+	iws_internal_unk_strategy,
+	iws_image_too_large,
+	iws_dimensions_too_large,
+	iws_dimensions_invalid,
+	iws_err_msg_not_avail,
+	iws_copyright
+};
+
+const char *iwcore_get_string(struct iw_context *ctx, int s);

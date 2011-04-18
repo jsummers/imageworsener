@@ -1032,10 +1032,10 @@ static void do_printversion(struct params_struct *p)
 
 	ver = iw_get_version_int();
 	iwcmd_message_utf8(p,"ImageWorsener version %s (%d-bit, %d bits/sample)\n",
-		iw_get_version_string(buf,buflen),
+		iw_get_version_string(NULL,buf,buflen),
 		(int)(8*sizeof(void*)), 8*iw_get_sample_size() );
 
-	iwcmd_message_utf8(p,"%s\n",iw_get_copyright_string(buf,buflen));
+	iwcmd_message_utf8(p,"%s\n",iw_get_copyright_string(NULL,buf,buflen));
 
 	iwcmd_message_utf8(p,"Uses libjpeg version %s\n",iw_get_libjpeg_version_string(buf,buflen));
 	iwcmd_message_utf8(p,"Uses libpng version %s\n",iw_get_libpng_version_string(buf,buflen));
