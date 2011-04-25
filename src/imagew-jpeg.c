@@ -12,6 +12,7 @@
 #include <jpeglib.h>
 #include <jerror.h>
 
+#define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
 #if BITS_IN_JSAMPLE != 8

@@ -15,6 +15,11 @@
 #endif
 #endif
 
+#include <stddef.h> // for size_t
+#ifdef IW_INCLUDE_UTIL_FUNCTIONS
+#include <stdarg.h> // for va_list
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -220,6 +225,45 @@ struct iw_palette {
 
 struct iw_context;
 
+struct iw_iodescr;
+typedef int (*iw_readfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes, size_t *pbytesread);
+typedef int (*iw_writefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes);
+typedef int (*iw_closefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr);
+// I/O descriptor
+struct iw_iodescr {
+	// An arbitrary pointer the app can use.
+	void *fp;
+
+	// Application-defined I/O functions:
+
+	// Must read and return all bytes requested, except on end-of-file or error.
+	// On success, set *pbytesread to nbytes, and return 1.
+	// On end of file, set *pbytesread to the number of bytes read (0 to nbytes-1),
+	// and return 1.
+	// On error, return 0.
+	iw_readfn_type read_fn;
+
+	// Must write all bytes supplied.
+	// On success, return 1.
+	// On error, return 0.
+	iw_writefn_type write_fn;
+
+	// Optional "close" function.
+	iw_closefn_type close_fn;
+};
+
+#define IW_STRINGTABLENUM_CORE 0
+#define IW_STRINGTABLENUM_PNG  1
+#define IW_STRINGTABLENUM_JPEG 2
+#define IW_STRINGTABLENUM_BMP  3
+#define IW_STRINGTABLENUM_TIFF 4
+#define IW_NUMSTRINGTABLES 5
+
+struct iw_stringtableentry {
+	int n;
+	const char *s;
+};
+
 struct iw_context *iw_create_context(void);
 void iw_destroy_context(struct iw_context *ctx);
 
@@ -306,8 +350,6 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img);
 // function fills in.
 void iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr);
 
-double iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
-
 const struct iw_palette *iw_get_output_palette(struct iw_context *ctx);
 
 void iw_set_value(struct iw_context *ctx, int code, int n);
@@ -315,6 +357,57 @@ int iw_get_value(struct iw_context *ctx, int code);
 
 void iw_seterror(struct iw_context *ctx, const char *fmt, ...);
 void iw_warning(struct iw_context *ctx, const char *fmt, ...);
+
+// Returns the number of bytes in the data type used to store a sample
+// internally.
+int iw_get_sample_size(void);
+
+// Returns an integer representing the IW version.
+// For example, 0x010203 would be version 1.2.3.
+int iw_get_version_int(void);
+
+// Next two functions:
+// The ctx param is to allow for the possibility of localization. It can be NULL.
+// Returns a pointer to s.
+char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len);
+char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len);
+
+// A helper function you can use to help deal with strings received
+// from the IW library.
+void iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
+
+void iw_set_string_table(struct iw_context *ctx, int tablenum, const struct iw_stringtableentry *st);
+const char *iw_get_string_direct(const struct iw_stringtableentry *st, int n);
+const char *iw_get_string(struct iw_context *ctx, int tablenum, int n);
+
+int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+char *iw_get_libpng_version_string(char *s, int s_len);
+char *iw_get_zlib_version_string(char *s, int s_len);
+int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+char *iw_get_libjpeg_version_string(char *s, int s_len);
+int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+
+
+#ifdef IW_INCLUDE_UTIL_FUNCTIONS
+
+// Functions used by the auxiliary library modules, but which are extraneous
+// to the main purpose of the library.
+// Applications are welcome to define IW_INCLUDE_UTIL_FUNCTIONS and use these
+// functions if they wish.
+
+void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
+void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
+
+size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
+
+double iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
+
+// Utility function to check that the supplied dimensions are
+// considered valid by IW. If not, generates a warning and returns 0.
+int iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
 
 // Allocates a block of memory. Does not check the value of n.
 // Returns NULL on failure.
@@ -336,87 +429,8 @@ void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2);
 // If mem is NULL, does nothing.
 void iw_free(void *mem);
 
-// Utility function to check that the supplied dimensions are
-// considered valid by IW. If not, generates a warning and returns 0.
-int iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
+#endif // IW_INCLUDE_UTIL_FUNCTIONS
 
-// Returns the number of bytes in the data type used to store a sample
-// internally.
-int iw_get_sample_size(void);
-
-// Returns an integer representing the IW version.
-// For example, 0x010203 would be version 1.2.3.
-int iw_get_version_int(void);
-
-// Next two functions:
-// The ctx param is to allow for the possibility of localization. It can be NULL.
-// Returns a pointer to s.
-char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len);
-char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len);
-
-
-// These shouldn't really be public, but are used by the png/jpeg modules.
-size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
-void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
-
-
-struct iw_iodescr;
-typedef int (*iw_readfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes, size_t *pbytesread);
-typedef int (*iw_writefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes);
-typedef int (*iw_closefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr);
-// I/O descriptor
-struct iw_iodescr {
-	// An arbitrary pointer the app can use.
-	void *fp;
-
-	// Application-defined I/O functions:
-
-	// Must read and return all bytes requested, except on end-of-file or error.
-	// On success, set *pbytesread to nbytes, and return 1.
-	// On end of file, set *pbytesread to the number of bytes read (0 to nbytes-1),
-	// and return 1.
-	// On error, return 0.
-	iw_readfn_type read_fn;
-
-	// Must write all bytes supplied.
-	// On success, return 1.
-	// On error, return 0.
-	iw_writefn_type write_fn;
-
-	// Optional "close" function.
-	iw_closefn_type close_fn;
-};
-
-int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-char *iw_get_libpng_version_string(char *s, int s_len);
-char *iw_get_zlib_version_string(char *s, int s_len);
-
-int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-char *iw_get_libjpeg_version_string(char *s, int s_len);
-int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-
-// A helper function you can use to help deal with strings received
-// from the IW library.
-void iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
-
-#define IW_STRINGTABLENUM_CORE 0
-#define IW_STRINGTABLENUM_PNG  1
-#define IW_STRINGTABLENUM_JPEG 2
-#define IW_STRINGTABLENUM_BMP  3
-#define IW_STRINGTABLENUM_TIFF 4
-#define IW_NUMSTRINGTABLES 5
-
-struct iw_stringtableentry {
-	int n;
-	const char *s;
-};
-
-void iw_set_string_table(struct iw_context *ctx, int tablenum, const struct iw_stringtableentry *st);
-const char *iw_get_string_direct(const struct iw_stringtableentry *st, int n);
-const char *iw_get_string(struct iw_context *ctx, int tablenum, int n);
 
 #ifdef __cplusplus
 }

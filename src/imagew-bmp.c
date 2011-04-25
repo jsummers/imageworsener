@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
 struct iwbmpwritecontext {

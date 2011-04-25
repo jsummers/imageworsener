@@ -2,6 +2,7 @@
 // Part of ImageWorsener, Copyright (c) 2011 by Jason Summers.
 // For more information, see the readme.txt file.
 
+#define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
 #define IW_COPYRIGHT_YEAR "2011"

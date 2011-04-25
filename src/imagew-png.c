@@ -12,6 +12,7 @@
 #include <png.h>
 #include <zlib.h>
 
+#define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
 
