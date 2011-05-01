@@ -108,7 +108,7 @@ struct iw_stringtableentry iw_corestringtable[] = {
 	{ iws_image_too_large, "Image too large to process" },
 	{ iws_dimensions_too_large, "Image dimensions too large (%d\xc3\x97%d)" },
 	{ iws_dimensions_invalid, "Invalid image dimensions (%d\xc3\x97%d)" },
-	{ iws_copyright, "Copyright \xc2\xa9 %s by Jason Summers" },
+	{ iws_copyright, "Copyright \xc2\xa9 %s Jason Summers" },
 	{ iws_err_msg_not_avail, "Error message not available" },
 	{ 0, NULL }
 };

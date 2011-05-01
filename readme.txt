@@ -64,7 +64,7 @@ Other information:
  - The library is (more or less) not specific to a particular file format.
  - Full support for high color depth (16 bits per sample).
  - Some options can be set differently for the different dimensions
-   (horizontal vs. vertical) or color channel (red, green, blue).
+   (horizontal vs. vertical) or color channels (red, green, blue).
  - Has several options to enable "hacks" to make it behave differently. This
    can be useful if you're trying to make it behave the same as another
    application.
@@ -134,7 +134,7 @@ Options:
    (if supported by the output format). Within this overall depth, you can
    reduce the number of colors that will actually be used, by using the
    "-cc" options.
-   Note that this doesn't necessarily determine that depth used in the output
+   Note that this doesn't necessarily determine the depth used in the output
    file. If the image can be encoded at a smaller depth with no loss of
    information, IW may choose to do that.
 
