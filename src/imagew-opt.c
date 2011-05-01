@@ -1128,6 +1128,10 @@ void iw_optimize_image(struct iw_context *ctx)
 	optctx->has_16bit_precision=0;
 	optctx->has_color=0;
 
+	if(ctx->output_sampletype!=IW_SAMPLETYPE_UINT) {
+		return;
+	}
+
 	make_transparent_pixels_black(ctx,&ctx->img2);
 
 	if(!iw_opt_scanpixels(ctx,optctx)) {

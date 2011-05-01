@@ -309,6 +309,53 @@ static void put_raw_sample(struct iw_context *ctx, double s,
 	}
 }
 
+// s is from 0.0 to 1.0
+static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
+					   int x, int y, int channel)
+{
+	union su_union {
+		unsigned char c[4];
+		iw_float32 f;
+	} su;
+	int i;
+	size_t pos;
+
+	su.f = (iw_float32)s;
+	pos = y*ctx->img2.bpr + (ctx->img2_numchannels*x + channel)*4;
+
+	for(i=0;i<4;i++) {
+		ctx->img2.pixels[pos+i] = su.c[i];
+	}
+}
+
+// s is from 0.0 to 1.0
+static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
+					   int x, int y, int channel)
+{
+	union su_union {
+		unsigned char c[8];
+		iw_float64 f;
+	} su;
+	int i;
+	size_t pos;
+
+	su.f = (iw_float32)s;
+	pos = y*ctx->img2.bpr + (ctx->img2_numchannels*x + channel)*8;
+
+	for(i=0;i<8;i++) {
+		ctx->img2.pixels[pos+i] = su.c[i];
+	}
+}
+
+static void put_raw_sample_flt(struct iw_context *ctx, double s,
+				int x, int y, int channel)
+{
+	switch(ctx->output_depth) {
+	case 32: put_raw_sample_flt32(ctx,s,x,y,channel); break;
+	case 64: put_raw_sample_flt64(ctx,s,x,y,channel); break;
+	}
+}
+
 static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr *csdescr)
 {
 	if(samp_lin > 0.999999999) {
@@ -525,6 +572,13 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 	*s_lin_ceil_1 =  cvt_int_sample_to_linear_output(ctx,ceil_int ,csdescr);
 
 	return 0;
+}
+
+// channel is the output channel
+static void put_sample_convert_from_linear_flt(struct iw_context *ctx, IW_SAMPLE samp_lin,
+					   int x, int y, int channel, const struct iw_csdescr *csdescr)
+{
+	put_raw_sample_flt(ctx,(double)samp_lin,x,y,channel);
 }
 
 // channel is the output channel
@@ -796,7 +850,10 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 				tmpsamp = (alphasamp)*(tmpsamp) + (1.0-alphasamp)*(bkcolor);
 			}
 
-			put_sample_convert_from_linear(ctx,tmpsamp,i,j,output_channel,out_csdescr);
+			if(ctx->output_sampletype==IW_SAMPLETYPE_FLOATINGPOINT)
+				put_sample_convert_from_linear_flt(ctx,tmpsamp,i,j,output_channel,out_csdescr);
+			else
+				put_sample_convert_from_linear(ctx,tmpsamp,i,j,output_channel,out_csdescr);
 
 		}
 
@@ -1045,11 +1102,32 @@ static void iw_set_out_channeltypes(struct iw_context *ctx)
 	}
 }
 
+// decide the sample type and bit depth
 static void decide_output_bit_depth(struct iw_context *ctx)
 {
-	if(!(ctx->output_profile&IW_PROFILE_16BPS) && ctx->output_depth>8) {
+	if(ctx->output_profile&IW_PROFILE_HDRI) {
+		ctx->output_sampletype=IW_SAMPLETYPE_FLOATINGPOINT;
+	}
+	else {
+		ctx->output_sampletype=IW_SAMPLETYPE_UINT;
+	}
+
+	if(ctx->output_sampletype==IW_SAMPLETYPE_UINT && !(ctx->output_profile&IW_PROFILE_16BPS)
+		&& ctx->output_depth>8)
+	{
 		iw_warning(ctx,iwcore_get_string(ctx,iws_warn_reduce_to_8));
 		ctx->output_depth=8;
+	}
+
+	if(ctx->output_sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		if(ctx->output_depth<=0)
+			ctx->output_depth=64;
+
+		if(ctx->output_depth<=32)
+			ctx->output_depth=32;
+		else
+			ctx->output_depth=64;
+		return;
 	}
 
 	if(ctx->output_depth>0) {

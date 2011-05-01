@@ -297,6 +297,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\imagew-miff.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\imagew-opt.c"
 				>
 			</File>

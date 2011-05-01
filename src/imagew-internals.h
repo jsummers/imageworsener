@@ -15,13 +15,16 @@
 
 #define IW_ERRMSG_MAX 200
 
-#if defined(IW_SAMPLETYPE_DOUBLE)
+#if defined(IWCONFIG_SAMPLE_DOUBLE)
 #define IW_SAMPLE double
-#elif defined(IW_SAMPLETYPE_FLOAT)
+#elif defined(IWCONFIG_SAMPLE_FLOAT)
 #define IW_SAMPLE float
 #else
 #define IW_SAMPLE double
 #endif
+
+#define iw_float32 float
+#define iw_float64 double
 
 #ifdef IW_64BIT
 #define IW_MAX_DIMENSION 1000000
@@ -198,6 +201,8 @@ struct iw_context {
 	// The nominal bits/sample of img2_pixels.
 	int output_depth; // TODO: This is the same as img2.bit_depth. We could remove one of them.
 	double output_maxcolorcode;
+
+	int output_sampletype; // IW_SAMPLETYPE_*
 
 	double input_maxcolorcode;
 	

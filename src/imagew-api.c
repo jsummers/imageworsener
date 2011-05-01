@@ -171,6 +171,7 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->width = ctx->optctx.width;
 	img->height = ctx->optctx.height;
 	img->imgtype = ctx->optctx.imgtype;
+	img->sampletype = ctx->output_sampletype;
 	img->bit_depth = ctx->optctx.bit_depth;
 	img->pixels = (unsigned char*)ctx->optctx.pixelsptr;
 	img->bpr = ctx->optctx.bpr;
@@ -214,10 +215,7 @@ void iw_set_output_profile(struct iw_context *ctx, unsigned int n)
 
 void iw_set_output_depth(struct iw_context *ctx, int bps)
 {
-	if(bps<=8)
-		ctx->output_depth = 8;
-	else
-		ctx->output_depth = 16;
+	ctx->output_depth = bps;
 }
 
 void iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)

@@ -104,10 +104,14 @@ extern "C" {
 #define IW_PROFILE_PAL4       0x0800
 #define IW_PROFILE_PAL8       0x1000
 
+#define IW_PROFILE_ALWAYSLINEAR  0x2000
+#define IW_PROFILE_HDRI          0x4000 // Supports floating-point samples
+
 #define IW_PROFILE_PNG   0x1f7f // all but ALWAYSSRGB
 #define IW_PROFILE_BMP   0x1a80 // PAL1,PAL4,PAL8,ALWAYSSRGB
 #define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
 #define IW_PROFILE_TIFF  0x186b // TRANSPARENCY,GRAYSCALE,GRAY{1,4},PAL{4,8},16BPS
+#define IW_PROFILE_MIFF  0x6003 // TRANSPARENCY,GRAYSCALE,ALWAYSLINEAR,HDRI
 
 #define IW_RESIZETYPE_AUTO          0x01
 #define IW_RESIZETYPE_NULL          0x02
@@ -134,6 +138,9 @@ extern "C" {
 
 #define IW_IMGTYPE_IS_GRAY(x)   (((x)&0x001)?1:0)
 #define IW_IMGTYPE_HAS_ALPHA(x) (((x)&0x100)?1:0)
+
+#define IW_SAMPLETYPE_UINT          0
+#define IW_SAMPLETYPE_FLOATINGPOINT 1
 
 // The CHANNELTYPE definitions must not be changed. They are used as array indices.
 #define IW_CHANNELTYPE_RED    0
@@ -204,6 +211,7 @@ struct iw_csdescr {
 struct iw_image {
 	int imgtype;  // IW_IMGTYPE_*
 	int bit_depth;
+	int sampletype; // IW_SAMPLETYPE_*
 	int width, height;
 	unsigned char *pixels;
 	size_t bpr; // bytes per row
@@ -257,7 +265,8 @@ struct iw_iodescr {
 #define IW_STRINGTABLENUM_JPEG 2
 #define IW_STRINGTABLENUM_BMP  3
 #define IW_STRINGTABLENUM_TIFF 4
-#define IW_NUMSTRINGTABLES 5
+#define IW_STRINGTABLENUM_MIFF 5
+#define IW_NUMSTRINGTABLES 6
 
 struct iw_stringtableentry {
 	int n;
@@ -389,6 +398,7 @@ int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 char *iw_get_libjpeg_version_string(char *s, int s_len);
 int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 
 
 #ifdef IW_INCLUDE_UTIL_FUNCTIONS

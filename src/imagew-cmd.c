@@ -61,6 +61,7 @@
 #define IWCMD_FMT_JPEG 2
 #define IWCMD_FMT_BMP  3
 #define IWCMD_FMT_TIFF 4
+#define IWCMD_FMT_MIFF 5
 
 struct rgb_color {
 	double r,g,b;
@@ -268,6 +269,7 @@ static int get_fmt_from_name(const TCHAR *s)
 	if(!_tcscmp(s,_T("bmp"))) return IWCMD_FMT_BMP;
 	if(!_tcscmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
 	if(!_tcscmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
+	if(!_tcscmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -284,6 +286,7 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 	if(!_tcsicmp(s,_T("bmp"))) return IWCMD_FMT_BMP;
 	if(!_tcsicmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
 	if(!_tcsicmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
+	if(!_tcsicmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -438,6 +441,10 @@ static int run(struct params_struct *p)
 		iw_seterror(ctx,"Reading TIFF files is not supported.");
 		goto done;
 	}
+	else if(p->infmt==IWCMD_FMT_MIFF) {
+		iw_seterror(ctx,"Reading MIFF files is not supported.");
+		goto done;
+	}
 
 	if(p->infmt==IWCMD_FMT_JPEG) {
 		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
@@ -471,6 +478,9 @@ static int run(struct params_struct *p)
 	}
 	else if(p->outfmt==IWCMD_FMT_TIFF) {
 		iw_set_output_profile(ctx,IW_PROFILE_TIFF);
+	}
+	else if(p->outfmt==IWCMD_FMT_MIFF) {
+		iw_set_output_profile(ctx,IW_PROFILE_MIFF);
 	}
 	else {
 		iw_set_output_profile(ctx,IW_PROFILE_PNG);
@@ -642,6 +652,9 @@ static int run(struct params_struct *p)
 	}
 	else if(p->outfmt==IWCMD_FMT_TIFF) {
 		if(!iw_write_tiff_file(ctx,&writedescr)) goto done;
+	}
+	else if(p->outfmt==IWCMD_FMT_MIFF) {
+		if(!iw_write_miff_file(ctx,&writedescr)) goto done;
 	}
 	else {
 		if(p->pngcmprlevel >= 0)
