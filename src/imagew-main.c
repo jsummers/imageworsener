@@ -295,13 +295,6 @@ static IW_INLINE void put_raw_sample_8(struct iw_context *ctx, double s,
 {
 	unsigned char tmpui8;
 
-	size_t z;
-
-	z = y*ctx->img2.bpr + ctx->img2_numchannels*x + channel;
-	if(x==1 && y==0) {
-		z=z;
-	}
-
 	tmpui8 = (unsigned char)(0.5+s);
 	ctx->img2.pixels[y*ctx->img2.bpr + ctx->img2_numchannels*x + channel] = tmpui8;
 }
