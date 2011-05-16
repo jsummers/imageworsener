@@ -266,9 +266,6 @@ struct iw_context {
 	const struct iw_stringtableentry *stringtable[IW_NUMSTRINGTABLES];
 };
 
-// Defined in imagew-main.c
-int iw_imgtype_num_channels(int t);
-
 // Defined imagew-util.c
 void *iw_strdup(const char *s);
 void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);

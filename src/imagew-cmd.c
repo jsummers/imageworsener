@@ -315,6 +315,9 @@ static int detect_fmt_of_file(FILE *fp)
 	else if((buf[0]==0x49 || buf[0]==0x4d) && buf[1]==buf[0]) {
 		fmt=IWCMD_FMT_TIFF;
 	}
+	else if(buf[0]==0x69 && buf[1]==0x64) {
+		fmt=IWCMD_FMT_MIFF;
+	}
 
 done:
 	return fmt;
@@ -441,13 +444,12 @@ static int run(struct params_struct *p)
 		iw_seterror(ctx,"Reading TIFF files is not supported.");
 		goto done;
 	}
-	else if(p->infmt==IWCMD_FMT_MIFF) {
-		iw_seterror(ctx,"Reading MIFF files is not supported.");
-		goto done;
-	}
 
 	if(p->infmt==IWCMD_FMT_JPEG) {
 		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
+	}
+	else if(p->infmt==IWCMD_FMT_MIFF) {
+		if(!iw_read_miff_file(ctx,&readdescr)) goto done;
 	}
 	else {
 		if(!iw_read_png_file(ctx,&readdescr)) goto done;

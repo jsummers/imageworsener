@@ -398,6 +398,7 @@ int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 char *iw_get_libjpeg_version_string(char *s, int s_len);
 int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 
 
@@ -410,6 +411,8 @@ int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 
 void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
 void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
+
+int iw_imgtype_num_channels(int t);
 
 size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
 
@@ -438,6 +441,8 @@ void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2);
 // Free memory allocated by an iw_malloc* function.
 // If mem is NULL, does nothing.
 void iw_free(void *mem);
+
+int iw_get_host_endianness(void);
 
 #endif // IW_INCLUDE_UTIL_FUNCTIONS
 

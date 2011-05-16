@@ -211,3 +211,20 @@ void iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 	}
 	dst[s.dp] = '\0';
 }
+
+// Returns 0 if running on a big-endian system, 1 for little-endian.
+int iw_get_host_endianness(void)
+{
+	union en_union {
+		unsigned char c[4];
+		int ii;
+	} en;
+
+	// Test the host's endianness.
+	en.c[0]=0;
+	en.ii = 1;
+	if(en.c[0]!=0) {
+		return 1;
+	}
+	return 0;
+}
