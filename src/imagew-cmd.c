@@ -80,6 +80,8 @@ struct params_struct {
 	int quiet;
 	int new_width;
 	int new_height;
+	int rel_width_flag, rel_height_flag;
+	double rel_width, rel_height;
 	struct resize_alg resize_alg_x;
 	struct resize_alg resize_alg_y;
 	struct resize_alg resize_alg_alpha;
@@ -380,6 +382,14 @@ static int my_writefn(struct iw_context *ctx, struct iw_iodescr *iodescr, const 
 	return 1;
 }
 
+static int iwcmd_calc_rel_size(double rel, int d)
+{
+	int n;
+	n = (int)(0.5 + rel * (double)d);
+	if(n<1) n=1;
+	return n;
+}
+
 static int run(struct params_struct *p)
 {
 	int retval = 0;
@@ -583,6 +593,13 @@ static int run(struct params_struct *p)
 	if(p->new_height<0) p->new_height = -1;
 	if(p->new_width==0) p->new_width = 1;
 	if(p->new_height==0) p->new_height = 1;
+
+	if(p->rel_width_flag) {
+		p->new_width = iwcmd_calc_rel_size(p->rel_width, old_width);
+	}
+	if(p->rel_height_flag) {
+		p->new_height = iwcmd_calc_rel_size(p->rel_height, old_height);
+	}
 
 	if(p->new_width == -1 && p->new_height == -1) {
 		// Neither -width nor -height specified. Keep image the same size.
@@ -1219,16 +1236,31 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 	return 1;
 }
 
+static void iwcmd_read_w_or_h(struct params_struct *p, const TCHAR *v,
+   int *new_d, int *rel_flag, double *new_rel_d)
+{
+	if(v[0]=='x') {
+		// This is a relative size like "x1.5".
+		*rel_flag = 1;
+		*new_rel_d = _tstof(&v[1]);
+	}
+	else {
+		// This is a number of pixels.
+		*new_d = _tstoi(v);
+		return;
+	}
+}
+
 static int process_option_arg(struct params_struct *p, struct parsestate_struct *ps, const TCHAR *v)
 {
 	int ret;
 
 	switch(ps->param_type) {
 	case PT_WIDTH:
-		p->new_width=_tstoi(v);
+		iwcmd_read_w_or_h(p,v,&p->new_width,&p->rel_width_flag,&p->rel_width);
 		break;
 	case PT_HEIGHT:
-		p->new_height=_tstoi(v);
+		iwcmd_read_w_or_h(p,v,&p->new_height,&p->rel_height_flag,&p->rel_height);
 		break;
 	case PT_DEPTH:
 		p->depth=_tstoi(v);

@@ -1,5 +1,8 @@
-Version 0.9.2 - 7 Apr 2011
+Unreleased changes
+ - Support for image sizes that are relative to the original image size.
  - Moved strings to string tables.
+
+Version 0.9.2 - 7 Apr 2011
  - Made the library use only UTF-8 for character encoding.
  - Improved resampling speed.
  - Read the background color metadata from PNG files, and use it as the

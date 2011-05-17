@@ -98,7 +98,10 @@ Options:
 
  -width <n>  -height <n>
  -w <n>  -h <n>
-   The height and width of the output image, in pixels.
+   The height and width of the output image. <n> is normally the number of
+   pixels.
+   If you use a prefix of "x", for example "-w x1.5", then the new size will
+   instead be that number multiplied by the size of the source image.
 
    If neither -width nor -height are specified, the dimensions of the source
    image will be used.
