@@ -96,6 +96,40 @@ static IW_INLINE IW_SAMPLE linear_to_gamma_sample(IW_SAMPLE v_linear, double gam
 	return pow(v_linear,1.0/gamma);
 }
 
+static IW_INLINE IW_SAMPLE get_raw_sample_flt64(struct iw_context *ctx,
+	   int x, int y, int channel)
+{
+	size_t z;
+	int k;
+	union su_union {
+		unsigned char c[8];
+		iw_float64 f;
+	} su;
+
+	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*8;
+	for(k=0;k<8;k++) {
+		su.c[k]=ctx->img1.pixels[z+k];
+	}
+	return (IW_SAMPLE)su.f;
+}
+
+static IW_INLINE IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
+	   int x, int y, int channel)
+{
+	size_t z;
+	int k;
+	union su_union {
+		unsigned char c[4];
+		iw_float32 f;
+	} su;
+
+	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*4;
+	for(k=0;k<4;k++) {
+		su.c[k]=ctx->img1.pixels[z+k];
+	}
+	return (IW_SAMPLE)su.f;
+}
+
 static IW_INLINE unsigned int get_raw_sample_16(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
@@ -173,6 +207,14 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 {
 	unsigned int v;
 	int chtype;
+
+	if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		if(ctx->img1.bit_depth==64) {
+			return get_raw_sample_flt64(ctx,x,y,channel);
+		}
+		return get_raw_sample_flt32(ctx,x,y,channel);
+	}
+
 	v = get_raw_sample_int(ctx,x,y,channel);
 	if(!ctx->support_reduced_input_bitdepths)
 		return ((double)v) / ctx->input_maxcolorcode;
@@ -238,6 +280,32 @@ static IW_SAMPLE cvt_int_sample_to_linear_output(struct iw_context *ctx,
 	return x_to_linear_sample(s,csdescr);
 }
 
+// Same as get_sample_cvt_to_linear, but for floating-point input.
+static IW_SAMPLE get_sample_fltpt_cvt_to_linear(struct iw_context *ctx,
+  int x, int y, int channel, const struct iw_csdescr *csdescr)
+{
+	IW_SAMPLE v1,v2,v3;
+	//IW_SAMPLE r,g,b;
+	int ch;
+
+	ch = ctx->intermed_ci[channel].corresponding_input_channel;
+
+	if(ctx->intermed_ci[channel].cvt_to_grayscale) {
+		v1 = get_raw_sample(ctx,x,y,ch+0);
+		v2 = get_raw_sample(ctx,x,y,ch+1);
+		v3 = get_raw_sample(ctx,x,y,ch+2);
+		// Currently, we only support linear floating point samples.
+		//r = cvt_int_sample_to_linear(ctx,v1,csdescr);
+		//g = cvt_int_sample_to_linear(ctx,v2,csdescr);
+		//b = cvt_int_sample_to_linear(ctx,v3,csdescr);
+		return iw_color_to_grayscale(ctx,v1,v2,v3);
+	}
+
+	v1 = get_raw_sample(ctx,x,y,ch);
+	//return cvt_int_sample_to_linear(ctx,v1,csdescr);
+	return v1;
+}
+
 // Return a sample, converted to a linear colorspace if it isn't already in one.
 // Channel is the output channel number.
 static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
@@ -246,6 +314,10 @@ static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
 	unsigned int v1,v2,v3;
 	IW_SAMPLE r,g,b;
 	int ch;
+
+	if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		return get_sample_fltpt_cvt_to_linear(ctx, x, y, channel, csdescr);
+	}
 
 	ch = ctx->intermed_ci[channel].corresponding_input_channel;
 
@@ -1138,7 +1210,7 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 		return;
 	}
 
-	if(ctx->img1.bit_depth>8)
+	if(ctx->img1.bit_depth>8 && ctx->img1.sampletype==IW_SAMPLETYPE_UINT)
 		ctx->output_depth=16;
 	else
 		ctx->output_depth=8;
@@ -1430,7 +1502,14 @@ static void init_channel_info(struct iw_context *ctx)
 	// By default, use the same gamma (etc.) for the output
 	// as the input had.
 	if(!ctx->caller_set_output_csdescr) {
-		ctx->img2cs = ctx->img1cs; // struct copy
+		if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+			// Exception (hack): Because we always floating point data with a linear
+			// colorspace, don't assume the output file should be linear in that case.
+			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
+		}
+		else {
+			ctx->img2cs = ctx->img1cs; // struct copy
+		}
 	}
 
 	ctx->img2.imgtype = ctx->img1.imgtype; // default
@@ -1508,11 +1587,16 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->input_w>(ctx->img1.width-ctx->input_start_x)) ctx->input_w=ctx->img1.width-ctx->input_start_x;
 	if(ctx->input_h>(ctx->img1.height-ctx->input_start_y)) ctx->input_h=ctx->img1.height-ctx->input_start_y;
 
-	if((ctx->output_profile&IW_PROFILE_ALWAYSSRGB) && ctx->img2cs.cstype!=IW_CSTYPE_SRGB) {
-		if(ctx->warn_invalid_output_csdescr) {
-			iw_warning(ctx,iwcore_get_string(ctx,iws_warn_output_forced_srgb));
+	if(ctx->output_profile&IW_PROFILE_ALWAYSSRGB) {
+		if(ctx->img2cs.cstype!=IW_CSTYPE_SRGB) {
+			if(ctx->warn_invalid_output_csdescr) {
+				iw_warning(ctx,iwcore_get_string(ctx,iws_warn_output_forced_srgb));
+			}
+			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 		}
-		ctx->img2cs.cstype = IW_CSTYPE_SRGB;
+	}
+	else if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
+		ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
 	}
 
 	ctx->input_maxcolorcode = (double)((1 << ctx->img1.bit_depth)-1);
@@ -1667,7 +1751,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 
-	if(!ctx->support_reduced_input_bitdepths) {
+	if(!ctx->support_reduced_input_bitdepths && ctx->img1.sampletype==IW_SAMPLETYPE_UINT) {
 		iw_make_x_to_linear_table(ctx,&ctx->input_color_corr_table,&ctx->img1,&ctx->img1cs);
 	}
 
