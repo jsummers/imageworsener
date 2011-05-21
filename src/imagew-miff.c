@@ -45,6 +45,9 @@ struct iwmiffreadcontext {
 	int error_flag;
 	int has_alpha;
 	int is_grayscale;
+	int density_units; // 0=unknown, 1=cm
+	int density_known;
+	double density_x, density_y;
 	struct iw_csdescr csdescr;
 };
 
@@ -78,6 +81,17 @@ static unsigned char iwmiff_read_byte(struct iwmiffreadcontext *rctx)
 		return '\0';
 	}
 	return buf[0];
+}
+
+static void iwmiff_parse_density(struct iwmiffreadcontext *rctx, const char *val)
+{
+	char *p;
+
+	p=strchr(val,'x');
+	if(!p) return;
+	rctx->density_x = atof(val);
+	rctx->density_y = atof(&p[1]);
+	rctx->density_known = 1;
 }
 
 // Called for each attribute in the header of a MIFF file.
@@ -140,6 +154,14 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_sampleformat));
 			rctx->error_flag=1;
 		}
+	}
+	else if(!strcmp(name,"units")) {
+		if(!strcmp(val,"PixelsPerCentimeter")) {
+			rctx->density_units=1;
+		}
+	}
+	else if(!strcmp(name,"resolution")) {
+		iwmiff_parse_density(rctx,val);
 	}
 }
 
@@ -344,26 +366,25 @@ int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	img.sampletype = IW_SAMPLETYPE_FLOATINGPOINT;
 
-	if(!iwmiff_read_header(&rctx)) {
+	if(!iwmiff_read_header(&rctx))
 		goto done;
+
+	if(!iw_check_image_dimensons(rctx.ctx,img.width,img.height))
+		goto done;
+
+	if(rctx.is_grayscale)
+		img.imgtype = rctx.has_alpha ? IW_IMGTYPE_GRAYA : IW_IMGTYPE_GRAY;
+	else
+		img.imgtype = rctx.has_alpha ? IW_IMGTYPE_RGBA : IW_IMGTYPE_RGB;
+
+	if(rctx.density_known && rctx.density_units==1) {
+		img.density_x = rctx.density_x*100.0;
+		img.density_y = rctx.density_y*100.0;
+		img.density_code = IW_DENSITY_UNITS_PER_METER;
 	}
 
-	if(rctx.is_grayscale) {
-		if(rctx.has_alpha)
-			img.imgtype = IW_IMGTYPE_GRAYA;
-		else
-			img.imgtype = IW_IMGTYPE_GRAY;
-	}
-	else {
-		if(rctx.has_alpha)
-			img.imgtype = IW_IMGTYPE_RGBA;
-		else
-			img.imgtype = IW_IMGTYPE_RGB;
-	}
-
-	if(!iwmiff_read_pixels(&rctx)) {
+	if(!iwmiff_read_pixels(&rctx))
 		goto done;
-	}
 
 	iw_set_input_image(ctx, &img);
 
@@ -429,10 +450,12 @@ static void iwmiff_write_header(struct iwmiffwritecontext *wctx)
 	}
 
 	iwmiff_write_sz(wctx,"compression=None  quality=0\n");
-	//units=PixelsPerCentimeter
-	//resolution=28.35x28.35
-	//page=1x1+0+0
-	//rendering-intent=Perceptual
+
+	if(wctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
+		iwmiff_write_sz(wctx,"units=PixelsPerCentimeter\n");
+		iwmiff_writef(wctx,"resolution=%.2fx%.2f\n",wctx->img->density_x/100.0,wctx->img->density_y/100.0);
+	}
+
 	iwmiff_write_sz(wctx,"gamma=1.0\n");
 	iwmiff_write_sz(wctx,"quantum:format={floating-point}\n");
 
