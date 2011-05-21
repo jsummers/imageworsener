@@ -13,11 +13,21 @@
 #include "imagew.h"
 
 enum iwmiff_string {
-	iws_miff_internal_bad_type=1
+	iws_miff_internal_bad_type=1,
+	iws_miff_unsupp_class,
+	iws_miff_unsupp_colorspace,
+	iws_miff_unsupp_depth,
+	iws_miff_unsupp_compression,
+	iws_miff_unsupp_sampleformat
 };
 
 struct iw_stringtableentry iwmiff_stringtable[] = {
 	{ iws_miff_internal_bad_type, "Internal: Bad image type for MIFF" },
+	{ iws_miff_unsupp_class, "MIFF: Unsupported image class" },
+	{ iws_miff_unsupp_colorspace, "MIFF: Unsupported colorspace" },
+	{ iws_miff_unsupp_depth, "MIFF: Unsupported bit depth" },
+	{ iws_miff_unsupp_compression, "MIFF: Unsupported compression" },
+	{ iws_miff_unsupp_sampleformat, "MIFF: Unsupported sample format" },
 	{ 0, NULL }
 };
 
@@ -38,22 +48,22 @@ struct iwmiffreadcontext {
 	struct iw_csdescr csdescr;
 };
 
-static int iwmiff_read(struct iwmiffreadcontext *miffreadctx,
+static int iwmiff_read(struct iwmiffreadcontext *rctx,
 		unsigned char *buf, size_t buflen)
 {
 	int ret;
 	size_t bytesread = 0;
 
-	ret = (*miffreadctx->iodescr->read_fn)(miffreadctx->ctx,miffreadctx->iodescr,
+	ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
 		buf,buflen,&bytesread);
 	if(!ret || bytesread!=buflen) {
-		miffreadctx->read_error_flag=1;
+		rctx->read_error_flag=1;
 		return 0;
 	}
 	return 1;
 }
 
-static unsigned char iwmiff_read_byte(struct iwmiffreadcontext *miffreadctx)
+static unsigned char iwmiff_read_byte(struct iwmiffreadcontext *rctx)
 {
 	unsigned char buf[1];
 	int ret;
@@ -61,80 +71,79 @@ static unsigned char iwmiff_read_byte(struct iwmiffreadcontext *miffreadctx)
 
 	// TODO: buffering
 
-	ret = (*miffreadctx->iodescr->read_fn)(miffreadctx->ctx,miffreadctx->iodescr,
+	ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
 		buf,1,&bytesread);
 	if(!ret || bytesread!=1) {
-		miffreadctx->read_error_flag=1;
+		rctx->read_error_flag=1;
 		return '\0';
 	}
 	return buf[0];
 }
 
 // Called for each attribute in the header of a MIFF file.
-static void iwmiff_found_attribute(struct iwmiffreadcontext *miffreadctx,
+static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
   const char *name, const char *val)
 {
 	double tmpd;
 
-	if(miffreadctx->error_flag) return;
+	if(rctx->error_flag) return;
 
 	if(!strcmp(name,"matte")) {
-		if(val[0]=='T') miffreadctx->has_alpha = 1;
+		if(val[0]=='T') rctx->has_alpha = 1;
 	}
 	else if(!strcmp(name,"class")) {
 		if(strcmp(val,"DirectClass")) {
-			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported image class");
-			miffreadctx->error_flag=1;
+			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_class));
+			rctx->error_flag=1;
 		}
 	}
 	else if(!strcmp(name,"columns")) {
-		miffreadctx->img->width = atoi(val);
+		rctx->img->width = atoi(val);
 	}
 	else if(!strcmp(name,"rows")) {
-		miffreadctx->img->height = atoi(val);
+		rctx->img->height = atoi(val);
 	}
 	else if(!strcmp(name,"colorspace")) {
 		if(!strcmp(val,"RGB")) {
 			;
 		}
 		else if(!strcmp(val,"Gray")) {
-			miffreadctx->is_grayscale = 1;
+			rctx->is_grayscale = 1;
 		}
 		else {
-			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported colorspace");
-			miffreadctx->error_flag=1;
+			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_colorspace));
+			rctx->error_flag=1;
 		}
 	}
 	else if(!strcmp(name,"depth")) {
-		miffreadctx->img->bit_depth = atoi(val);
-		if(miffreadctx->img->bit_depth!=32 && miffreadctx->img->bit_depth!=64) {
-			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported bit depth");
-			miffreadctx->error_flag=1;
+		rctx->img->bit_depth = atoi(val);
+		if(rctx->img->bit_depth!=32 && rctx->img->bit_depth!=64) {
+			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_depth));
+			rctx->error_flag=1;
 		}
 	}
 	else if(!strcmp(name,"compression")) {
 		if(strcmp(val,"None")) {
-			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported compression");
-			miffreadctx->error_flag=1;
+			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_compression));
+			rctx->error_flag=1;
 		}
 	}
 	else if(!strcmp(name,"gamma")) {
 		tmpd =  atof(val);
 		if(tmpd>=0.00001 && tmpd<=10.0) {
-			miffreadctx->csdescr.cstype = IW_CSTYPE_GAMMA;
-			miffreadctx->csdescr.gamma = 1.0/tmpd;
+			rctx->csdescr.cstype = IW_CSTYPE_GAMMA;
+			rctx->csdescr.gamma = 1.0/tmpd;
 		}
 	}
 	else if(!strcmp(name,"quantum")) {
 		if(strcmp(val,"floating-point")) {
-			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported sample format");
-			miffreadctx->error_flag=1;
+			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_sampleformat));
+			rctx->error_flag=1;
 		}
 	}
 }
 
-//static void iwmiff_append_char(
-static int read_miff_header(struct iwmiffreadcontext *miffreadctx)
+static int iwmiff_read_header(struct iwmiffreadcontext *rctx)
 {
 	char name[101];
 	char val[101];
@@ -155,10 +164,10 @@ static int read_miff_header(struct iwmiffreadcontext *miffreadctx)
 	st=STATE_NEUTRAL;
 
 	while(1) {
-		if(miffreadctx->error_flag) return 0;
+		if(rctx->error_flag) return 0;
 
-		b=(char)iwmiff_read_byte(miffreadctx);
-		if(miffreadctx->read_error_flag) {
+		b=(char)iwmiff_read_byte(rctx);
+		if(rctx->read_error_flag) {
 			return 0;
 		}
 
@@ -201,7 +210,7 @@ static int read_miff_header(struct iwmiffreadcontext *miffreadctx)
 		{
 			// Unquoted value terminated by whitespace, or
 			// quoted value terminated by '}'.
-			iwmiff_found_attribute(miffreadctx,name,val);
+			iwmiff_found_attribute(rctx,name,val);
 			name[0]='\0'; namelen=0;
 			val[0]='\0'; vallen=0;
 			st=STATE_NEUTRAL;
@@ -220,20 +229,20 @@ static int read_miff_header(struct iwmiffreadcontext *miffreadctx)
 	}
 
 	// Skip the byte after the ":", which is usually Ctrl-Z.
-	(void)iwmiff_read_byte(miffreadctx);
-	if(miffreadctx->read_error_flag || miffreadctx->error_flag) {
+	(void)iwmiff_read_byte(rctx);
+	if(rctx->read_error_flag || rctx->error_flag) {
 		return 0;
 	}
 	return 1;
 }
 
-static void iwmiffread_convert_row32(struct iwmiffreadcontext *miffreadctx,
+static void iwmiffr_convert_row32(struct iwmiffreadcontext *rctx,
   const unsigned char *src, unsigned char *dst, int nsamples)
 {
 	int i;
 	int k;
 
-	if(miffreadctx->host_little_endian) {
+	if(rctx->host_little_endian) {
 		for(i=0;i<nsamples;i++) {
 			for(k=0;k<4;k++) {
 				dst[i*4+k] = src[i*4+3-k];
@@ -245,13 +254,13 @@ static void iwmiffread_convert_row32(struct iwmiffreadcontext *miffreadctx,
 	}
 }
 
-static void iwmiffread_convert_row64(struct iwmiffreadcontext *miffreadctx,
+static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
   const unsigned char *src, unsigned char *dst, int nsamples)
 {
 	int i;
 	int k;
 
-	if(miffreadctx->host_little_endian) {
+	if(rctx->host_little_endian) {
 		for(i=0;i<nsamples;i++) {
 			for(k=0;k<8;k++) {
 				dst[i*8+k] = src[i*8+7-k];
@@ -263,7 +272,7 @@ static void iwmiffread_convert_row64(struct iwmiffreadcontext *miffreadctx,
 	}
 }
 
-static int read_miff_bits(struct iwmiffreadcontext *miffreadctx)
+static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 {
 	int samples_per_pixel_used;
 	int samples_per_pixel_alloc;
@@ -275,34 +284,34 @@ static int read_miff_bits(struct iwmiffreadcontext *miffreadctx)
 	int j;
 	struct iw_image *img;
 
-	img = miffreadctx->img;
+	img = rctx->img;
 
 	samples_per_pixel_used = iw_imgtype_num_channels(img->imgtype);
 
-	samples_per_pixel_alloc = miffreadctx->has_alpha ? 4 : 3;
+	samples_per_pixel_alloc = rctx->has_alpha ? 4 : 3;
 
 	samples_per_row_used = samples_per_pixel_used * img->width;
 	samples_per_row_alloc = samples_per_pixel_alloc * img->width;
 
 	tmprowsize = (img->bit_depth/8)*samples_per_row_alloc;
-	tmprow = iw_malloc(miffreadctx->ctx,tmprowsize);
+	tmprow = iw_malloc(rctx->ctx,tmprowsize);
 	if(!tmprow) goto done;
 	memset(tmprow,0,tmprowsize);
 
 	img->bpr = tmprowsize;
 
-	img->pixels = (unsigned char*)iw_malloc_large(miffreadctx->ctx, img->bpr, img->height);
+	img->pixels = (unsigned char*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
 	if(!img->pixels) goto done;
 
 	for(j=0;j<img->height;j++) {
-		if(!iwmiff_read(miffreadctx,tmprow,tmprowsize))
+		if(!iwmiff_read(rctx,tmprow,tmprowsize))
 			goto done;
 
 		if(img->bit_depth==32) {
-			iwmiffread_convert_row32(miffreadctx,tmprow,&img->pixels[j*img->bpr],samples_per_row_used);
+			iwmiffr_convert_row32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row_used);
 		}
 		else if(img->bit_depth==64) {
-			iwmiffread_convert_row64(miffreadctx,tmprow,&img->pixels[j*img->bpr],samples_per_row_used);
+			iwmiffr_convert_row64(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row_used);
 		}
 	}
 
@@ -316,49 +325,49 @@ done:
 int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
-	struct iwmiffreadcontext miffreadctx;
+	struct iwmiffreadcontext rctx;
 	int retval=0;
 
-	memset(&miffreadctx,0,sizeof(struct iwmiffreadcontext));
+	memset(&rctx,0,sizeof(struct iwmiffreadcontext));
 	memset(&img,0,sizeof(struct iw_image));
 
-	miffreadctx.ctx = ctx;
-	miffreadctx.host_little_endian = iw_get_host_endianness();
-	miffreadctx.iodescr = iodescr;
-	miffreadctx.img = &img;
+	rctx.ctx = ctx;
+	rctx.host_little_endian = iw_get_host_endianness();
+	rctx.iodescr = iodescr;
+	rctx.img = &img;
 
 	// Assume unlabeled images are sRGB
-	miffreadctx.csdescr.cstype = IW_CSTYPE_SRGB;
-	miffreadctx.csdescr.sRGB_intent = IW_sRGB_INTENT_PERCEPTUAL;
+	rctx.csdescr.cstype = IW_CSTYPE_SRGB;
+	rctx.csdescr.sRGB_intent = IW_sRGB_INTENT_PERCEPTUAL;
 
 	iw_set_string_table(ctx,IW_STRINGTABLENUM_MIFF,iwmiff_stringtable);
 
 	img.sampletype = IW_SAMPLETYPE_FLOATINGPOINT;
 
-	if(!read_miff_header(&miffreadctx)) {
+	if(!iwmiff_read_header(&rctx)) {
 		goto done;
 	}
 
-	if(miffreadctx.is_grayscale) {
-		if(miffreadctx.has_alpha)
+	if(rctx.is_grayscale) {
+		if(rctx.has_alpha)
 			img.imgtype = IW_IMGTYPE_GRAYA;
 		else
 			img.imgtype = IW_IMGTYPE_GRAY;
 	}
 	else {
-		if(miffreadctx.has_alpha)
+		if(rctx.has_alpha)
 			img.imgtype = IW_IMGTYPE_RGBA;
 		else
 			img.imgtype = IW_IMGTYPE_RGB;
 	}
 
-	if(!read_miff_bits(&miffreadctx)) {
+	if(!iwmiff_read_pixels(&rctx)) {
 		goto done;
 	}
 
 	iw_set_input_image(ctx, &img);
 
-	iw_set_input_colorspace(ctx,&miffreadctx.csdescr);
+	iw_set_input_colorspace(ctx,&rctx.csdescr);
 
 	retval = 1;
 
@@ -380,17 +389,17 @@ struct iwmiffwritecontext {
 	struct iw_image *img;
 };
 
-static void iwmiff_write(struct iwmiffwritecontext *miffctx, const void *buf, size_t n)
+static void iwmiff_write(struct iwmiffwritecontext *wctx, const void *buf, size_t n)
 {
-	(*miffctx->iodescr->write_fn)(miffctx->ctx,miffctx->iodescr,buf,n);
+	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 }
 
-static void iwmiff_write_sz(struct iwmiffwritecontext *miffctx, const char *s)
+static void iwmiff_write_sz(struct iwmiffwritecontext *wctx, const char *s)
 {
-	iwmiff_write(miffctx,s,strlen(s));
+	iwmiff_write(wctx,s,strlen(s));
 }
 
-static void iwmiff_writef(struct iwmiffwritecontext *miffctx, const char *fmt, ...)
+static void iwmiff_writef(struct iwmiffwritecontext *wctx, const char *fmt, ...)
 {
 	char buf[500];
 	va_list ap;
@@ -399,45 +408,45 @@ static void iwmiff_writef(struct iwmiffwritecontext *miffctx, const char *fmt, .
 	iw_vsnprintf(buf,sizeof(buf),fmt,ap);
 	va_end(ap);
 
-	iwmiff_write_sz(miffctx,buf);
+	iwmiff_write_sz(wctx,buf);
 }
 
-static void iwmiff_write_miff_header(struct iwmiffwritecontext *miffctx)
+static void iwmiff_write_header(struct iwmiffwritecontext *wctx)
 {
-	iwmiff_write_sz(miffctx,"id=ImageMagick  version=1.0\n");
-	iwmiff_writef(miffctx,"class=DirectClass  colors=0  matte=%s\n",miffctx->has_alpha?"True":"False");
-	iwmiff_writef(miffctx,"columns=%d  rows=%d  depth=%d\n",miffctx->img->width,
-		miffctx->img->height,miffctx->img->bit_depth);
+	iwmiff_write_sz(wctx,"id=ImageMagick  version=1.0\n");
+	iwmiff_writef(wctx,"class=DirectClass  colors=0  matte=%s\n",wctx->has_alpha?"True":"False");
+	iwmiff_writef(wctx,"columns=%d  rows=%d  depth=%d\n",wctx->img->width,
+		wctx->img->height,wctx->img->bit_depth);
 
-	if(miffctx->img->imgtype==IW_IMGTYPE_GRAY) {
-		iwmiff_write_sz(miffctx,"type=Grayscale\ncolorspace=Gray\n");
+	if(wctx->img->imgtype==IW_IMGTYPE_GRAY) {
+		iwmiff_write_sz(wctx,"type=Grayscale\ncolorspace=Gray\n");
 	}
-	else if(miffctx->img->imgtype==IW_IMGTYPE_GRAYA) {
-		iwmiff_write_sz(miffctx,"type=GrayscaleMatte\ncolorspace=Gray\n");
+	else if(wctx->img->imgtype==IW_IMGTYPE_GRAYA) {
+		iwmiff_write_sz(wctx,"type=GrayscaleMatte\ncolorspace=Gray\n");
 	}
 	else {
-		iwmiff_write_sz(miffctx,"colorspace=RGB\n");
+		iwmiff_write_sz(wctx,"colorspace=RGB\n");
 	}
 
-	iwmiff_write_sz(miffctx,"compression=None  quality=0\n");
+	iwmiff_write_sz(wctx,"compression=None  quality=0\n");
 	//units=PixelsPerCentimeter
 	//resolution=28.35x28.35
 	//page=1x1+0+0
 	//rendering-intent=Perceptual
-	iwmiff_write_sz(miffctx,"gamma=1.0\n");
-	iwmiff_write_sz(miffctx,"quantum:format={floating-point}\n");
+	iwmiff_write_sz(wctx,"gamma=1.0\n");
+	iwmiff_write_sz(wctx,"quantum:format={floating-point}\n");
 
-	iwmiff_write(miffctx,"\x0c\x0a\x3a\x1a",4);
+	iwmiff_write(wctx,"\x0c\x0a\x3a\x1a",4);
 }
 
-static void iwmiffwrite_convert_row32(struct iwmiffwritecontext *miffctx,
+static void iwmiffw_convert_row32(struct iwmiffwritecontext *wctx,
 	const unsigned char *srcrow, unsigned char *dstrow, int numsamples)
 {
 	int i,j;
 
 	// The MIFF format is barely documented, but apparently it uses
 	// big-endian byte order.
-	if(miffctx->host_little_endian) {
+	if(wctx->host_little_endian) {
 		for(i=0;i<numsamples;i++) {
 			for(j=0;j<4;j++) {
 				dstrow[i*4+j] = srcrow[i*4+3-j];
@@ -449,12 +458,12 @@ static void iwmiffwrite_convert_row32(struct iwmiffwritecontext *miffctx,
 	}
 }
 
-static void iwmiffwrite_convert_row64(struct iwmiffwritecontext *miffctx,
+static void iwmiffw_convert_row64(struct iwmiffwritecontext *wctx,
 	const unsigned char *srcrow, unsigned char *dstrow, int numsamples)
 {
 	int i,j;
 
-	if(miffctx->host_little_endian) {
+	if(wctx->host_little_endian) {
 		for(i=0;i<numsamples;i++) {
 			for(j=0;j<8;j++) {
 				dstrow[i*8+j] = srcrow[i*8+7-j];
@@ -466,7 +475,7 @@ static void iwmiffwrite_convert_row64(struct iwmiffwritecontext *miffctx,
 	}
 }
 
-static int iwmiff_write_main(struct iwmiffwritecontext *miffctx)
+static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 {
 	struct iw_image *img;
 	unsigned char *dstrow = NULL;
@@ -477,10 +486,10 @@ static int iwmiff_write_main(struct iwmiffwritecontext *miffctx)
 	int num_channels_alloc;
 	int num_channels_used;
 
-	img = miffctx->img;
+	img = wctx->img;
 
 	if(img->sampletype!=IW_SAMPLETYPE_FLOATINGPOINT) {
-		iw_seterror(miffctx->ctx,iwmiff_get_string(miffctx->ctx,iws_miff_internal_bad_type));
+		iw_seterror(wctx->ctx,iwmiff_get_string(wctx->ctx,iws_miff_internal_bad_type));
 		goto done;
 	}
 
@@ -489,21 +498,21 @@ static int iwmiff_write_main(struct iwmiffwritecontext *miffctx)
 		num_channels_used=1;
 		break;
 	case IW_IMGTYPE_GRAYA:
-		miffctx->has_alpha=1;
+		wctx->has_alpha=1;
 		num_channels_used=2;
 		break;
 	case IW_IMGTYPE_RGB:
 		num_channels_used=3;
 		break;
 	case IW_IMGTYPE_RGBA:
-		miffctx->has_alpha=1;
+		wctx->has_alpha=1;
 		num_channels_used=4;
 		break;
 	default:
 		goto done;
 	}
 
-	num_channels_alloc = miffctx->has_alpha ? 4 : 3;
+	num_channels_alloc = wctx->has_alpha ? 4 : 3;
 
 	bytes_per_sample = img->bit_depth / 8;
 
@@ -512,20 +521,20 @@ static int iwmiff_write_main(struct iwmiffwritecontext *miffctx)
 	// in the file with the value 0.
 	dstbpr = bytes_per_sample * num_channels_alloc * img->width;
 
-	iwmiff_write_miff_header(miffctx);
+	iwmiff_write_header(wctx);
 
 
-	dstrow = iw_malloc(miffctx->ctx,dstbpr);
+	dstrow = iw_malloc(wctx->ctx,dstbpr);
 	if(!dstrow) goto done;
 	memset(dstrow,0,dstbpr);
 
 	for(j=0;j<img->height;j++) {
 		srcrow = &img->pixels[j*img->bpr];
 		switch(img->bit_depth) {
-		case 32: iwmiffwrite_convert_row32(miffctx,srcrow,dstrow,img->width*num_channels_used); break;
-		case 64: iwmiffwrite_convert_row64(miffctx,srcrow,dstrow,img->width*num_channels_used); break;
+		case 32: iwmiffw_convert_row32(wctx,srcrow,dstrow,img->width*num_channels_used); break;
+		case 64: iwmiffw_convert_row64(wctx,srcrow,dstrow,img->width*num_channels_used); break;
 		}
-		iwmiff_write(miffctx,dstrow,dstbpr);
+		iwmiff_write(wctx,dstrow,dstbpr);
 	}
 
 done:
@@ -535,7 +544,7 @@ done:
 
 int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	struct iwmiffwritecontext miffctx;
+	struct iwmiffwritecontext wctx;
 	int retval=0;
 	struct iw_image img1;
 
@@ -543,23 +552,23 @@ int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	memset(&img1,0,sizeof(struct iw_image));
 
-	memset(&miffctx,0,sizeof(struct iwmiffwritecontext));
+	memset(&wctx,0,sizeof(struct iwmiffwritecontext));
 
-	miffctx.ctx = ctx;
+	wctx.ctx = ctx;
 
-	miffctx.iodescr=iodescr;
+	wctx.iodescr=iodescr;
 
-	miffctx.host_little_endian=iw_get_host_endianness();
+	wctx.host_little_endian=iw_get_host_endianness();
 
 	iw_get_output_image(ctx,&img1);
-	miffctx.img = &img1;
+	wctx.img = &img1;
 
-	iwmiff_write_main(&miffctx);
+	iwmiff_write_main(&wctx);
 
 	retval=1;
 
 //done:
-	if(miffctx.iodescr->close_fn)
-		(*miffctx.iodescr->close_fn)(ctx,miffctx.iodescr);
+	if(wctx.iodescr->close_fn)
+		(*wctx.iodescr->close_fn)(ctx,wctx.iodescr);
 	return retval;
 }
