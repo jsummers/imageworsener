@@ -32,8 +32,10 @@ struct iwmiffreadcontext {
 	struct iw_context *ctx;
 	struct iw_image *img;
 	int read_error_flag;
+	int error_flag;
 	int has_alpha;
 	int is_grayscale;
+	struct iw_csdescr csdescr;
 };
 
 static int iwmiff_read(struct iwmiffreadcontext *miffreadctx,
@@ -72,11 +74,19 @@ static unsigned char iwmiff_read_byte(struct iwmiffreadcontext *miffreadctx)
 static void iwmiff_found_attribute(struct iwmiffreadcontext *miffreadctx,
   const char *name, const char *val)
 {
+	double tmpd;
+
+	if(miffreadctx->error_flag) return;
+
 	if(!strcmp(name,"matte")) {
 		if(val[0]=='T') miffreadctx->has_alpha = 1;
 	}
-	//else if(!strcmp(name,"class")) {
-	//}
+	else if(!strcmp(name,"class")) {
+		if(strcmp(val,"DirectClass")) {
+			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported image class");
+			miffreadctx->error_flag=1;
+		}
+	}
 	else if(!strcmp(name,"columns")) {
 		miffreadctx->img->width = atoi(val);
 	}
@@ -84,17 +94,43 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *miffreadctx,
 		miffreadctx->img->height = atoi(val);
 	}
 	else if(!strcmp(name,"colorspace")) {
-		if(val[0]=='G') miffreadctx->is_grayscale = 1;
+		if(!strcmp(val,"RGB")) {
+			;
+		}
+		else if(!strcmp(val,"Gray")) {
+			miffreadctx->is_grayscale = 1;
+		}
+		else {
+			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported colorspace");
+			miffreadctx->error_flag=1;
+		}
 	}
 	else if(!strcmp(name,"depth")) {
 		miffreadctx->img->bit_depth = atoi(val);
+		if(miffreadctx->img->bit_depth!=32 && miffreadctx->img->bit_depth!=64) {
+			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported bit depth");
+			miffreadctx->error_flag=1;
+		}
 	}
-	//else if(!strcmp(name,"compression")) {
-	//}
-	//else if(!strcmp(name,"gamma")) {
-	//}
-	//else if(!strcmp(name,"quantum")) {
-	//}
+	else if(!strcmp(name,"compression")) {
+		if(strcmp(val,"None")) {
+			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported compression");
+			miffreadctx->error_flag=1;
+		}
+	}
+	else if(!strcmp(name,"gamma")) {
+		tmpd =  atof(val);
+		if(tmpd>=0.00001 && tmpd<=10.0) {
+			miffreadctx->csdescr.cstype = IW_CSTYPE_GAMMA;
+			miffreadctx->csdescr.gamma = 1.0/tmpd;
+		}
+	}
+	else if(!strcmp(name,"quantum")) {
+		if(strcmp(val,"floating-point")) {
+			iw_seterror(miffreadctx->ctx,"MIFF: Unsupported sample format");
+			miffreadctx->error_flag=1;
+		}
+	}
 }
 
 //static void iwmiff_append_char(
@@ -119,6 +155,8 @@ static int read_miff_header(struct iwmiffreadcontext *miffreadctx)
 	st=STATE_NEUTRAL;
 
 	while(1) {
+		if(miffreadctx->error_flag) return 0;
+
 		b=(char)iwmiff_read_byte(miffreadctx);
 		if(miffreadctx->read_error_flag) {
 			return 0;
@@ -183,7 +221,7 @@ static int read_miff_header(struct iwmiffreadcontext *miffreadctx)
 
 	// Skip the byte after the ":", which is usually Ctrl-Z.
 	(void)iwmiff_read_byte(miffreadctx);
-	if(miffreadctx->read_error_flag) {
+	if(miffreadctx->read_error_flag || miffreadctx->error_flag) {
 		return 0;
 	}
 	return 1;
@@ -275,16 +313,11 @@ done:
 	return retval;
 }
 
-// TODO: This MIFF decoder is very quick and dirty.
-// By design, it only supports a small subset of MIFF files, but it needs
-// a lot of error checking added, so that it will fail gracefully when it
-// encounters a file that it can't read.
 int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
 	struct iwmiffreadcontext miffreadctx;
 	int retval=0;
-	struct iw_csdescr csdescr;
 
 	memset(&miffreadctx,0,sizeof(struct iwmiffreadcontext));
 	memset(&img,0,sizeof(struct iw_image));
@@ -293,6 +326,10 @@ int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	miffreadctx.host_little_endian = iw_get_host_endianness();
 	miffreadctx.iodescr = iodescr;
 	miffreadctx.img = &img;
+
+	// Assume unlabeled images are sRGB
+	miffreadctx.csdescr.cstype = IW_CSTYPE_SRGB;
+	miffreadctx.csdescr.sRGB_intent = IW_sRGB_INTENT_PERCEPTUAL;
 
 	iw_set_string_table(ctx,IW_STRINGTABLENUM_MIFF,iwmiff_stringtable);
 
@@ -321,9 +358,7 @@ int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	iw_set_input_image(ctx, &img);
 
-	memset(&csdescr,0,sizeof(struct iw_csdescr));
-	csdescr.cstype = IW_CSTYPE_LINEAR;
-	iw_set_input_colorspace(ctx,&csdescr);
+	iw_set_input_colorspace(ctx,&miffreadctx.csdescr);
 
 	retval = 1;
 

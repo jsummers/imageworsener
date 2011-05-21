@@ -285,7 +285,7 @@ static IW_SAMPLE get_sample_fltpt_cvt_to_linear(struct iw_context *ctx,
   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
 	IW_SAMPLE v1,v2,v3;
-	//IW_SAMPLE r,g,b;
+	IW_SAMPLE r,g,b;
 	int ch;
 
 	ch = ctx->intermed_ci[channel].corresponding_input_channel;
@@ -294,16 +294,14 @@ static IW_SAMPLE get_sample_fltpt_cvt_to_linear(struct iw_context *ctx,
 		v1 = get_raw_sample(ctx,x,y,ch+0);
 		v2 = get_raw_sample(ctx,x,y,ch+1);
 		v3 = get_raw_sample(ctx,x,y,ch+2);
-		// Currently, we only support linear floating point samples.
-		//r = cvt_int_sample_to_linear(ctx,v1,csdescr);
-		//g = cvt_int_sample_to_linear(ctx,v2,csdescr);
-		//b = cvt_int_sample_to_linear(ctx,v3,csdescr);
-		return iw_color_to_grayscale(ctx,v1,v2,v3);
+		r = x_to_linear_sample(v1,csdescr);
+		g = x_to_linear_sample(v2,csdescr);
+		b = x_to_linear_sample(v3,csdescr);
+		return iw_color_to_grayscale(ctx,r,g,b);
 	}
 
 	v1 = get_raw_sample(ctx,x,y,ch);
-	//return cvt_int_sample_to_linear(ctx,v1,csdescr);
-	return v1;
+	return x_to_linear_sample(v1,csdescr);
 }
 
 // Return a sample, converted to a linear colorspace if it isn't already in one.
