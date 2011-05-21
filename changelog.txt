@@ -1,4 +1,5 @@
 Unreleased changes
+ - Partial support for ImageMagick's MIFF file format.
  - Support for image sizes that are relative to the original image size.
  - Moved strings to string tables.
 

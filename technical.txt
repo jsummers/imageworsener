@@ -163,6 +163,20 @@ It writes transparent images using unassociated alpha, which is probably less
 common in TIFF files than associated alpha, and may not be supported as well
 by TIFF viewers.
 
+MIFF support
+------------
+
+IW can write to ImageMagick's MIFF image format, and can read back the small
+subset of MIFF files that it writes. MIFF supports floating point samples, and
+this is intended to be used to store intermediate images, in order to perform
+multiple operations on an image with no loss of precision. MIFF support is
+experimental and incomplete. Some features, such as dithering, may not be
+supported with floating point output.
+
+To use ImageMagick to write a MIFF file that IW can read, try:
+$ convert <input-file> -define quantum:format=floating-point -depth 32 \
+ -compress none <output-file.miff>
+
 Nonsquare pixels
 ----------------
 

@@ -127,6 +127,7 @@ Options:
    Valid values for <fmt>:
      png: PNG
      jpeg, jpg: JPEG
+     miff: MIFF (experimental; limited support)
      bmp: BMP (-outfmt only)
      tiff, tif: TIFF (-outfmt only)
 
@@ -140,6 +141,8 @@ Options:
    Note that this doesn't necessarily determine the depth used in the output
    file. If the image can be encoded at a smaller depth with no loss of
    information, IW may choose to do that.
+   If you are writing to a MIFF file, then samples will be written as
+   floating-point numbers, and your options for -depth are 32 and 64.
 
  -filter <name> (-filterx -filtery -filteralpha)
    The resizing algorithm to use. (It would be more accurate if this option
