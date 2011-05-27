@@ -44,7 +44,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;"
+				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;;..\libwebp\src"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -52,6 +52,7 @@
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="4"
+				CompileAs="1"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -107,7 +108,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;"
+				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;;..\libwebp\src"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -115,6 +116,7 @@
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
+				CompileAs="1"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -171,13 +173,14 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;"
+				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;;..\libwebp\src"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
+				CompileAs="1"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -235,13 +238,14 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;"
+				AdditionalIncludeDirectories="&quot;..\zlib-1.2.5&quot;;&quot;..\libpng-1.5.2&quot;;&quot;..\jpeg-8c&quot;;..\libwebp\src"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				DebugInformationFormat="3"
+				CompileAs="1"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -318,6 +322,10 @@
 			</File>
 			<File
 				RelativePath=".\src\imagew-util.c"
+				>
+			</File>
+			<File
+				RelativePath=".\src\imagew-webp.c"
 				>
 			</File>
 		</Filter>

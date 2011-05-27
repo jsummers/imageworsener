@@ -20,4 +20,8 @@
 #endif
 #endif
 
+#ifndef IW_SUPPORT_WEBP
+#define IW_SUPPORT_WEBP 1
+#endif
+
 #endif // IMAGEW_CONFIG_H

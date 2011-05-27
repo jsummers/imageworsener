@@ -134,6 +134,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
 	ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
+	ctx->webp_quality = -1.0;
 	ctx->pngcmprlevel = -1;
 	ctx->opt_grayscale = 1;
 	ctx->opt_palette = 1;
@@ -602,6 +603,28 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_USE_BKGD_LABEL:
 		ret = ctx->use_bkgd_label;
+		break;
+	}
+
+	return ret;
+}
+
+void iw_set_value_dbl(struct iw_context *ctx, int code, double n)
+{
+	switch(code) {
+	case IW_VAL_WEBP_QUALITY:
+		ctx->webp_quality = n;
+		break;
+	}
+}
+
+double iw_get_value_dbl(struct iw_context *ctx, int code)
+{
+	double ret = 0.0;
+
+	switch(code) {
+	case IW_VAL_WEBP_QUALITY:
+		ret = ctx->webp_quality;
 		break;
 	}
 

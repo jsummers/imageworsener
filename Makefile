@@ -5,6 +5,10 @@ ifeq ($(origin OS),undefined)
 OS:=unknown
 endif
 
+ifeq ($(origin IW_SUPPORT_WEBP),undefined)
+IW_SUPPORT_WEBP:=1
+endif
+
 SRCDIR:=src
 OUTDIR:=.
 
@@ -12,6 +16,13 @@ CC:=gcc
 CFLAGS:=-Wall -O2
 LDFLAGS:=
 INCLUDES:=-I$(SRCDIR)
+LIBS:=-ljpeg -lpng -lz -lm
+
+ifeq ($(IW_SUPPORT_WEBP),1)
+LIBS:=-lwebp $(LIBS)
+else
+CFLAGS+=-DIW_SUPPORT_WEBP=0
+endif
 
 ifeq ($(OS),Windows_NT)
 TARGET:=$(OUTDIR)/imagew.exe
@@ -28,10 +39,13 @@ COREIWLIBOBJS:=$(addprefix $(OUTDIR)/,imagew-main.o imagew-resize.o \
  imagew-opt.o imagew-util.o imagew-api.o)
 AUXIWLIBOBJS:=$(addprefix $(OUTDIR)/,imagew-png.o imagew-jpeg.o imagew-bmp.o \
  imagew-tiff.o imagew-miff.o)
+ifeq ($(IW_SUPPORT_WEBP),1)
+AUXIWLIBOBJS+=$(OUTDIR)/imagew-webp.o
+endif
 ALLOBJS:=$(COREIWLIBOBJS) $(AUXIWLIBOBJS) $(OUTDIR)/imagew-cmd.o
 
 $(TARGET): $(OUTDIR)/imagew-cmd.o $(IWLIBFILE)
-	$(CC) $(LDFLAGS) -o $@ $^ -ljpeg -lpng -lz -lm
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 $(IWLIBFILE): $(COREIWLIBOBJS) $(AUXIWLIBOBJS)
 	ar rcs $@ $^
@@ -45,5 +59,5 @@ $(ALLOBJS): $(OUTDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 clean:
-	rm -f $(TARGET) $(ALLOBJS) $(IWLIBFILE)
+	rm -f $(TARGET) $(OUTDIR)/*.o $(IWLIBFILE)
 

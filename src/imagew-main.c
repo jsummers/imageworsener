@@ -1201,14 +1201,14 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 	}
 
 	if(ctx->output_depth>0) {
-		if(ctx->output_depth>8)
+		if(ctx->output_depth>8 && (ctx->output_profile&IW_PROFILE_16BPS))
 			ctx->output_depth=16;
 		else
 			ctx->output_depth=8;
 		return;
 	}
 
-	if(ctx->img1.bit_depth>8 && ctx->img1.sampletype==IW_SAMPLETYPE_UINT)
+	if(ctx->img1.bit_depth>8 && (ctx->output_profile&IW_PROFILE_16BPS) && ctx->img1.sampletype==IW_SAMPLETYPE_UINT)
 		ctx->output_depth=16;
 	else
 		ctx->output_depth=8;

@@ -46,7 +46,7 @@ struct iw_stringtableentry iwpng_stringtable[] = {
 	{ iws_png_not_supported, "This PNG image type (color type=%d, bit depth=%d) is not supported" },
 	{ iws_png_read_failed, "Read failed (png)" },
 	{ iws_png_write_failed, "Write failed" },
-	{ iws_png_internal_cant_write, "Internal: Don't know how to write this image" },
+	{ iws_png_internal_cant_write, "Internal: Don\xe2\x80\x99t know how to write this image" },
 	{ 0, NULL }
 };
 

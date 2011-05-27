@@ -62,6 +62,7 @@
 #define IWCMD_FMT_BMP  3
 #define IWCMD_FMT_TIFF 4
 #define IWCMD_FMT_MIFF 5
+#define IWCMD_FMT_WEBP 6
 
 struct rgb_color {
 	double r,g,b;
@@ -106,6 +107,7 @@ struct params_struct {
 	struct rgb_color bkgd2;
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
+	double webp_quality;
 	int pngcmprlevel;
 	int interlace;
 	int randomize;
@@ -272,6 +274,7 @@ static int get_fmt_from_name(const TCHAR *s)
 	if(!_tcscmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
 	if(!_tcscmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
 	if(!_tcscmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
+	if(!_tcscmp(s,_T("webp"))) return IWCMD_FMT_WEBP;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -289,6 +292,7 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 	if(!_tcsicmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
 	if(!_tcsicmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
 	if(!_tcsicmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
+	if(!_tcsicmp(s,_T("webp"))) return IWCMD_FMT_WEBP;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -319,6 +323,10 @@ static int detect_fmt_of_file(FILE *fp)
 	}
 	else if(buf[0]==0x69 && buf[1]==0x64) {
 		fmt=IWCMD_FMT_MIFF;
+	}
+	else if(buf[0]==0x52 && buf[1]==0x49) {
+		// TODO: Figure out the right way to detect WEBP format.
+		fmt=IWCMD_FMT_WEBP;
 	}
 
 done:
@@ -373,6 +381,21 @@ static int my_readfn(struct iw_context *ctx, struct iw_iodescr *iodescr, void *b
    size_t *pbytesread)
 {
 	*pbytesread = fread(buf,1,nbytes,(FILE*)iodescr->fp);
+	return 1;
+}
+
+static int my_getfilesizefn(struct iw_context *ctx, struct iw_iodescr *iodescr, size_t *pbytesread)
+{
+	int ret;
+	long lret;
+	FILE *fp = (FILE*)iodescr->fp;
+
+	ret=fseek(fp,0,SEEK_END);
+	if(ret!=0) return 0;
+	lret=ftell(fp);
+	if(lret<0) return 0;
+	*pbytesread = (size_t)lret;
+	fseek(fp,0,SEEK_SET);
 	return 1;
 }
 
@@ -433,6 +456,7 @@ static int run(struct params_struct *p)
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 
 	readdescr.read_fn = my_readfn;
+	readdescr.getfilesize_fn = my_getfilesizefn;
 	readdescr.fp = (void*)iwcmd_fopen(p->infn,_T("rb"));
 	if(!readdescr.fp) {
 		iw_seterror(ctx,"Failed to open for reading (error code=%d)",(int)errno);
@@ -460,6 +484,13 @@ static int run(struct params_struct *p)
 	}
 	else if(p->infmt==IWCMD_FMT_MIFF) {
 		if(!iw_read_miff_file(ctx,&readdescr)) goto done;
+	}
+	else if(p->infmt==IWCMD_FMT_WEBP) {
+#if IW_SUPPORT_WEBP == 1
+		if(!iw_read_webp_file(ctx,&readdescr)) goto done;
+#else
+		iw_seterror(ctx,"WebP is not supported by this copy of imagew.");
+#endif
 	}
 	else {
 		if(!iw_read_png_file(ctx,&readdescr)) goto done;
@@ -493,6 +524,9 @@ static int run(struct params_struct *p)
 	}
 	else if(p->outfmt==IWCMD_FMT_MIFF) {
 		iw_set_output_profile(ctx,IW_PROFILE_MIFF);
+	}
+	else if(p->outfmt==IWCMD_FMT_WEBP) {
+		iw_set_output_profile(ctx,IW_PROFILE_WEBP);
 	}
 	else {
 		iw_set_output_profile(ctx,IW_PROFILE_PNG);
@@ -674,6 +708,14 @@ static int run(struct params_struct *p)
 	}
 	else if(p->outfmt==IWCMD_FMT_MIFF) {
 		if(!iw_write_miff_file(ctx,&writedescr)) goto done;
+	}
+	else if(p->outfmt==IWCMD_FMT_WEBP) {
+#if IW_SUPPORT_WEBP == 1
+		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
+		if(!iw_write_webp_file(ctx,&writedescr)) goto done;
+#else
+		iw_seterror(ctx,"WebP is not supported by this copy of imagew.");
+#endif
 	}
 	else {
 		if(p->pngcmprlevel >= 0)
@@ -1072,6 +1114,10 @@ static void do_printversion(struct params_struct *p)
 	iwcmd_message_utf8(p,"Uses libjpeg version %s\n",iw_get_libjpeg_version_string(buf,buflen));
 	iwcmd_message_utf8(p,"Uses libpng version %s\n",iw_get_libpng_version_string(buf,buflen));
 	iwcmd_message_utf8(p,"Uses zlib version %s\n",iw_get_zlib_version_string(buf,buflen));
+#if IW_SUPPORT_WEBP == 1
+	iwcmd_message_utf8(p,"Uses libwebp encoder v%s",iw_get_libwebp_enc_version_string(buf,buflen));
+	iwcmd_message_utf8(p,", decoder v%s\n",iw_get_libwebp_dec_version_string(buf,buflen));
+#endif
 }
 
 enum iwcmd_param_types {
@@ -1083,7 +1129,7 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
- PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_PNGCMPRLEVEL, PT_INTERLACE,
+ PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
@@ -1148,6 +1194,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("offsetvrb"),PT_OFFSET_RB_V,1},
 		{_T("jpegquality"),PT_JPEGQUALITY,1},
 		{_T("jpegsampling"),PT_JPEGSAMPLING,1},
+		{_T("webpquality"),PT_WEBPQUALITY,1},
 		{_T("pngcmprlevel"),PT_PNGCMPRLEVEL,1},
 		{_T("randseed"),PT_RANDSEED,1},
 		{_T("infmt"),PT_INFMT,1},
@@ -1401,6 +1448,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_JPEGSAMPLING:
 		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
 		break;
+	case PT_WEBPQUALITY:
+		p->webp_quality=_tstof(v);
+		break;
 	case PT_PNGCMPRLEVEL:
 		p->pngcmprlevel=_tstoi(v);
 		break;
@@ -1498,6 +1548,7 @@ int _tmain(int argc, TCHAR* argv[])
 	p.resize_alg_x.blur = 1.0;
 	p.resize_alg_y.blur = 1.0;
 	p.resize_alg_alpha.blur = 1.0;
+	p.webp_quality = -1.0;
 	p.pngcmprlevel = -1;
 
 	for(i=1;i<argc;i++) {

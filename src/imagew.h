@@ -76,6 +76,8 @@ extern "C" {
 // a suggested background color, use the suggested color.
 #define IW_VAL_USE_BKGD_LABEL    37
 
+#define IW_VAL_WEBP_QUALITY      38
+
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.
 
@@ -112,6 +114,7 @@ extern "C" {
 #define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
 #define IW_PROFILE_TIFF  0x186b // TRANSPARENCY,GRAYSCALE,GRAY{1,4},PAL{4,8},16BPS
 #define IW_PROFILE_MIFF  0x6003 // TRANSPARENCY,GRAYSCALE,ALWAYSLINEAR,HDRI
+#define IW_PROFILE_WEBP  0x0080 // ALWAYSSRGB
 
 #define IW_RESIZETYPE_AUTO          0x01
 #define IW_RESIZETYPE_NULL          0x02
@@ -237,6 +240,7 @@ struct iw_iodescr;
 typedef int (*iw_readfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes, size_t *pbytesread);
 typedef int (*iw_writefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes);
 typedef int (*iw_closefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr);
+typedef int (*iw_getfilesizefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, size_t *pfilesize);
 // I/O descriptor
 struct iw_iodescr {
 	// An arbitrary pointer the app can use.
@@ -258,6 +262,12 @@ struct iw_iodescr {
 
 	// Optional "close" function.
 	iw_closefn_type close_fn;
+
+	// Function to return the file size. Some image formats may require this when
+	// reading.
+	// Must leave the file position at the beginning of the file (or must not
+	// modify it).
+	iw_getfilesizefn_type getfilesize_fn;
 };
 
 #define IW_STRINGTABLENUM_CORE 0
@@ -266,7 +276,8 @@ struct iw_iodescr {
 #define IW_STRINGTABLENUM_BMP  3
 #define IW_STRINGTABLENUM_TIFF 4
 #define IW_STRINGTABLENUM_MIFF 5
-#define IW_NUMSTRINGTABLES 6
+#define IW_STRINGTABLENUM_WEBP 6
+#define IW_NUMSTRINGTABLES 7
 
 struct iw_stringtableentry {
 	int n;
@@ -364,6 +375,9 @@ const struct iw_palette *iw_get_output_palette(struct iw_context *ctx);
 void iw_set_value(struct iw_context *ctx, int code, int n);
 int iw_get_value(struct iw_context *ctx, int code);
 
+void iw_set_value_dbl(struct iw_context *ctx, int code, double n);
+double iw_get_value_dbl(struct iw_context *ctx, int code);
+
 void iw_seterror(struct iw_context *ctx, const char *fmt, ...);
 void iw_warning(struct iw_context *ctx, const char *fmt, ...);
 
@@ -400,6 +414,10 @@ int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+char *iw_get_libwebp_dec_version_string(char *s, int s_len);
+char *iw_get_libwebp_enc_version_string(char *s, int s_len);
 
 
 #ifdef IW_INCLUDE_UTIL_FUNCTIONS
@@ -421,6 +439,9 @@ double iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
 // Utility function to check that the supplied dimensions are
 // considered valid by IW. If not, generates a warning and returns 0.
 int iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
+
+int iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
+  void **pmem, size_t *psize);
 
 // Allocates a block of memory. Does not check the value of n.
 // Returns NULL on failure.

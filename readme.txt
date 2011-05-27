@@ -36,7 +36,45 @@ the web site at <http://entropymine.com/imageworsener/>.
 
 If this package contains executable binaries, we need to state the following:
 
+---
+
 This software is based in part on the work of the Independent JPEG Group.
+
+---
+
+This software may include code from libwebp (part of the WebM project), which
+has the following license:
+
+| Copyright (c) 2010, Google Inc. All rights reserved.
+| 
+| Redistribution and use in source and binary forms, with or without
+| modification, are permitted provided that the following conditions are
+| met:
+| 
+|   * Redistributions of source code must retain the above copyright
+|     notice, this list of conditions and the following disclaimer.
+| 
+|   * Redistributions in binary form must reproduce the above copyright
+|     notice, this list of conditions and the following disclaimer in
+|     the documentation and/or other materials provided with the
+|     distribution.
+| 
+|   * Neither the name of Google nor the names of its contributors may
+|     be used to endorse or promote products derived from this software
+|     without specific prior written permission.
+| 
+| THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+| "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+| LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+| A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+| HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+| SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+| LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+| DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+| THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+| (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+| OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 
 ===========================================================================
 
@@ -59,8 +97,8 @@ relatively slow. Among the things it (hopefully) does right:
  - All the image scaling algorithms that it implements.
 
 Other information:
- - The command-line utility fully supports PNG and JPEG files, and has partial
-   support for BMP and TIFF.
+ - The command-line utility fully supports PNG, JPEG, and WEBP files, and has
+   partial support for BMP, TIFF, and MIFF.
  - The library is (more or less) not specific to a particular file format.
  - Full support for high color depth (16 bits per sample).
  - Some options can be set differently for the different dimensions
@@ -127,6 +165,7 @@ Options:
    Valid values for <fmt>:
      png: PNG
      jpeg, jpg: JPEG
+     webp: WebP
      miff: MIFF (experimental; limited support)
      bmp: BMP (-outfmt only)
      tiff, tif: TIFF (-outfmt only)
@@ -498,6 +537,10 @@ Options:
    channel. For highest quality, use "1,1". Default is (probably) "2,2".
    Each factor must be between 1 and 4. Not all combinations are allowed, for
    reasons unknown to the author of IW.
+
+ -webpquality <n>
+   webp-style quality setting to use if a WEBP file is written. This is on a
+   scale from 0 to 100. Default is 80.
 
  -quiet
    Suppress informational messages and warnings.

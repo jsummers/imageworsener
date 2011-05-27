@@ -119,6 +119,28 @@ void iw_util_randomize(void)
 }
 
 
+int iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
+  void **pmem, size_t *psize)
+{
+	int ret;
+	size_t bytesread;
+
+	*pmem=NULL;
+	*psize=0;
+
+	if(!iodescr->getfilesize_fn) return 0;
+
+	ret = (*iodescr->getfilesize_fn)(ctx,iodescr,psize);
+	if(!ret) return 0;
+
+	*pmem = iw_malloc(ctx,*psize);
+
+	ret = (*iodescr->read_fn)(ctx,iodescr,*pmem,*psize,&bytesread);
+	if(!ret) return 0;
+	if(bytesread != *psize) return 0;
+	return 1;
+}
+
 struct iw_utf8cvt_struct {
 	char *dst;
 	int dstlen;
@@ -147,6 +169,8 @@ static void utf8cvt_emitunichar(struct iw_utf8cvt_struct *s, unsigned int c)
 	 {0xa9, "(c)" },
 	 {0xd7, "x" },
 	 {0x2192, "->" },
+	 {0x2018, "'" },
+	 {0x2019, "'" },
 	 {0x201c, "\"" },
 	 {0x201d, "\"" },
 	 {0, NULL}
