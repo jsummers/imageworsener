@@ -57,7 +57,7 @@ then
 	mkdir actual
 fi
 
-rm -f actual/*.png actual/*.jpg actual/*.bmp actual/*.tif
+rm -f actual/*.png actual/*.jpg actual/*.bmp actual/*.tif actual/*.miff actual/*.webp
 
 echo "Creating images..."
 
@@ -115,8 +115,8 @@ $IW srcimg/4x4.png actual/edge-s.png $SCALE -filter lanczos -edge s
 $IW srcimg/4x4.png actual/edge-r.png $SCALE -filter lanczos -edge r
 
 $IW srcimg/4x4.png actual/cs-linear.png $SCALE -filter catrom -cs linear
-$IW srcimg/4x4.png actual/cs-gamma15.png $SCALE -filter catrom -cs gamma1.5
-$IW srcimg/4x4.png actual/cs-srgbs.png $SCALE -filter catrom -cs srgbs
+$IW srcimg/4x4.png actual/cs-gamma15.png -height x8.75 -filter catrom -cs gamma1.5
+$IW srcimg/4x4.png actual/cs-srgbs.png -width x8.75 -filter catrom -cs srgbs
 
 $IW srcimg/4x4.png actual/nocslabel.png $SCALE -filter catrom -nocslabel
 $IW srcimg/4x4.png actual/inputcs.png $SCALE -filter catrom -inputcs linear -cs srgb
@@ -151,6 +151,14 @@ $IW srcimg/g2.png actual/bmp1.bmp -width 11
 
 # Test writing TIFF
 $IW srcimg/g4.png actual/tiff1.tif -width 11 -cc 16 -grayscale
+
+# Test writing MIFF
+$IW srcimg/g8a.png actual/miff32.miff -width 11 -depth 32
+$IW srcimg/rgb16.png actual/miff64.miff -width 11 -depth 64
+
+# Test writing WebP
+$IW srcimg/rgb16.png actual/webp1.webp -width 23
+$IW srcimg/g8.png actual/webp2.webp -width 24 -grayscale
 
 # Extra pixel density tests
 $IW srcimg/rgb8x1.png actual/dens-1.png $SCALE -filter mix
@@ -190,7 +198,8 @@ $IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR
 echo "Checking images..."
 
 FAIL=0
-for ff in expected/*.png expected/*.jpg expected/*.bmp expected/*.tif
+for ff in expected/*.png expected/*.jpg expected/*.bmp expected/*.tif \
+ expected/*.miff expected/*.webp
 do
 	f=${ff#expected/}
 	#echo $f
