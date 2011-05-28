@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for rational numbers like "1/3" in the command line.
  - Basic support for Google's WebP file format.
  - Partial support for ImageMagick's MIFF file format.
  - Support for image sizes that are relative to the original image size.

@@ -742,38 +742,119 @@ done:
 	return retval;
 }
 
+
+// Find where a number ends (at a comma, or the end of string),
+// and record if it contained a slash.
+static int iwcmd_get_number_len(const TCHAR *s, int *pslash_pos)
+{
+	int i;
+	for(i=0;s[i];i++) {
+		if(s[i]=='/') {
+			*pslash_pos = i;
+		}
+		if(s[i]!=',') continue;
+		return i;
+	}
+	return i;
+}
+
+// Returns 0 if no valid number found.
+static int iwcmd_parse_number_internal(const TCHAR *s,
+		   double *presult, int *pcharsread)
+{
+	int len;
+	int slash_pos = -1;
+
+	*presult = 0.0;
+	*pcharsread = 0;
+
+	len = iwcmd_get_number_len(s,&slash_pos);
+	if(len<1) return 0;
+	*pcharsread = len;
+
+	if(slash_pos>=0) {
+		// a rational number
+		double numer, denom;
+		numer = _tstof(s);
+		denom = _tstof(s+slash_pos+1);
+		if(denom==0.0)
+			*presult = 0.0;
+		else
+			*presult = numer/denom;
+	}
+	else {
+		*presult = _tstof(s);
+	}
+	return 1;
+}
+
+static void iwcmd_parse_number_list(const TCHAR *s,
+	int max_numbers, // max number of numbers to parse
+	double *results, // array of doubles to hold the results
+	int *pnumresults) // number of numbers parsed
+{
+	int n;
+	int charsread;
+	int curpos=0;
+	int ret;
+
+	*pnumresults = 0;
+	for(n=0;n<max_numbers;n++) {
+		results[n]=0.0;
+	}
+
+	for(n=0;n<max_numbers;n++) {
+		ret=iwcmd_parse_number_internal(&s[curpos], &results[n], &charsread);
+		if(!ret) return;
+		(*pnumresults)++;
+		curpos+=charsread;
+		if(s[curpos]==',') {
+			curpos++;
+		}
+		else {
+			return;
+		}
+	}
+}
+
+static double iwcmd_parse_dbl(const TCHAR *s)
+{
+	double result;
+	int charsread;
+	iwcmd_parse_number_internal(s, &result, &charsread);
+	return result;
+}
+
+static int iwcmd_parse_int(const TCHAR *s)
+{
+	double result;
+	int charsread;
+	iwcmd_parse_number_internal(s, &result, &charsread);
+	return (int)(0.5+result);
+}
+
 // Parse two integers separated by a comma.
 static void iwcmd_parse_int_pair(const TCHAR *s, int *i1, int *i2)
 {
-	TCHAR *cpos;
+	double nums[2];
+	int count;
 
-	*i1 = _tstoi(s);
-	*i2 = 0;
-	cpos = _tcschr(s,',');
-	if(!cpos) return;
-	*i2 = _tstoi(cpos+1);
+	iwcmd_parse_number_list(s,2,nums,&count);
+	*i1 = (int)(0.5+nums[0]);
+	*i2 = (int)(0.5+nums[1]);
 }
 
 // Parse four integers separated by commas.
 static void iwcmd_parse_int_4(const TCHAR *s, int *i1, int *i2, int *i3, int *i4)
 {
-	TCHAR *cpos;
+	double nums[4];
+	int count;
 
-	*i1 = _tstoi(s);
-	*i2 = 0;
-	*i3 = -1;
-	*i4 = -1;
-	cpos = _tcschr(s,',');
-	if(!cpos) return;
-	*i2 = _tstoi(cpos+1);
-
-	cpos = _tcschr(cpos+1,',');
-	if(!cpos) return;
-	*i3 = _tstoi(cpos+1);
-
-	cpos = _tcschr(cpos+1,',');
-	if(!cpos) return;
-	*i4 = _tstoi(cpos+1);
+	iwcmd_parse_number_list(s,4,nums,&count);
+	*i1 = (int)(0.5+nums[0]);
+	*i2 = (int)(0.5+nums[1]);
+	*i3 = (int)(0.5+nums[2]);
+	*i4 = (int)(0.5+nums[3]);
 }
 
 static int hexdigit_value(TCHAR d)
@@ -898,7 +979,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 
 	if(namelen==7 && !_tcsncmp(s,_T("lanczos"),namelen)) {
 		if(len>namelen)
-			alg->lobes = _tstoi(&s[namelen]);
+			alg->lobes = iwcmd_parse_int(&s[namelen]);
 		else
 			alg->lobes = 3;
 		alg->family = IW_RESIZETYPE_LANCZOS;
@@ -908,7 +989,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		    (namelen==7 && !_tcsncmp(s,_T("hanning"),namelen)) )
 	{
 		if(len>namelen)
-			alg->lobes = _tstoi(&s[namelen]);
+			alg->lobes = iwcmd_parse_int(&s[namelen]);
 		else
 			alg->lobes = 4;
 		alg->family = IW_RESIZETYPE_HANNING;
@@ -916,7 +997,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 	}
 	else if(namelen==8 && !_tcsncmp(s,_T("blackman"),namelen)) {
 		if(len>namelen)
-			alg->lobes = _tstoi(&s[namelen]);
+			alg->lobes = iwcmd_parse_int(&s[namelen]);
 		else
 			alg->lobes = 4;
 		alg->family = IW_RESIZETYPE_BLACKMAN;
@@ -924,7 +1005,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 	}
 	else if(namelen==4 && !_tcsncmp(s,_T("sinc"),namelen)) {
 		if(len>namelen)
-			alg->lobes = _tstoi(&s[namelen]);
+			alg->lobes = iwcmd_parse_int(&s[namelen]);
 		else
 			alg->lobes = 4;
 		alg->family = IW_RESIZETYPE_SINC;
@@ -951,15 +1032,15 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		if(len < namelen+3) goto done; // error
 		cpos = _tcschr(s,',');
 		if(!cpos) goto done;
-		alg->b = _tstof(&s[namelen]);
-		alg->c = _tstof(cpos+1);
+		alg->b = iwcmd_parse_dbl(&s[namelen]);
+		alg->c = iwcmd_parse_dbl(cpos+1);
 		alg->family = IW_RESIZETYPE_CUBIC;
 		return 1;
 	}
 	else if(namelen==4 && !_tcsncmp(s,_T("keys"),namelen)) {
 		// Format is "keys<alpha>"
 		if(len>namelen)
-			alg->c = _tstof(&s[namelen]);
+			alg->c = iwcmd_parse_dbl(&s[namelen]);
 		else
 			alg->c = 0.5;
 		alg->b = 1.0-2.0*alg->c;
@@ -1026,7 +1107,7 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 
 	if(namelen==5 && len>5 && !_tcsncmp(s,_T("gamma"),namelen)) {
 		cs->cstype=IW_CSTYPE_GAMMA;
-		cs->gamma=_tstof(&s[namelen]);
+		cs->gamma=iwcmd_parse_dbl(&s[namelen]);
 		if(cs->gamma<0.1) cs->gamma=0.1;
 		if(cs->gamma>10.0) cs->gamma=10.0;
 	}
@@ -1289,11 +1370,11 @@ static void iwcmd_read_w_or_h(struct params_struct *p, const TCHAR *v,
 	if(v[0]=='x') {
 		// This is a relative size like "x1.5".
 		*rel_flag = 1;
-		*new_rel_d = _tstof(&v[1]);
+		*new_rel_d = iwcmd_parse_dbl(&v[1]);
 	}
 	else {
 		// This is a number of pixels.
-		*new_d = _tstoi(v);
+		*new_d = iwcmd_parse_int(v);
 		return;
 	}
 }
@@ -1310,7 +1391,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		iwcmd_read_w_or_h(p,v,&p->new_height,&p->rel_height_flag,&p->rel_height);
 		break;
 	case PT_DEPTH:
-		p->depth=_tstoi(v);
+		p->depth=iwcmd_parse_int(v);
 		break;
 	case PT_INPUTCS:
 		ret=iwcmd_string_to_colorspace(p,&p->cs_in,v);
@@ -1340,16 +1421,16 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(ret<0) return 0;
 		break;
 	case PT_BLUR_FACTOR:
-		p->resize_alg_x.blur = p->resize_alg_y.blur = _tstof(v);
+		p->resize_alg_x.blur = p->resize_alg_y.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_BLUR_FACTOR_X:
-		p->resize_alg_x.blur = _tstof(v);
+		p->resize_alg_x.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_BLUR_FACTOR_Y:
-		p->resize_alg_y.blur = _tstof(v);
+		p->resize_alg_y.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_BLUR_FACTOR_ALPHA:
-		p->resize_alg_alpha.blur = _tstof(v);
+		p->resize_alg_alpha.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_DITHER:
 		p->dither_family_all=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_all);
@@ -1380,20 +1461,20 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(p->dither_family_gray<0) return 0;
 		break;
 	case PT_CC:
-		p->color_count_all=_tstoi(v);
+		p->color_count_all=iwcmd_parse_int(v);
 		break;
 	case PT_CCCOLOR:
-		p->color_count_nonalpha=_tstoi(v);
+		p->color_count_nonalpha=iwcmd_parse_int(v);
 		break;
 	case PT_CCALPHA:
-		p->color_count_alpha=_tstoi(v);
+		p->color_count_alpha=iwcmd_parse_int(v);
 		break;
 	case PT_BKGD:
 		p->apply_bkgd=1;
 		parse_bkgd(p,v);
 		break;
 	case PT_CHECKERSIZE:
-		p->bkgd_check_size=_tstoi(v);
+		p->bkgd_check_size=iwcmd_parse_int(v);
 		break;
 	case PT_CHECKERORG:
 		iwcmd_parse_int_pair(v,&p->bkgd_check_origin_x,&p->bkgd_check_origin_y);
@@ -1403,63 +1484,63 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->use_crop=1;
 		break;
 	case PT_CCRED:
-		p->color_count_red=_tstoi(v);
+		p->color_count_red=iwcmd_parse_int(v);
 		break;
 	case PT_CCGREEN:
-		p->color_count_green=_tstoi(v);
+		p->color_count_green=iwcmd_parse_int(v);
 		break;
 	case PT_CCBLUE:
-		p->color_count_blue=_tstoi(v);
+		p->color_count_blue=iwcmd_parse_int(v);
 		break;
 	case PT_CCGRAY:
-		p->color_count_gray=_tstoi(v);
+		p->color_count_gray=iwcmd_parse_int(v);
 		break;
 	case PT_OFFSET_R_H:
-		p->offset_r_h=_tstof(v);
+		p->offset_r_h=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_G_H:
-		p->offset_g_h=_tstof(v);
+		p->offset_g_h=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_B_H:
-		p->offset_b_h=_tstof(v);
+		p->offset_b_h=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_R_V:
-		p->offset_r_v=_tstof(v);
+		p->offset_r_v=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_G_V:
-		p->offset_g_v=_tstof(v);
+		p->offset_g_v=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_B_V:
-		p->offset_b_v=_tstof(v);
+		p->offset_b_v=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_RB_H:
 		// Shortcut for shifting red and blue in opposite directions.
-		p->offset_r_h=_tstof(v);
+		p->offset_r_h=iwcmd_parse_dbl(v);
 		p->offset_b_h= -p->offset_r_h;
 		break;
 	case PT_OFFSET_RB_V:
 		// Shortcut for shifting red and blue vertically in opposite directions.
-		p->offset_r_v=_tstof(v);
+		p->offset_r_v=iwcmd_parse_dbl(v);
 		p->offset_b_v= -p->offset_r_v;
 		break;
 	case PT_JPEGQUALITY:
-		p->jpeg_quality=_tstoi(v);
+		p->jpeg_quality=iwcmd_parse_int(v);
 		break;
 	case PT_JPEGSAMPLING:
 		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
 		break;
 	case PT_WEBPQUALITY:
-		p->webp_quality=_tstof(v);
+		p->webp_quality=iwcmd_parse_dbl(v);
 		break;
 	case PT_PNGCMPRLEVEL:
-		p->pngcmprlevel=_tstoi(v);
+		p->pngcmprlevel=iwcmd_parse_int(v);
 		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {
 			p->randomize = 1;
 		}
 		else {
-			p->random_seed=_tstoi(v);
+			p->random_seed=iwcmd_parse_int(v);
 		}
 		break;
 	case PT_INFMT:

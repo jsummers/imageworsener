@@ -131,6 +131,8 @@ Synopsis
 Options may appear anywhere on the command line, even after the file names.
 The order of the options usually does not matter.
 
+Numbers on the command line may be specified as rational numbers, using a
+slash. For example, instead of "-w x0.666666666", you can use "-w x2/3".
 
 Options:
 
