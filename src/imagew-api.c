@@ -95,6 +95,7 @@ static void default_resize_settings(struct iw_resize_settings *rs)
 }
 
 struct iw_stringtableentry iw_corestringtable[] = {
+	{ iws_err_msg_not_avail, "Error message not available" },
 	{ iws_nomem, "Out of memory" },
 	{ iws_warn_reduce_to_8, "Reducing depth to 8; required by the output format." },
 	{ iws_warn_disable_offset_grayscale, "Disabling channel offset, due to grayscale output." },
@@ -109,7 +110,7 @@ struct iw_stringtableentry iw_corestringtable[] = {
 	{ iws_dimensions_too_large, "Image dimensions too large (%d\xc3\x97%d)" },
 	{ iws_dimensions_invalid, "Invalid image dimensions (%d\xc3\x97%d)" },
 	{ iws_copyright, "Copyright \xc2\xa9 %s Jason Summers" },
-	{ iws_err_msg_not_avail, "Error message not available" },
+	{ iws_warn_fltpt_no_posterize, "Posterization not supported with floating point output." },
 	{ 0, NULL }
 };
 
@@ -172,7 +173,7 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->width = ctx->optctx.width;
 	img->height = ctx->optctx.height;
 	img->imgtype = ctx->optctx.imgtype;
-	img->sampletype = ctx->output_sampletype;
+	img->sampletype = ctx->img2.sampletype;
 	img->bit_depth = ctx->optctx.bit_depth;
 	img->pixels = (unsigned char*)ctx->optctx.pixelsptr;
 	img->bpr = ctx->optctx.bpr;

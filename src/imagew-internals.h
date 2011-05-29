@@ -202,8 +202,6 @@ struct iw_context {
 	int output_depth; // TODO: This is the same as img2.bit_depth. We could remove one of them.
 	double output_maxcolorcode;
 
-	int output_sampletype; // IW_SAMPLETYPE_*
-
 	double input_maxcolorcode;
 	
 	int support_reduced_input_bitdepths; // Set this to use the next 3 fields.
@@ -240,9 +238,6 @@ struct iw_context {
 	unsigned char opt_16_to_8;   // Reduce >8 bitdepth to 8
 	unsigned char opt_strip_alpha; // RGBA->RGB or GA->G
 	unsigned char opt_binary_trns; // Color-keyed binary transparency
-
-	//int charset; // 0=ASCII, 1=Unicode
-	//const TCHAR *symbol_times;
 
 	int canvas_width, canvas_height;
 	int input_start_x, input_start_y, input_w, input_h;
@@ -282,7 +277,8 @@ void iw_weightlist_free(struct iw_context *ctx);
 void iw_optimize_image(struct iw_context *ctx);
 
 enum iw_corestrings {
-	iws_nomem=1,
+	iws_err_msg_not_avail=1,
+	iws_nomem,
 	iws_warn_reduce_to_8,
 	iws_warn_disable_offset_grayscale,
 	iws_warn_trans_incomp_format,
@@ -295,7 +291,7 @@ enum iw_corestrings {
 	iws_image_too_large,
 	iws_dimensions_too_large,
 	iws_dimensions_invalid,
-	iws_err_msg_not_avail,
+	iws_warn_fltpt_no_posterize,
 	iws_copyright
 };
 

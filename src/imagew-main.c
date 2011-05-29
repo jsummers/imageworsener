@@ -920,7 +920,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 				tmpsamp = (alphasamp)*(tmpsamp) + (1.0-alphasamp)*(bkcolor);
 			}
 
-			if(ctx->output_sampletype==IW_SAMPLETYPE_FLOATINGPOINT)
+			if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT)
 				put_sample_convert_from_linear_flt(ctx,tmpsamp,i,j,output_channel,out_csdescr);
 			else
 				put_sample_convert_from_linear(ctx,tmpsamp,i,j,output_channel,out_csdescr);
@@ -1176,20 +1176,20 @@ static void iw_set_out_channeltypes(struct iw_context *ctx)
 static void decide_output_bit_depth(struct iw_context *ctx)
 {
 	if(ctx->output_profile&IW_PROFILE_HDRI) {
-		ctx->output_sampletype=IW_SAMPLETYPE_FLOATINGPOINT;
+		ctx->img2.sampletype=IW_SAMPLETYPE_FLOATINGPOINT;
 	}
 	else {
-		ctx->output_sampletype=IW_SAMPLETYPE_UINT;
+		ctx->img2.sampletype=IW_SAMPLETYPE_UINT;
 	}
 
-	if(ctx->output_sampletype==IW_SAMPLETYPE_UINT && !(ctx->output_profile&IW_PROFILE_16BPS)
+	if(ctx->img2.sampletype==IW_SAMPLETYPE_UINT && !(ctx->output_profile&IW_PROFILE_16BPS)
 		&& ctx->output_depth>8)
 	{
 		iw_warning(ctx,iwcore_get_string(ctx,iws_warn_reduce_to_8));
 		ctx->output_depth=8;
 	}
 
-	if(ctx->output_sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		if(ctx->output_depth<=0)
 			ctx->output_depth=64;
 
@@ -1547,8 +1547,9 @@ static void iw_convert_density_info(struct iw_context *ctx)
 static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 {
 	int i;
-	int maxcolorcode_int;
+	int output_maxcolorcode_int;
 	int strategy1, strategy2;
+	int flag;
 
 	if(ctx->output_profile==0) {
 		iw_seterror(ctx,iwcore_get_string(ctx,iws_output_prof_not_set));
@@ -1597,28 +1598,41 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
 	}
 
-	ctx->input_maxcolorcode = (double)((1 << ctx->img1.bit_depth)-1);
+	if(ctx->img1.sampletype!=IW_SAMPLETYPE_FLOATINGPOINT) {
+		ctx->input_maxcolorcode = (double)((1 << ctx->img1.bit_depth)-1);
 
-	for(i=0;i<5;i++) {
-		if(ctx->significant_bits[i]>0 && ctx->significant_bits[i]<ctx->img1.bit_depth) {
-			ctx->support_reduced_input_bitdepths = 1; // Set this flag for later.
-			ctx->insignificant_bits[i] = ctx->img1.bit_depth - ctx->significant_bits[i];
-			ctx->input_maxcolorcode_ext[i] = (double)((1 << ctx->significant_bits[i])-1);
-		}
-		else {
-			ctx->insignificant_bits[i] = 0;
-			ctx->input_maxcolorcode_ext[i] = ctx->input_maxcolorcode;
+		for(i=0;i<5;i++) {
+			if(ctx->significant_bits[i]>0 && ctx->significant_bits[i]<ctx->img1.bit_depth) {
+				ctx->support_reduced_input_bitdepths = 1; // Set this flag for later.
+				ctx->insignificant_bits[i] = ctx->img1.bit_depth - ctx->significant_bits[i];
+				ctx->input_maxcolorcode_ext[i] = (double)((1 << ctx->significant_bits[i])-1);
+			}
+			else {
+				ctx->insignificant_bits[i] = 0;
+				ctx->input_maxcolorcode_ext[i] = ctx->input_maxcolorcode;
+			}
 		}
 	}
 
 	decide_output_bit_depth(ctx);
 
-	maxcolorcode_int = (1 << ctx->output_depth)-1;
-	ctx->output_maxcolorcode = (double)maxcolorcode_int;
+	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		flag=0;
+		for(i=0;i<5;i++) {
+			if(ctx->color_count[i]) flag=1;
+		}
+		if(flag) {
+			iw_warning(ctx,iwcore_get_string(ctx,iws_warn_fltpt_no_posterize));
+		}
+	}
+	else {
+		output_maxcolorcode_int = (1 << ctx->output_depth)-1;
+		ctx->output_maxcolorcode = (double)output_maxcolorcode_int;
 
-	for(i=0;i<5;i++) {
-		if(ctx->color_count[i]) iw_restrict_to_range(2,maxcolorcode_int+1,&ctx->color_count[i]);
-		if(ctx->color_count[i]==maxcolorcode_int+1) ctx->color_count[i]=0;
+		for(i=0;i<5;i++) {
+			if(ctx->color_count[i]) iw_restrict_to_range(2,output_maxcolorcode_int+1,&ctx->color_count[i]);
+			if(ctx->color_count[i]==output_maxcolorcode_int+1) ctx->color_count[i]=0;
+		}
 	}
 
 	if(ctx->offset_color_channels && ctx->to_grayscale) {
