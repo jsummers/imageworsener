@@ -301,11 +301,12 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 // beginning of the file.
 static int detect_fmt_of_file(FILE *fp)
 {
-	unsigned char buf[2];
+	unsigned char buf[12];
 	int fmt=IWCMD_FMT_UNKNOWN;
 	size_t n;
 
-	n=fread(buf,1,2,fp);
+	n=fread(buf,1,12,fp);
+	clearerr(fp);
 	fseek(fp,0,SEEK_SET);
 	if(n<2) goto done;
 
@@ -324,8 +325,9 @@ static int detect_fmt_of_file(FILE *fp)
 	else if(buf[0]==0x69 && buf[1]==0x64) {
 		fmt=IWCMD_FMT_MIFF;
 	}
-	else if(buf[0]==0x52 && buf[1]==0x49) {
-		// TODO: Figure out the right way to detect WEBP format.
+	else if(n>=12 && buf[0]==0x52 && buf[1]==0x49 && buf[2]==0x46 && buf[3]==0x46 &&
+	   buf[8]==0x57 && buf[9]==0x45 && buf[10]==0x42 && buf[11]==0x50)
+	{
 		fmt=IWCMD_FMT_WEBP;
 	}
 
