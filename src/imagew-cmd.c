@@ -183,34 +183,53 @@ static void iwcmd_utf8_to_tchar(const char *src, TCHAR *dst, int dstlen)
 }
 #endif
 
+// Output a NUL-terminated string.
+static void iwcmd_puts_utf8(struct params_struct *p, const char *s)
+{
+
+#ifdef IW_WINDOWS
+
+	TCHAR tbuf[500];
+
+#ifdef _UNICODE
+	iwcmd_utf8_to_tchar(s,tbuf,sizeof(tbuf)/sizeof(TCHAR));
+#else
+	iw_utf8_to_ascii(s,tbuf,sizeof(tbuf)/sizeof(TCHAR));
+#endif
+	_tprintf(_T("%s"),tbuf);
+
+#else
+
+	char buf[500];
+
+	if(p->unicode_output) {
+		fputs(s,stdout);
+	}
+	else {
+		iw_utf8_to_ascii(s,buf,sizeof(buf));
+		fputs(buf,stdout);
+	}
+
+#endif
+
+}
+
 static void iwcmd_vprint_utf8(struct params_struct *p, const char *fmt, va_list ap)
 {
 	char buf[500];
-	TCHAR buf2[500];
 
 #ifdef IW_WINDOWS
 
 	StringCbVPrintfA(buf,sizeof(buf),fmt,ap);
-#if _UNICODE
-	iwcmd_utf8_to_tchar(buf,buf2,sizeof(buf2)/sizeof(TCHAR));
-#else
-	iw_utf8_to_ascii(buf,buf2,sizeof(buf2)/sizeof(TCHAR));
-#endif
-	_tprintf(_T("%s"),buf2);
 
 #else
 
-	if(p->unicode_output) {
-		vfprintf(stdout,fmt,ap);
-	}
-	else {
-		vsnprintf(buf,sizeof(buf),fmt,ap);
-		buf[499]='\0';
-		iw_utf8_to_ascii(buf,buf2,sizeof(buf2));
-		fputs(buf2,stdout);
-	}
+	vsnprintf(buf,sizeof(buf),fmt,ap);
+	buf[sizeof(buf)-1]='\0';
 
 #endif
+
+	iwcmd_puts_utf8(p,buf);
 }
 
 static void iwcmd_message_utf8(struct params_struct *p, const char *fmt, ...)
@@ -559,6 +578,14 @@ static int run(struct params_struct *p)
 	}
 	if(p->resize_alg_alpha.family) {
 		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALPHA,IW_DIMENSION_V,&p->resize_alg_alpha);
+	}
+
+	if( (!p->resize_alg_x.family && p->resize_alg_x.blur!=1.0) ||
+		(!p->resize_alg_y.family && p->resize_alg_y.blur!=1.0) ||
+		(!p->resize_alg_alpha.family && p->resize_alg_alpha.blur!=1.0) )
+	{
+		if(!p->quiet)
+			iwcmd_warning_utf8(p,"Warning: -blur option requires -filter\n");
 	}
 
 	if(p->dither_family_all)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_family_all  ,p->dither_subtype_all);
