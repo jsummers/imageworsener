@@ -544,6 +544,12 @@ Options:
    webp-style quality setting to use if a WEBP file is written. This is on a
    scale from 0 to 100. Default is 80.
 
+ -noinfo
+   Suppess informational messages.
+
+ -nowarn
+   Suppess warnings.
+
  -quiet
    Suppress informational messages and warnings.
 

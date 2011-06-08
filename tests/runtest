@@ -128,7 +128,7 @@ $IW srcimg/4x4.png actual/grayscale.png $SCALE -filter catrom -grayscale
 $IW srcimg/4x4.png actual/grayscale-c.png $SCALE -filter catrom -grayscale -nogamma -grayscaleformula c
 
 $IW srcimg/4x4.png actual/offset.png $SCALE -filter mix -offsetred .333 -offsetgreen -0.2 -offsetblue -1.5
-$IW srcimg/rgb8a.png actual/offsetv.png $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5
+$IW srcimg/rgb8a.png actual/offsetv.png $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5 -nowarn
 $IW srcimg/g2.png actual/offsetrb.png $SCALE -filter catrom -offsetrb .333 -offsetvrb -0.6
 
 # Not tested: random dithering.
@@ -144,7 +144,7 @@ $IW srcimg/4x4.png actual/dither-gray.png $SCALE -filter catrom -cc 2 -grayscale
 $IW srcimg/rgb8.jpg actual/jpeg.jpg $SCALE -filter catrom
 $IW srcimg/rgb8.jpg actual/jpegsf.jpg $SCALE -filter catrom -jpegsampling 1,1
 $IW srcimg/g8.jpg actual/jpeggray.jpg $SCALE -filter catrom -jpegquality 60
-$IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace
+$IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace -nowarn
 
 # Test writing BMP
 $IW srcimg/g2.png actual/bmp1.bmp -width 11
@@ -190,7 +190,7 @@ $IW srcimg/g8.png actual/noopt-r8.png $CMPR -depth 16 -crop 0,0,8,7 -noopt reduc
 # Test background color reading
 $IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2 -pngcmprlevel 9
 $IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebkgdlabel -pngcmprlevel 9
-$IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR
+$IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR -nowarn
 
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)

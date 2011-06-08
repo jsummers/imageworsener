@@ -78,7 +78,8 @@ struct resize_alg {
 struct params_struct {
 	const TCHAR *infn;
 	const TCHAR *outfn;
-	int quiet;
+	int nowarn;
+	int noinfo;
 	int new_width;
 	int new_height;
 	int rel_width_flag, rel_height_flag;
@@ -278,7 +279,7 @@ static void my_warning_handler(struct iw_context *ctx, const char *msg)
 {
 	struct params_struct *p;
 	p = (struct params_struct *)iw_get_userdata(ctx);
-	if(!p->quiet) {
+	if(!p->nowarn) {
 		iwcmd_warning_utf8(p,"Warning: %s\n",msg);
 	}
 }
@@ -449,7 +450,7 @@ static int run(struct params_struct *p)
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
 	memset(&writedescr,0,sizeof(struct iw_iodescr));
 
-	if(!p->quiet) {
+	if(!p->noinfo) {
 		iwcmd_message_native(p,_T("%s "),p->infn);
 		iwcmd_message_utf8(p,"\xe2\x86\x92");
 		iwcmd_message_native(p,_T(" %s\n"),p->outfn);
@@ -584,7 +585,7 @@ static int run(struct params_struct *p)
 		(!p->resize_alg_y.family && p->resize_alg_y.blur!=1.0) ||
 		(!p->resize_alg_alpha.family && p->resize_alg_alpha.blur!=1.0) )
 	{
-		if(!p->quiet)
+		if(!p->nowarn)
 			iwcmd_warning_utf8(p,"Warning: -blur option requires -filter\n");
 	}
 
@@ -691,7 +692,7 @@ static int run(struct params_struct *p)
 	if(p->new_width<1) p->new_width=1;
 	if(p->new_height<1) p->new_height=1;
 
-	if(p->quiet) {
+	if(p->noinfo) {
 		;
 	}
 	else if(p->new_width==old_width && p->new_height==old_height) {
@@ -1243,7 +1244,7 @@ enum iwcmd_param_types {
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
- PT_QUIET, PT_VERSION, PT_HELP
+ PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP
 };
 
 struct parsestate_struct {
@@ -1322,6 +1323,8 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{_T("nocslabel"),PT_NOCSLABEL,0},
 		{_T("usebkgdlabel"),PT_USEBKGDLABEL,0},
 		{_T("quiet"),PT_QUIET,0},
+		{_T("nowarn"),PT_NOWARN,0},
+		{_T("noinfo"),PT_NOINFO,0},
 		{_T("version"),PT_VERSION,0},
 		{_T("help"),PT_HELP,0},
 		{NULL,PT_NONE,0}
@@ -1375,7 +1378,14 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		p->interlace=1;
 		break;
 	case PT_QUIET:
-		p->quiet=1;
+		p->nowarn=1;
+		p->noinfo=1;
+		break;
+	case PT_NOWARN:
+		p->nowarn=1;
+		break;
+	case PT_NOINFO:
+		p->noinfo=1;
 		break;
 	case PT_VERSION:
 		ps->printversion=1;
