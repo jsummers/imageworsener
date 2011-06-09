@@ -4,6 +4,8 @@
 
 #include "imagew-config.h"
 
+#if IW_SUPPORT_PNG == 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -653,3 +655,5 @@ char *iw_get_zlib_version_string(char *s, int s_len)
 	iw_snprintf(s,s_len,"%s",zv);
 	return s;
 }
+
+#endif // IW_SUPPORT_PNG

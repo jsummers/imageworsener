@@ -502,7 +502,11 @@ static int run(struct params_struct *p)
 	}
 
 	if(p->infmt==IWCMD_FMT_JPEG) {
+#if IW_SUPPORT_JPEG == 1
 		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
+#else
+		iw_seterror(ctx,"JPEG is not supported by this copy of imagew.");
+#endif
 	}
 	else if(p->infmt==IWCMD_FMT_MIFF) {
 		if(!iw_read_miff_file(ctx,&readdescr)) goto done;
@@ -515,7 +519,11 @@ static int run(struct params_struct *p)
 #endif
 	}
 	else {
+#if IW_SUPPORT_PNG == 1
 		if(!iw_read_png_file(ctx,&readdescr)) goto done;
+#else
+		iw_seterror(ctx,"PNG is not supported by this copy of imagew.");
+#endif
 	}
 
 	fclose((FILE*)readdescr.fp);
@@ -723,12 +731,16 @@ static int run(struct params_struct *p)
 	}
 
 	if(p->outfmt==IWCMD_FMT_JPEG) {
+#if IW_SUPPORT_JPEG == 1
 		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
 		if(p->jpeg_samp_factor_h>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
 		if(p->jpeg_samp_factor_v>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
 		if(!iw_write_jpeg_file(ctx,&writedescr)) goto done;
+#else
+		iw_seterror(ctx,"JPEG is not supported by this copy of imagew.");
+#endif
 	}
 	else if(p->outfmt==IWCMD_FMT_BMP) {
 		if(!iw_write_bmp_file(ctx,&writedescr)) goto done;
@@ -748,9 +760,13 @@ static int run(struct params_struct *p)
 #endif
 	}
 	else {
+#if IW_SUPPORT_PNG == 1
 		if(p->pngcmprlevel >= 0)
 			iw_set_value(ctx,IW_VAL_PNG_CMPR_LEVEL,p->pngcmprlevel);
 		if(!iw_write_png_file(ctx,&writedescr)) goto done;
+#else
+		iw_seterror(ctx,"PNG is not supported by this copy of imagew.");
+#endif
 	}
 
 	fclose((FILE*)writedescr.fp);
@@ -1222,9 +1238,15 @@ static void do_printversion(struct params_struct *p)
 
 	iwcmd_message_utf8(p,"%s\n",iw_get_copyright_string(NULL,buf,buflen));
 
+#if IW_SUPPORT_JPEG == 1
 	iwcmd_message_utf8(p,"Uses libjpeg version %s\n",iw_get_libjpeg_version_string(buf,buflen));
+#endif
+#if IW_SUPPORT_PNG == 1
 	iwcmd_message_utf8(p,"Uses libpng version %s\n",iw_get_libpng_version_string(buf,buflen));
+	// TODO: WebP might also use zlib, so we shouldn't just assume zlib is bundled
+	// with libpng.
 	iwcmd_message_utf8(p,"Uses zlib version %s\n",iw_get_zlib_version_string(buf,buflen));
+#endif
 #if IW_SUPPORT_WEBP == 1
 	iwcmd_message_utf8(p,"Uses libwebp encoder v%s",iw_get_libwebp_enc_version_string(buf,buflen));
 	iwcmd_message_utf8(p,", decoder v%s\n",iw_get_libwebp_dec_version_string(buf,buflen));

@@ -20,6 +20,12 @@
 #endif
 #endif
 
+#ifndef IW_SUPPORT_PNG
+#define IW_SUPPORT_PNG 1
+#endif
+#ifndef IW_SUPPORT_JPEG
+#define IW_SUPPORT_JPEG 1
+#endif
 #ifndef IW_SUPPORT_WEBP
 #define IW_SUPPORT_WEBP 1
 #endif

@@ -4,6 +4,8 @@
 
 #include "imagew-config.h"
 
+#if IW_SUPPORT_JPEG == 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -477,3 +479,5 @@ char *iw_get_libjpeg_version_string(char *s, int s_len)
 	if(space_ptr) *space_ptr = '\0';
 	return s;
 }
+
+#endif // IW_SUPPORT_JPEG
