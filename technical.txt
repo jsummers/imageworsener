@@ -86,7 +86,7 @@ IW has three components: The core library, the auxiliary library, and the
 command-line utility.
 
 The core library does the image processing, but does not do any file I/O. It
-knows almost nothing about PNG and JPEG file formats. It has access to the
+knows almost nothing about specific file formats. It has access to the
 internal data structures defined in imagew-internals.h. It does not make any
 direct calls to the auxiliary library.
 
@@ -274,7 +274,7 @@ Features I'm considering adding:
 - Support maintaining or adjusting the pixel density even when the image is
   resized.
 
-- Options to maintain PNG background colors.
+- Options to maintain PNG and GIF background colors.
 
 - Hilbert curve dithering. Unfortunately, this will require some changes to
   IW's architecture.

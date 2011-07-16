@@ -277,7 +277,8 @@ struct iw_iodescr {
 #define IW_STRINGTABLENUM_TIFF 4
 #define IW_STRINGTABLENUM_MIFF 5
 #define IW_STRINGTABLENUM_WEBP 6
-#define IW_NUMSTRINGTABLES 7
+#define IW_STRINGTABLENUM_GIF  7
+#define IW_NUMSTRINGTABLES 8
 
 struct iw_stringtableentry {
 	int n;
@@ -359,8 +360,8 @@ void iw_set_allow_opt(struct iw_context *ctx, int opt, int n);
 
 // Caller allocates the pixels with (preferably) iw_malloc_large().
 // The memory will be freed by IW.
-void iw_set_input_image(struct iw_context *ctx,
-		const struct iw_image *img);
+// A copy is made of the img structure itself.
+void iw_set_input_image(struct iw_context *ctx, const struct iw_image *img);
 
 // Caller supplies an (uninitialized) iw_image structure, which the
 // function fills in.
@@ -416,6 +417,7 @@ int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 int iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+int iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 char *iw_get_libwebp_dec_version_string(char *s, int s_len);
 char *iw_get_libwebp_enc_version_string(char *s, int s_len);
 

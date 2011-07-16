@@ -293,6 +293,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\imagew-gif.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\imagew-jpeg.c"
 				>
 			</File>

@@ -63,6 +63,7 @@
 #define IWCMD_FMT_TIFF 4
 #define IWCMD_FMT_MIFF 5
 #define IWCMD_FMT_WEBP 6
+#define IWCMD_FMT_GIF  7
 
 struct rgb_color {
 	double r,g,b;
@@ -295,6 +296,7 @@ static int get_fmt_from_name(const TCHAR *s)
 	if(!_tcscmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
 	if(!_tcscmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
 	if(!_tcscmp(s,_T("webp"))) return IWCMD_FMT_WEBP;
+	if(!_tcscmp(s,_T("gif"))) return IWCMD_FMT_GIF;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -313,6 +315,7 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 	if(!_tcsicmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
 	if(!_tcsicmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
 	if(!_tcsicmp(s,_T("webp"))) return IWCMD_FMT_WEBP;
+	if(!_tcsicmp(s,_T("gif"))) return IWCMD_FMT_GIF;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -332,6 +335,9 @@ static int detect_fmt_of_file(FILE *fp)
 
 	if(buf[0]==0x89 && buf[1]==0x50) {
 		fmt=IWCMD_FMT_PNG;
+	}
+	else if(buf[0]=='G' && buf[1]=='I' && buf[2]=='F') {
+		fmt=IWCMD_FMT_GIF;
 	}
 	else if(buf[0]==0xff && buf[1]==0xd8) {
 		fmt=IWCMD_FMT_JPEG;
@@ -518,6 +524,9 @@ static int run(struct params_struct *p)
 		iw_seterror(ctx,"WebP is not supported by this copy of imagew.");
 #endif
 	}
+	else if(p->infmt==IWCMD_FMT_GIF) {
+		if(!iw_read_gif_file(ctx,&readdescr)) goto done;
+	}
 	else {
 #if IW_SUPPORT_PNG == 1
 		if(!iw_read_png_file(ctx,&readdescr)) goto done;
@@ -557,6 +566,10 @@ static int run(struct params_struct *p)
 	}
 	else if(p->outfmt==IWCMD_FMT_WEBP) {
 		iw_set_output_profile(ctx,IW_PROFILE_WEBP);
+	}
+	else if(p->outfmt==IWCMD_FMT_GIF) {
+		iw_seterror(ctx,"Writing GIF files is not supported.");
+		goto done;
 	}
 	else {
 		iw_set_output_profile(ctx,IW_PROFILE_PNG);

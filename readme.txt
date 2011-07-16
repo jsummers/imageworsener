@@ -97,8 +97,8 @@ relatively slow. Among the things it (hopefully) does right:
  - All the image scaling algorithms that it implements.
 
 Other information:
- - The command-line utility fully supports PNG, JPEG, and WEBP files, and has
-   partial support for BMP, TIFF, and MIFF.
+ - The command-line utility fully supports PNG, JPEG, and WebP files, and has
+   partial support for GIF, BMP, TIFF, and MIFF.
  - The library is (more or less) not specific to a particular file format.
  - Full support for high color depth (16 bits per sample).
  - Some options can be set differently for the different dimensions
@@ -168,6 +168,7 @@ Options:
      png: PNG
      jpeg, jpg: JPEG
      webp: WebP
+     gif: GIF (-infmt only)
      miff: MIFF (experimental; limited support)
      bmp: BMP (-outfmt only)
      tiff, tif: TIFF (-outfmt only)
@@ -541,7 +542,7 @@ Options:
    reasons unknown to the author of IW.
 
  -webpquality <n>
-   webp-style quality setting to use if a WEBP file is written. This is on a
+   webp-style quality setting to use if a WebP file is written. This is on a
    scale from 0 to 100. Default is 80.
 
  -noinfo
