@@ -191,6 +191,7 @@ $IW srcimg/g8.png actual/noopt-r8.png $CMPR -depth 16 -crop 0,0,8,7 -noopt reduc
 $IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2 -pngcmprlevel 9
 $IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebkgdlabel -pngcmprlevel 9
 $IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR -nowarn
+$IW srcimg/p5t.gif actual/gif1.png $CMPR
 
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
