@@ -319,6 +319,22 @@ static int detect_fmt_from_filename(const TCHAR *fn)
 	return IWCMD_FMT_UNKNOWN;
 }
 
+static const char *get_fmt_name(int fmt)
+{
+	static const char *n;
+	n="(unknown)";
+	switch(fmt) {
+	case IWCMD_FMT_PNG:  n="PNG";  break;
+	case IWCMD_FMT_JPEG: n="JPEG"; break;
+	case IWCMD_FMT_BMP:  n="BMP";  break;
+	case IWCMD_FMT_TIFF: n="TIFF"; break;
+	case IWCMD_FMT_MIFF: n="MIFF"; break;
+	case IWCMD_FMT_WEBP: n="WebP"; break;
+	case IWCMD_FMT_GIF:  n="GIF";  break;
+	}
+	return n;
+}
+
 // Reads the first few bytes in the file to try to figure out
 // the file format. Then sets the file pointer back to the
 // beginning of the file.
@@ -441,6 +457,45 @@ static int iwcmd_calc_rel_size(double rel, int d)
 	return n;
 }
 
+static int is_input_fmt_supported(int fmt)
+{
+	switch(fmt) {
+#if IW_SUPPORT_PNG == 1
+	case IWCMD_FMT_PNG:
+#endif
+#if IW_SUPPORT_JPEG == 1
+	case IWCMD_FMT_JPEG:
+#endif
+#if IW_SUPPORT_WEBP == 1
+	case IWCMD_FMT_WEBP:
+#endif
+	case IWCMD_FMT_MIFF:
+	case IWCMD_FMT_GIF:
+		return 1;
+	}
+	return 0;
+}
+
+static int is_output_fmt_supported(int fmt)
+{
+	switch(fmt) {
+#if IW_SUPPORT_PNG == 1
+	case IWCMD_FMT_PNG:
+#endif
+#if IW_SUPPORT_JPEG == 1
+	case IWCMD_FMT_JPEG:
+#endif
+#if IW_SUPPORT_WEBP == 1
+	case IWCMD_FMT_WEBP:
+#endif
+	case IWCMD_FMT_BMP:
+	case IWCMD_FMT_TIFF:
+	case IWCMD_FMT_MIFF:
+		return 1;
+	}
+	return 0;
+}
+
 static int run(struct params_struct *p)
 {
 	int retval = 0;
@@ -468,6 +523,20 @@ static int run(struct params_struct *p)
 	iw_set_userdata(ctx,(void*)p);
 	iw_set_warning_fn(ctx,my_warning_handler);
 
+	// Decide on the output format as early as possible, so we can give up
+	// quickly if it's not supported.
+	if(p->outfmt==IWCMD_FMT_UNKNOWN)
+		p->outfmt=detect_fmt_from_filename(p->outfn);
+
+	if(p->outfmt==IWCMD_FMT_UNKNOWN) {
+		iw_seterror(ctx,"Unknown output format; use -outfmt.");
+		goto done;
+	}
+	else if(!is_output_fmt_supported(p->outfmt)) {
+		iw_seterror(ctx,"Writing %s files is not supported.",get_fmt_name(p->outfmt));
+		goto done;
+	}
+
 	if(p->random_seed!=0 || p->randomize) {
 		iw_set_random_seed(ctx,p->randomize, p->random_seed);
 	}
@@ -491,48 +560,42 @@ static int run(struct params_struct *p)
 		goto done;
 	}
 
+	// Decide on the input format.
 	if(p->infmt==IWCMD_FMT_UNKNOWN)
 		p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
 
 	if(p->infmt==IWCMD_FMT_UNKNOWN) {
-		iw_seterror(ctx,"Unsupported input file format.");
+		iw_seterror(ctx,"Unknown input file format.");
 		goto done;
 	}
-	else if(p->infmt==IWCMD_FMT_BMP) {
-		iw_seterror(ctx,"Reading BMP files is not supported.");
-		goto done;
-	}
-	else if(p->infmt==IWCMD_FMT_TIFF) {
-		iw_seterror(ctx,"Reading TIFF files is not supported.");
-		goto done;
+	else if(!is_input_fmt_supported(p->infmt)) {
+		iw_seterror(ctx,"Reading %s files is not supported.",get_fmt_name(p->infmt));
 	}
 
-	if(p->infmt==IWCMD_FMT_JPEG) {
-#if IW_SUPPORT_JPEG == 1
-		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
-#else
-		iw_seterror(ctx,"JPEG is not supported by this copy of imagew.");
-#endif
-	}
-	else if(p->infmt==IWCMD_FMT_MIFF) {
-		if(!iw_read_miff_file(ctx,&readdescr)) goto done;
-	}
-	else if(p->infmt==IWCMD_FMT_WEBP) {
-#if IW_SUPPORT_WEBP == 1
-		if(!iw_read_webp_file(ctx,&readdescr)) goto done;
-#else
-		iw_seterror(ctx,"WebP is not supported by this copy of imagew.");
-#endif
-	}
-	else if(p->infmt==IWCMD_FMT_GIF) {
-		if(!iw_read_gif_file(ctx,&readdescr)) goto done;
-	}
-	else {
+	switch(p->infmt) {
 #if IW_SUPPORT_PNG == 1
+	case IWCMD_FMT_PNG:
 		if(!iw_read_png_file(ctx,&readdescr)) goto done;
-#else
-		iw_seterror(ctx,"PNG is not supported by this copy of imagew.");
+		break;
 #endif
+#if IW_SUPPORT_JPEG == 1
+	case IWCMD_FMT_JPEG:
+		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
+		break;
+#endif
+#if IW_SUPPORT_WEBP == 1
+	case IWCMD_FMT_WEBP:
+		if(!iw_read_webp_file(ctx,&readdescr)) goto done;
+		break;
+#endif
+	case IWCMD_FMT_MIFF:
+		if(!iw_read_miff_file(ctx,&readdescr)) goto done;
+		break;
+	case IWCMD_FMT_GIF:
+		if(!iw_read_gif_file(ctx,&readdescr)) goto done;
+		break;
+	default:
+		goto done;
 	}
 
 	fclose((FILE*)readdescr.fp);
@@ -542,36 +605,25 @@ static int run(struct params_struct *p)
 	input_depth = iw_get_value(ctx,IW_VAL_INPUT_DEPTH);
 	output_depth = input_depth;
 
-	if(p->outfmt==IWCMD_FMT_UNKNOWN)
-		p->outfmt=detect_fmt_from_filename(p->outfn);
-
-	if(p->outfmt==IWCMD_FMT_UNKNOWN) {
-		iw_seterror(ctx,"Unknown output format; use -outfmt.");
-		goto done;
-	}
-
 	// We have to tell the library the output format, so it can know what
 	// kinds of images are allowed (e.g. whether transparency is allowed).
-	if(p->outfmt==IWCMD_FMT_JPEG) {
+	switch(p->outfmt) {
+	case IWCMD_FMT_JPEG:
 		iw_set_output_profile(ctx,IW_PROFILE_JPEG);
-	}
-	else if(p->outfmt==IWCMD_FMT_BMP) {
+		break;
+	case IWCMD_FMT_BMP:
 		iw_set_output_profile(ctx,IW_PROFILE_BMP);
-	}
-	else if(p->outfmt==IWCMD_FMT_TIFF) {
+		break;
+	case IWCMD_FMT_TIFF:
 		iw_set_output_profile(ctx,IW_PROFILE_TIFF);
-	}
-	else if(p->outfmt==IWCMD_FMT_MIFF) {
+		break;
+	case IWCMD_FMT_MIFF:
 		iw_set_output_profile(ctx,IW_PROFILE_MIFF);
-	}
-	else if(p->outfmt==IWCMD_FMT_WEBP) {
+		break;
+	case IWCMD_FMT_WEBP:
 		iw_set_output_profile(ctx,IW_PROFILE_WEBP);
-	}
-	else if(p->outfmt==IWCMD_FMT_GIF) {
-		iw_seterror(ctx,"Writing GIF files is not supported.");
-		goto done;
-	}
-	else {
+		break;
+	default:
 		iw_set_output_profile(ctx,IW_PROFILE_PNG);
 	}
 
