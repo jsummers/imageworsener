@@ -15,6 +15,8 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
+typedef unsigned short iw_uint16;
+
 enum iwgif_string {
 	iws_gif_read_error=1,
 	iws_gif_unsupported,
@@ -197,7 +199,6 @@ done:
 	return retval;
 }
 
-
 static int iwgif_read_extension(struct iwgifreadcontext *rctx)
 {
 	int retval=0;
@@ -268,10 +269,10 @@ static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int color
 ////////////////////////////////////////////////////////
 
 struct lzw_tableentry {
-	unsigned int reference; // pointer to previous table entry (if not a root code)
-	unsigned int length;
-	unsigned char value;
+	iw_uint16 parent; // pointer to previous table entry (if not a root code)
+	iw_uint16 length;
 	unsigned char firstchar;
+	unsigned char lastchar;
 };
 
 struct lzwdeccontext {
@@ -302,10 +303,10 @@ static void lzw_init(struct lzwdeccontext *d, unsigned int root_codesize)
 	d->clear_code = d->num_root_codes;
 	d->eoi_code = d->num_root_codes+1;
 	for(i=0;i<d->num_root_codes;i++) {
-		d->ct[i].reference = 0;
-		d->ct[i].value = (unsigned char)i;
-		d->ct[i].firstchar = d->ct[i].value;
-		d->ct[i].length = 0;
+		d->ct[i].parent = 0;
+		d->ct[i].length = 1;
+		d->ct[i].lastchar = (unsigned char)i;
+		d->ct[i].firstchar = (unsigned char)i;
 	}
 }
 
@@ -328,23 +329,27 @@ static void lzw_emit_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d
 	// an LZW code are decoded in reverse order (right to left).
 
 	while(1) {
-		iwgif_record_pixel(rctx, d->ct[code].value, d->ct[code].length);
-		if(d->ct[code].length<1) break;
+		iwgif_record_pixel(rctx, (unsigned int)d->ct[code].lastchar, (int)(d->ct[code].length-1));
+		if(d->ct[code].length<=1) break;
 		// The codes are structured as a "forest" (multiple trees).
 		// Go to the parent code, which should have a length 1 less than this one.
-		code = d->ct[code].reference;
+		code = (unsigned int)d->ct[code].parent;
 	}
 
 	// Track the total number of pixels decoded in this image.
-	rctx->pixels_set += d->ct[first_code].length +1;
+	rctx->pixels_set += d->ct[first_code].length;
 }
 
 // Add a code to the dictionary.
 // Returns the position where it was added.
 // If table is full, returns -1.
-static int lzw_add_to_dict(struct lzwdeccontext *d, int oldcode, unsigned char val)
+static unsigned int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, unsigned char val)
 {
-	int newpos;
+	static const unsigned int last_code_of_size[] = {
+		// The first 3 values are unused.
+		0,0,0,7,15,31,63,127,255,511,1023,2047,4095
+	};
+	unsigned int newpos;
 
 	if(d->ct_used>=4096) {
 		return -1;
@@ -353,16 +358,16 @@ static int lzw_add_to_dict(struct lzwdeccontext *d, int oldcode, unsigned char v
 	newpos = d->ct_used;
 	d->ct_used++;
 
-	d->ct[newpos].reference = oldcode;
-	d->ct[newpos].value = val;
-	d->ct[newpos].firstchar = d->ct[oldcode].firstchar;
+	d->ct[newpos].parent = (iw_uint16)oldcode;
 	d->ct[newpos].length = d->ct[oldcode].length + 1;
+	d->ct[newpos].firstchar = d->ct[oldcode].firstchar;
+	d->ct[newpos].lastchar = val;
 
 	// If we've used the last code of this size, we need to increase the codesize.
-	switch(newpos) {
-	case 7: case 15: case 31: case 63: case 127: case 255:
-	case 511: case 1023: case 2047:
-		d->current_codesize++;
+	if(newpos == last_code_of_size[d->current_codesize]) {
+		if(d->current_codesize<12) {
+			d->current_codesize++;
+		}
 	}
 
 	return newpos;
@@ -372,7 +377,7 @@ static int lzw_add_to_dict(struct lzwdeccontext *d, int oldcode, unsigned char v
 static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d,
 		unsigned int code)
 {
-	int newpos;
+	unsigned int newpos;
 
 	if(code==d->eoi_code) {
 		d->eoi_flag=1;
@@ -581,7 +586,7 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 		goto done;
 	}
 
-	// The creation fo the global "screen" was deferred until now, to wait until
+	// The creation of the global "screen" was deferred until now, to wait until
 	// we know whether the first image has transparency.
 	if(!iwgif_init_screen(rctx)) goto done;
 
