@@ -317,6 +317,9 @@ Options:
    the vertical-resize operation. This is not the *correct* thing to do,
    though the difference usually isn't noticeable. The purpose of this option
    is to let you try to replicate what some other applications do.
+   Exception: If you are writing to a MIFF file, samples are never clamped,
+   unless you use -intclamp, in which case both the intermediate and final
+   samples are clamped.
 
  -crop <x>,<y>,<width>,<height>
    Crop the source image before processing it. Pixels outside the specified

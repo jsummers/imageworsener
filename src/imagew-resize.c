@@ -445,6 +445,7 @@ void iw_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_setting
 void iw_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension)
 {
 	int i;
+	int clamp;
 
 	if(rs->family>=IW_FIRST_PRECALC_FILTER) {
 		iw_resample_row(ctx);
@@ -465,9 +466,18 @@ void iw_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, i
 
 resizedone:
 	// The horizontal dimension is always resized last.
-	// After it's done, we can always clamp the pixels to the [0.0,1.0] range.
+	// After it's done, we can always clamp the pixels to the [0.0,1.0] range,
+	// unless the output format supports floating point.
 	// If the intclamp flag is set, we clamp after every stage.
-	if(dimension==IW_DIMENSION_H || ctx->intclamp) {
+
+	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		clamp = ctx->intclamp;
+	}
+	else {
+		clamp = (ctx->intclamp || dimension==IW_DIMENSION_H);
+	}
+
+	if(clamp) {
 		for(i=0;i<ctx->num_out_pix;i++) {
 			if(ctx->out_pix[i]<0.0) ctx->out_pix[i]=0.0;
 			else if(ctx->out_pix[i]>1.0) ctx->out_pix[i]=1.0;
