@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #ifdef IW_WINDOWS
+#include <malloc.h>
 #include <fcntl.h>
 #include <io.h> // for _setmode
 #endif
@@ -40,19 +41,11 @@
 #include <strsafe.h>
 #endif
 
-#ifndef IW_WINDOWS
+#ifdef IW_WINDOWS
+#define iwcmd_stricmp _stricmp
+#else
+#define iwcmd_stricmp stricmp
 #define TCHAR     char
-#define _T(x)     x
-#define _vftprintf vfprintf
-#define _tcslen   strlen
-#define _tcscmp   strcmp
-#define _tcsicmp  strcasecmp
-#define _tcsncmp  strncmp
-#define _tstoi    atoi
-#define _tstof    atof
-#define _tcschr   strchr
-#define _tcsrchr  strrchr
-#define _tcsdup   strdup
 #define _tmain    main
 #endif
 
@@ -77,8 +70,8 @@ struct resize_alg {
 };
 
 struct params_struct {
-	const TCHAR *infn;
-	const TCHAR *outfn;
+	const char *infn;
+	const char *outfn;
 	int nowarn;
 	int noinfo;
 	int new_width;
@@ -131,43 +124,51 @@ struct params_struct {
 	double xdens, ydens;
 };
 
-// The *_native functions are used for printing user-supplied strings
-// (filenames and other command-line parameters). The *_utf8 functions are
-// used for everthing else.
-
-static void iwcmd_vprint_native(struct params_struct *p, const TCHAR *fmt, va_list ap)
-{
-	_vftprintf(stdout,fmt,ap);
-}
-
-static void iwcmd_message_native(struct params_struct *p, const TCHAR *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	iwcmd_vprint_native(p,fmt,ap);
-	va_end(ap);
-}
-
-#if 0
-static void iwcmd_warning_native(struct params_struct *p, const TCHAR *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	iwcmd_vprint_native(p,fmt,ap);
-	va_end(ap);
-}
-#endif
-
-static void iwcmd_error_native(struct params_struct *p, const TCHAR *fmt, ...)
-{
-	va_list ap;
-	va_start(ap, fmt);
-	iwcmd_vprint_native(p,fmt,ap);
-	va_end(ap);
-}
-
-
 #ifdef _UNICODE
+static char *iwcmd_utf16_to_utf8_strdup(const WCHAR *src)
+{
+	char *dst;
+	int dstlen;
+	int ret;
+
+	// Calculate the size required by the target string.
+	ret = WideCharToMultiByte(CP_UTF8,0,src,-1,NULL,0,NULL,NULL);
+	if(ret<1) return NULL;
+
+	dstlen = ret;
+	dst = (char*)malloc(dstlen*sizeof(char));
+	if(!dst) return NULL;
+
+	ret = WideCharToMultiByte(CP_UTF8,0,src,-1,dst,dstlen,NULL,NULL);
+	if(ret<1) {
+		free(dst);
+		return NULL;
+	}
+	return dst;
+}
+
+static WCHAR *iwcmd_utf8_to_utf16_strdup(const char *src)
+{
+	WCHAR *dst;
+	int dstlen;
+	int ret;
+
+	// Calculate the size required by the target string.
+	ret = MultiByteToWideChar(CP_UTF8,0,src,-1,NULL,0);
+	if(ret<1) return NULL;
+
+	dstlen = ret;
+	dst = (WCHAR*)malloc(dstlen*sizeof(WCHAR));
+	if(!dst) return NULL;
+
+	ret = MultiByteToWideChar(CP_UTF8,0,src,-1,dst,dstlen);
+	if(ret<1) {
+		free(dst);
+		return NULL;
+	}
+	return dst;
+}
+
 static void iwcmd_utf8_to_utf16(const char *src, WCHAR *dst, int dstlen)
 {
 	MultiByteToWideChar(CP_UTF8,0,src,-1,dst,dstlen);
@@ -234,7 +235,7 @@ static void iwcmd_vprint_utf8(struct params_struct *p, const char *fmt, va_list 
 	iwcmd_puts_utf8(p,buf);
 }
 
-static void iwcmd_message_utf8(struct params_struct *p, const char *fmt, ...)
+static void iwcmd_message(struct params_struct *p, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -242,7 +243,7 @@ static void iwcmd_message_utf8(struct params_struct *p, const char *fmt, ...)
 	va_end(ap);
 }
 
-static void iwcmd_warning_utf8(struct params_struct *p, const char *fmt, ...)
+static void iwcmd_warning(struct params_struct *p, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -250,7 +251,7 @@ static void iwcmd_warning_utf8(struct params_struct *p, const char *fmt, ...)
 	va_end(ap);
 }
 
-static void iwcmd_error_utf8(struct params_struct *p, const char *fmt, ...)
+static void iwcmd_error(struct params_struct *p, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -258,64 +259,97 @@ static void iwcmd_error_utf8(struct params_struct *p, const char *fmt, ...)
 	va_end(ap);
 }
 
-// Wrapper for fopen()
-static FILE* iwcmd_fopen(const TCHAR *fn, const TCHAR *mode)
+// Wrappers for fopen()
+#if defined(IW_WINDOWS) && defined(_UNICODE)
+
+static FILE* iwcmd_fopen(const char *fn, const char *mode)
 {
-#ifdef IW_WINDOWS
 	FILE *f = NULL;
 	errno_t ret;
-	ret = _tfopen_s(&f,fn,mode);
+	TCHAR *fnW;
+	TCHAR *modeW;
+
+	fnW = iwcmd_utf8_to_utf16_strdup(fn);
+	modeW = iwcmd_utf8_to_utf16_strdup(mode);
+
+	ret = _tfopen_s(&f,fnW,modeW);
+
+	free(fnW);
+	free(modeW);
+
 	if(ret!=0) {
 		// failure
 		if(f) fclose(f);
 		f=NULL;
 	}
 	return f;
-#else
-	return fopen(fn,mode);
-#endif
 }
+
+#elif defined(IW_WINDOWS) && !defined(_UNICODE)
+
+static FILE* iwcmd_fopen(const char *fn, const char *mode)
+{
+	FILE *f = NULL;
+	errno_t ret;
+
+	ret = _tfopen_s(&f,fnW,modeW);
+	if(ret!=0) {
+		// failure
+		if(f) fclose(f);
+		f=NULL;
+	}
+	return f;
+}
+
+#else
+
+static FILE* iwcmd_fopen(const char *fn, const char *mode)
+{
+	return fopen(fn,mode);
+}
+
+#endif
 
 static void my_warning_handler(struct iw_context *ctx, const char *msg)
 {
 	struct params_struct *p;
 	p = (struct params_struct *)iw_get_userdata(ctx);
 	if(!p->nowarn) {
-		iwcmd_warning_utf8(p,"Warning: %s\n",msg);
+		iwcmd_warning(p,"Warning: %s\n",msg);
 	}
 }
 
 // This is used to process the parameter of -infmt/-outfmt.
-static int get_fmt_from_name(const TCHAR *s)
+static int get_fmt_from_name(const char *s)
 {
-	if(!_tcscmp(s,_T("png"))) return IWCMD_FMT_PNG;
-	if(!_tcscmp(s,_T("jpg"))) return IWCMD_FMT_JPEG;
-	if(!_tcscmp(s,_T("jpeg"))) return IWCMD_FMT_JPEG;
-	if(!_tcscmp(s,_T("bmp"))) return IWCMD_FMT_BMP;
-	if(!_tcscmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
-	if(!_tcscmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
-	if(!_tcscmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
-	if(!_tcscmp(s,_T("webp"))) return IWCMD_FMT_WEBP;
-	if(!_tcscmp(s,_T("gif"))) return IWCMD_FMT_GIF;
+	if(!strcmp(s,"png")) return IWCMD_FMT_PNG;
+	if(!strcmp(s,"jpg")) return IWCMD_FMT_JPEG;
+	if(!strcmp(s,"jpeg")) return IWCMD_FMT_JPEG;
+	if(!strcmp(s,"bmp")) return IWCMD_FMT_BMP;
+	if(!strcmp(s,"tif")) return IWCMD_FMT_TIFF;
+	if(!strcmp(s,"tiff")) return IWCMD_FMT_TIFF;
+	if(!strcmp(s,"miff")) return IWCMD_FMT_MIFF;
+	if(!strcmp(s,"webp")) return IWCMD_FMT_WEBP;
+	if(!strcmp(s,"gif")) return IWCMD_FMT_GIF;
 	return IWCMD_FMT_UNKNOWN;
 }
 
-static int detect_fmt_from_filename(const TCHAR *fn)
+static int detect_fmt_from_filename(const char *fn)
 {
-	TCHAR *s;
-	s=_tcsrchr(fn,'.');
+	char *s;
+	s=strrchr(fn,'.');
 	if(!s) return IWCMD_FMT_UNKNOWN;
 	s++;
 
-	if(!_tcsicmp(s,_T("png"))) return IWCMD_FMT_PNG;
-	if(!_tcsicmp(s,_T("jpg"))) return IWCMD_FMT_JPEG;
-	if(!_tcsicmp(s,_T("jpeg"))) return IWCMD_FMT_JPEG;
-	if(!_tcsicmp(s,_T("bmp"))) return IWCMD_FMT_BMP;
-	if(!_tcsicmp(s,_T("tif"))) return IWCMD_FMT_TIFF;
-	if(!_tcsicmp(s,_T("tiff"))) return IWCMD_FMT_TIFF;
-	if(!_tcsicmp(s,_T("miff"))) return IWCMD_FMT_MIFF;
-	if(!_tcsicmp(s,_T("webp"))) return IWCMD_FMT_WEBP;
-	if(!_tcsicmp(s,_T("gif"))) return IWCMD_FMT_GIF;
+	if(!iwcmd_stricmp(s,"png")) return IWCMD_FMT_PNG;
+	if(!iwcmd_stricmp(s,"jpg")) return IWCMD_FMT_JPEG;
+	if(!iwcmd_stricmp(s,"jpeg")) return IWCMD_FMT_JPEG;
+	if(!iwcmd_stricmp(s,"bmp")) return IWCMD_FMT_BMP;
+	if(!iwcmd_stricmp(s,"tif")) return IWCMD_FMT_TIFF;
+	if(!iwcmd_stricmp(s,"tiff")) return IWCMD_FMT_TIFF;
+	if(!iwcmd_stricmp(s,"miff")) return IWCMD_FMT_MIFF;
+	if(!iwcmd_stricmp(s,"webp")) return IWCMD_FMT_WEBP;
+	if(!iwcmd_stricmp(s,"gif")) return IWCMD_FMT_GIF;
 	return IWCMD_FMT_UNKNOWN;
 }
 
@@ -512,9 +546,7 @@ static int run(struct params_struct *p)
 	memset(&writedescr,0,sizeof(struct iw_iodescr));
 
 	if(!p->noinfo) {
-		iwcmd_message_native(p,_T("%s "),p->infn);
-		iwcmd_message_utf8(p,"\xe2\x86\x92");
-		iwcmd_message_native(p,_T(" %s\n"),p->outfn);
+		iwcmd_message(p,"%s \xe2\x86\x92 %s\n",p->infn,p->outfn);
 	}
 
 	ctx = iw_create_context();
@@ -554,7 +586,7 @@ static int run(struct params_struct *p)
 
 	readdescr.read_fn = my_readfn;
 	readdescr.getfilesize_fn = my_getfilesizefn;
-	readdescr.fp = (void*)iwcmd_fopen(p->infn,_T("rb"));
+	readdescr.fp = (void*)iwcmd_fopen(p->infn,"rb");
 	if(!readdescr.fp) {
 		iw_seterror(ctx,"Failed to open for reading (error code=%d)",(int)errno);
 		goto done;
@@ -659,7 +691,7 @@ static int run(struct params_struct *p)
 		(!p->resize_alg_alpha.family && p->resize_alg_alpha.blur!=1.0) )
 	{
 		if(!p->nowarn)
-			iwcmd_warning_utf8(p,"Warning: -blur option requires -filter\n");
+			iwcmd_warning(p,"Warning: -blur option requires -filter\n");
 	}
 
 	if(p->dither_family_all)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_family_all  ,p->dither_subtype_all);
@@ -769,10 +801,10 @@ static int run(struct params_struct *p)
 		;
 	}
 	else if(p->new_width==old_width && p->new_height==old_height) {
-		iwcmd_message_utf8(p,"Processing (%d\xc3\x97%d)\n",p->new_width,p->new_height);
+		iwcmd_message(p,"Processing (%d\xc3\x97%d)\n",p->new_width,p->new_height);
 	}
 	else {
-		iwcmd_message_utf8(p,"Resizing (%d\xc3\x97%d) \xe2\x86\x92 (%d\xc3\x97%d)\n",old_width,old_height,
+		iwcmd_message(p,"Resizing (%d\xc3\x97%d) \xe2\x86\x92 (%d\xc3\x97%d)\n",old_width,old_height,
 			p->new_width,p->new_height);
 	}
 
@@ -789,7 +821,7 @@ static int run(struct params_struct *p)
 
 
 	writedescr.write_fn = my_writefn;
-	writedescr.fp = (void*)iwcmd_fopen(p->outfn,_T("wb"));
+	writedescr.fp = (void*)iwcmd_fopen(p->outfn,"wb");
 	if(!writedescr.fp) {
 		iw_seterror(ctx,"Failed to open for writing (error code=%d)",(int)errno);
 		goto done;
@@ -845,7 +877,7 @@ done:
 
 	if(ctx) {
 		if(iw_get_errorflag(ctx)) {
-			iwcmd_error_utf8(p,"imagew error: %s\n",iw_get_errormsg(ctx,errmsg,200));
+			iwcmd_error(p,"imagew error: %s\n",iw_get_errormsg(ctx,errmsg,200));
 		}
 	}
 
@@ -856,7 +888,7 @@ done:
 
 // Find where a number ends (at a comma, or the end of string),
 // and record if it contained a slash.
-static int iwcmd_get_number_len(const TCHAR *s, int *pslash_pos)
+static int iwcmd_get_number_len(const char *s, int *pslash_pos)
 {
 	int i;
 	for(i=0;s[i];i++) {
@@ -870,7 +902,7 @@ static int iwcmd_get_number_len(const TCHAR *s, int *pslash_pos)
 }
 
 // Returns 0 if no valid number found.
-static int iwcmd_parse_number_internal(const TCHAR *s,
+static int iwcmd_parse_number_internal(const char *s,
 		   double *presult, int *pcharsread)
 {
 	int len;
@@ -886,20 +918,20 @@ static int iwcmd_parse_number_internal(const TCHAR *s,
 	if(slash_pos>=0) {
 		// a rational number
 		double numer, denom;
-		numer = _tstof(s);
-		denom = _tstof(s+slash_pos+1);
+		numer = atof(s);
+		denom = atof(s+slash_pos+1);
 		if(denom==0.0)
 			*presult = 0.0;
 		else
 			*presult = numer/denom;
 	}
 	else {
-		*presult = _tstof(s);
+		*presult = atof(s);
 	}
 	return 1;
 }
 
-static void iwcmd_parse_number_list(const TCHAR *s,
+static void iwcmd_parse_number_list(const char *s,
 	int max_numbers, // max number of numbers to parse
 	double *results, // array of doubles to hold the results
 	int *pnumresults) // number of numbers parsed
@@ -928,7 +960,7 @@ static void iwcmd_parse_number_list(const TCHAR *s,
 	}
 }
 
-static double iwcmd_parse_dbl(const TCHAR *s)
+static double iwcmd_parse_dbl(const char *s)
 {
 	double result;
 	int charsread;
@@ -936,7 +968,7 @@ static double iwcmd_parse_dbl(const TCHAR *s)
 	return result;
 }
 
-static int iwcmd_parse_int(const TCHAR *s)
+static int iwcmd_parse_int(const char *s)
 {
 	double result;
 	int charsread;
@@ -945,7 +977,7 @@ static int iwcmd_parse_int(const TCHAR *s)
 }
 
 // Parse two integers separated by a comma.
-static void iwcmd_parse_int_pair(const TCHAR *s, int *i1, int *i2)
+static void iwcmd_parse_int_pair(const char *s, int *i1, int *i2)
 {
 	double nums[2];
 	int count;
@@ -956,7 +988,7 @@ static void iwcmd_parse_int_pair(const TCHAR *s, int *i1, int *i2)
 }
 
 // Parse four integers separated by commas.
-static void iwcmd_parse_int_4(const TCHAR *s, int *i1, int *i2, int *i3, int *i4)
+static void iwcmd_parse_int_4(const char *s, int *i1, int *i2, int *i3, int *i4)
 {
 	double nums[4];
 	int count;
@@ -968,7 +1000,7 @@ static void iwcmd_parse_int_4(const TCHAR *s, int *i1, int *i2, int *i3, int *i4
 	*i4 = (int)(0.5+nums[3]);
 }
 
-static int hexdigit_value(TCHAR d)
+static int hexdigit_value(char d)
 {
 	if(d>='0' && d<='9') return ((int)d)-'0';
 	if(d>='a' && d<='f') return ((int)d)+10-'a';
@@ -976,24 +1008,24 @@ static int hexdigit_value(TCHAR d)
 	return 0;
 }
 
-static double hexvalue1(TCHAR d1)
+static double hexvalue1(char d1)
 {
 	return ((double)hexdigit_value(d1))/15.0;
 }
 
-static double hexvalue2(TCHAR d1, TCHAR d2)
+static double hexvalue2(char d1, char d2)
 {
 	return ((double)(16*hexdigit_value(d1) + hexdigit_value(d2)))/255.0;
 }
 
-static double hexvalue4(TCHAR d1, TCHAR d2, TCHAR d3, TCHAR d4)
+static double hexvalue4(char d1, char d2, char d3, char d4)
 {
 	return ((double)(4096*hexdigit_value(d1) + 256*hexdigit_value(d2) +
 		16*hexdigit_value(d3) + hexdigit_value(d4)))/65535.0;
 }
 
 // Allowed formats: 3 hex digits, 6 hex digits, or 12 hex digits.
-static void parse_bkgd_color(struct rgb_color *c, const TCHAR *s, size_t s_len)
+static void parse_bkgd_color(struct rgb_color *c, const char *s, size_t s_len)
 {
 	if(s_len==3) {
 		c->r = hexvalue1(s[0]);
@@ -1019,24 +1051,24 @@ static void parse_bkgd_color(struct rgb_color *c, const TCHAR *s, size_t s_len)
 }
 
 // 's' is either a single color, or two colors separated with a comma.
-static void parse_bkgd(struct params_struct *p, const TCHAR *s)
+static void parse_bkgd(struct params_struct *p, const char *s)
 {
-	TCHAR *cpos;
-	cpos = _tcschr(s,',');
+	char *cpos;
+	cpos = strchr(s,',');
 	if(!cpos) {
 		// Just a single color
-		parse_bkgd_color(&p->bkgd,s,_tcslen(s));
+		parse_bkgd_color(&p->bkgd,s,strlen(s));
 		return;
 	}
 
 	// Two colors
 	p->bkgd_checkerboard=1;
 	parse_bkgd_color(&p->bkgd,s,cpos-s);
-	parse_bkgd_color(&p->bkgd2,cpos+1,_tcslen(cpos+1));
+	parse_bkgd_color(&p->bkgd2,cpos+1,strlen(cpos+1));
 }
 
 // Find where the "name" ends and the parameters (numbers) begin.
-static int iwcmd_get_name_len(const TCHAR *s)
+static int iwcmd_get_name_len(const char *s)
 {
 	int i;
 	for(i=0;s[i];i++) {
@@ -1048,27 +1080,27 @@ static int iwcmd_get_name_len(const TCHAR *s)
 }
 
 static int iwcmd_string_to_resizetype(struct params_struct *p,
-	const TCHAR *s, struct resize_alg *alg)
+	const char *s, struct resize_alg *alg)
 {
 	int i;
 	int len, namelen;
 	double blur;
 	struct resizetable_struct {
-		const TCHAR *name;
+		const char *name;
 		int resizetype;
 	};
 	static const struct resizetable_struct resizetable[] = {
-		{_T("mix"),IW_RESIZETYPE_MIX},
-		{_T("nearest"),IW_RESIZETYPE_NEAREST},
-		{_T("point"),IW_RESIZETYPE_NEAREST},
-		{_T("linear"),IW_RESIZETYPE_LINEAR},
-		{_T("triangle"),IW_RESIZETYPE_LINEAR},
-		{_T("quadratic"),IW_RESIZETYPE_QUADRATIC},
-		{_T("hermite"),IW_RESIZETYPE_HERMITE},
-		{_T("box"),IW_RESIZETYPE_BOX},
-		{_T("gaussian"),IW_RESIZETYPE_GAUSSIAN},
-		{_T("auto"),IW_RESIZETYPE_AUTO},
-		{_T("null"),IW_RESIZETYPE_NULL},
+		{"mix",IW_RESIZETYPE_MIX},
+		{"nearest",IW_RESIZETYPE_NEAREST},
+		{"point",IW_RESIZETYPE_NEAREST},
+		{"linear",IW_RESIZETYPE_LINEAR},
+		{"triangle",IW_RESIZETYPE_LINEAR},
+		{"quadratic",IW_RESIZETYPE_QUADRATIC},
+		{"hermite",IW_RESIZETYPE_HERMITE},
+		{"box",IW_RESIZETYPE_BOX},
+		{"gaussian",IW_RESIZETYPE_GAUSSIAN},
+		{"auto",IW_RESIZETYPE_AUTO},
+		{"null",IW_RESIZETYPE_NULL},
 		{NULL,0}
 	};
 
@@ -1079,16 +1111,16 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 	alg->blur = blur;
 
 	for(i=0; resizetable[i].name!=NULL; i++) {
-		if(!_tcscmp(s,resizetable[i].name)) {
+		if(!strcmp(s,resizetable[i].name)) {
 			alg->family = resizetable[i].resizetype;
 			return 1;
 		}
 	}
 
-	len=(int)_tcslen(s);
+	len=(int)strlen(s);
 	namelen=iwcmd_get_name_len(s);
 
-	if(namelen==7 && !_tcsncmp(s,_T("lanczos"),namelen)) {
+	if(namelen==7 && !strncmp(s,"lanczos",namelen)) {
 		if(len>namelen)
 			alg->lobes = iwcmd_parse_int(&s[namelen]);
 		else
@@ -1096,8 +1128,8 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		alg->family = IW_RESIZETYPE_LANCZOS;
 		return 1;
 	}
-	else if((namelen==4 && !_tcsncmp(s,_T("hann"),namelen)) ||
-		    (namelen==7 && !_tcsncmp(s,_T("hanning"),namelen)) )
+	else if((namelen==4 && !strncmp(s,"hann",namelen)) ||
+		    (namelen==7 && !strncmp(s,"hanning",namelen)) )
 	{
 		if(len>namelen)
 			alg->lobes = iwcmd_parse_int(&s[namelen]);
@@ -1106,7 +1138,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		alg->family = IW_RESIZETYPE_HANNING;
 		return 1;
 	}
-	else if(namelen==8 && !_tcsncmp(s,_T("blackman"),namelen)) {
+	else if(namelen==8 && !strncmp(s,"blackman",namelen)) {
 		if(len>namelen)
 			alg->lobes = iwcmd_parse_int(&s[namelen]);
 		else
@@ -1114,7 +1146,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		alg->family = IW_RESIZETYPE_BLACKMAN;
 		return 1;
 	}
-	else if(namelen==4 && !_tcsncmp(s,_T("sinc"),namelen)) {
+	else if(namelen==4 && !strncmp(s,"sinc",namelen)) {
 		if(len>namelen)
 			alg->lobes = iwcmd_parse_int(&s[namelen]);
 		else
@@ -1122,33 +1154,33 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		alg->family = IW_RESIZETYPE_SINC;
 		return 1;
 	}
-	else if(!_tcscmp(s,_T("catrom"))) {
+	else if(!strcmp(s,"catrom")) {
 		alg->family = IW_RESIZETYPE_CUBIC;
 		alg->b = 0.0; alg->c = 0.5;
 		return 1;
 	}
-	else if(!_tcscmp(s,_T("mitchell"))) {
+	else if(!strcmp(s,"mitchell")) {
 		alg->family = IW_RESIZETYPE_CUBIC;
 		alg->b = 1.0/3; alg->c = 1.0/3;
 		return 1;
 	}
-	else if(!_tcscmp(s,_T("bspline"))) {
+	else if(!strcmp(s,"bspline")) {
 		alg->family = IW_RESIZETYPE_CUBIC;
 		alg->b = 1.0; alg->c = 0.0;
 		return 1;
 	}
-	else if(namelen==5 && !_tcsncmp(s,_T("cubic"),namelen)) {
+	else if(namelen==5 && !strncmp(s,"cubic",namelen)) {
 		// Format is "cubic<B>,<C>"
-		TCHAR *cpos;
+		char *cpos;
 		if(len < namelen+3) goto done; // error
-		cpos = _tcschr(s,',');
+		cpos = strchr(s,',');
 		if(!cpos) goto done;
 		alg->b = iwcmd_parse_dbl(&s[namelen]);
 		alg->c = iwcmd_parse_dbl(cpos+1);
 		alg->family = IW_RESIZETYPE_CUBIC;
 		return 1;
 	}
-	else if(namelen==4 && !_tcsncmp(s,_T("keys"),namelen)) {
+	else if(namelen==4 && !strncmp(s,"keys",namelen)) {
 		// Format is "keys<alpha>"
 		if(len>namelen)
 			alg->c = iwcmd_parse_dbl(&s[namelen]);
@@ -1160,72 +1192,68 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 	}
 
 done:
-	iwcmd_error_utf8(p,"Unknown resize type \xe2\x80\x9c");
-	iwcmd_error_native(p,_T("%s"),s);
-	iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
+	iwcmd_error(p,"Unknown resize type \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
 	return -1;
 }
 
-static int iwcmd_string_to_dithertype(struct params_struct *p,const TCHAR *s,int *psubtype)
+static int iwcmd_string_to_dithertype(struct params_struct *p,const char *s,int *psubtype)
 {
 	int i;
 	struct dithertable_struct {
-		const TCHAR *name;
+		const char *name;
 		int ditherfamily;
 		int dithersubtype;
 	};
 	static const struct dithertable_struct dithertable[] = {
-	 {_T("f")         ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_FS},
-	 {_T("fs")        ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_FS},
-	 {_T("o")         ,IW_DITHERFAMILY_ORDERED,IW_DITHERSUBTYPE_DEFAULT},
-	 {_T("halftone")  ,IW_DITHERFAMILY_ORDERED,IW_DITHERSUBTYPE_HALFTONE},
-	 {_T("r")         ,IW_DITHERFAMILY_RANDOM ,IW_DITHERSUBTYPE_DEFAULT},
-	 {_T("r2")        ,IW_DITHERFAMILY_RANDOM ,IW_DITHERSUBTYPE_SAMEPATTERN},
-	 {_T("jjn")       ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_JJN},
-	 {_T("stucki")    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_STUCKI},
-	 {_T("burkes")    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_BURKES},
-	 {_T("sierra")    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA3},
-	 {_T("sierra3")   ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA3},
-	 {_T("sierra2")   ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA2},
-	 {_T("sierralite"),IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA42A},
-	 {_T("atkinson")  ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_ATKINSON},
-	 {_T("none")      ,IW_DITHERFAMILY_NONE   ,IW_DITHERSUBTYPE_DEFAULT} // This line must be last.
+	 {"f"         ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_FS},
+	 {"fs"        ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_FS},
+	 {"o"         ,IW_DITHERFAMILY_ORDERED,IW_DITHERSUBTYPE_DEFAULT},
+	 {"halftone"  ,IW_DITHERFAMILY_ORDERED,IW_DITHERSUBTYPE_HALFTONE},
+	 {"r"         ,IW_DITHERFAMILY_RANDOM ,IW_DITHERSUBTYPE_DEFAULT},
+	 {"r2"        ,IW_DITHERFAMILY_RANDOM ,IW_DITHERSUBTYPE_SAMEPATTERN},
+	 {"jjn"       ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_JJN},
+	 {"stucki"    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_STUCKI},
+	 {"burkes"    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_BURKES},
+	 {"sierra"    ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA3},
+	 {"sierra3"   ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA3},
+	 {"sierra2"   ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA2},
+	 {"sierralite",IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA42A},
+	 {"atkinson"  ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_ATKINSON},
+	 {"none"      ,IW_DITHERFAMILY_NONE   ,IW_DITHERSUBTYPE_DEFAULT} // This line must be last.
 	};
 
 	for(i=0; dithertable[i].ditherfamily!=IW_DITHERFAMILY_NONE; i++) {
-		if(!_tcscmp(s,dithertable[i].name)) {
+		if(!strcmp(s,dithertable[i].name)) {
 			*psubtype = dithertable[i].dithersubtype;
 			return dithertable[i].ditherfamily;
 		}
 	}
 
-	iwcmd_message_utf8(p,"Unknown dither type \xe2\x80\x9c");
-	iwcmd_message_native(p,_T("%s"),s);
-	iwcmd_message_utf8(p,"\xe2\x80\x9d\n");
+	iwcmd_message(p,"Unknown dither type \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
 	*psubtype = IW_DITHERSUBTYPE_DEFAULT;
 	return -1;
 }
 
 
 static int iwcmd_string_to_colorspace(struct params_struct *p,
-  struct iw_csdescr *cs, const TCHAR *s)
+  struct iw_csdescr *cs, const char *s)
 {
 	int namelen;
 	int len;
 
-	len=(int)_tcslen(s);
+	len=(int)strlen(s);
 	namelen = iwcmd_get_name_len(s);
 
-	if(namelen==5 && len>5 && !_tcsncmp(s,_T("gamma"),namelen)) {
+	if(namelen==5 && len>5 && !strncmp(s,"gamma",namelen)) {
 		cs->cstype=IW_CSTYPE_GAMMA;
 		cs->gamma=iwcmd_parse_dbl(&s[namelen]);
 		if(cs->gamma<0.1) cs->gamma=0.1;
 		if(cs->gamma>10.0) cs->gamma=10.0;
 	}
-	else if(!_tcscmp(s,_T("linear"))) {
+	else if(!strcmp(s,"linear")) {
 		cs->cstype=IW_CSTYPE_LINEAR;
 	}
-	else if(len>=4 && !_tcsncmp(s,_T("srgb"),4)) {
+	else if(len>=4 && !strncmp(s,"srgb",4)) {
 		cs->cstype=IW_CSTYPE_SRGB;
 		switch(s[4]) {
 			case 'p': cs->sRGB_intent=IW_sRGB_INTENT_PERCEPTUAL; break;
@@ -1236,42 +1264,38 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 		}
 	}
 	else {
-		iwcmd_error_utf8(p,"Unknown color space \xe2\x80\x9c");
-		iwcmd_error_native(p,_T("%s"),s);
-		iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
+		iwcmd_error(p,"Unknown color space \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
 		return -1;
 	}
 	return 1;
 }
 
-static int iwcmd_process_noopt(struct params_struct *p, const TCHAR *s)
+static int iwcmd_process_noopt(struct params_struct *p, const char *s)
 {
-	if(!_tcscmp(s,_T("all"))) {
+	if(!strcmp(s,"all")) {
 		p->noopt_grayscale=1;
 		p->noopt_palette=1;
 		p->noopt_reduceto8=1;
 		p->noopt_stripalpha=1;
 		p->noopt_binarytrns=1;
 	}
-	else if(!_tcscmp(s,_T("grayscale"))) {
+	else if(!strcmp(s,"grayscale")) {
 		p->noopt_grayscale=1;
 	}
-	else if(!_tcscmp(s,_T("palette"))) {
+	else if(!strcmp(s,"palette")) {
 		p->noopt_palette=1;
 	}
-	else if(!_tcscmp(s,_T("reduceto8"))) {
+	else if(!strcmp(s,"reduceto8")) {
 		p->noopt_reduceto8=1;
 	}
-	else if(!_tcscmp(s,_T("stripalpha"))) {
+	else if(!strcmp(s,"stripalpha")) {
 		p->noopt_stripalpha=1;
 	}
-	else if(!_tcscmp(s,_T("binarytrns"))) {
+	else if(!strcmp(s,"binarytrns")) {
 		p->noopt_binarytrns=1;
 	}
 	else {
-		iwcmd_error_utf8(p,"Unknown optimization \xe2\x80\x9c");
-		iwcmd_error_native(p,_T("%s"),s);
-		iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
+		iwcmd_error(p,"Unknown optimization \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
 		return 0;
 	}
 
@@ -1280,7 +1304,7 @@ static int iwcmd_process_noopt(struct params_struct *p, const TCHAR *s)
 
 static void usage_message(struct params_struct *p)
 {
-	iwcmd_message_utf8(p,
+	iwcmd_message(p,
 		"Usage: imagew [-width <n>] [-height <n>] [options] <in-file> <out-file>\n"
 		"Options include -filter, -grayscale, -depth, -cc, -dither, -bkgd, -cs,\n"
 		" -quiet, -version.\n"
@@ -1294,27 +1318,27 @@ static void do_printversion(struct params_struct *p)
 	int buflen;
 	int ver;
 
-	buflen = (int)(sizeof(buf)/sizeof(TCHAR));
+	buflen = (int)(sizeof(buf)/sizeof(char));
 
 	ver = iw_get_version_int();
-	iwcmd_message_utf8(p,"ImageWorsener version %s (%d-bit, %d bits/sample)\n",
+	iwcmd_message(p,"ImageWorsener version %s (%d-bit, %d bits/sample)\n",
 		iw_get_version_string(NULL,buf,buflen),
 		(int)(8*sizeof(void*)), 8*iw_get_sample_size() );
 
-	iwcmd_message_utf8(p,"%s\n",iw_get_copyright_string(NULL,buf,buflen));
+	iwcmd_message(p,"%s\n",iw_get_copyright_string(NULL,buf,buflen));
 
 #if IW_SUPPORT_JPEG == 1
-	iwcmd_message_utf8(p,"Uses libjpeg version %s\n",iw_get_libjpeg_version_string(buf,buflen));
+	iwcmd_message(p,"Uses libjpeg version %s\n",iw_get_libjpeg_version_string(buf,buflen));
 #endif
 #if IW_SUPPORT_PNG == 1
-	iwcmd_message_utf8(p,"Uses libpng version %s\n",iw_get_libpng_version_string(buf,buflen));
+	iwcmd_message(p,"Uses libpng version %s\n",iw_get_libpng_version_string(buf,buflen));
 	// TODO: WebP might also use zlib, so we shouldn't just assume zlib is bundled
 	// with libpng.
-	iwcmd_message_utf8(p,"Uses zlib version %s\n",iw_get_zlib_version_string(buf,buflen));
+	iwcmd_message(p,"Uses zlib version %s\n",iw_get_zlib_version_string(buf,buflen));
 #endif
 #if IW_SUPPORT_WEBP == 1
-	iwcmd_message_utf8(p,"Uses libwebp encoder v%s",iw_get_libwebp_enc_version_string(buf,buflen));
-	iwcmd_message_utf8(p,", decoder v%s\n",iw_get_libwebp_dec_version_string(buf,buflen));
+	iwcmd_message(p,"Uses libwebp encoder v%s",iw_get_libwebp_enc_version_string(buf,buflen));
+	iwcmd_message(p,", decoder v%s\n",iw_get_libwebp_dec_version_string(buf,buflen));
 #endif
 }
 
@@ -1341,79 +1365,79 @@ struct parsestate_struct {
 	int showhelp;
 };
 
-static int process_option_name(struct params_struct *p, struct parsestate_struct *ps, const TCHAR *n)
+static int process_option_name(struct params_struct *p, struct parsestate_struct *ps, const char *n)
 {
 	struct opt_struct {
-		const TCHAR *name;
+		const char *name;
 		enum iwcmd_param_types code;
 		int has_param;
 	};
 	static const struct opt_struct opt_info[] = {
-		{_T("w"),PT_WIDTH,1},
-		{_T("width"),PT_WIDTH,1},
-		{_T("h"),PT_HEIGHT,1},
-		{_T("height"),PT_HEIGHT,1},
-		{_T("depth"),PT_DEPTH,1},
-		{_T("inputcs"),PT_INPUTCS,1},
-		{_T("cs"),PT_CS,1},
-		{_T("filter"),PT_RESIZETYPE,1},
-		{_T("filterx"),PT_RESIZETYPE_X,1},
-		{_T("filtery"),PT_RESIZETYPE_Y,1},
-		{_T("filteralpha"),PT_RESIZETYPE_ALPHA,1},
-		{_T("blur"),PT_BLUR_FACTOR,1},
-		{_T("blurx"),PT_BLUR_FACTOR_X,1},
-		{_T("blury"),PT_BLUR_FACTOR_Y,1},
-		{_T("bluralpha"),PT_BLUR_FACTOR_ALPHA,1},
-		{_T("dither"),PT_DITHER,1},
-		{_T("dithercolor"),PT_DITHERCOLOR,1},
-		{_T("ditheralpha"),PT_DITHERALPHA,1},
-		{_T("ditherred"),PT_DITHERRED,1},
-		{_T("dithergreen"),PT_DITHERGREEN,1},
-		{_T("ditherblue"),PT_DITHERBLUE,1},
-		{_T("dithergray"),PT_DITHERGRAY,1},
-		{_T("cc"),PT_CC,1},
-		{_T("cccolor"),PT_CCCOLOR,1},
-		{_T("ccalpha"),PT_CCALPHA,1},
-		{_T("ccred"),PT_CCRED,1},
-		{_T("ccgreen"),PT_CCGREEN,1},
-		{_T("ccblue"),PT_CCBLUE,1},
-		{_T("ccgray"),PT_CCGRAY,1},
-		{_T("bkgd"),PT_BKGD,1},
-		{_T("checkersize"),PT_CHECKERSIZE,1},
-		{_T("checkerorigin"),PT_CHECKERORG,1},
-		{_T("crop"),PT_CROP,1},
-		{_T("offsetred"),PT_OFFSET_R_H,1},
-		{_T("offsetgreen"),PT_OFFSET_G_H,1},
-		{_T("offsetblue"),PT_OFFSET_B_H,1},
-		{_T("offsetrb"),PT_OFFSET_RB_H,1},
-		{_T("offsetvred"),PT_OFFSET_R_V,1},
-		{_T("offsetvgreen"),PT_OFFSET_G_V,1},
-		{_T("offsetvblue"),PT_OFFSET_B_V,1},
-		{_T("offsetvrb"),PT_OFFSET_RB_V,1},
-		{_T("jpegquality"),PT_JPEGQUALITY,1},
-		{_T("jpegsampling"),PT_JPEGSAMPLING,1},
-		{_T("webpquality"),PT_WEBPQUALITY,1},
-		{_T("pngcmprlevel"),PT_PNGCMPRLEVEL,1},
-		{_T("randseed"),PT_RANDSEED,1},
-		{_T("infmt"),PT_INFMT,1},
-		{_T("outfmt"),PT_OUTFMT,1},
-		{_T("edge"),PT_EDGE_POLICY,1},
-		{_T("grayscaleformula"),PT_GRAYSCALEFORMULA,1},
-		{_T("noopt"),PT_NOOPT,1},
-		{_T("interlace"),PT_INTERLACE,0},
-		{_T("bestfit"),PT_BESTFIT,0},
-		{_T("nobestfit"),PT_NOBESTFIT,0},
-		{_T("grayscale"),PT_GRAYSCALE,0},
-		{_T("condgrayscale"),PT_CONDGRAYSCALE,0},
-		{_T("nogamma"),PT_NOGAMMA,0},
-		{_T("intclamp"),PT_INTCLAMP,0},
-		{_T("nocslabel"),PT_NOCSLABEL,0},
-		{_T("usebkgdlabel"),PT_USEBKGDLABEL,0},
-		{_T("quiet"),PT_QUIET,0},
-		{_T("nowarn"),PT_NOWARN,0},
-		{_T("noinfo"),PT_NOINFO,0},
-		{_T("version"),PT_VERSION,0},
-		{_T("help"),PT_HELP,0},
+		{"w",PT_WIDTH,1},
+		{"width",PT_WIDTH,1},
+		{"h",PT_HEIGHT,1},
+		{"height",PT_HEIGHT,1},
+		{"depth",PT_DEPTH,1},
+		{"inputcs",PT_INPUTCS,1},
+		{"cs",PT_CS,1},
+		{"filter",PT_RESIZETYPE,1},
+		{"filterx",PT_RESIZETYPE_X,1},
+		{"filtery",PT_RESIZETYPE_Y,1},
+		{"filteralpha",PT_RESIZETYPE_ALPHA,1},
+		{"blur",PT_BLUR_FACTOR,1},
+		{"blurx",PT_BLUR_FACTOR_X,1},
+		{"blury",PT_BLUR_FACTOR_Y,1},
+		{"bluralpha",PT_BLUR_FACTOR_ALPHA,1},
+		{"dither",PT_DITHER,1},
+		{"dithercolor",PT_DITHERCOLOR,1},
+		{"ditheralpha",PT_DITHERALPHA,1},
+		{"ditherred",PT_DITHERRED,1},
+		{"dithergreen",PT_DITHERGREEN,1},
+		{"ditherblue",PT_DITHERBLUE,1},
+		{"dithergray",PT_DITHERGRAY,1},
+		{"cc",PT_CC,1},
+		{"cccolor",PT_CCCOLOR,1},
+		{"ccalpha",PT_CCALPHA,1},
+		{"ccred",PT_CCRED,1},
+		{"ccgreen",PT_CCGREEN,1},
+		{"ccblue",PT_CCBLUE,1},
+		{"ccgray",PT_CCGRAY,1},
+		{"bkgd",PT_BKGD,1},
+		{"checkersize",PT_CHECKERSIZE,1},
+		{"checkerorigin",PT_CHECKERORG,1},
+		{"crop",PT_CROP,1},
+		{"offsetred",PT_OFFSET_R_H,1},
+		{"offsetgreen",PT_OFFSET_G_H,1},
+		{"offsetblue",PT_OFFSET_B_H,1},
+		{"offsetrb",PT_OFFSET_RB_H,1},
+		{"offsetvred",PT_OFFSET_R_V,1},
+		{"offsetvgreen",PT_OFFSET_G_V,1},
+		{"offsetvblue",PT_OFFSET_B_V,1},
+		{"offsetvrb",PT_OFFSET_RB_V,1},
+		{"jpegquality",PT_JPEGQUALITY,1},
+		{"jpegsampling",PT_JPEGSAMPLING,1},
+		{"webpquality",PT_WEBPQUALITY,1},
+		{"pngcmprlevel",PT_PNGCMPRLEVEL,1},
+		{"randseed",PT_RANDSEED,1},
+		{"infmt",PT_INFMT,1},
+		{"outfmt",PT_OUTFMT,1},
+		{"edge",PT_EDGE_POLICY,1},
+		{"grayscaleformula",PT_GRAYSCALEFORMULA,1},
+		{"noopt",PT_NOOPT,1},
+		{"interlace",PT_INTERLACE,0},
+		{"bestfit",PT_BESTFIT,0},
+		{"nobestfit",PT_NOBESTFIT,0},
+		{"grayscale",PT_GRAYSCALE,0},
+		{"condgrayscale",PT_CONDGRAYSCALE,0},
+		{"nogamma",PT_NOGAMMA,0},
+		{"intclamp",PT_INTCLAMP,0},
+		{"nocslabel",PT_NOCSLABEL,0},
+		{"usebkgdlabel",PT_USEBKGDLABEL,0},
+		{"quiet",PT_QUIET,0},
+		{"nowarn",PT_NOWARN,0},
+		{"noinfo",PT_NOINFO,0},
+		{"version",PT_VERSION,0},
+		{"help",PT_HELP,0},
 		{NULL,PT_NONE,0}
 	};
 	enum iwcmd_param_types pt;
@@ -1423,7 +1447,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 
 	// Search for the option name.
 	for(i=0;opt_info[i].name;i++) {
-		if(!_tcscmp(n,opt_info[i].name)) {
+		if(!strcmp(n,opt_info[i].name)) {
 			if(opt_info[i].has_param) {
 				// Found option with a parameter. Record it and return.
 				ps->param_type=opt_info[i].code;
@@ -1481,16 +1505,14 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		ps->showhelp=1;
 		break;
 	default:
-		iwcmd_error_utf8(p,"Unknown option \xe2\x80\x9c");
-		iwcmd_error_native(p,_T("%s"),n);
-		iwcmd_error_utf8(p,"\xe2\x80\x9d\n");
+		iwcmd_error(p,"Unknown option \xe2\x80\x9c%s\xe2\x80\x9d\n",n);
 		return 0;
 	}
 
 	return 1;
 }
 
-static void iwcmd_read_w_or_h(struct params_struct *p, const TCHAR *v,
+static void iwcmd_read_w_or_h(struct params_struct *p, const char *v,
    int *new_d, int *rel_flag, double *new_rel_d)
 {
 	if(v[0]=='x') {
@@ -1505,7 +1527,7 @@ static void iwcmd_read_w_or_h(struct params_struct *p, const TCHAR *v,
 	}
 }
 
-static int process_option_arg(struct params_struct *p, struct parsestate_struct *ps, const TCHAR *v)
+static int process_option_arg(struct params_struct *p, struct parsestate_struct *ps, const char *v)
 {
 	int ret;
 
@@ -1679,7 +1701,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(v[0]=='s') p->edge_policy=IW_EDGE_POLICY_STANDARD;
 		else if(v[0]=='r') p->edge_policy=IW_EDGE_POLICY_REPLICATE;
 		else {
-			iwcmd_error_utf8(p,"Unknown edge policy\n");
+			iwcmd_error(p,"Unknown edge policy\n");
 			return 0;
 		}
 		break;
@@ -1687,7 +1709,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(v[0]=='s') p->grayscale_formula=0;
 		else if(v[0]=='c') p->grayscale_formula=1;
 		else {
-			iwcmd_error_utf8(p,"Unknown grayscale formula\n");
+			iwcmd_error(p,"Unknown grayscale formula\n");
 			return 0;
 		}
 		break;
@@ -1709,21 +1731,21 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 
 	default:
-		iwcmd_error_utf8(p,"Internal error: unhandled param\n");
+		iwcmd_error(p,"Internal error: unhandled param\n");
 		return 0;
 	}
 
 	return 1;
 }
 
-int _tmain(int argc, TCHAR* argv[])
+static int iwcmd_main(int argc, char* argv[])
 {
 	struct params_struct p;
 	struct parsestate_struct ps;
 	int ret;
 	int i;
 	int unicode_output=0;
-	const TCHAR *optname;
+	const char *optname;
 
 	memset(&ps,0,sizeof(struct parsestate_struct));
 	ps.param_type=PT_NONE;
@@ -1796,4 +1818,33 @@ int _tmain(int argc, TCHAR* argv[])
 
 	ret=run(&p);
 	return ret?0:1;
+}
+
+
+int _tmain(int argc, TCHAR* argvT[])
+{
+	int retval;
+#ifdef _UNICODE
+	int i;
+	char **argvUTF8;
+
+	argvUTF8 = (char**)malloc(argc*sizeof(char*));
+	if(!argvUTF8) return 1;
+
+	// Convert parameters to UTF-8
+	for(i=0;i<argc;i++) {
+		argvUTF8[i] = iwcmd_utf16_to_utf8_strdup(argvT[i]);
+		if(!argvUTF8[i]) return 1;
+	}
+
+	retval = iwcmd_main(argc,argvUTF8);
+
+	for(i=0;i<argc;i++) {
+		free(argvUTF8[i]);
+	}
+
+#else
+	retval = iwcmd_main(argc,argvT);
+#endif
+	return retval;
 }
