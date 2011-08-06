@@ -109,8 +109,8 @@ static void my_png_read_fn(png_structp png_ptr,
 // 5 decimal places of precision.
 // Libpng (as of this writing) gives us the nearest double to the nearest
 // float to the value in the file.
-// This function fixes that up so that up to get the nearest double
-// to the value in the files, as if the precision hadn't been reduced by
+// This function fixes that up so that we get the nearest double
+// to the value in the file, as if the precision hadn't been reduced by
 // being passed through a 32-bit float.
 // This is pretty much pointless, but it's in the spirit of this
 // application to be as accurate as possible.
