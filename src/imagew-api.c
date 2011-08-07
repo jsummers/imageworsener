@@ -130,6 +130,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 	ctx->to_grayscale=0;
 	ctx->edge_policy = IW_EDGE_POLICY_STANDARD;
+	ctx->density_policy = IW_DENSITY_POLICY_AUTO;
 	ctx->img1cs.sRGB_intent=IW_sRGB_INTENT_PERCEPTUAL;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
@@ -517,6 +518,9 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_EDGE_POLICY:
 		ctx->edge_policy = n;
 		break;
+	case IW_VAL_DENSITY_POLICY:
+		ctx->density_policy = n;
+		break;
 	case IW_VAL_GRAYSCALE_FORMULA:
 		ctx->grayscale_formula = n;
 		break;
@@ -563,6 +567,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_EDGE_POLICY:
 		ret = ctx->edge_policy;
+		break;
+	case IW_VAL_DENSITY_POLICY:
+		ret = ctx->density_policy;
 		break;
 	case IW_VAL_GRAYSCALE_FORMULA:
 		ret = ctx->grayscale_formula;

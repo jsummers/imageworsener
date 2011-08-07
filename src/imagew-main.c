@@ -1525,12 +1525,24 @@ static void iw_convert_density_info(struct iw_context *ctx)
 {
 	double factor;
 
+	if(ctx->density_policy==IW_DENSITY_POLICY_NONE) return;
+
 	if(ctx->img1.density_code==IW_DENSITY_UNKNOWN) return;
 
-	// TODO: Decide what to do with pixel density info when the image size is
-	// being changed.
-	if(ctx->input_w!=ctx->img2.width || ctx->input_h!=ctx->img2.height) {
+	if(ctx->density_policy==IW_DENSITY_POLICY_KEEP) {
+		ctx->img2.density_code = ctx->img1.density_code;
+		ctx->img2.density_x = ctx->img1.density_x;
+		ctx->img2.density_y = ctx->img1.density_y;
 		return;
+	}
+
+	// At this point, the policy is either AUTO or ADJUST.
+
+	if(ctx->input_w!=ctx->img2.width || ctx->input_h!=ctx->img2.height) {
+		// If the image size is being changed, don't write a density unless the
+		// policy is ADJUST.
+		if(ctx->density_policy!=IW_DENSITY_POLICY_ADJUST)
+			return;
 	}
 
 	ctx->img2.density_code = ctx->img1.density_code;

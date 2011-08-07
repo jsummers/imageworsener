@@ -488,6 +488,21 @@ Options:
    *you*, Firefox) that display sRGB image colors differently than they
    display sRGB CSS/HTML colors.
 
+ -density <density-policy>
+   Control how the density label (i.e. pixels per inch) of the output image is
+   calculated.
+
+   Density policies available:
+    "auto": The default. Currently, writes a density only if the image size is
+       not being changed.
+    "none": Do not write a density.
+    "keep": Give the target image the same density as the source image.
+    "adjust": Adjust the density so that the target image is the same physical
+       size as the source image.
+
+   This is limited by the target image format's support for a density labels.
+   Some formats do not support them, and others require them.
+
  -offset<channel> <n> (-offsetred -offsetgreen -offsetblue -offsetrb
                        -offsetvred -offsetvgreen -offsetvblue -offsetvrb)
    While scaling the image, shift the position of a color channel by n output

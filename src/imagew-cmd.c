@@ -112,6 +112,7 @@ struct params_struct {
 	int no_gamma;
 	int intclamp;
 	int edge_policy;
+	int density_policy;
 	int grayscale_formula;
 	int no_cslabel;
 	int noopt_grayscale,noopt_binarytrns,noopt_palette;
@@ -582,6 +583,7 @@ static int run(struct params_struct *p)
 	if(p->noopt_stripalpha) iw_set_allow_opt(ctx,IW_OPT_STRIP_ALPHA,0);
 	if(p->noopt_binarytrns) iw_set_allow_opt(ctx,IW_OPT_BINARY_TRNS,0);
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
+	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 
 	readdescr.read_fn = my_readfn;
@@ -1302,6 +1304,27 @@ static int iwcmd_process_noopt(struct params_struct *p, const char *s)
 	return 1;
 }
 
+static int iwcmd_process_density(struct params_struct *p, const char *s)
+{
+	if(!strcmp(s,"auto")) {
+		p->density_policy = IW_DENSITY_POLICY_AUTO;
+	}
+	else if(!strcmp(s,"none")) {
+		p->density_policy = IW_DENSITY_POLICY_NONE;
+	}
+	else if(!strcmp(s,"keep")) {
+		p->density_policy = IW_DENSITY_POLICY_KEEP;
+	}
+	else if(!strcmp(s,"adjust")) {
+		p->density_policy = IW_DENSITY_POLICY_ADJUST;
+	}
+	else {
+		iwcmd_error(p,"Invalid density \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
+		return 0;
+	}
+	return 1;
+}
+
 static void usage_message(struct params_struct *p)
 {
 	iwcmd_message(p,
@@ -1353,6 +1376,7 @@ enum iwcmd_param_types {
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
+ PT_DENSITY_POLICY,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
  PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP
@@ -1422,6 +1446,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"infmt",PT_INFMT,1},
 		{"outfmt",PT_OUTFMT,1},
 		{"edge",PT_EDGE_POLICY,1},
+		{"density",PT_DENSITY_POLICY,1},
 		{"grayscaleformula",PT_GRAYSCALEFORMULA,1},
 		{"noopt",PT_NOOPT,1},
 		{"interlace",PT_INTERLACE,0},
@@ -1705,6 +1730,11 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 			return 0;
 		}
 		break;
+	case PT_DENSITY_POLICY:
+		if(!iwcmd_process_density(p,v)) {
+			return 0;
+		}
+		break;
 	case PT_GRAYSCALEFORMULA:
 		if(v[0]=='s') p->grayscale_formula=0;
 		else if(v[0]=='c') p->grayscale_formula=1;
@@ -1767,6 +1797,7 @@ static int iwcmd_main(int argc, char* argv[])
 	p.new_height = -1;
 	p.depth = -1;
 	p.edge_policy = -1;
+	p.density_policy = -1;
 	p.bkgd_check_size = 16;
 	p.bestfit = 0;
 	p.offset_r_h=0.0; p.offset_g_h=0.0; p.offset_b_h=0.0;

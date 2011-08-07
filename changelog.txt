@@ -1,4 +1,6 @@
 Unreleased changes
+ - Added -density option, to give some control over how the density of the
+   target image is calculated.
  - Added -nowarn and -noinfo options.
  - Support for reading GIF files.
 

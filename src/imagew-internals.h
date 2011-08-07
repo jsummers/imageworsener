@@ -231,6 +231,7 @@ struct iw_context {
 	int no_cslabel; // Disable writing of a colorspace label to the output file.
 	int edge_policy;
 	int grayscale_formula;
+	int density_policy; // IW_DENSITY_POLICY_*
 
 	// Optimization codes. Can be set to 0 to disallow this optimization
 	unsigned char opt_grayscale; // RGB-to-grayscale
