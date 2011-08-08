@@ -241,7 +241,7 @@ static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int color
 	yi = pixnum/rctx->image_width;
 	xs = rctx->image_left + xi;
 	ys = rctx->image_top + yi;
-	if(xs>=rctx->screen_width || ys>=rctx->screen_height) return;
+	if(xs>=(size_t)rctx->screen_width || ys>=(size_t)rctx->screen_height) return;
 	
 	// Figure out what color to set it to.
 
