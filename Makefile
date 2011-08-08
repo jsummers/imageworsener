@@ -16,7 +16,9 @@ IW_SUPPORT_WEBP:=1
 endif
 
 SRCDIR:=src
-OUTDIR:=.
+INTDIR:=src
+OUTLIBDIR:=src
+OUTEXEDIR:=.
 
 CC:=gcc
 CFLAGS:=-Wall -O2
@@ -45,23 +47,23 @@ endif
 LIBS+=-lm
 
 ifeq ($(OS),Windows_NT)
-TARGET:=$(OUTDIR)/imagew.exe
+TARGET:=$(OUTEXEDIR)/imagew.exe
 else
-TARGET:=$(OUTDIR)/imagew
+TARGET:=$(OUTEXEDIR)/imagew
 endif
 
 all: $(TARGET)
 
 .PHONY: all clean
 
-IWLIBFILE:=$(OUTDIR)/libimageworsener.a
-COREIWLIBOBJS:=$(addprefix $(OUTDIR)/,imagew-main.o imagew-resize.o \
+IWLIBFILE:=$(OUTLIBDIR)/libimageworsener.a
+COREIWLIBOBJS:=$(addprefix $(INTDIR)/,imagew-main.o imagew-resize.o \
  imagew-opt.o imagew-util.o imagew-api.o)
-AUXIWLIBOBJS:=$(addprefix $(OUTDIR)/,imagew-png.o imagew-jpeg.o imagew-bmp.o \
+AUXIWLIBOBJS:=$(addprefix $(INTDIR)/,imagew-png.o imagew-jpeg.o imagew-bmp.o \
  imagew-tiff.o imagew-miff.o imagew-webp.o imagew-gif.o)
-ALLOBJS:=$(COREIWLIBOBJS) $(AUXIWLIBOBJS) $(OUTDIR)/imagew-cmd.o
+ALLOBJS:=$(COREIWLIBOBJS) $(AUXIWLIBOBJS) $(INTDIR)/imagew-cmd.o
 
-$(TARGET): $(OUTDIR)/imagew-cmd.o $(IWLIBFILE)
+$(TARGET): $(INTDIR)/imagew-cmd.o $(IWLIBFILE)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 $(IWLIBFILE): $(COREIWLIBOBJS) $(AUXIWLIBOBJS)
@@ -70,11 +72,11 @@ $(IWLIBFILE): $(COREIWLIBOBJS) $(AUXIWLIBOBJS)
 $(COREIWLIBOBJS): $(addprefix $(SRCDIR)/,imagew-config.h imagew-internals.h \
  imagew.h)
 $(AUXIWLIBOBJS): $(addprefix $(SRCDIR)/,imagew-config.h imagew.h)
-$(OUTDIR)/imagew-cmd.o: $(addprefix $(SRCDIR)/,imagew-config.h imagew.h)
+$(INTDIR)/imagew-cmd.o: $(addprefix $(SRCDIR)/,imagew-config.h imagew.h)
 
-$(ALLOBJS): $(OUTDIR)/%.o: $(SRCDIR)/%.c
+$(ALLOBJS): $(INTDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 clean:
-	rm -f $(TARGET) $(OUTDIR)/*.o $(IWLIBFILE)
+	rm -f $(TARGET) $(INTDIR)/*.o $(IWLIBFILE)
 
