@@ -42,11 +42,11 @@
 #endif
 
 #ifdef IW_WINDOWS
-#define iwcmd_stricmp _stricmp
+#define iwcmd_stricmp   _stricmp
 #else
-#define iwcmd_stricmp stricmp
-#define TCHAR     char
-#define _tmain    main
+#define iwcmd_stricmp   strcasecmp
+#define TCHAR           char
+#define _tmain          main
 #endif
 
 #define IWCMD_FMT_UNKNOWN 0
