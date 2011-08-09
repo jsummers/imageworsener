@@ -1,4 +1,7 @@
 Unreleased changes
+ - (none)
+
+Version 0.9.4 - 9 Aug 2011
  - Added -density option, to give some control over how the density of the
    target image is calculated.
  - Added -nowarn and -noinfo options.
