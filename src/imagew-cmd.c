@@ -49,6 +49,11 @@
 #define _tmain          main
 #endif
 
+#define IWCMD_ENCODING_AUTO   0
+#define IWCMD_ENCODING_ASCII  1
+#define IWCMD_ENCODING_UTF8   2
+#define IWCMD_ENCODING_UTF16  3
+
 #define IWCMD_FMT_UNKNOWN 0
 #define IWCMD_FMT_PNG  1
 #define IWCMD_FMT_JPEG 2
@@ -120,7 +125,8 @@ struct params_struct {
 	int cs_in_set, cs_out_set;
 	struct iw_csdescr cs_in;
 	struct iw_csdescr cs_out;
-	int unicode_output;
+	int output_encoding;
+	int output_encoding_setmode;
 	int density_code;
 	double xdens, ydens;
 };
@@ -188,34 +194,29 @@ static void iwcmd_utf8_to_tchar(const char *src, TCHAR *dst, int dstlen)
 #endif
 
 // Output a NUL-terminated string.
+// The input string is encoded in UTF-8.
+// If the output encoding is not UTF-8, it will be converted.
 static void iwcmd_puts_utf8(struct params_struct *p, const char *s)
 {
-
-#ifdef IW_WINDOWS
-
-	TCHAR tbuf[500];
-
-#ifdef _UNICODE
-	iwcmd_utf8_to_tchar(s,tbuf,sizeof(tbuf)/sizeof(TCHAR));
-#else
-	iw_utf8_to_ascii(s,tbuf,sizeof(tbuf)/sizeof(TCHAR));
-#endif
-	_tprintf(_T("%s"),tbuf);
-
-#else
-
 	char buf[500];
+#ifdef _UNICODE
+	TCHAR tbuf[500];
+#endif
 
-	if(p->unicode_output) {
+	switch(p->output_encoding) {
+#ifdef _UNICODE
+	case IWCMD_ENCODING_UTF16:
+		iwcmd_utf8_to_tchar(s,tbuf,sizeof(tbuf)/sizeof(TCHAR));
+		_tprintf(_T("%s"),tbuf);
+		break;
+#endif
+	case IWCMD_ENCODING_UTF8:
 		fputs(s,stdout);
-	}
-	else {
+		break;
+	default:
 		iw_utf8_to_ascii(s,buf,sizeof(buf));
 		fputs(buf,stdout);
 	}
-
-#endif
-
 }
 
 static void iwcmd_vprint_utf8(struct params_struct *p, const char *fmt, va_list ap)
@@ -1379,7 +1380,7 @@ enum iwcmd_param_types {
  PT_DENSITY_POLICY,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
- PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP
+ PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP, PT_ENCODING
 };
 
 struct parsestate_struct {
@@ -1449,6 +1450,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"density",PT_DENSITY_POLICY,1},
 		{"grayscaleformula",PT_GRAYSCALEFORMULA,1},
 		{"noopt",PT_NOOPT,1},
+		{"encoding",PT_ENCODING,1},
 		{"interlace",PT_INTERLACE,0},
 		{"bestfit",PT_BESTFIT,0},
 		{"nobestfit",PT_NOBESTFIT,0},
@@ -1747,6 +1749,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(!iwcmd_process_noopt(p,v))
 			return 0;
 		break;
+	case PT_ENCODING:
+		// Already handled.
+		break;
 
 	case PT_NONE:
 		// This is presumably the input or output filename.
@@ -1768,13 +1773,102 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	return 1;
 }
 
+static int read_encoding_option(struct params_struct *p, const char *v)
+{
+	if(!strcmp(v,"ascii")) {
+		p->output_encoding = IWCMD_ENCODING_ASCII;
+	}
+	else if(!strcmp(v,"utf8")) {
+#ifdef _UNICODE
+		// In Windows, if we set the output mode to UTF-8, we have to print
+		// using UTF-16, and let Windows do the conversion.
+		p->output_encoding = IWCMD_ENCODING_UTF16;
+		p->output_encoding_setmode = IWCMD_ENCODING_UTF8;
+#else
+		p->output_encoding = IWCMD_ENCODING_UTF8;
+#endif
+	}
+	else if(!strcmp(v,"utf8raw")) {
+		p->output_encoding = IWCMD_ENCODING_UTF8;
+	}
+#ifdef _UNICODE
+	else if(!strcmp(v,"utf16")) {
+		p->output_encoding = IWCMD_ENCODING_UTF16;
+		p->output_encoding_setmode = IWCMD_ENCODING_UTF16;
+	}
+	else if(!strcmp(v,"utf16raw")) {
+		p->output_encoding = IWCMD_ENCODING_UTF16;
+	}
+#endif
+	else {
+		return 0;
+	}
+
+	return 1;
+}
+
+// Figure out what output character encoding to use, and do other
+// encoding-related setup as needed.
+static void handle_encoding(struct params_struct *p, int argc, char* argv[])
+{
+	int i;
+
+	// Pre-scan the arguments for an "encoding" option.
+	// This has to be done before we process the other options, so that we
+	// can correctly print messages while parsing the other options.
+	for(i=1;i<argc-1;i++) {
+		if(!strcmp(argv[i],"-encoding")) {
+			read_encoding_option(p, argv[i+1]);
+		}
+	}
+
+#if defined(_UNICODE)
+	// If the user didn't set an encoding, and this is a Windows Unicode
+	// build, use UTF-16.
+	if(p->output_encoding==IWCMD_ENCODING_AUTO) {
+		p->output_encoding = IWCMD_ENCODING_UTF16;
+		p->output_encoding_setmode = IWCMD_ENCODING_UTF16;
+	}
+
+#elif !defined(IW_NO_LOCALE)
+	// For non-Windows builds with "locale" features enabled.
+	setlocale(LC_CTYPE,"");
+	// If the user didn't set an encoding, try to detect if we should use
+	// UTF-8.
+	if(p->output_encoding==IWCMD_ENCODING_AUTO) {
+		if(strcmp(nl_langinfo(CODESET), "UTF-8") == 0) {
+			p->output_encoding = IWCMD_ENCODING_UTF8;
+		}
+	}
+
+#endif
+
+	// If we still haven't decided on an encoding, use ASCII.
+	if(p->output_encoding==IWCMD_ENCODING_AUTO) {
+		p->output_encoding=IWCMD_ENCODING_ASCII;
+	}
+
+#ifdef IW_WINDOWS
+	// In Windows, set the output mode, if appropriate.
+	if(p->output_encoding_setmode==IWCMD_ENCODING_UTF8) {
+		_setmode(_fileno(stdout),_O_U8TEXT);
+	}
+	// TODO: Not sure how much of this works in non-Unicode builds. Need to
+	// investigate that (or remove support for non-Unicode builds).
+#ifdef _UNICODE
+	if(p->output_encoding_setmode==IWCMD_ENCODING_UTF16) {
+		_setmode(_fileno(stdout),_O_U16TEXT);
+	}
+#endif
+#endif
+}
+
 static int iwcmd_main(int argc, char* argv[])
 {
 	struct params_struct p;
 	struct parsestate_struct ps;
 	int ret;
 	int i;
-	int unicode_output=0;
 	const char *optname;
 
 	memset(&ps,0,sizeof(struct parsestate_struct));
@@ -1782,15 +1876,6 @@ static int iwcmd_main(int argc, char* argv[])
 	ps.untagged_param_count=0;
 	ps.printversion=0;
 	ps.showhelp=0;
-
-#ifdef _UNICODE
-	unicode_output=1;
-	_setmode(_fileno(stdout),_O_U16TEXT);
-#endif
-#ifndef IW_NO_LOCALE
-	setlocale(LC_CTYPE,"");
-	unicode_output = (strcmp(nl_langinfo(CODESET), "UTF-8") == 0);
-#endif
 
 	memset(&p,0,sizeof(struct params_struct));
 	p.new_width = -1;
@@ -1804,12 +1889,15 @@ static int iwcmd_main(int argc, char* argv[])
 	p.offset_r_v=0.0; p.offset_g_v=0.0; p.offset_b_v=0.0;
 	p.infmt=IWCMD_FMT_UNKNOWN;
 	p.outfmt=IWCMD_FMT_UNKNOWN;
-	p.unicode_output=unicode_output;
+	p.output_encoding=IWCMD_ENCODING_AUTO;
+	p.output_encoding_setmode=IWCMD_ENCODING_AUTO;
 	p.resize_alg_x.blur = 1.0;
 	p.resize_alg_y.blur = 1.0;
 	p.resize_alg_alpha.blur = 1.0;
 	p.webp_quality = -1.0;
 	p.pngcmprlevel = -1;
+
+	handle_encoding(&p,argc,argv);
 
 	for(i=1;i<argc;i++) {
 		if(argv[i][0]=='-' && ps.param_type==PT_NONE) {

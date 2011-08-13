@@ -130,12 +130,17 @@ do the kind of accurate calculations it strives for.
 Unicode
 -------
 
-Text files like this one notwithstanding, I've decided that ASCII must die. As
-simple as the text output from the command line utility is, IW will try to
-use Unicode quotation marks, arrows, etc., if possible. In a Unix environment,
-this can probably be turned off at runtime with environment variables, such as
-by setting "LANG=C". Whether the Windows version uses Unicode is determined at
-compile time.
+Text files like this one notwithstanding, I've had enough of ASCII, and I want
+to support Unicode even in an application like this that does very little with
+text. IW supports Unicode filenames, and will try to use Unicode quotation
+marks, arrows, etc., if possible. If IW does not correctly figure out the
+encoding you want, you can explicitly set it using the "-encoding" option. In
+a Unix environment, Unicode output can also probably be turned off with
+environment variables, such as by setting "LANG=C".
+
+The encoding setting does not affect the interpretation of the parameters on
+the command line. This should not be a problem in Windows, because Windows can
+translate them. But on a Unix system, they are always assumed to be UTF-8.
 
 All strings produced by the library (e.g. error messages) are encoded in UTF-8.
 Applications must convert them if necessary.

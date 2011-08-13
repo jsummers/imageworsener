@@ -1,5 +1,5 @@
 Unreleased changes
- - (none)
+ - Added -encoding option, to set the character encoding for text output.
 
 Version 0.9.4 - 9 Aug 2011
  - Added -density option, to give some control over how the density of the

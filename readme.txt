@@ -563,6 +563,28 @@ Options:
    WebP-style quality setting to use if a WebP file is written. This is on a
    scale from 0 to 100. Default is 80.
 
+ -encoding <encoding>
+   Set the encoding used for text output (informational and error messages).
+   This is usually unnecessary, because IW can usually figure out what
+   encoding to use. However, it may be useful if you're capturing or
+   redirecting the output, or using a nonstandard terminal program such as
+   mintty.
+   This is for output only, and does not affect how command-line parameters
+   are interpreted.
+
+   Encoding names:
+    "ascii": US-ASCII
+    "utf8": UTF-8. In Windows, IW sets the output mode to UTF-8, and writes
+         Unicode output.
+    "utf8raw": UTF-8. In Windows, IW writes raw UTF-8 output without setting
+         the output mode. In a standard Windows command prompt, this will
+         display garbage.
+    "utf16": Windows only. IW sets the output mode to UTF-16, and writes
+         Unicode output.
+    "utf16raw": Windows only. IW writes Unicode output, without setting the
+         output mode. In a standard Windows command prompt, this will likely
+         display garbage.
+
  -noinfo
    Suppess informational messages.
 
