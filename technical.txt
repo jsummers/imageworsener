@@ -55,8 +55,8 @@ works twice as fast and is imperceptibly less accurate. But there are lots
 of utilities that are optimized for speed, and there would be no reason for
 IW to exist if it worked the same as everything else.
 
-I don't intend to add millions of options to IW. I only want options that
-serve some purpose. It is nearly feature complete as it is.
+I don't intend to add millions of options to IW. I want most of the options to
+have some practical purpose. It is nearly feature complete as it is.
 
 I've taken a lot of care to make sure the resizing algorithms are implemented
 correctly. I won't add an algorithm until I'm sure that I understand it. This
@@ -270,9 +270,6 @@ Features I'm considering adding:
 - More options for aligning the input pixels with the output pixels.
 
 - More options for virtual pixels (transparency, at least).
-
-- Support maintaining or adjusting the pixel density even when the image is
-  resized.
 
 - Options to maintain PNG and GIF background colors.
 

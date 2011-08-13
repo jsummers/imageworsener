@@ -138,7 +138,7 @@ Options:
 
  -width <n>  -height <n>
  -w <n>  -h <n>
-   The height and width of the output image. <n> is normally the number of
+   The width and height of the output image. <n> is normally the number of
    pixels.
    If you use a prefix of "x", for example "-w x1.5", then the new size will
    instead be that number multiplied by the size of the source image.
@@ -169,9 +169,9 @@ Options:
      jpeg, jpg: JPEG
      webp: WebP
      gif: GIF (-infmt only)
-     miff: MIFF (experimental; limited support)
      bmp: BMP (-outfmt only)
      tiff, tif: TIFF (-outfmt only)
+     miff: MIFF (experimental; limited support)
 
  -depth <n>
    The general number of bits of precision used per color channel in the
@@ -245,7 +245,7 @@ Options:
      This is a subset of the cubic filters. The normal range of n is from
      0 to 0.5.
       "keys0"    = "cubic1,0" = "bspline"
-      "keys0.333" = "cubic0.333,0.333" = "mitchell"
+      "keys1/3" = "cubic1/3,1/3" = "mitchell"
       "keys0.5"  = "cubic0,0.5" = "catrom"
 
     hermite
@@ -255,7 +255,7 @@ Options:
      B-Spline filter. Identical to "cubic1,0".
 
     mitchell
-     Mitchell filter. Identical to "cubic0.333,0.333".
+     Mitchell filter. Identical to "cubic1/3,1/3".
 
     catrom
      Catmull-Rom spline. Identical to "cubic0,0.5".
@@ -496,12 +496,12 @@ Options:
     "auto": The default. Currently, writes a density only if the image size is
        not being changed.
     "none": Do not write a density.
-    "keep": Give the target image the same density as the source image.
+    "keep": Use the same density as the source image.
     "adjust": Adjust the density so that the target image is the same physical
        size as the source image.
 
    This is limited by the target image format's support for a density labels.
-   Some formats do not support them, and others require them.
+   Some formats do not support them, while others require them.
 
  -offset<channel> <n> (-offsetred -offsetgreen -offsetblue -offsetrb
                        -offsetvred -offsetvgreen -offsetvblue -offsetvrb)
@@ -560,7 +560,7 @@ Options:
    reasons unknown to the author of IW.
 
  -webpquality <n>
-   webp-style quality setting to use if a WebP file is written. This is on a
+   WebP-style quality setting to use if a WebP file is written. This is on a
    scale from 0 to 100. Default is 80.
 
  -noinfo
