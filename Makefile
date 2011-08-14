@@ -1,4 +1,3 @@
-
 # Makefile for ImageWorsener.
 
 ifeq ($(origin OS),undefined)
@@ -7,6 +6,10 @@ endif
 
 ifeq ($(origin IW_SUPPORT_PNG),undefined)
 IW_SUPPORT_PNG:=1
+ifeq ($(OS),unknown)
+INCLUDES+=-I/usr/X11/include
+LIBS+=-L/usr/X11/lib
+endif
 endif
 ifeq ($(origin IW_SUPPORT_JPEG),undefined)
 IW_SUPPORT_JPEG:=1
