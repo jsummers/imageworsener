@@ -14,7 +14,6 @@
 #endif
 
 #ifdef IW_WINDOWS
-#include <tchar.h>
 #include <windows.h>
 #endif
 
@@ -45,8 +44,6 @@
 #define iwcmd_stricmp   _stricmp
 #else
 #define iwcmd_stricmp   strcasecmp
-#define TCHAR           char
-#define _tmain          main
 #endif
 
 #define IWCMD_ENCODING_AUTO   0
@@ -182,14 +179,10 @@ static void iwcmd_utf8_to_utf16(const char *src, WCHAR *dst, int dstlen)
 }
 #endif
 
-#ifdef IW_WINDOWS
-static void iwcmd_utf8_to_tchar(const char *src, TCHAR *dst, int dstlen)
-{
 #ifdef _UNICODE
+static void iwcmd_utf8_to_wchar(const char *src, WCHAR *dst, int dstlen)
+{
 	iwcmd_utf8_to_utf16(src,dst,dstlen);
-#else
-	iw_utf8_to_ascii(src,dst,dstlen);
-#endif
 }
 #endif
 
@@ -200,14 +193,14 @@ static void iwcmd_puts_utf8(struct params_struct *p, const char *s)
 {
 	char buf[500];
 #ifdef _UNICODE
-	TCHAR tbuf[500];
+	WCHAR bufW[500];
 #endif
 
 	switch(p->output_encoding) {
 #ifdef _UNICODE
 	case IWCMD_ENCODING_UTF16:
-		iwcmd_utf8_to_tchar(s,tbuf,sizeof(tbuf)/sizeof(TCHAR));
-		_tprintf(_T("%s"),tbuf);
+		iwcmd_utf8_to_wchar(s,bufW,sizeof(bufW)/sizeof(WCHAR));
+		fputws(bufW,stdout);
 		break;
 #endif
 	case IWCMD_ENCODING_UTF8:
@@ -268,13 +261,13 @@ static FILE* iwcmd_fopen(const char *fn, const char *mode)
 {
 	FILE *f = NULL;
 	errno_t ret;
-	TCHAR *fnW;
-	TCHAR *modeW;
+	WCHAR *fnW;
+	WCHAR *modeW;
 
 	fnW = iwcmd_utf8_to_utf16_strdup(fn);
 	modeW = iwcmd_utf8_to_utf16_strdup(mode);
 
-	ret = _tfopen_s(&f,fnW,modeW);
+	ret = _wfopen_s(&f,fnW,modeW);
 
 	free(fnW);
 	free(modeW);
@@ -294,7 +287,7 @@ static FILE* iwcmd_fopen(const char *fn, const char *mode)
 	FILE *f = NULL;
 	errno_t ret;
 
-	ret = _tfopen_s(&f,fnW,modeW);
+	ret = fopen_s(&f,fn,mode);
 	if(ret!=0) {
 		// failure
 		if(f) fclose(f);
@@ -1939,11 +1932,11 @@ static int iwcmd_main(int argc, char* argv[])
 	return ret?0:1;
 }
 
+#ifdef _UNICODE
 
-int _tmain(int argc, TCHAR* argvT[])
+int wmain(int argc, WCHAR* argvW[])
 {
 	int retval;
-#ifdef _UNICODE
 	int i;
 	char **argvUTF8;
 
@@ -1952,7 +1945,7 @@ int _tmain(int argc, TCHAR* argvT[])
 
 	// Convert parameters to UTF-8
 	for(i=0;i<argc;i++) {
-		argvUTF8[i] = iwcmd_utf16_to_utf8_strdup(argvT[i]);
+		argvUTF8[i] = iwcmd_utf16_to_utf8_strdup(argvW[i]);
 		if(!argvUTF8[i]) return 1;
 	}
 
@@ -1962,8 +1955,14 @@ int _tmain(int argc, TCHAR* argvT[])
 		free(argvUTF8[i]);
 	}
 
-#else
-	retval = iwcmd_main(argc,argvT);
-#endif
 	return retval;
 }
+
+#else
+
+int main(int argc, char* argv[])
+{
+	return iwcmd_main(argc,argv);
+}
+
+#endif
