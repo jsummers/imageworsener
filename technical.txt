@@ -38,8 +38,9 @@ Dependencies:
      <http://www.webmproject.org/code/#libwebp_webp_image_decoder_library>
 
 Sorry; I don't have any detailed build instructions. Under Windows, use Visual
-Studio 2008 or newer. In a Linux/Unix environment, try typing "make". It
-should build an executable file named "imagew" or "imagew.exe".
+Studio 2008 or newer. In a Linux/Unix environment, try typing
+"make -C scripts". It should build an executable file named "imagew" or
+"imagew.exe".
 
 To compile without libwebp: In Unix, set the "IW_SUPPORT_WEBP" environment
 variable to "0" (type "IW_SUPPORT_WEBP=0 make"). In Windows, you'll probably

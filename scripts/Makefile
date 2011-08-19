@@ -15,10 +15,10 @@ ifeq ($(origin IW_SUPPORT_WEBP),undefined)
 IW_SUPPORT_WEBP:=1
 endif
 
-SRCDIR:=src
-INTDIR:=src
-OUTLIBDIR:=src
-OUTEXEDIR:=.
+SRCDIR:=../src
+INTDIR:=../src
+OUTLIBDIR:=../src
+OUTEXEDIR:=..
 
 CC:=gcc
 CFLAGS:=-Wall -O2
