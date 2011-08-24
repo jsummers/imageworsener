@@ -1110,7 +1110,7 @@ static void make_transparent_pixels_black(struct iw_context *ctx, struct iw_imag
 }
 
 // Strip alpha channel if there are no actual transparent pixels, etc.
-void iw_optimize_image(struct iw_context *ctx)
+void iwpvt_optimize_image(struct iw_context *ctx)
 {
 	struct iw_opt_ctx *optctx;
 

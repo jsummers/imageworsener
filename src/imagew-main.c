@@ -13,7 +13,7 @@
 #include "imagew-internals.h"
 
 
-const char *iwcore_get_string(struct iw_context *ctx, int n)
+const char *iwpvt_get_string(struct iw_context *ctx, int n)
 {
 	return iw_get_string(ctx,IW_STRINGTABLENUM_CORE,n);
 }
@@ -754,7 +754,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	else
 		rs=&ctx->resize_settings[IW_DIMENSION_V];
 
-	iw_resize_row_precalculate(ctx,rs,ctx->intermed_ci[channel].channeltype);
+	iwpvt_resize_row_precalculate(ctx,rs,ctx->intermed_ci[channel].channeltype);
 
 	for(i=0;i<ctx->input_w;i++) {
 
@@ -783,7 +783,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// Now we have a row in the right format.
 		// Resize it and store it in the right place in the intermediate array.
 
-		iw_resize_row_main(ctx,rs,IW_DIMENSION_V);
+		iwpvt_resize_row_main(ctx,rs,IW_DIMENSION_V);
 
 		// The intermediate pixels are in ctx->out_pix. Copy them to the intermediate array.
 		for(j=0;j<ctx->intermed_height;j++) {
@@ -858,7 +858,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	else
 		rs=&ctx->resize_settings[IW_DIMENSION_H];
 
-	iw_resize_row_precalculate(ctx,rs,ctx->intermed_ci[intermed_channel].channeltype);
+	iwpvt_resize_row_precalculate(ctx,rs,ctx->intermed_ci[intermed_channel].channeltype);
 
 	for(j=0;j<ctx->intermed_height;j++) {
 		if(is_alpha_channel) {
@@ -871,7 +871,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 		// Resize it to out_pix
 
-		iw_resize_row_main(ctx,rs,IW_DIMENSION_H);
+		iwpvt_resize_row_main(ctx,rs,IW_DIMENSION_H);
 
 		// Now convert the out_pix and put them in the final image.
 
@@ -1119,7 +1119,7 @@ done:
 		if(ctx->dither_errors[k]) { iw_free(ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
 	}
 	if(ctx->random_dither_pattern) { iw_free(ctx->random_dither_pattern); ctx->random_dither_pattern=NULL; }
-	iw_weightlist_free(ctx);
+	iwpvt_weightlist_free(ctx);
 	return retval;
 }
 
@@ -1185,7 +1185,7 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_UINT && !(ctx->output_profile&IW_PROFILE_16BPS)
 		&& ctx->output_depth>8)
 	{
-		iw_warning(ctx,iwcore_get_string(ctx,iws_warn_reduce_to_8));
+		iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_reduce_to_8));
 		ctx->output_depth=8;
 	}
 
@@ -1427,7 +1427,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 
 	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) {
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,iwcore_get_string(ctx,iws_warn_trans_incomp_format));
+			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_trans_incomp_format));
 			ctx->apply_bkgd=1;
 		}
 	}
@@ -1438,12 +1438,12 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		// it before resizing), regardless of whether
 		// the user asked for it or not. It's the only strategy we support.
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,iwcore_get_string(ctx,iws_warn_trans_incomp_offset));
+			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_trans_incomp_offset));
 			ctx->apply_bkgd=1;
 		}
 
 		if(ctx->bkgd_checkerboard) {
-			iw_warning(ctx,iwcore_get_string(ctx,iws_warn_chkb_incomp_offset));
+			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_chkb_incomp_offset));
 			ctx->bkgd_checkerboard=0;
 		}
 		ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_EARLY;
@@ -1564,14 +1564,14 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	int flag;
 
 	if(ctx->output_profile==0) {
-		iw_seterror(ctx,iwcore_get_string(ctx,iws_output_prof_not_set));
+		iw_seterror(ctx,iwpvt_get_string(ctx,iws_output_prof_not_set));
 	}
 
 	if(ctx->randomize) {
-		iw_util_randomize();
+		iwpvt_util_randomize();
 	}
 	else {
-		iw_util_set_random_seed(ctx->random_seed);
+		iwpvt_util_set_random_seed(ctx->random_seed);
 	}
 
 	if(!iw_check_image_dimensons(ctx,ctx->img1.width,ctx->img1.height)) {
@@ -1601,7 +1601,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->output_profile&IW_PROFILE_ALWAYSSRGB) {
 		if(ctx->img2cs.cstype!=IW_CSTYPE_SRGB) {
 			if(ctx->warn_invalid_output_csdescr) {
-				iw_warning(ctx,iwcore_get_string(ctx,iws_warn_output_forced_srgb));
+				iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_output_forced_srgb));
 			}
 			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 		}
@@ -1634,7 +1634,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			if(ctx->color_count[i]) flag=1;
 		}
 		if(flag) {
-			iw_warning(ctx,iwcore_get_string(ctx,iws_warn_fltpt_no_posterize));
+			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_fltpt_no_posterize));
 		}
 	}
 	else {
@@ -1648,7 +1648,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->offset_color_channels && ctx->to_grayscale) {
-		iw_warning(ctx,iwcore_get_string(ctx,iws_warn_disable_offset_grayscale));
+		iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_disable_offset_grayscale));
 		ctx->offset_color_channels=0;
 	}
 
@@ -1713,7 +1713,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->intermed_ci[0].corresponding_input_channel=0;
 		break;
 	default:
-		iw_seterror(ctx,iwcore_get_string(ctx,iws_internal_unk_strategy),strategy1);
+		iw_seterror(ctx,iwpvt_get_string(ctx,iws_internal_unk_strategy),strategy1);
 		return 0;
 	}
 
@@ -1747,7 +1747,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->intermed_ci[1].corresponding_output_channel= -1;
 		break;
 	default:
-		iw_seterror(ctx,iwcore_get_string(ctx,iws_internal_error));
+		iw_seterror(ctx,iwpvt_get_string(ctx,iws_internal_error));
 		return 0;
 	}
 
@@ -1823,7 +1823,7 @@ int iw_process_image(struct iw_context *ctx)
 	ret = iw_process_internal(ctx);
 	if(!ret) goto done;
 
-	iw_optimize_image(ctx);
+	iwpvt_optimize_image(ctx);
 
 	retval = 1;
 done:

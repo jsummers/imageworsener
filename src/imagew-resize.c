@@ -143,7 +143,7 @@ static void weightlist_ensure_alloc(struct iw_context *ctx, int n)
 	}
 }
 
-void iw_weightlist_free(struct iw_context *ctx)
+void iwpvt_weightlist_free(struct iw_context *ctx)
 {
 	if(ctx->weightlist.w) {
 		iw_free(ctx->weightlist.w);
@@ -394,7 +394,7 @@ static void resize_row_null(struct iw_context *ctx)
 	}
 }
 
-void iw_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype)
+void iwpvt_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype)
 {
 	// Set ctx->cur_offset, to be used as the offset until this function is
 	// called again.
@@ -442,7 +442,7 @@ void iw_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_setting
 	}
 }
 
-void iw_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension)
+void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension)
 {
 	int i;
 	int clamp;

@@ -53,7 +53,7 @@ const char *iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen)
 		iw_snprintf(buf,buflen,"%s",ctx->error_msg);
 	}
 	else {
-		iw_snprintf(buf,buflen,iwcore_get_string(ctx,iws_err_msg_not_avail));
+		iw_snprintf(buf,buflen,iwpvt_get_string(ctx,iws_err_msg_not_avail));
 	}
 
 	return buf;
@@ -72,12 +72,12 @@ size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 int iw_check_image_dimensons(struct iw_context *ctx, int w, int h)
 {
 	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
-		iw_seterror(ctx,iwcore_get_string(ctx,iws_dimensions_too_large),w,h);
+		iw_seterror(ctx,iwpvt_get_string(ctx,iws_dimensions_too_large),w,h);
 		return 0;
 	}
 
 	if(w<1 || h<1) {
-		iw_seterror(ctx,iwcore_get_string(ctx,iws_dimensions_invalid),w,h);
+		iw_seterror(ctx,iwpvt_get_string(ctx,iws_dimensions_invalid),w,h);
 		return 0;
 	}
 
@@ -454,7 +454,7 @@ char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len)
 char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
 {
 	if(ctx) {
-		iw_snprintf(s,s_len,iwcore_get_string(ctx,iws_copyright),IW_COPYRIGHT_YEAR);
+		iw_snprintf(s,s_len,iwpvt_get_string(ctx,iws_copyright),IW_COPYRIGHT_YEAR);
 	}
 	else {
 		iw_snprintf(s,s_len,iw_get_string_direct(iw_corestringtable,iws_copyright),IW_COPYRIGHT_YEAR);

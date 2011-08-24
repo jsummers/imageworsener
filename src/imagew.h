@@ -468,6 +468,8 @@ void *iw_realloc(struct iw_context *ctx, void *m, size_t n);
 // This function is careful to avoid integer overflow.
 void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2);
 
+void *iw_strdup(const char *s);
+
 // Free memory allocated by an iw_malloc* function.
 // If mem is NULL, does nothing.
 void iw_free(void *mem);

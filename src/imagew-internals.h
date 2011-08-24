@@ -264,18 +264,16 @@ struct iw_context {
 };
 
 // Defined imagew-util.c
-void *iw_strdup(const char *s);
-void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
-void iw_util_set_random_seed(int s);
-void iw_util_randomize(void);
+void iwpvt_util_set_random_seed(int s);
+void iwpvt_util_randomize(void);
 
 // Defined in imagew-resize.c
-void iw_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype);
-void iw_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension);
-void iw_weightlist_free(struct iw_context *ctx);
+void iwpvt_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype);
+void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension);
+void iwpvt_weightlist_free(struct iw_context *ctx);
 
 // Defined in imagew-opt.c
-void iw_optimize_image(struct iw_context *ctx);
+void iwpvt_optimize_image(struct iw_context *ctx);
 
 enum iw_corestrings {
 	iws_err_msg_not_avail=1,
@@ -296,4 +294,4 @@ enum iw_corestrings {
 	iws_copyright
 };
 
-const char *iwcore_get_string(struct iw_context *ctx, int s);
+const char *iwpvt_get_string(struct iw_context *ctx, int s);
