@@ -432,18 +432,6 @@ void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, i
 	}
 }
 
-void iw_set_resize_withradius(struct iw_context *ctx, int dimension, int r, int lobes)
-{
-	struct iw_resize_settings *rs;
-
-	if(dimension<0 || dimension>1) dimension=0;
-	rs=&ctx->resize_settings[dimension];
-	rs->family = r;
-	if(lobes<2) lobes=2;
-	if(lobes>10) lobes=10;
-	rs->radius = (double)lobes;
-}
-
 int iw_get_sample_size(void)
 {
 	return (int)sizeof(IW_SAMPLE);
