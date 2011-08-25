@@ -18,6 +18,26 @@ const char *iwpvt_get_string(struct iw_context *ctx, int n)
 	return iw_get_string(ctx,IW_STRINGTABLENUM_CORE,n);
 }
 
+void iwpvt_errf(struct iw_context *ctx, int n, ...)
+{
+	va_list ap;
+	va_start(ap, n);
+	iw_set_errorv(ctx, iwpvt_get_string(ctx,n), ap);
+	va_end(ap);
+}
+
+void iwpvt_err(struct iw_context *ctx, int n)
+{
+	iw_seterror(ctx,"%s",iwpvt_get_string(ctx,n));
+}
+
+// TODO: A (formatted) iwpvt_warnf function.
+
+void iwpvt_warn(struct iw_context *ctx, int n)
+{
+	iw_warning(ctx,"%s",iwpvt_get_string(ctx,n));
+}
+
 // Given a color type, returns the number of channels.
 int iw_imgtype_num_channels(int t)
 {
@@ -1185,7 +1205,7 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_UINT && !(ctx->output_profile&IW_PROFILE_16BPS)
 		&& ctx->output_depth>8)
 	{
-		iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_reduce_to_8));
+		iwpvt_warn(ctx,iws_warn_reduce_to_8);
 		ctx->output_depth=8;
 	}
 
@@ -1427,7 +1447,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 
 	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) {
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_trans_incomp_format));
+			iwpvt_warn(ctx,iws_warn_trans_incomp_format);
 			ctx->apply_bkgd=1;
 		}
 	}
@@ -1438,12 +1458,12 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		// it before resizing), regardless of whether
 		// the user asked for it or not. It's the only strategy we support.
 		if(!ctx->apply_bkgd) {
-			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_trans_incomp_offset));
+			iwpvt_warn(ctx,iws_warn_trans_incomp_offset);
 			ctx->apply_bkgd=1;
 		}
 
 		if(ctx->bkgd_checkerboard) {
-			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_chkb_incomp_offset));
+			iwpvt_warn(ctx,iws_warn_chkb_incomp_offset);
 			ctx->bkgd_checkerboard=0;
 		}
 		ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_EARLY;
@@ -1564,7 +1584,8 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	int flag;
 
 	if(ctx->output_profile==0) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_output_prof_not_set));
+		iwpvt_err(ctx,iws_output_prof_not_set);
+		return 0;
 	}
 
 	if(ctx->randomize) {
@@ -1601,7 +1622,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->output_profile&IW_PROFILE_ALWAYSSRGB) {
 		if(ctx->img2cs.cstype!=IW_CSTYPE_SRGB) {
 			if(ctx->warn_invalid_output_csdescr) {
-				iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_output_forced_srgb));
+				iwpvt_warn(ctx,iws_warn_output_forced_srgb);
 			}
 			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 		}
@@ -1634,7 +1655,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			if(ctx->color_count[i]) flag=1;
 		}
 		if(flag) {
-			iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_fltpt_no_posterize));
+			iwpvt_warn(ctx,iws_warn_fltpt_no_posterize);
 		}
 	}
 	else {
@@ -1648,7 +1669,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->offset_color_channels && ctx->to_grayscale) {
-		iw_warning(ctx,iwpvt_get_string(ctx,iws_warn_disable_offset_grayscale));
+		iwpvt_warn(ctx,iws_warn_disable_offset_grayscale);
 		ctx->offset_color_channels=0;
 	}
 
@@ -1713,7 +1734,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->intermed_ci[0].corresponding_input_channel=0;
 		break;
 	default:
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_internal_unk_strategy),strategy1);
+		iwpvt_errf(ctx,iws_internal_unk_strategy,strategy1);
 		return 0;
 	}
 
@@ -1747,7 +1768,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->intermed_ci[1].corresponding_output_channel= -1;
 		break;
 	default:
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_internal_error));
+		iwpvt_err(ctx,iws_internal_error);
 		return 0;
 	}
 

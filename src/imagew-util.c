@@ -51,12 +51,12 @@ void *iw_malloc(struct iw_context *ctx, size_t n)
 	void *mem;
 
 	if(n>ctx->max_malloc) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_nomem));
+		iwpvt_err(ctx,iws_nomem);
 		return NULL;
 	}
 	mem = iw_malloc_lowlevel(n);
 	if(!mem) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_nomem));
+		iwpvt_err(ctx,iws_nomem);
 		return NULL;
 	}
 	return mem;
@@ -67,12 +67,12 @@ void *iw_realloc(struct iw_context *ctx, void *m, size_t n)
 	void *mem;
 
 	if(n>ctx->max_malloc) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_nomem));
+		iwpvt_err(ctx,iws_nomem);
 		return NULL;
 	}
 	mem = iw_realloc_lowlevel(m,n);
 	if(!mem) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_nomem));
+		iwpvt_err(ctx,iws_nomem);
 		return NULL;
 	}
 	return mem;
@@ -84,7 +84,7 @@ void *iw_realloc(struct iw_context *ctx, void *m, size_t n)
 void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2)
 {
 	if(n1 > ctx->max_malloc/n2) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_image_too_large));
+		iwpvt_err(ctx,iws_image_too_large);
 		return NULL;
 	}
 	return iw_malloc(ctx,n1*n2);

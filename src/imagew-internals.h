@@ -295,3 +295,6 @@ enum iw_corestrings {
 };
 
 const char *iwpvt_get_string(struct iw_context *ctx, int s);
+void iwpvt_errf(struct iw_context *ctx, int n, ...);
+void iwpvt_err(struct iw_context *ctx, int n);
+void iwpvt_warn(struct iw_context *ctx, int n);

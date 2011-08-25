@@ -28,9 +28,8 @@ void iw_warning(struct iw_context *ctx, const char *fmt, ...)
 	(*ctx->warning_fn)(ctx,buf);
 }
 
-void iw_seterror(struct iw_context *ctx, const char *fmt, ...)
+void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
 {
-	va_list ap;
 
 	if(ctx->error_flag) return; // Only record the first error.
 	ctx->error_flag = 1;
@@ -42,8 +41,14 @@ void iw_seterror(struct iw_context *ctx, const char *fmt, ...)
 		}
 	}
 
-	va_start(ap, fmt);
 	iw_vsnprintf(ctx->error_msg,IW_ERRMSG_MAX,fmt,ap);
+}
+
+void iw_seterror(struct iw_context *ctx, const char *fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	iw_set_errorv(ctx,fmt,ap);
 	va_end(ap);
 }
 
@@ -72,12 +77,12 @@ size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 int iw_check_image_dimensons(struct iw_context *ctx, int w, int h)
 {
 	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_dimensions_too_large),w,h);
+		iwpvt_errf(ctx,iws_dimensions_too_large,w,h);
 		return 0;
 	}
 
 	if(w<1 || h<1) {
-		iw_seterror(ctx,iwpvt_get_string(ctx,iws_dimensions_invalid),w,h);
+		iwpvt_errf(ctx,iws_dimensions_invalid,w,h);
 		return 0;
 	}
 

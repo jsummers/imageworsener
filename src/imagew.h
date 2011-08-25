@@ -436,6 +436,8 @@ char *iw_get_libwebp_enc_version_string(char *s, int s_len);
 // Applications are welcome to define IW_INCLUDE_UTIL_FUNCTIONS and use these
 // functions if they wish.
 
+void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
+
 void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
 void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
 
