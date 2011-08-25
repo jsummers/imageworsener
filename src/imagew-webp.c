@@ -205,7 +205,7 @@ int iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,iwwebp_get_string(ctx,iws_webp_read_error));
+		iw_set_error(ctx,iwwebp_get_string(ctx,iws_webp_read_error));
 	}
 
 	if(iodescr->close_fn)
@@ -273,7 +273,7 @@ static int iwwebp_write_main(struct iwwebpwritecontext *wctx)
 		ret = WebPEncodeRGB(img->pixels, img->width, img->height, (int)img->bpr, (float)quality, &cmpr_webp_data);
 		break;
 	default:
-		iw_seterror(wctx->ctx,iwwebp_get_string(wctx->ctx,iws_webp_enc_bad_imgtype),img->imgtype);
+		iw_set_errorf(wctx->ctx,iwwebp_get_string(wctx->ctx,iws_webp_enc_bad_imgtype),img->imgtype);
 		goto done;
 	}
 
@@ -315,7 +315,7 @@ int iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,iwwebp_get_string(ctx,iws_webp_write_error));
+		iw_set_error(ctx,iwwebp_get_string(ctx,iws_webp_write_error));
 	}
 
 	if(wctx.iodescr->close_fn)

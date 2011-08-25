@@ -90,6 +90,15 @@ void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2)
 	return iw_malloc(ctx,n1*n2);
 }
 
+void iw_strlcpy(char *dst, const char *src, size_t dstlen)
+{
+	size_t n;
+	n = strlen(src);
+	if(n>dstlen-1) n=dstlen-1;
+	memcpy(dst,src,n);
+	dst[n]='\0';
+}
+
 void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap)
 {
 #ifdef IW_WINDOWS

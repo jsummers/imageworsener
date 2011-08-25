@@ -15,6 +15,8 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
+#define iw_seterror iw_set_error
+
 typedef unsigned short iw_uint16;
 
 enum iwgif_string {

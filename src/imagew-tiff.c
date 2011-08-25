@@ -510,7 +510,7 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 		tiffctx->has_alpha_channel = 1;
 	}
 	else {
-		iw_seterror(tiffctx->ctx,iwtiff_get_string(tiffctx->ctx,iws_tiff_internal_bad_type));
+		iw_set_error(tiffctx->ctx,iwtiff_get_string(tiffctx->ctx,iws_tiff_internal_bad_type));
 		goto done;
 	}
 

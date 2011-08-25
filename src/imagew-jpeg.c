@@ -21,6 +21,8 @@
 #error "Wrong JSAMPLE size"
 #endif
 
+#define iw_seterror iw_set_error
+
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;
 	jmp_buf setjmp_buffer;
@@ -187,7 +189,7 @@ int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
 
-		iw_seterror(ctx,iwjpeg_get_string(ctx,iws_jpeg_libjpeg_read),buffer);
+		iw_set_errorf(ctx,iwjpeg_get_string(ctx,iws_jpeg_libjpeg_read),buffer);
 
 		goto done;
 	}
@@ -356,7 +358,7 @@ int iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
 	}
 
 	if(img.bit_depth!=8) {
-		iw_seterror(ctx,iwjpeg_get_string(ctx,iws_jpeg_internal_bad_prec),img.bit_depth);
+		iw_set_errorf(ctx,iwjpeg_get_string(ctx,iws_jpeg_internal_bad_prec),img.bit_depth);
 		goto done;
 	}
 
@@ -379,7 +381,7 @@ int iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
 
 		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
 
-		iw_seterror(ctx,iwjpeg_get_string(ctx,iws_jpeg_libjpeg_write),buffer);
+		iw_set_errorf(ctx,iwjpeg_get_string(ctx,iws_jpeg_libjpeg_write),buffer);
 
 		goto done;
 	}

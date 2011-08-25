@@ -14,7 +14,7 @@
 #include "imagew-internals.h"
 
 // Call the caller's warning function, if defined.
-void iw_warning(struct iw_context *ctx, const char *fmt, ...)
+void iw_warningf(struct iw_context *ctx, const char *fmt, ...)
 {
 	char buf[IW_ERRMSG_MAX];
 
@@ -28,9 +28,8 @@ void iw_warning(struct iw_context *ctx, const char *fmt, ...)
 	(*ctx->warning_fn)(ctx,buf);
 }
 
-void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
+void iw_set_error(struct iw_context *ctx, const char *s)
 {
-
 	if(ctx->error_flag) return; // Only record the first error.
 	ctx->error_flag = 1;
 
@@ -41,10 +40,18 @@ void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
 		}
 	}
 
-	iw_vsnprintf(ctx->error_msg,IW_ERRMSG_MAX,fmt,ap);
+	iw_strlcpy(ctx->error_msg,s,IW_ERRMSG_MAX);
 }
 
-void iw_seterror(struct iw_context *ctx, const char *fmt, ...)
+void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
+{
+	char msg[IW_ERRMSG_MAX];
+
+	iw_vsnprintf(msg,IW_ERRMSG_MAX,fmt,ap);
+	iw_set_error(ctx,msg);
+}
+
+void iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);

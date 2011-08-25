@@ -12,13 +12,16 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
+#define iw_seterror iw_set_error
+
 enum iwmiff_string {
 	iws_miff_internal_bad_type=1,
 	iws_miff_unsupp_class,
 	iws_miff_unsupp_colorspace,
 	iws_miff_unsupp_depth,
 	iws_miff_unsupp_compression,
-	iws_miff_unsupp_sampleformat
+	iws_miff_unsupp_sampleformat,
+	iws_miff_read_failed
 };
 
 struct iw_stringtableentry iwmiff_stringtable[] = {
@@ -28,6 +31,7 @@ struct iw_stringtableentry iwmiff_stringtable[] = {
 	{ iws_miff_unsupp_depth, "MIFF: Unsupported bit depth" },
 	{ iws_miff_unsupp_compression, "MIFF: Unsupported compression" },
 	{ iws_miff_unsupp_sampleformat, "MIFF: Unsupported sample format" },
+	{ iws_miff_read_failed, "Failed to read MIFF file" },
 	{ 0, NULL }
 };
 
@@ -394,7 +398,7 @@ int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,"Failed to read MIFF file");
+		iw_set_error(ctx,iwmiff_get_string(ctx,iws_miff_read_failed));
 	}
 
 	if(iodescr->close_fn)

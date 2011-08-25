@@ -191,7 +191,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 			bmpctx->bitcount=8;
 	}
 	else {
-		iw_seterror(bmpctx->ctx,iwbmp_get_string(bmpctx->ctx,iws_bmp_internal_bad_type));
+		iw_set_error(bmpctx->ctx,iwbmp_get_string(bmpctx->ctx,iws_bmp_internal_bad_type));
 		goto done;
 	}
 

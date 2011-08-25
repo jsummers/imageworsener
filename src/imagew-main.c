@@ -28,14 +28,14 @@ void iwpvt_errf(struct iw_context *ctx, int n, ...)
 
 void iwpvt_err(struct iw_context *ctx, int n)
 {
-	iw_seterror(ctx,"%s",iwpvt_get_string(ctx,n));
+	iw_set_error(ctx,iwpvt_get_string(ctx,n));
 }
 
 // TODO: A (formatted) iwpvt_warnf function.
 
 void iwpvt_warn(struct iw_context *ctx, int n)
 {
-	iw_warning(ctx,"%s",iwpvt_get_string(ctx,n));
+	iw_warningf(ctx,"%s",iwpvt_get_string(ctx,n));
 }
 
 // Given a color type, returns the number of channels.

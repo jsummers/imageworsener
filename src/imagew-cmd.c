@@ -556,11 +556,11 @@ static int run(struct params_struct *p)
 		p->outfmt=detect_fmt_from_filename(p->outfn);
 
 	if(p->outfmt==IWCMD_FMT_UNKNOWN) {
-		iw_seterror(ctx,"Unknown output format; use -outfmt.");
+		iw_set_error(ctx,"Unknown output format; use -outfmt.");
 		goto done;
 	}
 	else if(!is_output_fmt_supported(p->outfmt)) {
-		iw_seterror(ctx,"Writing %s files is not supported.",get_fmt_name(p->outfmt));
+		iw_set_errorf(ctx,"Writing %s files is not supported.",get_fmt_name(p->outfmt));
 		goto done;
 	}
 
@@ -584,7 +584,7 @@ static int run(struct params_struct *p)
 	readdescr.getfilesize_fn = my_getfilesizefn;
 	readdescr.fp = (void*)iwcmd_fopen(p->infn,"rb");
 	if(!readdescr.fp) {
-		iw_seterror(ctx,"Failed to open for reading (error code=%d)",(int)errno);
+		iw_set_errorf(ctx,"Failed to open for reading (error code=%d)",(int)errno);
 		goto done;
 	}
 
@@ -593,11 +593,11 @@ static int run(struct params_struct *p)
 		p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
 
 	if(p->infmt==IWCMD_FMT_UNKNOWN) {
-		iw_seterror(ctx,"Unknown input file format.");
+		iw_set_error(ctx,"Unknown input file format.");
 		goto done;
 	}
 	else if(!is_input_fmt_supported(p->infmt)) {
-		iw_seterror(ctx,"Reading %s files is not supported.",get_fmt_name(p->infmt));
+		iw_set_errorf(ctx,"Reading %s files is not supported.",get_fmt_name(p->infmt));
 	}
 
 	switch(p->infmt) {
@@ -819,7 +819,7 @@ static int run(struct params_struct *p)
 	writedescr.write_fn = my_writefn;
 	writedescr.fp = (void*)iwcmd_fopen(p->outfn,"wb");
 	if(!writedescr.fp) {
-		iw_seterror(ctx,"Failed to open for writing (error code=%d)",(int)errno);
+		iw_set_errorf(ctx,"Failed to open for writing (error code=%d)",(int)errno);
 		goto done;
 	}
 
@@ -832,7 +832,7 @@ static int run(struct params_struct *p)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
 		if(!iw_write_jpeg_file(ctx,&writedescr)) goto done;
 #else
-		iw_seterror(ctx,"JPEG is not supported by this copy of imagew.");
+		iw_set_error(ctx,"JPEG is not supported by this copy of imagew.");
 #endif
 	}
 	else if(p->outfmt==IWCMD_FMT_BMP) {
@@ -849,7 +849,7 @@ static int run(struct params_struct *p)
 		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
 		if(!iw_write_webp_file(ctx,&writedescr)) goto done;
 #else
-		iw_seterror(ctx,"WebP is not supported by this copy of imagew.");
+		iw_set_error(ctx,"WebP is not supported by this copy of imagew.");
 #endif
 	}
 	else {
@@ -858,7 +858,7 @@ static int run(struct params_struct *p)
 			iw_set_value(ctx,IW_VAL_PNG_CMPR_LEVEL,p->pngcmprlevel);
 		if(!iw_write_png_file(ctx,&writedescr)) goto done;
 #else
-		iw_seterror(ctx,"PNG is not supported by this copy of imagew.");
+		iw_set_error(ctx,"PNG is not supported by this copy of imagew.");
 #endif
 	}
 
@@ -1713,9 +1713,17 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_INFMT:
 		p->infmt=get_fmt_from_name(v);
+		if(p->infmt==IWCMD_FMT_UNKNOWN) {
+			iwcmd_error(p,"Unknown format \xe2\x80\x9c%s\xe2\x80\x9d\n",v);
+			return 0;
+		}
 		break;
 	case PT_OUTFMT:
 		p->outfmt=get_fmt_from_name(v);
+		if(p->outfmt==IWCMD_FMT_UNKNOWN) {
+			iwcmd_error(p,"Unknown format \xe2\x80\x9c%s\xe2\x80\x9d\n",v);
+			return 0;
+		}
 		break;
 	case PT_EDGE_POLICY:
 		if(v[0]=='s') p->edge_policy=IW_EDGE_POLICY_STANDARD;

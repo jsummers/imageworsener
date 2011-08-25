@@ -386,8 +386,9 @@ int iw_get_value(struct iw_context *ctx, int code);
 void iw_set_value_dbl(struct iw_context *ctx, int code, double n);
 double iw_get_value_dbl(struct iw_context *ctx, int code);
 
-void iw_seterror(struct iw_context *ctx, const char *fmt, ...);
-void iw_warning(struct iw_context *ctx, const char *fmt, ...);
+void iw_set_error(struct iw_context *ctx, const char *s);
+void iw_set_errorf(struct iw_context *ctx, const char *fmt, ...);
+void iw_warningf(struct iw_context *ctx, const char *fmt, ...);
 
 // Returns the number of bytes in the data type used to store a sample
 // internally.
@@ -438,6 +439,7 @@ char *iw_get_libwebp_enc_version_string(char *s, int s_len);
 
 void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
 
+void iw_strlcpy(char *dst, const char *src, size_t dstlen);
 void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
 void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
 

@@ -17,6 +17,7 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
+#define iw_seterror iw_set_error
 
 struct iw_pngrctx {
 	struct iw_context *ctx;
@@ -69,10 +70,10 @@ static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 
 	// TODO: Call a "translate_libpng_message" function.
 	if(errinfop->write_flag) {
-		iw_seterror(ctx,iwpng_get_string(ctx,iws_png_libpng_write),err_msg);
+		iw_set_errorf(ctx,iwpng_get_string(ctx,iws_png_libpng_write),err_msg);
 	}
 	else {
-		iw_seterror(ctx,iwpng_get_string(ctx,iws_png_libpng_read),err_msg);
+		iw_set_errorf(ctx,iwpng_get_string(ctx,iws_png_libpng_read),err_msg);
 	}
 
 	longjmp(*j, -1);
@@ -366,7 +367,7 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	}
 
 	if(!is_supported) {
-		iw_seterror(ctx,iwpng_get_string(ctx,iws_png_not_supported),(int)color_type,(int)bit_depth);
+		iw_set_errorf(ctx,iwpng_get_string(ctx,iws_png_not_supported),(int)color_type,(int)bit_depth);
 		goto done;
 	}
 
