@@ -122,11 +122,11 @@ static int iwgif_read_screen_descriptor(struct iwgifreadcontext *rctx)
 	has_global_ct = (int)((rctx->rbuf[4]>>7)&0x01);
 
 	if(has_global_ct) {
+		// Size of global color table
 		global_ct_size = (int)(rctx->rbuf[4]&0x07);
 		rctx->colortable.num_entries = 1<<(1+global_ct_size);
-	}
 
-	if(has_global_ct) {
+		// Background color
 		rctx->bg_color_index = (int)rctx->rbuf[5];
 		if(rctx->bg_color_index < rctx->colortable.num_entries)
 			rctx->has_bg_color = 1;
@@ -243,9 +243,15 @@ static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int color
 	yi = pixnum/rctx->image_width;
 	xs = rctx->image_left + xi;
 	ys = rctx->image_top + yi;
-	if(xs>=(size_t)rctx->screen_width || ys>=(size_t)rctx->screen_height) return;
+
+	// Check if the x-coordinate is on the screen.
+	if(xs>=(size_t)rctx->screen_width) return;
+
+	// Because of how we de-interlace, it's not obvious whether the Y coordinate
+	// is on the screen. The easiest way is to check if the row pointer is NULL.
+	if(rctx->row_pointers[yi]==NULL) return;
 	
-	// Figure out what color to set it to.
+	// Figure out what color to set the pixel to.
 
 	if(coloridx<(unsigned int)rctx->colortable.num_entries) {
 		r=rctx->colortable.entry[coloridx].r;
@@ -435,7 +441,6 @@ static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext 
 static int lzw_process_bytes(struct iwgifreadcontext *rctx, struct lzwdeccontext *d,
 	unsigned char *data, size_t data_size)
 {
-	static const unsigned char bitmasks[8] = {1,2,4,8,16,32,64,128};
 	size_t i;
 	int b;
 	int retval=0;
@@ -448,7 +453,7 @@ static int lzw_process_bytes(struct iwgifreadcontext *rctx, struct lzwdeccontext
 				goto done;
 			}
 
-			if(data[i]&bitmasks[b])
+			if(data[i]&(1<<b))
 				d->pending_code |= 1<<d->bits_in_pending_code;
 			d->bits_in_pending_code++;
 
@@ -472,6 +477,7 @@ done:
 static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 {
 	struct iw_image *img;
+	int bg_visible=0;
 	int retval=0;
 
 	if(rctx->screen_initialized) return 1;
@@ -479,8 +485,18 @@ static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 
 	img = rctx->img;
 
+	if(rctx->image_left>0 || rctx->image_top>0 || 
+		(rctx->image_left+rctx->image_width < rctx->screen_width) ||
+		(rctx->image_top+rctx->image_height < rctx->screen_height) )
+	{
+		// Image does not cover the entire "screen". We'll make the exposed
+		// regions of the screen transparent, so set a flag to let us know we
+		// need an image type that supports transparency.
+		bg_visible = 1;
+	}
+
 	// Allocate IW image
-	if(rctx->has_transparency) {
+	if(rctx->has_transparency || bg_visible) {
 		rctx->bytes_per_pixel=4;
 		img->imgtype = IW_IMGTYPE_RGBA;
 	}
@@ -494,8 +510,7 @@ static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 	img->pixels = (unsigned char*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
 	if(!img->pixels) goto done;
 
-	// TODO: Maybe it would be better to clear the screen to the background
-	// color, if available.
+	// Start by clearing the screen to black, or transparent black.
 	memset(img->pixels,0,img->bpr*img->height);
 
 	retval=1;
@@ -521,6 +536,8 @@ static int iwgif_make_row_pointers(struct iwgifreadcontext *rctx)
 	img = rctx->img;
 
 	if(rctx->interlaced) {
+		// Image is interlaced. Rearrange the row pointers, so that it will be
+		// de-interlaced as it is decoded.
 		rowcount=0;
 		for(pass=1;pass<=4;pass++) {
 			if(pass==1) { startrow=0; rowskip=8; }
@@ -529,13 +546,25 @@ static int iwgif_make_row_pointers(struct iwgifreadcontext *rctx)
 			else { startrow=1; rowskip=2; }
 
 			for(row=startrow;row<rctx->image_height;row+=rowskip) {
-				rctx->row_pointers[rowcount++] = &img->pixels[(rctx->image_top+row)*img->bpr + (rctx->image_left)*rctx->bytes_per_pixel];
+				if(rctx->image_top+row < rctx->screen_height) {
+					rctx->row_pointers[rowcount] = &img->pixels[(rctx->image_top+row)*img->bpr + (rctx->image_left)*rctx->bytes_per_pixel];
+				}
+				else {
+					rctx->row_pointers[rowcount] = NULL;
+				}
+				rowcount++;
 			}
 		}
 	}
 	else {
+		// Image is not interlaced.
 		for(row=0;row<rctx->image_height;row++) {
-			rctx->row_pointers[row] = &img->pixels[(rctx->image_top+row)*img->bpr + (rctx->image_left)*rctx->bytes_per_pixel];
+			if(rctx->image_top+row < rctx->screen_height) {
+				rctx->row_pointers[row] = &img->pixels[(rctx->image_top+row)*img->bpr + (rctx->image_left)*rctx->bytes_per_pixel];
+			}
+			else {
+				rctx->row_pointers[row] = NULL;
+			}
 		}
 	}
 	return 1;
@@ -558,7 +587,7 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 	if(!iwgif_read(rctx,rctx->rbuf,10)) goto done;
 
 	rctx->image_left = iw_read_uint16le(&rctx->rbuf[0]);
-	rctx->image_height = iw_read_uint16le(&rctx->rbuf[2]);
+	rctx->image_top = iw_read_uint16le(&rctx->rbuf[2]);
 	rctx->image_width = iw_read_uint16le(&rctx->rbuf[4]);
 	rctx->image_height = iw_read_uint16le(&rctx->rbuf[6]);
 
