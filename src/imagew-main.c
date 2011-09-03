@@ -1628,7 +1628,12 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 	else if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
-		ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
+		if(ctx->img2cs.cstype!=IW_CSTYPE_LINEAR) {
+			if(ctx->warn_invalid_output_csdescr) {
+				iwpvt_warn(ctx,iws_warn_output_forced_linear);
+			}
+			ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
+		}
 	}
 
 	if(ctx->img1.sampletype!=IW_SAMPLETYPE_FLOATINGPOINT) {

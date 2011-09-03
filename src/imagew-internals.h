@@ -284,6 +284,7 @@ enum iw_corestrings {
 	iws_warn_trans_incomp_offset,
 	iws_warn_chkb_incomp_offset,
 	iws_warn_output_forced_srgb,
+	iws_warn_output_forced_linear,
 	iws_output_prof_not_set,
 	iws_internal_error,
 	iws_internal_unk_strategy,
