@@ -1517,19 +1517,6 @@ static void init_channel_info(struct iw_context *ctx)
 
 	iw_set_input_channeltypes(ctx);
 
-	// By default, use the same gamma (etc.) for the output
-	// as the input had.
-	if(!ctx->caller_set_output_csdescr) {
-		if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
-			// Exception (hack): Because we always write floating point data with a linear
-			// colorspace, don't assume the output file should be linear in that case.
-			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
-		}
-		else {
-			ctx->img2cs = ctx->img1cs; // struct copy
-		}
-	}
-
 	ctx->img2.imgtype = ctx->img1.imgtype; // default
 	ctx->img2_numchannels = ctx->img1_numchannels; // default
 	ctx->intermed_numchannels = ctx->img1_numchannels; // default
@@ -1619,14 +1606,19 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->input_w>(ctx->img1.width-ctx->input_start_x)) ctx->input_w=ctx->img1.width-ctx->input_start_x;
 	if(ctx->input_h>(ctx->img1.height-ctx->input_start_y)) ctx->input_h=ctx->img1.height-ctx->input_start_y;
 
-	if(ctx->output_profile&IW_PROFILE_ALWAYSSRGB) {
-		// If the output format only really supports sRGB, and the caller didn't
-		// explicitly set it, force the colorspace to be sRGB.
-		if(!ctx->caller_set_output_csdescr) {
+	// By default, set the output colorspace to sRGB in most cases.
+	if(!ctx->caller_set_output_csdescr) {
+		if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
+			ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
+		}
+		else {
 			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 		}
 	}
-	else if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
+
+	// But if IW_PROFILE_ALWAYSLINEAR is set (i.e. MIFF format), only linear
+	// output is allowed.
+	if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
 		if(ctx->img2cs.cstype!=IW_CSTYPE_LINEAR) {
 			if(ctx->warn_invalid_output_csdescr) {
 				iwpvt_warn(ctx,iws_warn_output_forced_linear);

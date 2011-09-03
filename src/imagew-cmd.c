@@ -662,11 +662,6 @@ static int run(struct params_struct *p)
 
 	if(p->cs_in_set) {
 		iw_set_input_colorspace(ctx,&p->cs_in);
-		// The default output colorspace is normally derived from the input
-		// file's colorspace. If the caller wants to pretend the input file
-		// is in a different colorspace, then to be consistent we also
-		// suggest using it for the default output colorspace.
-		iw_set_output_colorspace(ctx,&p->cs_in,1,0);
 	}
 	if(p->cs_out_set) {
 		iw_set_output_colorspace(ctx,&p->cs_out,0,1);

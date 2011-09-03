@@ -2,6 +2,8 @@ Unreleased changes
  - Added -encoding option, to set the character encoding for text output.
  - Allow -cs to set the output colorspace even when IW doesn't think it's a
    good idea.
+ - No longer attempting to make the output colorspace be the same as the
+   input colorspace.
 
 Version 0.9.4 - 9 Aug 2011
  - Added -density option, to give some control over how the density of the

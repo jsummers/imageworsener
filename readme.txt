@@ -456,9 +456,8 @@ Options:
    "srgb": sRGB colorspace. Can optionally be followed by a letter indicating
     the "rendering intent". p=perceptual, r=relative, s=saturation, a=absolute.
 
-   The default is to use the same colorspace as the input image, if IW thinks
-   it's reasonable to do so. Otherwise, it will choose a colorspace
-   appropriate for the output format.
+   By default IW will choose a colorspace that works with the output format;
+   almost always sRGB.
 
  -inputcs <colorspace>
    Assume the input image is in the given colorspace. This is intended to be

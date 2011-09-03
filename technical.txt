@@ -136,7 +136,6 @@ low quality bilevel image.
 IW usually does not care about how the input image is stored. A 1-bit image is
 treated the same as an 8-bit representation of the same image. There are,
 however, a few minor exceptions (which can be disabled):
- - It will try to keep the image in the same colorspace.
  - It will try to keep 16-bit images at 16-bits.
  - The -condgrayscale option will keep grayscale images grayscale.
 
