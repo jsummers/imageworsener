@@ -441,9 +441,12 @@ Options:
    file.
 
  -cs <colorspace>
-   The colorspace to use for the output image. Note that the output image
-   should *look* about the same regardless of what colorspace you choose.
-   (If it doesn't, maybe your viewer doesn't support color correction.)
+   The colorspace to use for the output image. Ideally, the image should will
+   *look* about the same regardless of what colorspace you choose. But it
+   might not if your viewer doesn't support color correction, or the image
+   format doesn't support colorspace labels, or IW doesn't know how to write
+   an appropriate label. This is fairly safe to use when writing PNG files,
+   but should be used with caution with most other formats.
 
    <colorspace> =  linear | gamma<gamma> | srgb | srgb[prsa]
 
@@ -453,10 +456,9 @@ Options:
    "srgb": sRGB colorspace. Can optionally be followed by a letter indicating
     the "rendering intent". p=perceptual, r=relative, s=saturation, a=absolute.
 
-   The default is to use the same colorspace as the input image, if possible.
-   If the output file format does not support different colorspaces (or IW
-   does not know how to handle that), then this option will have no effect.
-   IW will always select a colorspace that will work with the output format.
+   The default is to use the same colorspace as the input image, if IW thinks
+   it's reasonable to do so. Otherwise, it will choose a colorspace
+   appropriate for the output format.
 
  -inputcs <colorspace>
    Assume the input image is in the given colorspace. This is intended to be

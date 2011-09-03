@@ -1521,7 +1521,7 @@ static void init_channel_info(struct iw_context *ctx)
 	// as the input had.
 	if(!ctx->caller_set_output_csdescr) {
 		if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
-			// Exception (hack): Because we always floating point data with a linear
+			// Exception (hack): Because we always write floating point data with a linear
 			// colorspace, don't assume the output file should be linear in that case.
 			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 		}
@@ -1620,10 +1620,9 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->input_h>(ctx->img1.height-ctx->input_start_y)) ctx->input_h=ctx->img1.height-ctx->input_start_y;
 
 	if(ctx->output_profile&IW_PROFILE_ALWAYSSRGB) {
-		if(ctx->img2cs.cstype!=IW_CSTYPE_SRGB) {
-			if(ctx->warn_invalid_output_csdescr) {
-				iwpvt_warn(ctx,iws_warn_output_forced_srgb);
-			}
+		// If the output format only really supports sRGB, and the caller didn't
+		// explicitly set it, force the colorspace to be sRGB.
+		if(!ctx->caller_set_output_csdescr) {
 			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
 		}
 	}

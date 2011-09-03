@@ -114,7 +114,6 @@ struct iw_stringtableentry iw_corestringtable[] = {
 	{ iws_warn_trans_incomp_format, "This image may have transparency, which is incompatible with the output format. A background color will be applied." },
 	{ iws_warn_trans_incomp_offset, "This image may have transparency, which is incompatible with a channel offset. A background color will be applied." },
 	{ iws_warn_chkb_incomp_offset, "Checkerboard backgrounds are not supported when using a channel offset." },
-	{ iws_warn_output_forced_srgb, "Forcing output colorspace to sRGB; required by the output format." },
 	{ iws_warn_output_forced_linear, "Forcing output colorspace to linear; required by the output format." },
 	{ iws_output_prof_not_set, "Output profile not set" },
 	{ iws_internal_error, "Internal error" },
@@ -317,9 +316,9 @@ int iw_get_input_image_density(struct iw_context *ctx,
 }
 
 void iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr,
-			int warn_if_invalid)
+   int require_valid, int warn_if_invalid)
 {
-	ctx->caller_set_output_csdescr = 1;
+	ctx->caller_set_output_csdescr = !require_valid;
 	ctx->warn_invalid_output_csdescr = warn_if_invalid;
 	ctx->img2cs = *csdescr; // struct copy
 

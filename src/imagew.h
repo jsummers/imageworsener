@@ -100,6 +100,8 @@ extern "C" {
 // non-paletted color format that it supports at 8bps.
 #define IW_PROFILE_16BPS         0x0040
 
+// ALWAYSSRGB means we don't know how to write colorspace labels for this
+// format, and we assume images are sRGB. (Currently unused.)
 #define IW_PROFILE_ALWAYSSRGB    0x0080
 #define IW_PROFILE_BINARYTRNS    0x0100 // Supports color-keyed transparency
 
@@ -111,7 +113,7 @@ extern "C" {
 #define IW_PROFILE_ALWAYSLINEAR  0x2000
 #define IW_PROFILE_HDRI          0x4000 // Supports floating-point samples
 
-#define IW_PROFILE_PNG   0x1f7f // all but ALWAYSSRGB
+#define IW_PROFILE_PNG   0x1f7f // Almost everything
 #define IW_PROFILE_BMP   0x1a80 // PAL1,PAL4,PAL8,ALWAYSSRGB
 #define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
 #define IW_PROFILE_TIFF  0x186b // TRANSPARENCY,GRAYSCALE,GRAY{1,4},PAL{4,8},16BPS
@@ -351,8 +353,9 @@ void iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y);
 
 // Must be called *after* reading the file, or it will be overwritten.
 // IW copies the struct that the caller passes.
+// FIXME: This function's parameters are ugly.
 void iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr,
-			int warn_if_invalid);
+   int require_valid, int warn_if_invalid);
 
 // Must be called *after* reading the file, or it will be overwritten.
 // IW copies the struct that the caller passes.
