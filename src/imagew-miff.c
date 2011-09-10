@@ -49,6 +49,7 @@ struct iwmiffreadcontext {
 	int error_flag;
 	int has_alpha;
 	int is_grayscale;
+	int profile_length;
 	int density_units; // 0=unknown, 1=cm
 	int density_known;
 	double density_x, density_y;
@@ -153,7 +154,7 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 			rctx->csdescr.gamma = 1.0/tmpd;
 		}
 	}
-	else if(!strcmp(name,"quantum")) {
+	else if(!strcmp(name,"quantum:format")) {
 		if(strcmp(val,"floating-point")) {
 			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_sampleformat));
 			rctx->error_flag=1;
@@ -166,6 +167,9 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 	}
 	else if(!strcmp(name,"resolution")) {
 		iwmiff_parse_density(rctx,val);
+	}
+	else if(!strcmp(name,"profile:icc")) {
+		rctx->profile_length = atoi(val);
 	}
 }
 
@@ -298,6 +302,27 @@ static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
 	}
 }
 
+static int iwmiff_skip_bytes(struct iwmiffreadcontext *rctx, size_t n)
+{
+	unsigned char buf[2048];
+	size_t amt;
+	size_t remaining = n;
+	while(remaining>0) {
+		amt = remaining;
+		if(amt>2048) amt=2048;
+		if(!iwmiff_read(rctx,buf,amt)) return 0;
+		remaining-=amt;
+	}
+	return 1;
+}
+
+// Skip over the ICC color profile, if present.
+static int iwmiff_read_icc_profile(struct iwmiffreadcontext *rctx)
+{
+	if(rctx->profile_length<1) return 1;
+	return iwmiff_skip_bytes(rctx,(size_t)rctx->profile_length);
+}
+
 static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 {
 	int samples_per_pixel;
@@ -380,6 +405,9 @@ int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 		img.density_y = rctx.density_y*100.0;
 		img.density_code = IW_DENSITY_UNITS_PER_METER;
 	}
+
+	if(!iwmiff_read_icc_profile(&rctx))
+		goto done;
 
 	if(!iwmiff_read_pixels(&rctx))
 		goto done;
