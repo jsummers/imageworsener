@@ -300,10 +300,8 @@ static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
 
 static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 {
-	int samples_per_pixel_used;
-	int samples_per_pixel_alloc;
-	int samples_per_row_used;
-	int samples_per_row_alloc;
+	int samples_per_pixel;
+	int samples_per_row;
 	size_t tmprowsize;
 	unsigned char *tmprow = NULL;
 	int retval=0;
@@ -312,14 +310,10 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 
 	img = rctx->img;
 
-	samples_per_pixel_used = iw_imgtype_num_channels(img->imgtype);
+	samples_per_pixel = iw_imgtype_num_channels(img->imgtype);
+	samples_per_row = samples_per_pixel * img->width;
 
-	samples_per_pixel_alloc = rctx->has_alpha ? 4 : 3;
-
-	samples_per_row_used = samples_per_pixel_used * img->width;
-	samples_per_row_alloc = samples_per_pixel_alloc * img->width;
-
-	tmprowsize = (img->bit_depth/8)*samples_per_row_alloc;
+	tmprowsize = (img->bit_depth/8)*samples_per_row;
 	tmprow = iw_malloc(rctx->ctx,tmprowsize);
 	if(!tmprow) goto done;
 	memset(tmprow,0,tmprowsize);
@@ -334,10 +328,10 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 			goto done;
 
 		if(img->bit_depth==32) {
-			iwmiffr_convert_row32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row_used);
+			iwmiffr_convert_row32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
 		}
 		else if(img->bit_depth==64) {
-			iwmiffr_convert_row64(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row_used);
+			iwmiffr_convert_row64(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
 		}
 	}
 
@@ -510,8 +504,7 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 	int j;
 	const unsigned char *srcrow;
 	int bytes_per_sample;
-	int num_channels_alloc;
-	int num_channels_used;
+	int num_channels;
 
 	img = wctx->img;
 
@@ -522,31 +515,29 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 
 	switch(img->imgtype) {
 	case IW_IMGTYPE_GRAY:
-		num_channels_used=1;
+		num_channels=1;
 		break;
 	case IW_IMGTYPE_GRAYA:
 		wctx->has_alpha=1;
-		num_channels_used=2;
+		num_channels=2;
 		break;
 	case IW_IMGTYPE_RGB:
-		num_channels_used=3;
+		num_channels=3;
 		break;
 	case IW_IMGTYPE_RGBA:
 		wctx->has_alpha=1;
-		num_channels_used=4;
+		num_channels=4;
 		break;
 	default:
 		goto done;
 	}
-
-	num_channels_alloc = wctx->has_alpha ? 4 : 3;
 
 	bytes_per_sample = img->bit_depth / 8;
 
 	// dstbpr = number of bytes per row stored in the file.
 	// For grayscale images, not all bytes are used. Extra bytes will be stored
 	// in the file with the value 0.
-	dstbpr = bytes_per_sample * num_channels_alloc * img->width;
+	dstbpr = bytes_per_sample * num_channels * img->width;
 
 	iwmiff_write_header(wctx);
 
@@ -558,8 +549,8 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 	for(j=0;j<img->height;j++) {
 		srcrow = &img->pixels[j*img->bpr];
 		switch(img->bit_depth) {
-		case 32: iwmiffw_convert_row32(wctx,srcrow,dstrow,img->width*num_channels_used); break;
-		case 64: iwmiffw_convert_row64(wctx,srcrow,dstrow,img->width*num_channels_used); break;
+		case 32: iwmiffw_convert_row32(wctx,srcrow,dstrow,img->width*num_channels); break;
+		case 64: iwmiffw_convert_row64(wctx,srcrow,dstrow,img->width*num_channels); break;
 		}
 		iwmiff_write(wctx,dstrow,dstbpr);
 	}
