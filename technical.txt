@@ -110,6 +110,10 @@ compilers listed above.
 Philosophy
 ----------
 
+ImageWorsener attempts to have good defaults. The user should not have to know
+anything about gamma correction, bit depths, filters, windowing functions,
+etc., in order to get good results.
+
 IW tries to be as accurate as possible. It never trades accuracy for speed.
 Really, it goes too far, as nearly everyone would rather have a program that
 works twice as fast and is imperceptibly less accurate. But there are lots
@@ -205,6 +209,31 @@ translate them. But on a Unix system, they are always assumed to be UTF-8.
 All strings produced by the library (e.g. error messages) are encoded in UTF-8.
 Applications must convert them if necessary.
 
+Rationale for the default resizing algorithms
+---------------------------------------------
+
+By default, IW uses a Catmull-Rom ("catrom") filter when upscaling, and pixel
+mixing when downscaling. Why?
+
+For one thing, I don't want to default to a filter that has any inherent
+blurring. A casual user would expect that when you "resize" an image without
+changing the size, it will not modify the image at all. This requirement
+eliminates mitchell, gaussian, etc.
+
+When upscaling, hermite, triangle, and pixel mixing just don't have acceptable
+quality. That leaves only filters that have some "ringing" artifacts, so I
+have to accept that. The "echoes" produced by filters like lanczos(3) are too
+weird, I think, so that really only leaves catrom and lanczos2. I somewhat
+arbitrarily chose catrom over lanczos2 (they are almost identical).
+
+When downscaling, the differences between various algorithms are much more
+subtle. I don't see a good reason to accept any "ringing", so that leaves
+hermite and triangle filters, and pixel mixing. Triangle has no benefit over
+hermite. Hermite is theoretically better than pixel mixing (due to less
+aliasing), but in the real world, pixel mixing's slightly sharper images
+usually look better. For now, I've chosen pixel mixing, but I reserve the
+right to change my mind in the future.
+
 Colorspaces
 -----------
 
@@ -217,7 +246,7 @@ monitors.
 IW does not support ICC color profiles. I'll consider adding support for them
 someday, but I don't know how feasible that is.
 
-TIFF Colorspaces
+TIFF colorspaces
 ----------------
 
 When writing TIFF files, IW uses the TransferFunction TIFF tag to label the
@@ -344,11 +373,15 @@ Features I'm considering adding:
 - More options for specifying the image size to use; e.g. "enlarge the image
   only if it's smaller than a certain size".
 
+- Faster conversion from linear colors to the target colorspace.
+
 - Better detection of syntax errors on the command line.
 
 - More options for aligning the input pixels with the output pixels.
 
 - More options for virtual pixels (transparency, at least).
+
+- Support for reading BMP files.
 
 - Options to maintain PNG and GIF background colors.
 
