@@ -964,6 +964,7 @@ static int iwcmd_parse_int(const char *s)
 	double result;
 	int charsread;
 	iwcmd_parse_number_internal(s, &result, &charsread);
+	if(result<0.0) return -(int)(0.5-result);
 	return (int)(0.5+result);
 }
 
