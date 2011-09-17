@@ -169,7 +169,6 @@ struct iw_context {
 	int ditherfamily_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 	int dithersubtype_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 	int uses_errdiffdither;
-	int uses_r2dither;
 	struct iw_prng *prng;
 
 	// Algorithms to use when changing the horizontal size.
@@ -213,8 +212,6 @@ struct iw_context {
 #define IW_DITHER_MAXROWS 3
 	// Error accumulators for error-diffusion dithering.
 	IW_SAMPLE *dither_errors[IW_DITHER_MAXROWS]; // 0 is the current row.
-
-	float *random_dither_pattern;
 
 	int randomize; // 0 to use random_seed, nonzero to use a different seed every time.
 	int random_seed;

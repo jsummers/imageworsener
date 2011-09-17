@@ -518,18 +518,7 @@ static int iw_random_dither(struct iw_context *ctx, double fraction, int x, int 
 {
 	double threshhold;
 	
-	if(dithersubtype==IW_DITHERSUBTYPE_DEFAULT || !ctx->random_dither_pattern ||
-	   ctx->img2_ci[channel].channeltype==IW_CHANNELTYPE_ALPHA)
-	{
-		// If there's no common pattern allocated, assume we should not use one.
-		// And if this is an alpha channel, we never use a common pattern.
-		threshhold = ((double)iwpvt_prng_rand(ctx->prng)) / (double)0xffffffff;
-	}
-	else {
-		// Use the common pattern.
-		threshhold = ctx->random_dither_pattern[((size_t)y)*ctx->img2.width + x];
-	}
-
+	threshhold = ((double)iwpvt_prng_rand(ctx->prng)) / (double)0xffffffff;
 	if(fraction>=threshhold) return 1;
 	return 0;
 }
@@ -699,6 +688,12 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 
 	if(is_exact) {
 		s_full = s_cvt_floor_full;
+
+		// Hack to keep the PRNG in sync. We have to generate exactly one random
+		// number per sample, regardless of whether we use it.
+		if(ditherfamily==IW_DITHERFAMILY_RANDOM) {
+			(void)iwpvt_prng_rand(ctx->prng);
+		}
 		goto okay;
 	}
 
@@ -841,8 +836,10 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	// Do any of the output channels use error-diffusion dithering?
 	int using_errdiffdither = 0;
 	int output_channel;
+	int output_channeltype;
 	int is_alpha_channel;
 	struct iw_resize_settings *rs;
+	int ditherfamily, dithersubtype;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
@@ -854,6 +851,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 	is_alpha_channel = ctx->intermed_ci[intermed_channel].channeltype==IW_CHANNELTYPE_ALPHA;
 	output_channel = ctx->intermed_ci[intermed_channel].corresponding_output_channel;
+	output_channeltype = ctx->img2_ci[output_channel].channeltype;
 
 	if(!is_alpha_channel) {
 		// For non-alpha channels, allocate a buffer to hold the output samples.
@@ -861,6 +859,21 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		outpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_out_pix * sizeof(IW_SAMPLE));
 		if(!outpix) goto done;
 		ctx->out_pix = outpix;
+	}
+
+	// Seed the PRNG, if necessary.
+	ditherfamily = ctx->img2_ci[output_channel].ditherfamily;
+	dithersubtype = ctx->img2_ci[output_channel].dithersubtype;
+	if(ditherfamily==IW_DITHERFAMILY_RANDOM) {
+		// Decide wat random seed to use. The alpha channel always has its own
+		// seed. If using "r" (not "r2") dithering, every channel has its own seed.
+		if(dithersubtype==IW_DITHERSUBTYPE_SAMEPATTERN && output_channeltype!=IW_CHANNELTYPE_ALPHA)
+		{
+			iwpvt_prng_set_random_seed(ctx->prng,ctx->random_seed);
+		}
+		else {
+			iwpvt_prng_set_random_seed(ctx->prng,ctx->random_seed+output_channeltype);
+		}
 	}
 
 	// Initialize Floyd-Steinberg dithering.
@@ -1001,31 +1014,6 @@ done:
 	return retval;
 }
 
-static int iw_init_random_dither(struct iw_context *ctx)
-{
-	size_t i;
-	size_t n;
-
-	if(ctx->img2.imgtype!=IW_IMGTYPE_RGB && ctx->img2.imgtype!=IW_IMGTYPE_RGBA) {
-		return 1;
-	}
-
-	// Generate a matrix of random numbers to be used by multiple color channels.
-	// Sometimes this looks better than using a different matrix for each channel.
-	
-	n = ctx->img2.width * ctx->img2.height;
-
-	ctx->random_dither_pattern = (float*)iw_malloc_large(ctx,n,sizeof(float));
-	if(!ctx->random_dither_pattern) {
-		return 0;
-	}
-
-	for(i=0;i<n;i++) {
-		ctx->random_dither_pattern[i] = ((float)iwpvt_prng_rand(ctx->prng)) / (float)0xffffffff;
-	}
-	return 1;
-}
-
 // Potentially make a lookup table for color correction.
 static void iw_make_x_to_linear_table(struct iw_context *ctx, double **ptable,
 	const struct iw_image *img, const struct iw_csdescr *csdescr)
@@ -1097,10 +1085,6 @@ static int iw_process_internal(struct iw_context *ctx)
 		}
 	}
 
-	if(ctx->uses_r2dither) {
-		if(!iw_init_random_dither(ctx)) goto done;
-	}
-
 	iw_make_x_to_linear_table(ctx,&ctx->output_rev_color_corr_table,&ctx->img2,&ctx->img2cs);
 
 	// If an alpha channel is present, we have to process it first.
@@ -1138,7 +1122,6 @@ done:
 	for(k=0;k<IW_DITHER_MAXROWS;k++) {
 		if(ctx->dither_errors[k]) { iw_free(ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
 	}
-	if(ctx->random_dither_pattern) { iw_free(ctx->random_dither_pattern); ctx->random_dither_pattern=NULL; }
 	iwpvt_weightlist_free(ctx);
 	return retval;
 }
@@ -1576,10 +1559,9 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->randomize) {
-		iwpvt_util_randomize(ctx->prng);
-	}
-	else {
-		iwpvt_prng_set_random_seed(ctx->prng,ctx->random_seed);
+		// Acquire and record a random seed. This also seeds the PRNG, but
+		// that's irrelevant. It will be re-seeded before it is used.
+		ctx->random_seed = iwpvt_util_randomize(ctx->prng);
 	}
 
 	if(!iw_check_image_dimensons(ctx,ctx->img1.width,ctx->img1.height)) {
@@ -1784,11 +1766,6 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	for(i=0;i<ctx->img2_numchannels;i++) {
 		if(ctx->img2_ci[i].ditherfamily==IW_DITHERFAMILY_ERRDIFF) {
 			ctx->uses_errdiffdither=1;
-		}
-		else if(ctx->img2_ci[i].ditherfamily==IW_DITHERFAMILY_RANDOM &&
-			ctx->img2_ci[i].dithersubtype==IW_DITHERSUBTYPE_SAMEPATTERN)
-		{
-			ctx->uses_r2dither=1;
 		}
 	}
 
