@@ -23,9 +23,6 @@
 #define IW_SAMPLE double
 #endif
 
-#define iw_float32 float
-#define iw_float64 double
-
 #ifdef IW_64BIT
 #define IW_MAX_DIMENSION 1000000
 #define IW_DEFAULT_MAX_MALLOC 2000000000000
@@ -90,6 +87,8 @@ struct iw_channelinfo_out {
 	IW_SAMPLE bkgd_color_lin; // Used if ctx->apply_bkgd
 	IW_SAMPLE bkgd2_color_lin; // Used if ctx->apply_bkgd
 };
+
+struct iw_prng; // Defined imagew-util.c
 
 // Tracks the current image properties. May change as we optimize the image.
 struct iw_opt_ctx {
@@ -171,6 +170,7 @@ struct iw_context {
 	int dithersubtype_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 	int uses_errdiffdither;
 	int uses_r2dither;
+	struct iw_prng *prng;
 
 	// Algorithms to use when changing the horizontal size.
 	// Indexed by IW_DIMENSION_*.
@@ -264,8 +264,11 @@ struct iw_context {
 };
 
 // Defined imagew-util.c
-void iwpvt_util_set_random_seed(int s);
-void iwpvt_util_randomize(void);
+struct iw_prng *iwpvt_prng_create(void);
+void iwpvt_prng_destroy(struct iw_prng*);
+void iwpvt_prng_set_random_seed(struct iw_prng*, int s);
+iw_uint32 iwpvt_prng_rand(struct iw_prng*); // Returns a pseudorandom number.
+int iwpvt_util_randomize(struct iw_prng*); // Returns the random seed that was used.
 
 // Defined in imagew-resize.c
 void iwpvt_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype);

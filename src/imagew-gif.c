@@ -17,8 +17,6 @@
 
 #define iw_seterror iw_set_error
 
-typedef unsigned short iw_uint16;
-
 enum iwgif_string {
 	iws_gif_read_error=1,
 	iws_gif_unsupported,

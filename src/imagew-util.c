@@ -117,14 +117,52 @@ void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
 	va_end(ap);
 }
 
-void iwpvt_util_set_random_seed(int s)
+////////////////////////////////////////////
+// A simple carry-with-multiply PRNG.
+
+struct iw_prng {
+	iw_uint32 multiply;
+	iw_uint32 carry;
+};
+
+struct iw_prng *iwpvt_prng_create(void)
 {
-	srand((unsigned int)s);
+	struct iw_prng *prng;
+	prng = (struct iw_prng*)iw_malloc_lowlevel(sizeof(struct iw_prng));
+	if(!prng) return NULL;
+	memset(prng,0,sizeof(struct iw_prng));
+	return prng;
 }
 
-void iwpvt_util_randomize(void)
+void iwpvt_prng_destroy(struct iw_prng *prng)
 {
-	srand((unsigned int)time(NULL));
+	if(prng) iw_free((void*)prng);
+}
+
+void iwpvt_prng_set_random_seed(struct iw_prng *prng, int s)
+{
+	prng->multiply = ((iw_uint32)0x03333333) + s;
+	prng->carry    = ((iw_uint32)0x05555555) + s;
+}
+
+iw_uint32 iwpvt_prng_rand(struct iw_prng *prng)
+{
+	iw_uint64 x;
+	x = ((iw_uint64)0xfff0bf23) * prng->multiply + prng->carry;
+	prng->carry = (iw_uint32)(x>>32);
+	prng->multiply = 0xffffffff - (0xffffffff & x);
+	return prng->multiply;
+}
+
+////////////////////////////////////////////
+
+int iwpvt_util_randomize(struct iw_prng *prng)
+{
+	int s;
+	s = (int)time(NULL);
+	//srand((unsigned int)time(NULL));
+	iwpvt_prng_set_random_seed(prng, s);
+	return s;
 }
 
 
@@ -261,3 +299,4 @@ int iw_get_host_endianness(void)
 	}
 	return 0;
 }
+

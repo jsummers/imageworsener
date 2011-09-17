@@ -155,6 +155,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->opt_16_to_8 = 1;
 	ctx->opt_strip_alpha = 1;
 	ctx->opt_binary_trns = 1;
+	ctx->prng = iwpvt_prng_create();
 }
 
 struct iw_context *iw_create_context(void)
@@ -170,6 +171,7 @@ struct iw_context *iw_create_context(void)
 void iw_destroy_context(struct iw_context *ctx)
 {
 	if(!ctx) return;
+	if(ctx->prng) iwpvt_prng_destroy(ctx->prng);
 	if(ctx->img1.pixels) iw_free(ctx->img1.pixels);
 	if(ctx->img2.pixels) iw_free(ctx->img2.pixels);
 	if(ctx->error_msg) iw_free(ctx->error_msg);

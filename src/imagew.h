@@ -435,10 +435,23 @@ char *iw_get_libwebp_enc_version_string(char *s, int s_len);
 
 #ifdef IW_INCLUDE_UTIL_FUNCTIONS
 
-// Functions used by the auxiliary library modules, but which are extraneous
-// to the main purpose of the library.
+// Functions and definitions used by the auxiliary library modules, but which
+// are extraneous to the main purpose of the library.
 // Applications are welcome to define IW_INCLUDE_UTIL_FUNCTIONS and use these
 // functions if they wish.
+
+// Yeah, I know I should try to use <stdint.h> instead.
+#define iw_float32  float
+#define iw_float64  double
+#define iw_uint16   unsigned short
+#define iw_uint32   unsigned int
+#ifdef IW_WINDOWS
+#define iw_uint64   unsigned __int64
+#elif defined (__x86_64__)
+#define iw_uint64   unsigned long
+#else
+#define iw_uint64   unsigned long long
+#endif
 
 void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
 

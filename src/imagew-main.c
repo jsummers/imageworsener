@@ -523,7 +523,7 @@ static int iw_random_dither(struct iw_context *ctx, double fraction, int x, int 
 	{
 		// If there's no common pattern allocated, assume we should not use one.
 		// And if this is an alpha channel, we never use a common pattern.
-		threshhold = ((double)rand()) / (double)RAND_MAX;
+		threshhold = ((double)iwpvt_prng_rand(ctx->prng)) / (double)0xffffffff;
 	}
 	else {
 		// Use the common pattern.
@@ -1021,7 +1021,7 @@ static int iw_init_random_dither(struct iw_context *ctx)
 	}
 
 	for(i=0;i<n;i++) {
-		ctx->random_dither_pattern[i] = ((float)rand()) / (float)RAND_MAX;
+		ctx->random_dither_pattern[i] = ((float)iwpvt_prng_rand(ctx->prng)) / (float)0xffffffff;
 	}
 	return 1;
 }
@@ -1576,10 +1576,10 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->randomize) {
-		iwpvt_util_randomize();
+		iwpvt_util_randomize(ctx->prng);
 	}
 	else {
-		iwpvt_util_set_random_seed(ctx->random_seed);
+		iwpvt_prng_set_random_seed(ctx->prng,ctx->random_seed);
 	}
 
 	if(!iw_check_image_dimensons(ctx,ctx->img1.width,ctx->img1.height)) {
