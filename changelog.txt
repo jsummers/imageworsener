@@ -1,4 +1,6 @@
 Unreleased changes
+ - Updated the format of grayscale MIFF files to be compatible with the
+   current version of ImageMagick.
  - Added -encoding option, to set the character encoding for text output.
  - Allow -cs to set the output colorspace even when IW doesn't think it's a
    good idea.
