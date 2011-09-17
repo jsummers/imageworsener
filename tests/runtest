@@ -132,8 +132,7 @@ $IW srcimg/4x4.png actual/offset.png $DCMPR $SCALE -filter mix -offsetred .333 -
 $IW srcimg/rgb8a.png actual/offsetv.png $DCMPR $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5 -nowarn
 $IW srcimg/g2.png actual/offsetrb.png $DCMPR $SCALE -filter catrom -offsetrb .333 -offsetvrb -0.6
 
-# Not tested: random dithering.
-for d in f o halftone sierra sierra2 sierralite jjn burkes atkinson
+for d in f o halftone sierra sierra2 sierralite jjn burkes atkinson r r2
 do
  $IW srcimg/4x4.png actual/dither-$d.png $DCMPR $SCALE -filter catrom -cc 3 -dither $d
 done
