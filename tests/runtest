@@ -51,6 +51,7 @@ fi
 SCALE="-width 35 -height 35"
 SMALL="-width 15 -height 15"
 CMPR="-pngcmprlevel 9"
+DCMPR="-pngcmprlevel -1"
 
 if [ ! -d actual ]
 then
@@ -66,78 +67,78 @@ for f in g1 g2 g4 g8 g16 \
  p1 p1t p2 p2t p4 p4t p8 p8t \
  rgb8 rgb16 g8a g16a rgb8a rgb16a
 do
- $IW srcimg/$f.png actual/png-$f.png -width 35 -height 35 -filter catrom
+ $IW srcimg/$f.png actual/png-$f.png $DCMPR -width 35 -height 35 -filter catrom
 done
 
 # Images for which binary transparency can be retained.
 for f in g1t g2t g4t g8t g16t rgb8t rgb16t
 do
- $IW srcimg/$f.png actual/png-${f}ns.png
+ $IW srcimg/$f.png actual/png-${f}ns.png $DCMPR
 done
 
 # Test some grayscale optimizations. 
-$IW srcimg/g8.png actual/ccgray-4.png $SMALL -filter bspline -cc 4 -dither o
-$IW srcimg/g8.png actual/ccgray-16.png $SMALL -filter bspline -cc 16 -dither o
-$IW srcimg/g8.png actual/ccgray-17.png $SMALL -filter bspline -cc 17 -dither o
-$IW srcimg/g8a.png actual/ccgraya-4.png $SMALL -filter bspline -cc 4 -dither o
+$IW srcimg/g8.png actual/ccgray-4.png $DCMPR $SMALL -filter bspline -cc 4 -dither o
+$IW srcimg/g8.png actual/ccgray-16.png $DCMPR $SMALL -filter bspline -cc 16 -dither o
+$IW srcimg/g8.png actual/ccgray-17.png $DCMPR $SMALL -filter bspline -cc 17 -dither o
+$IW srcimg/g8a.png actual/ccgraya-4.png $DCMPR $SMALL -filter bspline -cc 4 -dither o
 
 # Test the decision between 4-bpp palette and 8-bpp grayscale.
-$IW srcimg/rgb8.png actual/ccgray-10.png $SMALL -filter gaussian -cc 10 -dither o -grayscale
+$IW srcimg/rgb8.png actual/ccgray-10.png $DCMPR $SMALL -filter gaussian -cc 10 -dither o -grayscale
 
-$IW srcimg/g4.png actual/condgray.png $SMALL -filter mitchell -cc 7 -ccgray 6 -ccred 5 -condgrayscale
+$IW srcimg/g4.png actual/condgray.png $DCMPR $SMALL -filter mitchell -cc 7 -ccgray 6 -ccred 5 -condgrayscale
 
-$IW srcimg/g2t.png actual/bkgd.png -width 35 -height 35 -filter catrom -bkgd e42
-$IW srcimg/rgb8a.png actual/bkgd2.png -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
+$IW srcimg/g2t.png actual/bkgd.png $DCMPR -width 35 -height 35 -filter catrom -bkgd e42
+$IW srcimg/rgb8a.png actual/bkgd2.png $DCMPR -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
 
 # test downscaling
 for f in auto nearest mix box triangle gaussian lanczos
 do
- $IW srcimg/rings1.png "actual/ds-$f.png" -width 35 -height 35 -filter "$f"
+ $IW srcimg/rings1.png "actual/ds-$f.png" $DCMPR -width 35 -height 35 -filter "$f"
 done
 
 
-$IW srcimg/4x4.png actual/cc-2.png $SCALE -filter catrom -cc 2
-$IW srcimg/4x4.png actual/cc-6.png $SCALE -filter catrom -cc 6
-$IW srcimg/4x4.png actual/cc-mixed.png $SCALE -filter catrom -ccred 3 -ccgreen 10 -ccblue 5
-$IW srcimg/4x4.png actual/depth-16.png $SCALE -filter catrom -depth 16
+$IW srcimg/4x4.png actual/cc-2.png $DCMPR $SCALE -filter catrom -cc 2
+$IW srcimg/4x4.png actual/cc-6.png $DCMPR $SCALE -filter catrom -cc 6
+$IW srcimg/4x4.png actual/cc-mixed.png $DCMPR $SCALE -filter catrom -ccred 3 -ccgreen 10 -ccblue 5
+$IW srcimg/4x4.png actual/depth-16.png $DCMPR $SCALE -filter catrom -depth 16
 
 #test upscaling
 for f in auto nearest mix box triangle quadratic gaussian hermite \
  catrom mitchell bspline lanczos2 lanczos lanczos8 blackman hanning
 do
- $IW srcimg/4x4.png "actual/us-$f.png" $SCALE -filter "$f"
+ $IW srcimg/4x4.png "actual/us-$f.png" $DCMPR $SCALE -filter "$f"
 done
-$IW srcimg/4x4.png "actual/us-cubic01.png" $SCALE -filter "cubic0,1" -interlace
+$IW srcimg/4x4.png "actual/us-cubic01.png" $DCMPR $SCALE -filter "cubic0,1" -interlace
 
-$IW srcimg/4x4.png actual/us-mixed.png $SCALE -filterx catrom -filtery nearest
-$IW srcimg/4x4.png actual/blur.png $SCALE -filter catrom -blur 1.5
-$IW srcimg/4x4.png actual/edge-s.png $SCALE -filter lanczos -edge s
-$IW srcimg/4x4.png actual/edge-r.png $SCALE -filter lanczos -edge r
+$IW srcimg/4x4.png actual/us-mixed.png $DCMPR $SCALE -filterx catrom -filtery nearest
+$IW srcimg/4x4.png actual/blur.png $DCMPR $SCALE -filter catrom -blur 1.5
+$IW srcimg/4x4.png actual/edge-s.png $DCMPR $SCALE -filter lanczos -edge s
+$IW srcimg/4x4.png actual/edge-r.png $DCMPR $SCALE -filter lanczos -edge r
 
-$IW srcimg/4x4.png actual/cs-linear.png $SCALE -filter catrom -cs linear
-$IW srcimg/4x4.png actual/cs-gamma15.png -height x8.75 -filter catrom -cs gamma1.5
-$IW srcimg/4x4.png actual/cs-srgbs.png -width x8.75 -filter catrom -cs srgbs
+$IW srcimg/4x4.png actual/cs-linear.png $DCMPR $SCALE -filter catrom -cs linear
+$IW srcimg/4x4.png actual/cs-gamma15.png $DCMPR -height x8.75 -filter catrom -cs gamma1.5
+$IW srcimg/4x4.png actual/cs-srgbs.png $DCMPR -width x8.75 -filter catrom -cs srgbs
 
-$IW srcimg/4x4.png actual/nocslabel.png $SCALE -filter catrom -nocslabel
-$IW srcimg/4x4.png actual/inputcs.png $SCALE -filter catrom -inputcs linear -cs srgb
+$IW srcimg/4x4.png actual/nocslabel.png $DCMPR $SCALE -filter catrom -nocslabel
+$IW srcimg/4x4.png actual/inputcs.png $DCMPR $SCALE -filter catrom -inputcs linear -cs srgb
 
-$IW srcimg/4x4.png actual/nogamma.png $SCALE -filter catrom -nogamma
-$IW srcimg/4x4.png actual/intclamp.png $SCALE -filter lanczos -intclamp
+$IW srcimg/4x4.png actual/nogamma.png $DCMPR $SCALE -filter catrom -nogamma
+$IW srcimg/4x4.png actual/intclamp.png $DCMPR $SCALE -filter lanczos -intclamp
 
-$IW srcimg/4x4.png actual/grayscale.png $SCALE -filter catrom -grayscale
-$IW srcimg/4x4.png actual/grayscale-c.png $SCALE -filter catrom -grayscale -nogamma -grayscaleformula c
+$IW srcimg/4x4.png actual/grayscale.png $DCMPR $SCALE -filter catrom -grayscale
+$IW srcimg/4x4.png actual/grayscale-c.png $DCMPR $SCALE -filter catrom -grayscale -nogamma -grayscaleformula c
 
-$IW srcimg/4x4.png actual/offset.png $SCALE -filter mix -offsetred .333 -offsetgreen -0.2 -offsetblue -1.5
-$IW srcimg/rgb8a.png actual/offsetv.png $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5 -nowarn
-$IW srcimg/g2.png actual/offsetrb.png $SCALE -filter catrom -offsetrb .333 -offsetvrb -0.6
+$IW srcimg/4x4.png actual/offset.png $DCMPR $SCALE -filter mix -offsetred .333 -offsetgreen -0.2 -offsetblue -1.5
+$IW srcimg/rgb8a.png actual/offsetv.png $DCMPR $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5 -nowarn
+$IW srcimg/g2.png actual/offsetrb.png $DCMPR $SCALE -filter catrom -offsetrb .333 -offsetvrb -0.6
 
 # Not tested: random dithering.
 for d in f o halftone sierra sierra2 sierralite jjn burkes atkinson
 do
- $IW srcimg/4x4.png actual/dither-$d.png $SCALE -filter catrom -cc 3 -dither $d
+ $IW srcimg/4x4.png actual/dither-$d.png $DCMPR $SCALE -filter catrom -cc 3 -dither $d
 done
 
-$IW srcimg/4x4.png actual/dither-gray.png $SCALE -filter catrom -cc 2 -grayscale -dither f
+$IW srcimg/4x4.png actual/dither-gray.png $DCMPR $SCALE -filter catrom -cc 2 -grayscale -dither f
 
 # test reading/writing JPEG
 
@@ -161,21 +162,21 @@ $IW srcimg/rgb16.png actual/webp1.webp -width 23
 $IW srcimg/g8.png actual/webp2.webp -width 24 -grayscale
 
 # Extra pixel density tests
-$IW srcimg/rgb8x1.png actual/dens-1.png $SCALE -filter mix
-$IW srcimg/rgb8x2.png actual/dens-2.png $SCALE -filter mix
-$IW srcimg/rgb8x1.png actual/dens-1ns.png
-$IW srcimg/rgb8x2.png actual/dens-2ns.png
-$IW srcimg/p4.png actual/dens-3ns.png
+$IW srcimg/rgb8x1.png actual/dens-1.png $DCMPR $SCALE -filter mix
+$IW srcimg/rgb8x2.png actual/dens-2.png $DCMPR $SCALE -filter mix
+$IW srcimg/rgb8x1.png actual/dens-1ns.png $DCMPR
+$IW srcimg/rgb8x2.png actual/dens-2ns.png $DCMPR
+$IW srcimg/p4.png actual/dens-3ns.png $DCMPR
 $IW srcimg/p4.png actual/dens-3ns.jpg
 
 # Image with just 2 pixels can't have more than 2 colors. Test to see
 # if we optimize to a 1bpp palette (etc.).
-$IW srcimg/rgb8a.png actual/opt-02col.png -width 2 -height 1 -filter mix
-$IW srcimg/rgb8a.png actual/opt-04col.png -width 2 -height 2 -filter mix
-$IW srcimg/rgb8.png actual/opt-12col.png -width 4 -height 3 -filter mix
-$IW srcimg/rgb8a.png actual/opt-20col.png -width 5 -height 4 -filter mix
+$IW srcimg/rgb8a.png actual/opt-02col.png $DCMPR -width 2 -height 1 -filter mix
+$IW srcimg/rgb8a.png actual/opt-04col.png $DCMPR -width 2 -height 2 -filter mix
+$IW srcimg/rgb8.png actual/opt-12col.png $DCMPR -width 4 -height 3 -filter mix
+$IW srcimg/rgb8a.png actual/opt-20col.png $DCMPR -width 5 -height 4 -filter mix
 
-$IW srcimg/p8t.png actual/crop-1.png -width 20  -crop 3,12,18,9
+$IW srcimg/p8t.png actual/crop-1.png $DCMPR -width 20 -crop 3,12,18,9
 
 # Test input sBIT support, and -pngcmprlevel
 $IW srcimg/rgb8a-sbit.png actual/sbit1.png -pngcmprlevel 9

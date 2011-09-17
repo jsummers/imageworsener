@@ -547,7 +547,8 @@ Options:
 
  -pngcmprlevel <n>
    zlib-style compression level setting for PNG files, from 0 (no compression)
-   to 9 (best, slowest). Default is (probably) 6.
+   to 9 (best, slowest). Default is 9. Use -1 for the libpng default
+   (probably 6).
 
  -jpegquality <n>
    libjpeg-style quality setting to use if a JPEG file is written. Default is

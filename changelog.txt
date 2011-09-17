@@ -1,4 +1,5 @@
 Unreleased changes
+ - Changed the default PNG compression level to 9.
  - Updated the format of grayscale MIFF files to be compatible with the
    current version of ImageMagick.
  - Added -encoding option, to set the character encoding for text output.

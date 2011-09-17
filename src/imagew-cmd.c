@@ -106,6 +106,7 @@ struct params_struct {
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	double webp_quality;
 	int pngcmprlevel;
+	int pngcmprlevel_set;
 	int interlace;
 	int randomize;
 	int random_seed;
@@ -849,7 +850,7 @@ static int run(struct params_struct *p)
 	}
 	else {
 #if IW_SUPPORT_PNG == 1
-		if(p->pngcmprlevel >= 0)
+		if(p->pngcmprlevel_set)
 			iw_set_value(ctx,IW_VAL_PNG_CMPR_LEVEL,p->pngcmprlevel);
 		if(!iw_write_png_file(ctx,&writedescr)) goto done;
 #else
@@ -1698,6 +1699,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_PNGCMPRLEVEL:
 		p->pngcmprlevel=iwcmd_parse_int(v);
+		p->pngcmprlevel_set=1;
 		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {
@@ -1892,7 +1894,6 @@ static int iwcmd_main(int argc, char* argv[])
 	p.resize_alg_y.blur = 1.0;
 	p.resize_alg_alpha.blur = 1.0;
 	p.webp_quality = -1.0;
-	p.pngcmprlevel = -1;
 
 	handle_encoding(&p,argc,argv);
 

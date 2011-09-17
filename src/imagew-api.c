@@ -149,7 +149,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
 	ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
 	ctx->webp_quality = -1.0;
-	ctx->pngcmprlevel = -1;
+	ctx->pngcmprlevel = 9;
 	ctx->opt_grayscale = 1;
 	ctx->opt_palette = 1;
 	ctx->opt_16_to_8 = 1;
