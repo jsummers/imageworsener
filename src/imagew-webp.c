@@ -44,7 +44,8 @@ struct iwwebpreadcontext {
 };
 
 // Sets rctx->has_color and ->has_transparency if appropriate.
-static void iwwebp_scan_pixels(struct iwwebpreadcontext *rctx, unsigned char *pixels, size_t npixels)
+static void iwwebp_scan_pixels(struct iwwebpreadcontext *rctx,
+  const unsigned char *pixels, size_t npixels)
 {
 	size_t i;
 	for(i=0;i<npixels;i++) {
@@ -105,38 +106,82 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 {
 	struct iw_image *img;
 	int retval=0;
-	void *webpimage=NULL;
-	size_t webpimage_size=0;
-	uint8_t* uncmpr_webp_pixels = NULL;
+	const uint8_t* uncmpr_webp_pixels;
 	int width, height;
 	size_t npixels;
 	int bytes_per_pixel;
+	WebPDecBuffer *decbuffer = NULL;
+	WebPIDecoder *pidecoder = NULL;
+	VP8StatusCode status;
+	int ret;
+	unsigned char *fbuf = NULL;
+	const size_t fbuf_len = 32768;
+	size_t bytesread = 0;
 
 	img = rctx->img;
+	fbuf = iw_malloc_lowlevel(fbuf_len);
+	if(!fbuf) goto done;
 
-	// TODO: This is really memory-inefficient.
-	// Honestly, I just can't figure out libwebp.
-	// It has several different ways to decode a webp image, but they don't
-	// seem to add up to any way to do it without allocating at least one
-	// more image's worth of memory than ought to be necessary.
-	// It's like it expects you to know the width, height, and color format
-	// of the image before that information has been read from the file.
+	decbuffer = iw_malloc_lowlevel(sizeof(WebPDecBuffer));
+	if(!decbuffer) goto done;
+	WebPInitDecBuffer(decbuffer);
 
-	// Read the whole WebP file into a memory block.
-	if(!iw_file_to_memory(rctx->ctx, rctx->iodescr, &webpimage, &webpimage_size)) {
+	// Apparently, this is how we tell libwebp what output color format to use.
+	// (Which is not exactly convenient, since we don't yet know the input color format.)
+	// This is based on experimentation, because I can't figure out the documentation.
+	decbuffer->colorspace = MODE_RGBA;
+
+	pidecoder = WebPINewDecoder(decbuffer);
+	if(!pidecoder) goto done;
+
+	while(1) {
+		// Read from the WebP file...
+		ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,fbuf,fbuf_len,&bytesread);
+		if(!ret) {
+			// Read error
+			break;
+		}
+
+		if(bytesread>0) {
+			status = WebPIAppend(pidecoder, fbuf, (uint32_t)bytesread);
+			if(status==VP8_STATUS_OK)
+				break;
+
+			if(status!=VP8_STATUS_SUSPENDED)
+				goto done;
+		}
+
+		if(bytesread<fbuf_len) {
+			// End of file reached but the decoder says it isn't finished yet.
+			// Apparently a truncated file.
+			goto done;
+		}
+	}
+
+	width = decbuffer->width;
+	height = decbuffer->height;
+
+	if(decbuffer->colorspace!=MODE_RGBA) {
+		// I assume that libwebp won't change this field.
+		// This is just a sanity check in case I'm wrong about that.
 		goto done;
 	}
 
-	// Have libwebp decode that memory block, to a memory block that
-	// it allocates.
-	width=height=0;
-	uncmpr_webp_pixels = WebPDecodeRGBA(webpimage, (uint32_t)webpimage_size, &width, &height);
-	if(!uncmpr_webp_pixels) goto done;
+	uncmpr_webp_pixels = decbuffer->u.RGBA.rgba;
 
 	if(!iw_check_image_dimensons(rctx->ctx,width,height))
 		goto done;
 
 	npixels = ((size_t)width)*height;
+
+	// Sanity checks. I don't think libwebp is obtuse enough leave filler bytes
+	// in the image, but maybe it's allowed to.
+	if(decbuffer->u.RGBA.size != npixels*4) {
+		goto done;
+	}
+	if(decbuffer->u.RGBA.stride != width*4) {
+		goto done;
+	}
 
 	// Figure out if the image has transparency, etc.
 	iwwebp_scan_pixels(rctx,uncmpr_webp_pixels,npixels);
@@ -165,13 +210,14 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	retval=1;
 
 done:
-	if(webpimage) iw_free(webpimage);
-
-	// Caution: We must use the right free() function: the one that corresponds
-	// to the malloc function that libwebp used. But we can't always be sure
-	// how to do that. It depends on how libwebp was compiled.
-	if(uncmpr_webp_pixels) free(uncmpr_webp_pixels);
-
+	if(pidecoder) {
+		WebPIDelete(pidecoder);
+	}
+	if(decbuffer) {
+		WebPFreeDecBuffer(decbuffer);
+		iw_free(decbuffer);
+	}
+	if(fbuf) iw_free(fbuf);
 	return retval;
 }
 
