@@ -271,23 +271,29 @@ static void iwwebp_write(struct iwwebpwritecontext *wctx, const void *buf, size_
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 }
 
-static void iwwebp_gray_to_rgb(struct iwwebpwritecontext *wctx)
+static void iwwebp_gray_to_rgb(struct iwwebpwritecontext *wctx, int alphaflag)
 {
 	int i,j;
 	struct iw_image *img = wctx->img;
 	size_t bpr;
+	int spp_in, spp_out;
 	unsigned char g;
 
-	bpr = 3 * img->width;
+	spp_in = alphaflag ? 2 : 1;
+	spp_out = alphaflag ? 4 : 3;
+
+	bpr = spp_out * img->width;
 	wctx->tmppixels = iw_malloc_large(wctx->ctx, img->height, bpr);
 	if(!wctx) return;
 
 	for(j=0;j<img->height;j++) {
 		for(i=0;i<img->width;i++) {
-			g = img->pixels[j*img->bpr+i];
-			wctx->tmppixels[j*bpr+3*i+0]=g;
-			wctx->tmppixels[j*bpr+3*i+1]=g;
-			wctx->tmppixels[j*bpr+3*i+2]=g;
+			g = img->pixels[j*img->bpr+spp_in*i+0];
+			wctx->tmppixels[j*bpr+spp_out*i+0]=g;
+			wctx->tmppixels[j*bpr+spp_out*i+1]=g;
+			wctx->tmppixels[j*bpr+spp_out*i+2]=g;
+			if(alphaflag)
+				wctx->tmppixels[j*bpr+spp_out*i+3] = img->pixels[j*img->bpr+spp_in*i+1];
 		}
 	}
 }
@@ -311,13 +317,23 @@ static int iwwebp_write_main(struct iwwebpwritecontext *wctx)
 	case IW_IMGTYPE_GRAY:
 		// IW requires encoders to support grayscale, but WebP doesn't (?)
 		// support it. So, convert grayscale images to RGB.
-		iwwebp_gray_to_rgb(wctx); // Allocates RGB image at wctx->tmppixels.
+		iwwebp_gray_to_rgb(wctx,0); // Allocates RGB image at wctx->tmppixels.
 		if(!wctx->tmppixels) goto done;
 		ret = WebPEncodeRGB(wctx->tmppixels, img->width, img->height, 3*img->width, (float)quality, &cmpr_webp_data);
 		break;
 	case IW_IMGTYPE_RGB:
 		ret = WebPEncodeRGB(img->pixels, img->width, img->height, (int)img->bpr, (float)quality, &cmpr_webp_data);
 		break;
+#ifdef IW_WEBP_SUPPORT_TRANSPARENCY
+	case IW_IMGTYPE_GRAYA:
+		iwwebp_gray_to_rgb(wctx,1);
+		if(!wctx->tmppixels) goto done;
+		ret = WebPEncodeRGBA(wctx->tmppixels, img->width, img->height, 4*img->width, (float)quality, &cmpr_webp_data);
+		break;
+	case IW_IMGTYPE_RGBA:
+		ret = WebPEncodeRGBA(img->pixels, img->width, img->height, (int)img->bpr, (float)quality, &cmpr_webp_data);
+		break;
+#endif
 	default:
 		iw_set_errorf(wctx->ctx,iwwebp_get_string(wctx->ctx,iws_webp_enc_bad_imgtype),img->imgtype);
 		goto done;
