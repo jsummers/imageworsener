@@ -57,7 +57,7 @@ struct iwmiffreadcontext {
 };
 
 static int iwmiff_read(struct iwmiffreadcontext *rctx,
-		unsigned char *buf, size_t buflen)
+		iw_byte *buf, size_t buflen)
 {
 	int ret;
 	size_t bytesread = 0;
@@ -71,9 +71,9 @@ static int iwmiff_read(struct iwmiffreadcontext *rctx,
 	return 1;
 }
 
-static unsigned char iwmiff_read_byte(struct iwmiffreadcontext *rctx)
+static iw_byte iwmiff_read_byte(struct iwmiffreadcontext *rctx)
 {
-	unsigned char buf[1];
+	iw_byte buf[1];
 	int ret;
 	size_t bytesread = 0;
 
@@ -267,7 +267,7 @@ static int iwmiff_read_header(struct iwmiffreadcontext *rctx)
 }
 
 static void iwmiffr_convert_row32(struct iwmiffreadcontext *rctx,
-  const unsigned char *src, unsigned char *dst, int nsamples)
+  const iw_byte *src, iw_byte *dst, int nsamples)
 {
 	int i;
 	int k;
@@ -285,7 +285,7 @@ static void iwmiffr_convert_row32(struct iwmiffreadcontext *rctx,
 }
 
 static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
-  const unsigned char *src, unsigned char *dst, int nsamples)
+  const iw_byte *src, iw_byte *dst, int nsamples)
 {
 	int i;
 	int k;
@@ -304,7 +304,7 @@ static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
 
 static int iwmiff_skip_bytes(struct iwmiffreadcontext *rctx, size_t n)
 {
-	unsigned char buf[2048];
+	iw_byte buf[2048];
 	size_t amt;
 	size_t remaining = n;
 	while(remaining>0) {
@@ -328,7 +328,7 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 	int samples_per_pixel;
 	int samples_per_row;
 	size_t tmprowsize;
-	unsigned char *tmprow = NULL;
+	iw_byte *tmprow = NULL;
 	int retval=0;
 	int j;
 	struct iw_image *img;
@@ -345,7 +345,7 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 
 	img->bpr = tmprowsize;
 
-	img->pixels = (unsigned char*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
+	img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
 	if(!img->pixels) goto done;
 
 	for(j=0;j<img->height;j++) {
@@ -489,7 +489,7 @@ static void iwmiff_write_header(struct iwmiffwritecontext *wctx)
 }
 
 static void iwmiffw_convert_row32(struct iwmiffwritecontext *wctx,
-	const unsigned char *srcrow, unsigned char *dstrow, int numsamples)
+	const iw_byte *srcrow, iw_byte *dstrow, int numsamples)
 {
 	int i,j;
 
@@ -508,7 +508,7 @@ static void iwmiffw_convert_row32(struct iwmiffwritecontext *wctx,
 }
 
 static void iwmiffw_convert_row64(struct iwmiffwritecontext *wctx,
-	const unsigned char *srcrow, unsigned char *dstrow, int numsamples)
+	const iw_byte *srcrow, iw_byte *dstrow, int numsamples)
 {
 	int i,j;
 
@@ -527,10 +527,10 @@ static void iwmiffw_convert_row64(struct iwmiffwritecontext *wctx,
 static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 {
 	struct iw_image *img;
-	unsigned char *dstrow = NULL;
+	iw_byte *dstrow = NULL;
 	size_t dstbpr;
 	int j;
-	const unsigned char *srcrow;
+	const iw_byte *srcrow;
 	int bytes_per_sample;
 	int num_channels;
 

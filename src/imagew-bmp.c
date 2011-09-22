@@ -47,13 +47,13 @@ static void iwbmp_write(struct iwbmpwritecontext *bmpctx, const void *buf, size_
 	(*bmpctx->iodescr->write_fn)(bmpctx->ctx,bmpctx->iodescr,buf,n);
 }
 
-static void iwbmp_set_ui16(unsigned char *b, unsigned int n)
+static void iwbmp_set_ui16(iw_byte *b, unsigned int n)
 {
 	b[0] = n&0xff;
 	b[1] = (n>>8)&0xff;
 }
 
-static void iwbmp_set_ui32(unsigned char *b, unsigned int n)
+static void iwbmp_set_ui32(iw_byte *b, unsigned int n)
 {
 	b[0] = n&0xff;
 	b[1] = (n>>8)&0xff;
@@ -61,7 +61,7 @@ static void iwbmp_set_ui32(unsigned char *b, unsigned int n)
 	b[3] = (n>>24)&0xff;
 }
 
-static void iwbmp_convert_row1(const unsigned char *srcrow, unsigned char *dstrow, int width)
+static void iwbmp_convert_row1(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 	int m;
@@ -75,7 +75,7 @@ static void iwbmp_convert_row1(const unsigned char *srcrow, unsigned char *dstro
 	}
 }
 
-static void iwbmp_convert_row4(const unsigned char *srcrow, unsigned char *dstrow, int width)
+static void iwbmp_convert_row4(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 
@@ -87,12 +87,12 @@ static void iwbmp_convert_row4(const unsigned char *srcrow, unsigned char *dstro
 	}
 }
 
-static void iwbmp_convert_row8(const unsigned char *srcrow, unsigned char *dstrow, int width)
+static void iwbmp_convert_row8(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	memcpy(dstrow,srcrow,width);
 }
 
-static void iwbmp_convert_row24(const unsigned char *srcrow, unsigned char *dstrow, int width)
+static void iwbmp_convert_row24(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 
@@ -105,7 +105,7 @@ static void iwbmp_convert_row24(const unsigned char *srcrow, unsigned char *dstr
 
 static void iwbmp_write_file_header(struct iwbmpwritecontext *bmpctx)
 {
-	unsigned char fileheader[14];
+	iw_byte fileheader[14];
 
 	if(!bmpctx->include_file_header) return;
 
@@ -121,7 +121,7 @@ static void iwbmp_write_file_header(struct iwbmpwritecontext *bmpctx)
 static void iwbmp_write_bmp_header(struct iwbmpwritecontext *bmpctx)
 {
 	unsigned int dens_x, dens_y;
-	unsigned char header[40];
+	iw_byte header[40];
 
 	memset(&header,0,sizeof(header));
 
@@ -151,7 +151,7 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *bmpctx)
 static void iwbmp_write_palette(struct iwbmpwritecontext *bmpctx)
 {
 	int i;
-	unsigned char buf[4];
+	iw_byte buf[4];
 
 	if(bmpctx->palentries<1) return;
 	for(i=0;i<bmpctx->palentries;i++) {
@@ -171,10 +171,10 @@ static void iwbmp_write_palette(struct iwbmpwritecontext *bmpctx)
 static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 {
 	struct iw_image *img;
-	unsigned char *dstrow = NULL;
+	iw_byte *dstrow = NULL;
 	size_t dstbpr;
 	int j;
-	const unsigned char *srcrow;
+	const iw_byte *srcrow;
 
 	img = bmpctx->img;
 

@@ -256,7 +256,7 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	png_uint_32 width, height;
 	int bit_depth, color_type, interlace_type;
-	unsigned char **row_pointers = NULL;
+	iw_byte **row_pointers = NULL;
 	int i;
 	jmp_buf jbuf;
 	struct errstruct errinfo;
@@ -377,11 +377,11 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	img.height = height;
 	img.bpr = iw_calc_bytesperrow(img.width,img.bit_depth*numchannels);
 
-	img.pixels = (unsigned char*)iw_malloc_large(ctx, img.bpr,img.height);
+	img.pixels = (iw_byte*)iw_malloc_large(ctx, img.bpr,img.height);
 	if(!img.pixels) {
 		goto done;
 	}
-	row_pointers = (unsigned char**)iw_malloc(ctx, img.height * sizeof(unsigned char*));
+	row_pointers = (iw_byte**)iw_malloc(ctx, img.height * sizeof(iw_byte*));
 	if(!row_pointers) goto done;
 
 	for(i=0;i<img.height;i++) {
@@ -461,7 +461,7 @@ static void iwpng_set_palette(struct iw_context *ctx,
 	int i;
 	int num_trans;
 	png_color pngpal[256];
-	unsigned char pngtrans[256];
+	png_byte pngtrans[256];
 
 	if(!iwpal) return;
 
@@ -496,7 +496,7 @@ static void my_png_flush_fn(png_structp png_ptr)
 
 int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	unsigned char **row_pointers = NULL;
+	iw_byte **row_pointers = NULL;
 	int i;
 	jmp_buf jbuf;
 	struct errstruct errinfo;
@@ -611,7 +611,7 @@ int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	png_write_info(png_ptr, info_ptr);
 
-	row_pointers = (unsigned char**)iw_malloc(ctx, img.height * sizeof(unsigned char*));
+	row_pointers = (iw_byte**)iw_malloc(ctx, img.height * sizeof(iw_byte*));
 	if(!row_pointers) goto done;
 
 	for(i=0;i<img.height;i++) {

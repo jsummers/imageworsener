@@ -190,7 +190,7 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->imgtype = ctx->optctx.imgtype;
 	img->sampletype = ctx->img2.sampletype;
 	img->bit_depth = ctx->optctx.bit_depth;
-	img->pixels = (unsigned char*)ctx->optctx.pixelsptr;
+	img->pixels = (iw_byte*)ctx->optctx.pixelsptr;
 	img->bpr = ctx->optctx.bpr;
 	img->density_code = ctx->img2.density_code;
 	img->density_x = ctx->img2.density_x;
@@ -478,7 +478,7 @@ char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
 
 void iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 {
-	unsigned char v;
+	iw_byte v;
 	v = n?1:0;
 
 	switch(opt) {

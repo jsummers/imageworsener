@@ -45,7 +45,7 @@ struct iwwebpreadcontext {
 
 // Sets rctx->has_color and ->has_transparency if appropriate.
 static void iwwebp_scan_pixels(struct iwwebpreadcontext *rctx,
-  const unsigned char *pixels, size_t npixels)
+  const iw_byte *pixels, size_t npixels)
 {
 	size_t i;
 	for(i=0;i<npixels;i++) {
@@ -67,7 +67,7 @@ static void iwwebp_scan_pixels(struct iwwebpreadcontext *rctx,
 }
 
 static void iwwebpr_convert_pixels_gray(struct iwwebpreadcontext *rctx,
- unsigned char *src, size_t nsrcpix)
+   const iw_byte *src, size_t nsrcpix)
 {
 	size_t i;
 	for(i=0;i<nsrcpix;i++) {
@@ -76,7 +76,7 @@ static void iwwebpr_convert_pixels_gray(struct iwwebpreadcontext *rctx,
 }
 
 static void iwwebpr_convert_pixels_graya(struct iwwebpreadcontext *rctx,
- unsigned char *src, size_t nsrcpix)
+   const iw_byte *src, size_t nsrcpix)
 {
 	size_t i;
 	for(i=0;i<nsrcpix;i++) {
@@ -86,7 +86,7 @@ static void iwwebpr_convert_pixels_graya(struct iwwebpreadcontext *rctx,
 }
 
 static void iwwebpr_convert_pixels_rgb(struct iwwebpreadcontext *rctx,
- unsigned char *src, size_t nsrcpix)
+   const iw_byte *src, size_t nsrcpix)
 {
 	size_t i;
 	for(i=0;i<nsrcpix;i++) {
@@ -97,7 +97,7 @@ static void iwwebpr_convert_pixels_rgb(struct iwwebpreadcontext *rctx,
 }
 
 static void iwwebpr_convert_pixels_rgba(struct iwwebpreadcontext *rctx,
- unsigned char *src, size_t nsrcpix)
+   const iw_byte *src, size_t nsrcpix)
 {
 	memcpy(rctx->img->pixels,src,nsrcpix*4);
 }
@@ -114,7 +114,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	WebPIDecoder *pidecoder = NULL;
 	VP8StatusCode status;
 	int ret;
-	unsigned char *fbuf = NULL;
+	iw_byte *fbuf = NULL;
 	const size_t fbuf_len = 32768;
 	size_t bytesread = 0;
 
@@ -197,14 +197,14 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	img->bit_depth = 8;
 	bytes_per_pixel = iw_imgtype_num_channels(img->imgtype);
 	img->bpr = bytes_per_pixel * img->width;
-	img->pixels = (unsigned char*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
+	img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
 	if(!img->pixels) goto done;
 
 	switch(img->imgtype) {
-	case IW_IMGTYPE_GRAY:  iwwebpr_convert_pixels_gray(rctx,(unsigned char*)uncmpr_webp_pixels,npixels); break;
-	case IW_IMGTYPE_GRAYA: iwwebpr_convert_pixels_graya(rctx,(unsigned char*)uncmpr_webp_pixels,npixels); break;
-	case IW_IMGTYPE_RGB:   iwwebpr_convert_pixels_rgb(rctx,(unsigned char*)uncmpr_webp_pixels,npixels); break;
-	default:               iwwebpr_convert_pixels_rgba(rctx,(unsigned char*)uncmpr_webp_pixels,npixels); break;
+	case IW_IMGTYPE_GRAY:  iwwebpr_convert_pixels_gray(rctx,uncmpr_webp_pixels,npixels); break;
+	case IW_IMGTYPE_GRAYA: iwwebpr_convert_pixels_graya(rctx,uncmpr_webp_pixels,npixels); break;
+	case IW_IMGTYPE_RGB:   iwwebpr_convert_pixels_rgb(rctx,uncmpr_webp_pixels,npixels); break;
+	default:               iwwebpr_convert_pixels_rgba(rctx,uncmpr_webp_pixels,npixels); break;
 	}
 
 	retval=1;
@@ -263,7 +263,7 @@ struct iwwebpwritecontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
-	unsigned char *tmppixels;
+	iw_byte *tmppixels;
 };
 
 static void iwwebp_write(struct iwwebpwritecontext *wctx, const void *buf, size_t n)
@@ -277,7 +277,7 @@ static void iwwebp_gray_to_rgb(struct iwwebpwritecontext *wctx, int alphaflag)
 	struct iw_image *img = wctx->img;
 	size_t bpr;
 	int spp_in, spp_out;
-	unsigned char g;
+	iw_byte g;
 
 	spp_in = alphaflag ? 2 : 1;
 	spp_out = alphaflag ? 4 : 3;

@@ -216,6 +216,8 @@ extern "C" {
 #define IW_OPT_STRIP_ALPHA  4   // strip superfluous alpha channels
 #define IW_OPT_BINARY_TRNS  5   // optimize to color-keyed binary transparency
 
+#define iw_byte unsigned char
+
 // Colorspace descriptor
 struct iw_csdescr {
 	int cstype; // IW_CSTYPE_
@@ -229,7 +231,7 @@ struct iw_image {
 	int bit_depth;
 	int sampletype; // IW_SAMPLETYPE_*
 	int width, height;
-	unsigned char *pixels;
+	iw_byte *pixels;
 	size_t bpr; // bytes per row
 	int native_grayscale; // For input images: Was the image encoded as grayscale?
 	int density_code; // IW_DENSITY_*
@@ -239,7 +241,7 @@ struct iw_image {
 };
 
 struct iw_rgba8color {
-	unsigned char r, g, b, a;
+	iw_byte r, g, b, a;
 };
 
 struct iw_palette {

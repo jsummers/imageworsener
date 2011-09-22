@@ -63,17 +63,17 @@ struct iwgifreadcontext {
 	size_t pixels_set; // Number of pixels decoded so far
 	size_t total_npixels; // Total number of pixels in the "image" (not the "screen")
 
-	unsigned char **row_pointers;
+	iw_byte **row_pointers;
 
 	struct iw_palette colortable;
 
 	// A buffer used when reading the GIF file.
 	// The largest block we need to read is a 256-color palette.
-	unsigned char rbuf[768];
+	iw_byte rbuf[768];
 };
 
 static int iwgif_read(struct iwgifreadcontext *rctx,
-		unsigned char *buf, size_t buflen)
+		iw_byte *buf, size_t buflen)
 {
 	int ret;
 	size_t bytesread = 0;
@@ -86,7 +86,7 @@ static int iwgif_read(struct iwgifreadcontext *rctx,
 	return 1;
 }
 
-static int iw_read_uint16le(unsigned char *buf)
+static int iw_read_uint16le(iw_byte *buf)
 {
 	return (int)buf[0] | (((int)buf[1])<<8);
 }
@@ -159,7 +159,7 @@ static int iwgif_read_color_table(struct iwgifreadcontext *rctx, struct iw_palet
 
 static int iwgif_skip_subblocks(struct iwgifreadcontext *rctx)
 {
-	unsigned char subblock_size;
+	iw_byte subblock_size;
 
 	while(1) {
 		// Read the subblock size
@@ -202,7 +202,7 @@ done:
 static int iwgif_read_extension(struct iwgifreadcontext *rctx)
 {
 	int retval=0;
-	unsigned char ext_type;
+	iw_byte ext_type;
 
 	if(!iwgif_read(rctx,rctx->rbuf,1)) goto done;
 	ext_type=rctx->rbuf[0];
@@ -230,7 +230,7 @@ static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int color
 	size_t pixnum;
 	size_t xi,yi; // position in image coordinates
 	size_t xs,ys; // position in screen coordinates
-	unsigned char *ptr;
+	iw_byte *ptr;
 
 	img = rctx->img;
 
@@ -277,8 +277,8 @@ static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int color
 struct lzw_tableentry {
 	iw_uint16 parent; // pointer to previous table entry (if not a root code)
 	iw_uint16 length;
-	unsigned char firstchar;
-	unsigned char lastchar;
+	iw_byte firstchar;
+	iw_byte lastchar;
 };
 
 struct lzwdeccontext {
@@ -311,8 +311,8 @@ static void lzw_init(struct lzwdeccontext *d, unsigned int root_codesize)
 	for(i=0;i<d->num_root_codes;i++) {
 		d->ct[i].parent = 0;
 		d->ct[i].length = 1;
-		d->ct[i].lastchar = (unsigned char)i;
-		d->ct[i].firstchar = (unsigned char)i;
+		d->ct[i].lastchar = (iw_byte)i;
+		d->ct[i].firstchar = (iw_byte)i;
 	}
 }
 
@@ -349,7 +349,7 @@ static void lzw_emit_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d
 // Add a code to the dictionary.
 // Returns the position where it was added.
 // If table is full, returns -1.
-static unsigned int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, unsigned char val)
+static unsigned int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, iw_byte val)
 {
 	static const unsigned int last_code_of_size[] = {
 		// The first 3 values are unused.
@@ -437,7 +437,7 @@ static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext 
 // Any unfinished business is recorded, to be continued the next time
 // this function is called.
 static int lzw_process_bytes(struct iwgifreadcontext *rctx, struct lzwdeccontext *d,
-	unsigned char *data, size_t data_size)
+	iw_byte *data, size_t data_size)
 {
 	size_t i;
 	int b;
@@ -505,7 +505,7 @@ static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 	img->bit_depth = 8;
 	img->bpr = rctx->bytes_per_pixel * img->width;
 
-	img->pixels = (unsigned char*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
+	img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
 	if(!img->pixels) goto done;
 
 	// Start by clearing the screen to black, or transparent black.
@@ -528,7 +528,7 @@ static int iwgif_make_row_pointers(struct iwgifreadcontext *rctx)
 	int row;
 
 	if(rctx->row_pointers) iw_free(rctx->row_pointers);
-	rctx->row_pointers = (unsigned char**)iw_malloc(rctx->ctx, sizeof(unsigned char*)*rctx->image_height);
+	rctx->row_pointers = (iw_byte**)iw_malloc(rctx->ctx, sizeof(iw_byte*)*rctx->image_height);
 	if(!rctx->row_pointers) return 0;
 
 	img = rctx->img;

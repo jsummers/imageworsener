@@ -99,11 +99,11 @@ struct iw_opt_ctx {
 
 	// A pointer to the current pixels. May point to tmp_pixels, or
 	// to ctx->img2.pixels.
-	const unsigned char *pixelsptr;
+	const iw_byte *pixelsptr;
 
 	// A place for optimized pixels. If this is non-NULL, it will be
 	// freed when IW is finished.
-	unsigned char *tmp_pixels;
+	iw_byte *tmp_pixels;
 
 	int has_transparency;
 	int has_partial_transparency;
@@ -231,11 +231,11 @@ struct iw_context {
 	int density_policy; // IW_DENSITY_POLICY_*
 
 	// Optimization codes. Can be set to 0 to disallow this optimization
-	unsigned char opt_grayscale; // RGB-to-grayscale
-	unsigned char opt_palette;   // Palette images
-	unsigned char opt_16_to_8;   // Reduce >8 bitdepth to 8
-	unsigned char opt_strip_alpha; // RGBA->RGB or GA->G
-	unsigned char opt_binary_trns; // Color-keyed binary transparency
+	iw_byte opt_grayscale; // RGB-to-grayscale
+	iw_byte opt_palette;   // Palette images
+	iw_byte opt_16_to_8;   // Reduce >8 bitdepth to 8
+	iw_byte opt_strip_alpha; // RGBA->RGB or GA->G
+	iw_byte opt_binary_trns; // Color-keyed binary transparency
 
 	int canvas_width, canvas_height;
 	int input_start_x, input_start_y, input_w, input_h;

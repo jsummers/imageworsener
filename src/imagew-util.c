@@ -287,7 +287,7 @@ void iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 int iw_get_host_endianness(void)
 {
 	union en_union {
-		unsigned char c[4];
+		iw_byte c[4];
 		int ii;
 	} en;
 

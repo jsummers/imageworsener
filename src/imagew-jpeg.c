@@ -240,7 +240,7 @@ int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	img.bit_depth = 8;
 	img.bpr = iw_calc_bytesperrow(img.width,img.bit_depth*numchannels);
 
-	img.pixels = (unsigned char*)iw_malloc_large(ctx, img.bpr, img.height);
+	img.pixels = (iw_byte*)iw_malloc_large(ctx, img.bpr, img.height);
 	if(!img.pixels) {
 		goto done;
 	}

@@ -19,8 +19,8 @@
 static void iw_opt_scanpixels_rgb8(struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	unsigned char r,g,b;
-	const unsigned char *ptr;
+	iw_byte r,g,b;
+	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
@@ -44,8 +44,8 @@ done:
 static void iw_opt_scanpixels_ga8(struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	unsigned char gray,a;
-	const unsigned char *ptr;
+	iw_byte gray,a;
+	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
@@ -73,8 +73,8 @@ done:
 static void iw_opt_scanpixels_rgba8(struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	unsigned char r,g,b,a;
-	const unsigned char *ptr;
+	iw_byte r,g,b,a;
+	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
@@ -107,7 +107,7 @@ static void iw_opt_scanpixels_g16(struct iw_opt_ctx *optctx)
 {
 	int i,j;
 	unsigned int gray;
-	const unsigned char *ptr;
+	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
@@ -135,7 +135,7 @@ static void iw_opt_scanpixels_ga16(struct iw_opt_ctx *optctx)
 {
 	int i,j;
 	unsigned int gray, a;
-	const unsigned char *ptr;
+	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
@@ -172,7 +172,7 @@ static void iw_opt_scanpixels_rgb16(struct iw_opt_ctx *optctx)
 {
 	int i,j;
 	unsigned int r,g,b;
-	const unsigned char *ptr;
+	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
@@ -206,7 +206,7 @@ static void iw_opt_scanpixels_rgba16(struct iw_opt_ctx *optctx)
 {
 	int i,j;
 	unsigned int r,g,b,a;
-	const unsigned char *ptr;
+	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
@@ -247,7 +247,7 @@ done:
 
 static void iw_opt_16_to_8(struct iw_context *ctx, struct iw_opt_ctx *optctx, int spp)
 {
-	unsigned char *newpixels;
+	iw_byte *newpixels;
 	size_t newbpr;
 	int i,j;
 
@@ -278,7 +278,7 @@ static void iw_opt_16_to_8(struct iw_context *ctx, struct iw_opt_ctx *optctx, in
 static void iw_opt_copychannels_8(struct iw_context *ctx, struct iw_opt_ctx *optctx,
 			int new_imgtype, int c0, int c1, int c2)
 {
-	unsigned char *newpixels;
+	iw_byte *newpixels;
 	int oldnc, newnc; // num_channels
 	size_t newbpr;
 	int i,j;
@@ -315,7 +315,7 @@ static void iw_opt_copychannels_8(struct iw_context *ctx, struct iw_opt_ctx *opt
 static void iw_opt_copychannels_16(struct iw_context *ctx, struct iw_opt_ctx *optctx,
 			int new_imgtype, int c0, int c1, int c2)
 {
-	unsigned char *newpixels;
+	iw_byte *newpixels;
 	int oldnc, newnc; // num_channels
 	size_t newbpr;
 	int i,j;
@@ -386,7 +386,7 @@ static int iw_opt_scanpixels(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 ////////////////////
 
 // Returns 0 if nothing found.
-static int iwopt_find_unused(const unsigned char *flags, int count, unsigned char *unused_clr)
+static int iwopt_find_unused(const iw_byte *flags, int count, iw_byte *unused_clr)
 {
 	int i;
 	int found=0;
@@ -397,7 +397,7 @@ static int iwopt_find_unused(const unsigned char *flags, int count, unsigned cha
 		if(flags[i]==0) {
 			d=abs(i-192);
 			if(!found || d<found_dist) {
-				*unused_clr = (unsigned char)i;
+				*unused_clr = (iw_byte)i;
 				found = 1;
 				found_dist = d;
 			}
@@ -416,11 +416,11 @@ static int iwopt_find_unused(const unsigned char *flags, int count, unsigned cha
 static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	const unsigned char *ptr;
-	unsigned char *ptr2;
-	unsigned char clr_used[256];
-	unsigned char key_clr; // Red component of the key color
-	unsigned char *trns_mask = NULL;
+	const iw_byte *ptr;
+	iw_byte *ptr2;
+	iw_byte clr_used[256];
+	iw_byte key_clr; // Red component of the key color
+	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
@@ -428,7 +428,7 @@ static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx
 	// Try to find a color that's not used in the image.
 	// Looking for all 2^24 possible colors is too much work.
 	// We will just look for 256 predefined colors: R={0-255},G=192,B=192
-	memset(&clr_used,0,256*sizeof(unsigned char));
+	memset(&clr_used,0,256*sizeof(iw_byte));
 
 	// Hard to decide how to do this. I don't want the optimization phase
 	// to modify img2.pixels, though that would be the easiest method.
@@ -488,16 +488,16 @@ done:
 static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	const unsigned char *ptr;
-	unsigned char *ptr2;
-	unsigned char clr_used[256];
-	unsigned char key_clr; // low 8-bits of red component of the key color
-	unsigned char *trns_mask = NULL;
+	const iw_byte *ptr;
+	iw_byte *ptr2;
+	iw_byte clr_used[256];
+	iw_byte key_clr; // low 8-bits of red component of the key color
+	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
-	memset(&clr_used,0,256*sizeof(unsigned char));
+	memset(&clr_used,0,256*sizeof(iw_byte));
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
 	if(!trns_mask) goto done;
@@ -556,16 +556,16 @@ done:
 static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	const unsigned char *ptr;
-	unsigned char *ptr2;
-	unsigned char clr_used[256];
-	unsigned char key_clr;
-	unsigned char *trns_mask = NULL;
+	const iw_byte *ptr;
+	iw_byte *ptr2;
+	iw_byte clr_used[256];
+	iw_byte key_clr;
+	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
-	memset(&clr_used,0,256*sizeof(unsigned char));
+	memset(&clr_used,0,256*sizeof(iw_byte));
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
 	if(!trns_mask) goto done;
@@ -616,16 +616,16 @@ done:
 static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	const unsigned char *ptr;
-	unsigned char *ptr2;
-	unsigned char clr_used[256];
-	unsigned char key_clr; // low 8-bits of the key color
-	unsigned char *trns_mask = NULL;
+	const iw_byte *ptr;
+	iw_byte *ptr2;
+	iw_byte clr_used[256];
+	iw_byte key_clr; // low 8-bits of the key color
+	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
-	memset(&clr_used,0,256*sizeof(unsigned char));
+	memset(&clr_used,0,256*sizeof(iw_byte));
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
 	if(!trns_mask) goto done;
@@ -698,7 +698,7 @@ static int optctx_collect_palette_colors(struct iw_context *ctx, struct iw_opt_c
 {
 	int x,y;
 	struct iw_rgba8color c;
-	const unsigned char *ptr;
+	const iw_byte *ptr;
 	int spp;
 	int e;
 
@@ -754,11 +754,11 @@ static int optctx_collect_palette_colors(struct iw_context *ctx, struct iw_opt_c
 
 static void iwopt_convert_to_palette_image(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
-	unsigned char *newpixels;
+	iw_byte *newpixels;
 	size_t newbpr;
 	int x,y;
 	struct iw_rgba8color c;
-	const unsigned char *ptr;
+	const iw_byte *ptr;
 	int spp;
 	int e;
 
@@ -887,8 +887,8 @@ static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx
 	int factor;
 	int i;
 	int max_entries;
-	unsigned char clr_used[256];
-	unsigned char key_clr=0;
+	iw_byte clr_used[256];
+	iw_byte key_clr=0;
 
 	*pbinary_trns = 0;
 	*ptrns_shade = 0;
@@ -909,7 +909,7 @@ static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx
 	if(optctx->palette->num_entries > max_entries)
 		return 0;
 
-	memset(&clr_used,0,256*sizeof(unsigned char));
+	memset(&clr_used,0,256*sizeof(iw_byte));
 
 	for(i=0;i<optctx->palette->num_entries;i++) {
 		if(optctx->palette->entry[i].a>0) { // Look at all the nontransparent entries.
@@ -1059,7 +1059,7 @@ done:
 static void make_transparent_pixels_black8(struct iw_context *ctx, struct iw_image *img, int nc)
 {
 	int i,j,k;
-	unsigned char *p;
+	iw_byte *p;
 
 	for(j=0;j<img->height;j++) {
 		for(i=0;i<img->width;i++) {
@@ -1076,7 +1076,7 @@ static void make_transparent_pixels_black8(struct iw_context *ctx, struct iw_ima
 static void make_transparent_pixels_black16(struct iw_context *ctx, struct iw_image *img, int nc)
 {
 	int i,j,k;
-	unsigned char *p;
+	iw_byte *p;
 
 	for(j=0;j<img->height;j++) {
 		for(i=0;i<img->width;i++) {

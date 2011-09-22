@@ -77,13 +77,13 @@ static void iwtiff_write(struct iwtiffwritecontext *tiffctx, const void *buf, si
 	(*tiffctx->iodescr->write_fn)(tiffctx->ctx,tiffctx->iodescr,buf,n);
 }
 
-static void iwtiff_set_ui16(unsigned char *b, unsigned int n)
+static void iwtiff_set_ui16(iw_byte *b, unsigned int n)
 {
 	b[0] = n&0xff;
 	b[1] = (n>>8)&0xff;
 }
 
-static void iwtiff_set_ui32(unsigned char *b, unsigned int n)
+static void iwtiff_set_ui32(iw_byte *b, unsigned int n)
 {
 	b[0] = n&0xff;
 	b[1] = (n>>8)&0xff;
@@ -93,12 +93,12 @@ static void iwtiff_set_ui32(unsigned char *b, unsigned int n)
 
 static void iwtiff_write_ui16(struct iwtiffwritecontext *tiffctx, unsigned int n)
 {
-	unsigned char buf[2];
+	iw_byte buf[2];
 	iwtiff_set_ui16(buf,n);
 	iwtiff_write(tiffctx,buf,2);
 }
 
-static void iwtiff_convert_row1(const unsigned char *srcrow, unsigned char *dstrow, int width)
+static void iwtiff_convert_row1(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 	int m;
@@ -112,7 +112,7 @@ static void iwtiff_convert_row1(const unsigned char *srcrow, unsigned char *dstr
 	}
 }
 
-static void iwtiff_convert_row4(const unsigned char *srcrow, unsigned char *dstrow, int width)
+static void iwtiff_convert_row4(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 
@@ -124,12 +124,12 @@ static void iwtiff_convert_row4(const unsigned char *srcrow, unsigned char *dstr
 	}
 }
 
-static void iwtiff_convert_row8bps(const unsigned char *srcrow, unsigned char *dstrow, int width, int samplesperpixel)
+static void iwtiff_convert_row8bps(const iw_byte *srcrow, iw_byte *dstrow, int width, int samplesperpixel)
 {
 	memcpy(dstrow,srcrow,width*samplesperpixel);
 }
 
-static void iwtiff_convert_row16bps(const unsigned char *srcrow, unsigned char *dstrow, int width, int samplesperpixel)
+static void iwtiff_convert_row16bps(const iw_byte *srcrow, iw_byte *dstrow, int width, int samplesperpixel)
 {
 	int i;
 	int nsamples;
@@ -145,7 +145,7 @@ static void iwtiff_convert_row16bps(const unsigned char *srcrow, unsigned char *
 
 static void iwtiff_write_file_header(struct iwtiffwritecontext *tiffctx)
 {
-	unsigned char buf[8];
+	iw_byte buf[8];
 	buf[0] = 73;
 	buf[1] = 73;
 	iwtiff_set_ui16(&buf[2],42);
@@ -156,7 +156,7 @@ static void iwtiff_write_file_header(struct iwtiffwritecontext *tiffctx)
 
 static void iwtiff_write_density(struct iwtiffwritecontext *tiffctx)
 {
-	unsigned char buf[16];
+	iw_byte buf[16];
 	unsigned int denom;
 	unsigned int x,y;
 
@@ -188,7 +188,7 @@ static void iwtiff_write_density(struct iwtiffwritecontext *tiffctx)
 // the other methods aren't really any better.
 static void iwtiff_write_transferfunction(struct iwtiffwritecontext *tiffctx)
 {
-	unsigned char *buf = NULL;
+	iw_byte *buf = NULL;
 	unsigned int i;
 	double targetsample;
 	double linear;
@@ -214,7 +214,7 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 {
 	int c;
 	int i;
-	unsigned char *buf = NULL;
+	iw_byte *buf = NULL;
 	unsigned int v;
 
 	buf = iw_malloc(tiffctx->ctx,tiffctx->palette_size);
@@ -266,7 +266,7 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 #define IWTIFF_UINT32   4 // "LONG"
 #define IWTIFF_RATIONAL 5
 
-static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,unsigned char *buf)
+static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,iw_byte *buf)
 {
 	iwtiff_set_ui16(&buf[0],tagnum);
 	iwtiff_set_ui16(&buf[2],IWTIFF_UINT16); // tag type (default=short)
@@ -354,7 +354,7 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 {
 	unsigned int tmppos;
 	unsigned int ifd_size;
-	unsigned char *buf = NULL;
+	iw_byte *buf = NULL;
 	int i;
 
 	// Note that tags must be appended in increasing numeric order.
@@ -455,10 +455,10 @@ done:
 static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 {
 	struct iw_image *img;
-	unsigned char *dstrow = NULL;
+	iw_byte *dstrow = NULL;
 	size_t dstbpr;
 	int j;
-	const unsigned char *srcrow;
+	const iw_byte *srcrow;
 
 	img = tiffctx->img;
 

@@ -122,7 +122,7 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt64(struct iw_context *ctx,
 	size_t z;
 	int k;
 	union su_union {
-		unsigned char c[8];
+		iw_byte c[8];
 		iw_float64 f;
 	} su;
 
@@ -139,7 +139,7 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
 	size_t z;
 	int k;
 	union su_union {
-		unsigned char c[4];
+		iw_byte c[4];
 		iw_float32 f;
 	} su;
 
@@ -375,17 +375,17 @@ static IW_INLINE void put_raw_sample_16(struct iw_context *ctx, double s,
 
 	tmpui16 = (unsigned short)(0.5+s);
 	z = y*ctx->img2.bpr + (ctx->img2_numchannels*x + channel)*2;
-	ctx->img2.pixels[z+0] = (unsigned char)(tmpui16>>8);
-	ctx->img2.pixels[z+1] = (unsigned char)(tmpui16&0xff);
+	ctx->img2.pixels[z+0] = (iw_byte)(tmpui16>>8);
+	ctx->img2.pixels[z+1] = (iw_byte)(tmpui16&0xff);
 }
 
 // s is from 0.0 to 255.0
 static IW_INLINE void put_raw_sample_8(struct iw_context *ctx, double s,
 					   int x, int y, int channel)
 {
-	unsigned char tmpui8;
+	iw_byte tmpui8;
 
-	tmpui8 = (unsigned char)(0.5+s);
+	tmpui8 = (iw_byte)(0.5+s);
 	ctx->img2.pixels[y*ctx->img2.bpr + ctx->img2_numchannels*x + channel] = tmpui8;
 }
 
@@ -404,7 +404,7 @@ static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
 					   int x, int y, int channel)
 {
 	union su_union {
-		unsigned char c[4];
+		iw_byte c[4];
 		iw_float32 f;
 	} su;
 	int i;
@@ -423,7 +423,7 @@ static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
 					   int x, int y, int channel)
 {
 	union su_union {
-		unsigned char c[8];
+		iw_byte c[8];
 		iw_float64 f;
 	} su;
 	int i;
