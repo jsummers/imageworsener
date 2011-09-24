@@ -216,7 +216,22 @@ extern "C" {
 #define IW_OPT_STRIP_ALPHA  4   // strip superfluous alpha channels
 #define IW_OPT_BINARY_TRNS  5   // optimize to color-keyed binary transparency
 
-#define iw_byte unsigned char
+// Yeah, I know I should try to use <stdint.h> instead.
+#define iw_byte     unsigned char
+#define iw_float32  float
+#define iw_float64  double
+#define iw_uint16   unsigned short
+#define iw_uint32   unsigned int
+#ifdef IW_WINDOWS
+#define iw_int64    __int64
+#define iw_uint64   unsigned __int64
+#elif defined (__x86_64__)
+#define iw_int64    long
+#define iw_uint64   unsigned long
+#else
+#define iw_int64    long long
+#define iw_uint64   unsigned long long
+#endif
 
 // Colorspace descriptor
 struct iw_csdescr {
@@ -255,6 +270,7 @@ struct iw_iodescr;
 typedef int (*iw_readfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes, size_t *pbytesread);
 typedef int (*iw_writefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes);
 typedef int (*iw_closefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr);
+typedef int (*iw_seekfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, iw_int64 offset, int whence);
 typedef int (*iw_getfilesizefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, size_t *pfilesize);
 // I/O descriptor
 struct iw_iodescr {
@@ -277,6 +293,11 @@ struct iw_iodescr {
 
 	// Optional "close" function.
 	iw_closefn_type close_fn;
+
+	// Seek function might be required, depending on file format.
+	// On success, return 1.
+	// On error, return 0.
+	iw_closefn_type seek_fn;
 
 	// Function to return the file size. Some image formats may require this when
 	// reading.
@@ -445,19 +466,6 @@ char *iw_get_libwebp_enc_version_string(char *s, int s_len);
 // are extraneous to the main purpose of the library.
 // Applications are welcome to define IW_INCLUDE_UTIL_FUNCTIONS and use these
 // functions if they wish.
-
-// Yeah, I know I should try to use <stdint.h> instead.
-#define iw_float32  float
-#define iw_float64  double
-#define iw_uint16   unsigned short
-#define iw_uint32   unsigned int
-#ifdef IW_WINDOWS
-#define iw_uint64   unsigned __int64
-#elif defined (__x86_64__)
-#define iw_uint64   unsigned long
-#else
-#define iw_uint64   unsigned long long
-#endif
 
 void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
 
