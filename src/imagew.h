@@ -24,6 +24,8 @@
 extern "C" {
 #endif
 
+#define IW_EXPORT(x)  x
+
 // The version of the IW header files.
 // Use iw_get_version_int() to get the version at runtime.
 #define IW_VERSION_INT           0x000904
@@ -322,142 +324,142 @@ struct iw_stringtableentry {
 };
 
 struct iw_context *iw_create_context(void);
-void iw_destroy_context(struct iw_context *ctx);
+IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
 
-int iw_process_image(struct iw_context *ctx);
+IW_EXPORT(int) iw_process_image(struct iw_context *ctx);
 
 // Returns an extra pointer to buf.
 // buflen = buf size in char's.
-const char *iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen);
-int iw_get_errorflag(struct iw_context *ctx);
+IW_EXPORT(const char*) iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen);
+IW_EXPORT(int) iw_get_errorflag(struct iw_context *ctx);
 
-void iw_set_userdata(struct iw_context *ctx, void *userdata);
-void *iw_get_userdata(struct iw_context *ctx);
+IW_EXPORT(void) iw_set_userdata(struct iw_context *ctx, void *userdata);
+IW_EXPORT(void*) iw_get_userdata(struct iw_context *ctx);
 
 typedef void (*iw_warningfn_type)(struct iw_context *ctx, const char *msg);
-void iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warnfn);
+IW_EXPORT(void) iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warnfn);
 
 // Set the maximum amount to allocate at one time.
-void iw_set_max_malloc(struct iw_context *ctx, size_t n);
+IW_EXPORT(void) iw_set_max_malloc(struct iw_context *ctx, size_t n);
 
-void iw_set_output_canvas_size(struct iw_context *ctx, int w, int h);
+IW_EXPORT(void) iw_set_output_canvas_size(struct iw_context *ctx, int w, int h);
 
 // Crop before resizing.
-void iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h);
+IW_EXPORT(void) iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h);
 
-void iw_set_output_profile(struct iw_context *ctx, unsigned int n);
+IW_EXPORT(void) iw_set_output_profile(struct iw_context *ctx, unsigned int n);
 
-void iw_set_output_depth(struct iw_context *ctx, int bps);
+IW_EXPORT(void) iw_set_output_depth(struct iw_context *ctx, int bps);
 
-void iw_set_dither_type(struct iw_context *ctx, int channeltype, int family, int subtype);
+IW_EXPORT(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int family, int subtype);
 
 // Set the max number of shades per color (or alpha) channel.
 // The shades are evenly distributed in the target color space.
-void iw_set_color_count(struct iw_context *ctx, int channeltype, int c);
+IW_EXPORT(void) iw_set_color_count(struct iw_context *ctx, int channeltype, int c);
 
 // blur: 1.0 is normal. >1.0 blurs the image, <1.0 sharpens (&aliases) the image.
 // Not supported by all resize algorithms.
-void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, int family,
+IW_EXPORT(void) iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, int family,
     double blur, double param1, double param2);
 
 // Channeltype is an IW_CHANNELTYPE code.
 // dimension: IW_DIMENSION_H: Horizontal, positive=right
 //            IW_DIMENSION_V: Vertical, positive=down
-void iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimension, double offs);
+IW_EXPORT(void) iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimension, double offs);
 
 // Set the significant bits to something less than is stored in the file.
-void iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d);
+IW_EXPORT(void) iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d);
 
 // Color values are on a scale from 0 to 1, in the input colorspace.
-void iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b);
+IW_EXPORT(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b);
 
 // 'cs' indicates the colorspace of the samples given by the caller (IW_BKGDCOLORSPACE_*).
-void iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b);
+IW_EXPORT(void) iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b);
 
 // Must also call iw_set_applybkgd. This sets the second bkgd color, and the checkerboard size in pixels.
-void iw_set_bkgd_checkerboard(struct iw_context *ctx, int checkersize, double r2, double g2, double b2);
-void iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y);
+IW_EXPORT(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checkersize, double r2, double g2, double b2);
+IW_EXPORT(void) iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y);
 
 // Must be called *after* reading the file, or it will be overwritten.
 // IW copies the struct that the caller passes.
 // FIXME: This function's parameters are ugly.
-void iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr,
+IW_EXPORT(void) iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr,
    int require_valid, int warn_if_invalid);
 
 // Must be called *after* reading the file, or it will be overwritten.
 // IW copies the struct that the caller passes.
-void iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr);
+IW_EXPORT(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr);
 
-int iw_get_input_image_density(struct iw_context *ctx,
+IW_EXPORT(int) iw_get_input_image_density(struct iw_context *ctx,
    double *px, double *py, int *pcode);
 
-void iw_set_random_seed(struct iw_context *ctx, int randomize, int rand_seed);
+IW_EXPORT(void) iw_set_random_seed(struct iw_context *ctx, int randomize, int rand_seed);
 
-void iw_set_allow_opt(struct iw_context *ctx, int opt, int n);
+IW_EXPORT(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n);
 
 // Caller allocates the pixels with (preferably) iw_malloc_large().
 // The memory will be freed by IW.
 // A copy is made of the img structure itself.
-void iw_set_input_image(struct iw_context *ctx, const struct iw_image *img);
+IW_EXPORT(void) iw_set_input_image(struct iw_context *ctx, const struct iw_image *img);
 
 // Caller supplies an (uninitialized) iw_image structure, which the
 // function fills in.
-void iw_get_output_image(struct iw_context *ctx, struct iw_image *img);
+IW_EXPORT(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img);
 
 // Caller supplies an (uninitialized) iw_ccdescr structure, which the
 // function fills in.
-void iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr);
+IW_EXPORT(void) iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr);
 
-const struct iw_palette *iw_get_output_palette(struct iw_context *ctx);
+IW_EXPORT(const struct iw_palette*) iw_get_output_palette(struct iw_context *ctx);
 
-void iw_set_value(struct iw_context *ctx, int code, int n);
-int iw_get_value(struct iw_context *ctx, int code);
+IW_EXPORT(void) iw_set_value(struct iw_context *ctx, int code, int n);
+IW_EXPORT(int) iw_get_value(struct iw_context *ctx, int code);
 
-void iw_set_value_dbl(struct iw_context *ctx, int code, double n);
-double iw_get_value_dbl(struct iw_context *ctx, int code);
+IW_EXPORT(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n);
+IW_EXPORT(double) iw_get_value_dbl(struct iw_context *ctx, int code);
 
-void iw_set_error(struct iw_context *ctx, const char *s);
-void iw_set_errorf(struct iw_context *ctx, const char *fmt, ...);
-void iw_warningf(struct iw_context *ctx, const char *fmt, ...);
+IW_EXPORT(void) iw_set_error(struct iw_context *ctx, const char *s);
+IW_EXPORT(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...);
+IW_EXPORT(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...);
 
 // Returns the number of bytes in the data type used to store a sample
 // internally.
-int iw_get_sample_size(void);
+IW_EXPORT(int) iw_get_sample_size(void);
 
 // Returns an integer representing the IW version.
 // For example, 0x010203 would be version 1.2.3.
-int iw_get_version_int(void);
+IW_EXPORT(int) iw_get_version_int(void);
 
 // Next two functions:
 // The ctx param is to allow for the possibility of localization. It can be NULL.
 // Returns a pointer to s.
-char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len);
-char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len);
+IW_EXPORT(char*) iw_get_version_string(struct iw_context *ctx, char *s, int s_len);
+IW_EXPORT(char*) iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len);
 
 // A helper function you can use to help deal with strings received
 // from the IW library.
-void iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
+IW_EXPORT(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
 
-void iw_set_string_table(struct iw_context *ctx, int tablenum, const struct iw_stringtableentry *st);
-const char *iw_get_string_direct(const struct iw_stringtableentry *st, int n);
-const char *iw_get_string(struct iw_context *ctx, int tablenum, int n);
+IW_EXPORT(void) iw_set_string_table(struct iw_context *ctx, int tablenum, const struct iw_stringtableentry *st);
+IW_EXPORT(const char*) iw_get_string_direct(const struct iw_stringtableentry *st, int n);
+IW_EXPORT(const char*) iw_get_string(struct iw_context *ctx, int tablenum, int n);
 
-int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-char *iw_get_libpng_version_string(char *s, int s_len);
-char *iw_get_zlib_version_string(char *s, int s_len);
-int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-char *iw_get_libjpeg_version_string(char *s, int s_len);
-int iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-int iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
-char *iw_get_libwebp_dec_version_string(char *s, int s_len);
-char *iw_get_libwebp_enc_version_string(char *s, int s_len);
+IW_EXPORT(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(char*) iw_get_libpng_version_string(char *s, int s_len);
+IW_EXPORT(char*) iw_get_zlib_version_string(char *s, int s_len);
+IW_EXPORT(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(char*) iw_get_libjpeg_version_string(char *s, int s_len);
+IW_EXPORT(int) iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(char*) iw_get_libwebp_dec_version_string(char *s, int s_len);
+IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);
 
 
 #ifdef IW_INCLUDE_UTIL_FUNCTIONS
@@ -467,48 +469,48 @@ char *iw_get_libwebp_enc_version_string(char *s, int s_len);
 // Applications are welcome to define IW_INCLUDE_UTIL_FUNCTIONS and use these
 // functions if they wish.
 
-void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
+IW_EXPORT(void) iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
 
-void iw_strlcpy(char *dst, const char *src, size_t dstlen);
-void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
-void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
+IW_EXPORT(void) iw_strlcpy(char *dst, const char *src, size_t dstlen);
+IW_EXPORT(void) iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
+IW_EXPORT(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
 
-int iw_imgtype_num_channels(int t);
+IW_EXPORT(int) iw_imgtype_num_channels(int t);
 
-size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
+IW_EXPORT(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
 
-double iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
+IW_EXPORT(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
 
 // Utility function to check that the supplied dimensions are
 // considered valid by IW. If not, generates a warning and returns 0.
-int iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
+IW_EXPORT(int) iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
 
-int iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
+IW_EXPORT(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
   void **pmem, size_t *psize);
 
 // Allocates a block of memory. Does not check the value of n.
 // Returns NULL on failure.
-void *iw_malloc_lowlevel(size_t n);
-void *iw_realloc_lowlevel(void *m, size_t n);
+IW_EXPORT(void*) iw_malloc_lowlevel(size_t n);
+IW_EXPORT(void*) iw_realloc_lowlevel(void *m, size_t n);
 
 // Allocates a block of memory of size n. On failure, generates an error
 // and returns NULL.
 // This function verifies that the memory block is not larger than the
 // amount set by iw_set_max_malloc().
-void *iw_malloc(struct iw_context *ctx, size_t n);
-void *iw_realloc(struct iw_context *ctx, void *m, size_t n);
+IW_EXPORT(void*) iw_malloc(struct iw_context *ctx, size_t n);
+IW_EXPORT(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n);
 
 // Same as iw_malloc, but allocates a block of memory of size n1*n2.
 // This function is careful to avoid integer overflow.
-void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2);
+IW_EXPORT(void*) iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2);
 
-void *iw_strdup(const char *s);
+IW_EXPORT(void*) iw_strdup(const char *s);
 
 // Free memory allocated by an iw_malloc* function.
 // If mem is NULL, does nothing.
-void iw_free(void *mem);
+IW_EXPORT(void) iw_free(void *mem);
 
-int iw_get_host_endianness(void);
+IW_EXPORT(int) iw_get_host_endianness(void);
 
 #endif // IW_INCLUDE_UTIL_FUNCTIONS
 
