@@ -82,10 +82,10 @@ struct iw_channelinfo_out {
 
 	// If restricting to a number of colors, colors are evenly
 	// spaced (as evenly spaced as possible) in the target color space.
-	int color_count; // 0=default, otherwise ideally it should be 2, 4, 16, 18, 52, 86
+	int color_count; // 0=default
 
 	IW_SAMPLE bkgd_color_lin; // Used if ctx->apply_bkgd
-	IW_SAMPLE bkgd2_color_lin; // Used if ctx->apply_bkgd
+	IW_SAMPLE bkgd2_color_lin; // Used if ctx->apply_bkgd && bkgd_checkerboard
 };
 
 struct iw_prng; // Defined imagew-util.c
@@ -122,18 +122,8 @@ struct iw_context {
 
 	int num_in_pix;
 	int num_out_pix;
-	IW_SAMPLE *in_pix; // A single row of pixels
-	IW_SAMPLE *out_pix; // A single row of pixels
-
-	int num_tmp_row;
-
-	// Samples are normally in the range 0.0 and 1.0.
-	// However, intermediate samples are allowed to have values beyond this
-	// range. This is important when using resampling filters that have
-	// "overshoot". If we were to clamp the intermediate values to the normal
-	// range, it could make the algorithm "non-separable". That is, the final
-	// image would not be the same as if we had resized both dimensions
-	// simultaneously.
+	IW_SAMPLE *in_pix; // A single row of source samples to resample.
+	IW_SAMPLE *out_pix; // The resulting resampled row.
 
 	IW_SAMPLE *intermediate;
 	IW_SAMPLE *intermediate_alpha;
@@ -169,7 +159,7 @@ struct iw_context {
 	int ditherfamily_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 	int dithersubtype_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 	int uses_errdiffdither;
-	struct iw_prng *prng;
+	struct iw_prng *prng; // Pseudorandom number generator state
 
 	// Algorithms to use when changing the horizontal size.
 	// Indexed by IW_DIMENSION_*.
@@ -224,7 +214,7 @@ struct iw_context {
 	struct iw_opt_ctx optctx;
 
 	int no_gamma; // Disable gamma correction. (IW_VAL_DISABLE_GAMMA)
-	int intclamp; // clamp the intermediate samples to the 0.0-1.0 range
+	int intclamp; // Clamp the intermediate samples to the 0.0-1.0 range.
 	int no_cslabel; // Disable writing of a colorspace label to the output file.
 	int edge_policy;
 	int grayscale_formula;
@@ -240,7 +230,7 @@ struct iw_context {
 	int canvas_width, canvas_height;
 	int input_start_x, input_start_y, input_w, input_h;
 
-	// Not used by the core library, but codecs may use this:
+	// These are not used by the core library, but codecs may use them:
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
 	int pngcmprlevel;
@@ -251,7 +241,7 @@ struct iw_context {
 	double *input_color_corr_table;
 	// This is not for converting linear to the output colorspace; it's the
 	// same as input_color_corr_table except that it might have a different
-	// number of entries (and might be from a different colorspace).
+	// number of entries, and might be for a different colorspace.
 	double *output_rev_color_corr_table;
 
 	struct iw_weightlist_struct weightlist;

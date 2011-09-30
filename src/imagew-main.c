@@ -865,7 +865,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	ditherfamily = ctx->img2_ci[output_channel].ditherfamily;
 	dithersubtype = ctx->img2_ci[output_channel].dithersubtype;
 	if(ditherfamily==IW_DITHERFAMILY_RANDOM) {
-		// Decide wat random seed to use. The alpha channel always has its own
+		// Decide what random seed to use. The alpha channel always has its own
 		// seed. If using "r" (not "r2") dithering, every channel has its own seed.
 		if(dithersubtype==IW_DITHERSUBTYPE_SAMEPATTERN && output_channeltype!=IW_CHANNELTYPE_ALPHA)
 		{
@@ -926,7 +926,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 			tmpsamp = ctx->out_pix[i];
 
 			if(handle_alpha_flag) {
-				// Special processing for (partially) transparent pixel.
+				// Special processing for (partially) transparent pixels.
 				alphasamp = ctx->final_alpha[((size_t)j)*ctx->img2.width + i];
 				if(alphasamp>0.0) {
 					tmpsamp /= alphasamp;
