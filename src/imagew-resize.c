@@ -262,14 +262,6 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 				}
 			}
 		}
-		else {
-			// No usable input samples were found. Just copy one of the edge samples.
-			if(first_input_pixel<0)
-				pix_to_read = 0;
-			else
-				pix_to_read = ctx->num_in_pix-1;
-			iw_add_to_weightlist(ctx,pix_to_read,out_pix,1.0);
-		}
 	}
 }
 
