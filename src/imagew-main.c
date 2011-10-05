@@ -622,9 +622,7 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 		// Example: color_count = 4, bit_depth = 8;
 		// Colors are from 0.0 to 3.0, mapped to 0.0 to 255.0.
 		// Reduction factor is 255.0/3.0 = 85.0
-		if(channel==3) {
-			channel=channel;
-		}
+
 		maxcolorcode = (double)(ctx->img2_ci[channel].color_count-1);
 
 		samp_cvt_expanded = samp_cvt * maxcolorcode;
@@ -660,6 +658,36 @@ static void put_sample_convert_from_linear_flt(struct iw_context *ctx, IW_SAMPLE
 	put_raw_sample_flt(ctx,(double)samp_lin,x,y,channel);
 }
 
+static double get_final_sample_using_nc_tbl(struct iw_context *ctx, IW_SAMPLE samp_lin)
+{
+	unsigned int x;
+	unsigned int d;
+
+	// For numbers 0 through 254, find the smallest one for which the
+	// corresponding table value is larger than samp_lin.
+
+	// Do a binary search.
+
+	x = 127;
+	d = 64;
+
+	while(1) {
+		if(x>254 || ctx->nearest_color_table[x] > samp_lin)
+			x -= d;
+		else
+			x += d;
+
+		if(d==1) {
+			if(x>254 || ctx->nearest_color_table[x] > samp_lin)
+				return (double)(x);
+			else
+				return (double)(x+1);
+		}
+
+		d = d/2;
+	}
+}
+
 // channel is the output channel
 static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE samp_lin,
 					   int x, int y, int channel, const struct iw_csdescr *csdescr)
@@ -671,6 +699,20 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 	double s_full;
 	int ditherfamily;
 	int dd; // Dither decision: 0 to use floor, 1 to use ceil.
+
+	// TODO: This is getting messy. The conditions under which we use lookup
+	// tables are too complicated, and we still don't use them as often as we
+	// should. For example, if we are not dithering, we can use a table optimized
+	// for telling us the single nearest color. But if we are dithering, then we
+	// instead need to know both the next-highest and next-lowest colors, which
+	// would require a different table. The same table could be used for both,
+	// but not quite as efficiently. Currently, we don't use use a lookup table
+	// when dithering, except that we may still use one to do some of the
+	// intermediate computations. Etc.
+	if(ctx->img2_ci[channel].use_nearest_color_table) {
+		s_full = get_final_sample_using_nc_tbl(ctx,samp_lin);
+		goto okay;
+	}
 
 	ditherfamily=ctx->img2_ci[channel].ditherfamily;
 
@@ -861,6 +903,17 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		ctx->out_pix = outpix;
 	}
 
+	// Decide if the 'nearest color table' optimization can be used
+	if(ctx->nearest_color_table && !is_alpha_channel &&
+	   ctx->img2_ci[output_channel].ditherfamily==IW_DITHERFAMILY_NONE &&
+	   ctx->img2_ci[output_channel].color_count==0)
+	{
+		ctx->img2_ci[output_channel].use_nearest_color_table = 1;
+	}
+	else {
+		ctx->img2_ci[output_channel].use_nearest_color_table = 0;
+	}
+
 	// Seed the PRNG, if necessary.
 	ditherfamily = ctx->img2_ci[output_channel].ditherfamily;
 	dithersubtype = ctx->img2_ci[output_channel].dithersubtype;
@@ -1040,6 +1093,48 @@ static void iw_make_x_to_linear_table(struct iw_context *ctx, double **ptable,
 	*ptable = tbl;
 }
 
+// 
+static void iw_make_nearest_color_table(struct iw_context *ctx, double **ptable,
+	const struct iw_image *img, const struct iw_csdescr *csdescr)
+{
+	int ncolors;
+	int nentries;
+	int i;
+	double *tbl;
+	double prev;
+	double curr;
+
+	if(ctx->no_gamma) return;
+	if(csdescr->cstype==IW_CSTYPE_LINEAR) return;
+	if(img->sampletype==IW_SAMPLETYPE_FLOATINGPOINT) return;
+	if(img->bit_depth != ctx->output_depth) return;
+
+	ncolors = (1 << img->bit_depth);
+	if(ncolors>256) return;
+	nentries = ncolors-1;
+
+	// Don't make a table if the image is really small.
+	if( ((size_t)img->width)*img->height <= 512 ) return;
+
+	tbl = iw_malloc(ctx,nentries*sizeof(double));
+	if(!tbl) return;
+
+	// Table stores the maximum value for the given entry.
+	// The final entry is omitted, since there is no maximum value.
+	prev = 0.0;
+	for(i=0;i<nentries;i++) {
+		// This conversion may appear to be going in the wrong direction
+		// (we're coverting *from* linear), but it's correct because we will
+		// search through its contents to find the corresponding index,
+		// instead of vice versa.
+		curr = x_to_linear_sample( ((double)(i+1))/(ncolors-1), csdescr);
+		tbl[i] = (prev + curr)/2.0;
+		prev = curr;
+	}
+
+	*ptable = tbl;
+}
+
 static int iw_process_internal(struct iw_context *ctx)
 {
 	int channel;
@@ -1086,6 +1181,8 @@ static int iw_process_internal(struct iw_context *ctx)
 	}
 
 	iw_make_x_to_linear_table(ctx,&ctx->output_rev_color_corr_table,&ctx->img2,&ctx->img2cs);
+
+	iw_make_nearest_color_table(ctx,&ctx->nearest_color_table,&ctx->img2,&ctx->img2cs);
 
 	// If an alpha channel is present, we have to process it first.
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {

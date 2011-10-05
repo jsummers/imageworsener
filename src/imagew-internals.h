@@ -84,6 +84,8 @@ struct iw_channelinfo_out {
 	// spaced (as evenly spaced as possible) in the target color space.
 	int color_count; // 0=default
 
+	int use_nearest_color_table;
+
 	IW_SAMPLE bkgd_color_lin; // Used if ctx->apply_bkgd
 	IW_SAMPLE bkgd2_color_lin; // Used if ctx->apply_bkgd && bkgd_checkerboard
 };
@@ -243,6 +245,8 @@ struct iw_context {
 	// same as input_color_corr_table except that it might have a different
 	// number of entries, and might be for a different colorspace.
 	double *output_rev_color_corr_table;
+
+	double *nearest_color_table;
 
 	struct iw_weightlist_struct weightlist;
 	double cur_offset;

@@ -373,8 +373,6 @@ Features I'm considering adding:
 - More options for specifying the image size to use; e.g. "enlarge the image
   only if it's smaller than a certain size".
 
-- Faster conversion from linear colors to the target colorspace.
-
 - Better detection of syntax errors on the command line.
 
 - More options for aligning the input pixels with the output pixels.

@@ -1,4 +1,6 @@
 Unreleased changes
+ - Use a binary search to find the nearest available color. Improves speed
+   by about 15% in many cases.
  - Random dithering now uses a private pseudorandom number generator.
  - Changed the default PNG compression level to 9.
  - Updated the format of grayscale MIFF files to be compatible with the
