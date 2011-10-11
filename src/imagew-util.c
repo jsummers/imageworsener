@@ -300,3 +300,54 @@ int iw_get_host_endianness(void)
 	return 0;
 }
 
+int iw_detect_fmt_from_filename(const char *fn)
+{
+	char *s;
+	s=strrchr(fn,'.');
+	if(!s) return IW_FORMAT_UNKNOWN;
+	s++;
+
+	if(!iwpvt_stricmp(s,"png")) return IW_FORMAT_PNG;
+	if(!iwpvt_stricmp(s,"jpg")) return IW_FORMAT_JPEG;
+	if(!iwpvt_stricmp(s,"jpeg")) return IW_FORMAT_JPEG;
+	if(!iwpvt_stricmp(s,"bmp")) return IW_FORMAT_BMP;
+	if(!iwpvt_stricmp(s,"tif")) return IW_FORMAT_TIFF;
+	if(!iwpvt_stricmp(s,"tiff")) return IW_FORMAT_TIFF;
+	if(!iwpvt_stricmp(s,"miff")) return IW_FORMAT_MIFF;
+	if(!iwpvt_stricmp(s,"webp")) return IW_FORMAT_WEBP;
+	if(!iwpvt_stricmp(s,"gif")) return IW_FORMAT_GIF;
+	return IW_FORMAT_UNKNOWN;
+}
+
+int iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
+{
+	int fmt = IW_FORMAT_UNKNOWN;
+
+	if(n<2) return fmt;
+
+	if(buf[0]==0x89 && buf[1]==0x50) {
+		fmt=IW_FORMAT_PNG;
+	}
+	else if(n>=3 && buf[0]=='G' && buf[1]=='I' && buf[2]=='F') {
+		fmt=IW_FORMAT_GIF;
+	}
+	else if(buf[0]==0xff && buf[1]==0xd8) {
+		fmt=IW_FORMAT_JPEG;
+	}
+	else if(buf[0]==0x42 && buf[1]==0x4d) {
+		fmt=IW_FORMAT_BMP;
+	}
+	else if((buf[0]==0x49 || buf[0]==0x4d) && buf[1]==buf[0]) {
+		fmt=IW_FORMAT_TIFF;
+	}
+	else if(buf[0]==0x69 && buf[1]==0x64) {
+		fmt=IW_FORMAT_MIFF;
+	}
+	else if(n>=12 && buf[0]==0x52 && buf[1]==0x49 && buf[2]==0x46 && buf[3]==0x46 &&
+	   buf[8]==0x57 && buf[9]==0x45 && buf[10]==0x42 && buf[11]==0x50)
+	{
+		fmt=IW_FORMAT_WEBP;
+	}
+
+	return fmt;
+}

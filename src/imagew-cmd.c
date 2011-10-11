@@ -40,25 +40,10 @@
 #include <strsafe.h>
 #endif
 
-#ifdef IW_WINDOWS
-#define iwcmd_stricmp   _stricmp
-#else
-#define iwcmd_stricmp   strcasecmp
-#endif
-
 #define IWCMD_ENCODING_AUTO   0
 #define IWCMD_ENCODING_ASCII  1
 #define IWCMD_ENCODING_UTF8   2
 #define IWCMD_ENCODING_UTF16  3
-
-#define IWCMD_FMT_UNKNOWN 0
-#define IWCMD_FMT_PNG  1
-#define IWCMD_FMT_JPEG 2
-#define IWCMD_FMT_BMP  3
-#define IWCMD_FMT_TIFF 4
-#define IWCMD_FMT_MIFF 5
-#define IWCMD_FMT_WEBP 6
-#define IWCMD_FMT_GIF  7
 
 struct rgb_color {
 	double r,g,b;
@@ -318,35 +303,16 @@ static void my_warning_handler(struct iw_context *ctx, const char *msg)
 // This is used to process the parameter of -infmt/-outfmt.
 static int get_fmt_from_name(const char *s)
 {
-	if(!strcmp(s,"png")) return IWCMD_FMT_PNG;
-	if(!strcmp(s,"jpg")) return IWCMD_FMT_JPEG;
-	if(!strcmp(s,"jpeg")) return IWCMD_FMT_JPEG;
-	if(!strcmp(s,"bmp")) return IWCMD_FMT_BMP;
-	if(!strcmp(s,"tif")) return IWCMD_FMT_TIFF;
-	if(!strcmp(s,"tiff")) return IWCMD_FMT_TIFF;
-	if(!strcmp(s,"miff")) return IWCMD_FMT_MIFF;
-	if(!strcmp(s,"webp")) return IWCMD_FMT_WEBP;
-	if(!strcmp(s,"gif")) return IWCMD_FMT_GIF;
-	return IWCMD_FMT_UNKNOWN;
-}
-
-static int detect_fmt_from_filename(const char *fn)
-{
-	char *s;
-	s=strrchr(fn,'.');
-	if(!s) return IWCMD_FMT_UNKNOWN;
-	s++;
-
-	if(!iwcmd_stricmp(s,"png")) return IWCMD_FMT_PNG;
-	if(!iwcmd_stricmp(s,"jpg")) return IWCMD_FMT_JPEG;
-	if(!iwcmd_stricmp(s,"jpeg")) return IWCMD_FMT_JPEG;
-	if(!iwcmd_stricmp(s,"bmp")) return IWCMD_FMT_BMP;
-	if(!iwcmd_stricmp(s,"tif")) return IWCMD_FMT_TIFF;
-	if(!iwcmd_stricmp(s,"tiff")) return IWCMD_FMT_TIFF;
-	if(!iwcmd_stricmp(s,"miff")) return IWCMD_FMT_MIFF;
-	if(!iwcmd_stricmp(s,"webp")) return IWCMD_FMT_WEBP;
-	if(!iwcmd_stricmp(s,"gif")) return IWCMD_FMT_GIF;
-	return IWCMD_FMT_UNKNOWN;
+	if(!strcmp(s,"png")) return IW_FORMAT_PNG;
+	if(!strcmp(s,"jpg")) return IW_FORMAT_JPEG;
+	if(!strcmp(s,"jpeg")) return IW_FORMAT_JPEG;
+	if(!strcmp(s,"bmp")) return IW_FORMAT_BMP;
+	if(!strcmp(s,"tif")) return IW_FORMAT_TIFF;
+	if(!strcmp(s,"tiff")) return IW_FORMAT_TIFF;
+	if(!strcmp(s,"miff")) return IW_FORMAT_MIFF;
+	if(!strcmp(s,"webp")) return IW_FORMAT_WEBP;
+	if(!strcmp(s,"gif")) return IW_FORMAT_GIF;
+	return IW_FORMAT_UNKNOWN;
 }
 
 static const char *get_fmt_name(int fmt)
@@ -354,13 +320,13 @@ static const char *get_fmt_name(int fmt)
 	static const char *n;
 	n="(unknown)";
 	switch(fmt) {
-	case IWCMD_FMT_PNG:  n="PNG";  break;
-	case IWCMD_FMT_JPEG: n="JPEG"; break;
-	case IWCMD_FMT_BMP:  n="BMP";  break;
-	case IWCMD_FMT_TIFF: n="TIFF"; break;
-	case IWCMD_FMT_MIFF: n="MIFF"; break;
-	case IWCMD_FMT_WEBP: n="WebP"; break;
-	case IWCMD_FMT_GIF:  n="GIF";  break;
+	case IW_FORMAT_PNG:  n="PNG";  break;
+	case IW_FORMAT_JPEG: n="JPEG"; break;
+	case IW_FORMAT_BMP:  n="BMP";  break;
+	case IW_FORMAT_TIFF: n="TIFF"; break;
+	case IW_FORMAT_MIFF: n="MIFF"; break;
+	case IW_FORMAT_WEBP: n="WebP"; break;
+	case IW_FORMAT_GIF:  n="GIF";  break;
 	}
 	return n;
 }
@@ -371,40 +337,14 @@ static const char *get_fmt_name(int fmt)
 static int detect_fmt_of_file(FILE *fp)
 {
 	unsigned char buf[12];
-	int fmt=IWCMD_FMT_UNKNOWN;
 	size_t n;
 
 	n=fread(buf,1,12,fp);
 	clearerr(fp);
 	fseek(fp,0,SEEK_SET);
-	if(n<2) goto done;
+	if(n<2) return IW_FORMAT_UNKNOWN;
 
-	if(buf[0]==0x89 && buf[1]==0x50) {
-		fmt=IWCMD_FMT_PNG;
-	}
-	else if(buf[0]=='G' && buf[1]=='I' && buf[2]=='F') {
-		fmt=IWCMD_FMT_GIF;
-	}
-	else if(buf[0]==0xff && buf[1]==0xd8) {
-		fmt=IWCMD_FMT_JPEG;
-	}
-	else if(buf[0]==0x42 && buf[1]==0x4d) {
-		fmt=IWCMD_FMT_BMP;
-	}
-	else if((buf[0]==0x49 || buf[0]==0x4d) && buf[1]==buf[0]) {
-		fmt=IWCMD_FMT_TIFF;
-	}
-	else if(buf[0]==0x69 && buf[1]==0x64) {
-		fmt=IWCMD_FMT_MIFF;
-	}
-	else if(n>=12 && buf[0]==0x52 && buf[1]==0x49 && buf[2]==0x46 && buf[3]==0x46 &&
-	   buf[8]==0x57 && buf[9]==0x45 && buf[10]==0x42 && buf[11]==0x50)
-	{
-		fmt=IWCMD_FMT_WEBP;
-	}
-
-done:
-	return fmt;
+	return iw_detect_fmt_of_file((const iw_byte*)buf,n);
 }
 
 // Updates p->new_width and p->new_height
@@ -491,16 +431,16 @@ static int is_input_fmt_supported(int fmt)
 {
 	switch(fmt) {
 #if IW_SUPPORT_PNG == 1
-	case IWCMD_FMT_PNG:
+	case IW_FORMAT_PNG:
 #endif
 #if IW_SUPPORT_JPEG == 1
-	case IWCMD_FMT_JPEG:
+	case IW_FORMAT_JPEG:
 #endif
 #if IW_SUPPORT_WEBP == 1
-	case IWCMD_FMT_WEBP:
+	case IW_FORMAT_WEBP:
 #endif
-	case IWCMD_FMT_MIFF:
-	case IWCMD_FMT_GIF:
+	case IW_FORMAT_MIFF:
+	case IW_FORMAT_GIF:
 		return 1;
 	}
 	return 0;
@@ -510,17 +450,17 @@ static int is_output_fmt_supported(int fmt)
 {
 	switch(fmt) {
 #if IW_SUPPORT_PNG == 1
-	case IWCMD_FMT_PNG:
+	case IW_FORMAT_PNG:
 #endif
 #if IW_SUPPORT_JPEG == 1
-	case IWCMD_FMT_JPEG:
+	case IW_FORMAT_JPEG:
 #endif
 #if IW_SUPPORT_WEBP == 1
-	case IWCMD_FMT_WEBP:
+	case IW_FORMAT_WEBP:
 #endif
-	case IWCMD_FMT_BMP:
-	case IWCMD_FMT_TIFF:
-	case IWCMD_FMT_MIFF:
+	case IW_FORMAT_BMP:
+	case IW_FORMAT_TIFF:
+	case IW_FORMAT_MIFF:
 		return 1;
 	}
 	return 0;
@@ -551,10 +491,10 @@ static int run(struct params_struct *p)
 
 	// Decide on the output format as early as possible, so we can give up
 	// quickly if it's not supported.
-	if(p->outfmt==IWCMD_FMT_UNKNOWN)
-		p->outfmt=detect_fmt_from_filename(p->outfn);
+	if(p->outfmt==IW_FORMAT_UNKNOWN)
+		p->outfmt=iw_detect_fmt_from_filename(p->outfn);
 
-	if(p->outfmt==IWCMD_FMT_UNKNOWN) {
+	if(p->outfmt==IW_FORMAT_UNKNOWN) {
 		iw_set_error(ctx,"Unknown output format; use -outfmt.");
 		goto done;
 	}
@@ -588,10 +528,10 @@ static int run(struct params_struct *p)
 	}
 
 	// Decide on the input format.
-	if(p->infmt==IWCMD_FMT_UNKNOWN)
+	if(p->infmt==IW_FORMAT_UNKNOWN)
 		p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
 
-	if(p->infmt==IWCMD_FMT_UNKNOWN) {
+	if(p->infmt==IW_FORMAT_UNKNOWN) {
 		iw_set_error(ctx,"Unknown input file format.");
 		goto done;
 	}
@@ -601,24 +541,24 @@ static int run(struct params_struct *p)
 
 	switch(p->infmt) {
 #if IW_SUPPORT_PNG == 1
-	case IWCMD_FMT_PNG:
+	case IW_FORMAT_PNG:
 		if(!iw_read_png_file(ctx,&readdescr)) goto done;
 		break;
 #endif
 #if IW_SUPPORT_JPEG == 1
-	case IWCMD_FMT_JPEG:
+	case IW_FORMAT_JPEG:
 		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
 		break;
 #endif
 #if IW_SUPPORT_WEBP == 1
-	case IWCMD_FMT_WEBP:
+	case IW_FORMAT_WEBP:
 		if(!iw_read_webp_file(ctx,&readdescr)) goto done;
 		break;
 #endif
-	case IWCMD_FMT_MIFF:
+	case IW_FORMAT_MIFF:
 		if(!iw_read_miff_file(ctx,&readdescr)) goto done;
 		break;
-	case IWCMD_FMT_GIF:
+	case IW_FORMAT_GIF:
 		if(!iw_read_gif_file(ctx,&readdescr)) goto done;
 		break;
 	default:
@@ -633,19 +573,19 @@ static int run(struct params_struct *p)
 	// We have to tell the library the output format, so it can know what
 	// kinds of images are allowed (e.g. whether transparency is allowed).
 	switch(p->outfmt) {
-	case IWCMD_FMT_JPEG:
+	case IW_FORMAT_JPEG:
 		iw_set_output_profile(ctx,IW_PROFILE_JPEG);
 		break;
-	case IWCMD_FMT_BMP:
+	case IW_FORMAT_BMP:
 		iw_set_output_profile(ctx,IW_PROFILE_BMP);
 		break;
-	case IWCMD_FMT_TIFF:
+	case IW_FORMAT_TIFF:
 		iw_set_output_profile(ctx,IW_PROFILE_TIFF);
 		break;
-	case IWCMD_FMT_MIFF:
+	case IW_FORMAT_MIFF:
 		iw_set_output_profile(ctx,IW_PROFILE_MIFF);
 		break;
-	case IWCMD_FMT_WEBP:
+	case IW_FORMAT_WEBP:
 		iw_set_output_profile(ctx,IW_PROFILE_WEBP);
 		break;
 	default:
@@ -814,7 +754,7 @@ static int run(struct params_struct *p)
 		goto done;
 	}
 
-	if(p->outfmt==IWCMD_FMT_JPEG) {
+	if(p->outfmt==IW_FORMAT_JPEG) {
 #if IW_SUPPORT_JPEG == 1
 		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
 		if(p->jpeg_samp_factor_h>0)
@@ -826,16 +766,16 @@ static int run(struct params_struct *p)
 		iw_set_error(ctx,"JPEG is not supported by this copy of imagew.");
 #endif
 	}
-	else if(p->outfmt==IWCMD_FMT_BMP) {
+	else if(p->outfmt==IW_FORMAT_BMP) {
 		if(!iw_write_bmp_file(ctx,&writedescr)) goto done;
 	}
-	else if(p->outfmt==IWCMD_FMT_TIFF) {
+	else if(p->outfmt==IW_FORMAT_TIFF) {
 		if(!iw_write_tiff_file(ctx,&writedescr)) goto done;
 	}
-	else if(p->outfmt==IWCMD_FMT_MIFF) {
+	else if(p->outfmt==IW_FORMAT_MIFF) {
 		if(!iw_write_miff_file(ctx,&writedescr)) goto done;
 	}
-	else if(p->outfmt==IWCMD_FMT_WEBP) {
+	else if(p->outfmt==IW_FORMAT_WEBP) {
 #if IW_SUPPORT_WEBP == 1
 		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
 		if(!iw_write_webp_file(ctx,&writedescr)) goto done;
@@ -1706,14 +1646,14 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_INFMT:
 		p->infmt=get_fmt_from_name(v);
-		if(p->infmt==IWCMD_FMT_UNKNOWN) {
+		if(p->infmt==IW_FORMAT_UNKNOWN) {
 			iwcmd_error(p,"Unknown format \xe2\x80\x9c%s\xe2\x80\x9d\n",v);
 			return 0;
 		}
 		break;
 	case PT_OUTFMT:
 		p->outfmt=get_fmt_from_name(v);
-		if(p->outfmt==IWCMD_FMT_UNKNOWN) {
+		if(p->outfmt==IW_FORMAT_UNKNOWN) {
 			iwcmd_error(p,"Unknown format \xe2\x80\x9c%s\xe2\x80\x9d\n",v);
 			return 0;
 		}
@@ -1881,8 +1821,8 @@ static int iwcmd_main(int argc, char* argv[])
 	p.bestfit = 0;
 	p.offset_r_h=0.0; p.offset_g_h=0.0; p.offset_b_h=0.0;
 	p.offset_r_v=0.0; p.offset_g_v=0.0; p.offset_b_v=0.0;
-	p.infmt=IWCMD_FMT_UNKNOWN;
-	p.outfmt=IWCMD_FMT_UNKNOWN;
+	p.infmt=IW_FORMAT_UNKNOWN;
+	p.outfmt=IW_FORMAT_UNKNOWN;
 	p.output_encoding=IWCMD_ENCODING_AUTO;
 	p.output_encoding_setmode=IWCMD_ENCODING_AUTO;
 	p.resize_alg_x.blur = 1.0;

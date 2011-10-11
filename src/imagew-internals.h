@@ -9,8 +9,10 @@
 
 #ifdef IW_WINDOWS
 #define IW_INLINE __inline
+#define iwpvt_stricmp _stricmp
 #else
 #define IW_INLINE inline
+#define iwpvt_stricmp strcasecmp
 #endif
 
 #define IW_ERRMSG_MAX 200

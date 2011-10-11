@@ -82,6 +82,17 @@ extern "C" {
 
 #define IW_VAL_WEBP_QUALITY      38
 
+
+// File formats.
+#define IW_FORMAT_UNKNOWN  0
+#define IW_FORMAT_PNG      1
+#define IW_FORMAT_JPEG     2
+#define IW_FORMAT_BMP      3
+#define IW_FORMAT_TIFF     4
+#define IW_FORMAT_MIFF     5
+#define IW_FORMAT_WEBP     6
+#define IW_FORMAT_GIF      7
+
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.
 
@@ -443,6 +454,12 @@ IW_EXPORT(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
 IW_EXPORT(void) iw_set_string_table(struct iw_context *ctx, int tablenum, const struct iw_stringtableentry *st);
 IW_EXPORT(const char*) iw_get_string_direct(const struct iw_stringtableentry *st, int n);
 IW_EXPORT(const char*) iw_get_string(struct iw_context *ctx, int tablenum, int n);
+
+// Returns an IW_FORMAT_* code based on the supplied filename.
+IW_EXPORT(int) iw_detect_fmt_from_filename(const char *fn);
+// Returns an IW_FORMAT_* code based on the (partial) memory-mapped file supplied.
+// In most cases, 16 bytes is sufficient.
+IW_EXPORT(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t buflen);
 
 IW_EXPORT(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
