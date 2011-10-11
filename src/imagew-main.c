@@ -1282,17 +1282,12 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 		ctx->img2.sampletype=IW_SAMPLETYPE_UINT;
 	}
 
-	if(ctx->img2.sampletype==IW_SAMPLETYPE_UINT && !(ctx->output_profile&IW_PROFILE_16BPS)
-		&& ctx->output_depth>8)
-	{
-		iwpvt_warn(ctx,iws_warn_reduce_to_8);
-		ctx->output_depth=8;
-	}
-
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		// Floating point output.
 		if(ctx->output_depth<=0)
-			ctx->output_depth=64;
+			ctx->output_depth=64; // Caller did not set depth. Use 64.
 
+		// Caller set depth. Sanitize it.
 		if(ctx->output_depth<=32)
 			ctx->output_depth=32;
 		else
@@ -1300,7 +1295,16 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 		return;
 	}
 
+	// Below this point, sample type is UINT.
+
+	if(!(ctx->output_profile&IW_PROFILE_16BPS) && ctx->output_depth>8) {
+		// Caller set depth to more than this format can handle. Warn, and fix it.
+		iwpvt_warn(ctx,iws_warn_reduce_to_8);
+		ctx->output_depth=8;
+	}
+
 	if(ctx->output_depth>0) {
+		// Caller set the output depth. Sanitize it.
 		if(ctx->output_depth>8 && (ctx->output_profile&IW_PROFILE_16BPS))
 			ctx->output_depth=16;
 		else
@@ -1308,10 +1312,8 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 		return;
 	}
 
-	if(ctx->img1.bit_depth>8 && (ctx->output_profile&IW_PROFILE_16BPS) && ctx->img1.sampletype==IW_SAMPLETYPE_UINT)
-		ctx->output_depth=16;
-	else
-		ctx->output_depth=8;
+	// Caller did not set output depth. Always use 8.
+	ctx->output_depth=8;
 }
 
 static void cvt_bkgd_color_to_linear(struct iw_context *ctx,

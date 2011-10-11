@@ -175,16 +175,13 @@ Options:
 
  -depth <n>
    The general number of bits of precision used per color channel in the
-   output image. Currently, the only depths supported are 8 and 16. The
-   default is 8 if the source image has a depth of 8 or less; otherwise 16
-   (if supported by the output format). Within this overall depth, you can
-   reduce the number of colors that will actually be used, by using the
-   "-cc" options.
+   output image. Currently, the only depths supported are 8 and 16 (32 and 64
+   for MIFF format). The default is 8. Within this overall depth, you can
+   reduce the number of colors that will actually be used, by using the "-cc"
+   options.
    Note that this doesn't necessarily determine the depth used in the output
    file. If the image can be encoded at a smaller depth with no loss of
    information, IW may choose to do that.
-   If you are writing to a MIFF file, then samples will be written as
-   floating-point numbers, and your options for -depth are 32 and 64.
 
  -filter <name> (-filterx -filtery -filteralpha)
    The resizing algorithm to use. (It would be more accurate if this option

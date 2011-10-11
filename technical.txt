@@ -137,11 +137,9 @@ In general, you don't have to tell IW what color format to use. If you resize
 a bilevel image, you'll automatically get high quality grayscale image, not a
 low quality bilevel image. 
 
-IW usually does not care about how the input image is stored. A 1-bit image is
-treated the same as an 8-bit representation of the same image. There are,
-however, a few minor exceptions (which can be disabled):
- - It will try to keep 16-bit images at 16-bits.
- - The -condgrayscale option will keep grayscale images grayscale.
+IW does not really care about the details of how an image is stored in a file;
+it only cares about the essential image itself. For example, a 1-bit image is
+treated the same as an 8-bit representation of the same image.
 
 Architecture
 ------------

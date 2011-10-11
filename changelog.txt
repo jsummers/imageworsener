@@ -1,5 +1,6 @@
 Unreleased changes
- - (none)
+ - Changed the default bit depth to always be 8, instead of having it depend
+   on the depth of the input file.
 
 Version 0.9.5 - 8 Oct 2011
  - Use a binary search to find the nearest available color. Improves speed

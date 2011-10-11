@@ -531,8 +531,6 @@ static int run(struct params_struct *p)
 	int retval = 0;
 	struct iw_context *ctx = NULL;
 	int imgtype_read;
-	int input_depth;
-	int output_depth;
 	int old_width,old_height;
 	struct iw_iodescr readdescr;
 	struct iw_iodescr writedescr;
@@ -631,8 +629,6 @@ static int run(struct params_struct *p)
 	readdescr.fp=NULL;
 
 	imgtype_read = iw_get_value(ctx,IW_VAL_INPUT_IMAGE_TYPE);
-	input_depth = iw_get_value(ctx,IW_VAL_INPUT_DEPTH);
-	output_depth = input_depth;
 
 	// We have to tell the library the output format, so it can know what
 	// kinds of images are allowed (e.g. whether transparency is allowed).
@@ -657,8 +653,7 @@ static int run(struct params_struct *p)
 	}
 
 	if(p->depth != -1) {
-		output_depth = p->depth;
-		iw_set_output_depth(ctx,output_depth);
+		iw_set_output_depth(ctx,p->depth);
 	}
 
 	if(p->cs_in_set) {
