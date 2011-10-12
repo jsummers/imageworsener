@@ -126,17 +126,6 @@ extern "C" {
 #define IW_PROFILE_ALWAYSLINEAR  0x2000
 #define IW_PROFILE_HDRI          0x4000 // Supports floating-point samples
 
-#define IW_PROFILE_PNG   0x1f7f // Almost everything
-#define IW_PROFILE_BMP   0x1a80 // PAL1,PAL4,PAL8,ALWAYSSRGB
-#define IW_PROFILE_JPEG  0x0082 // GRAYSCALE,ALWAYSSRGB
-#define IW_PROFILE_TIFF  0x186b // TRANSPARENCY,GRAYSCALE,GRAY{1,4},PAL{4,8},16BPS
-#define IW_PROFILE_MIFF  0x6003 // TRANSPARENCY,GRAYSCALE,ALWAYSLINEAR,HDRI
-#ifdef IW_WEBP_SUPPORT_TRANSPARENCY
-#define IW_PROFILE_WEBP  0x0081 // ALWAYSSRGB,TRANSPARENCY
-#else
-#define IW_PROFILE_WEBP  0x0080 // ALWAYSSRGB
-#endif
-
 #define IW_RESIZETYPE_AUTO          0x01
 #define IW_RESIZETYPE_NULL          0x02
 #define IW_RESIZETYPE_NEAREST       0x03
@@ -455,6 +444,7 @@ IW_EXPORT(void) iw_set_string_table(struct iw_context *ctx, int tablenum, const 
 IW_EXPORT(const char*) iw_get_string_direct(const struct iw_stringtableentry *st, int n);
 IW_EXPORT(const char*) iw_get_string(struct iw_context *ctx, int tablenum, int n);
 
+IW_EXPORT(unsigned int) iw_get_profile_by_fmt(int fmt);
 // Returns an IW_FORMAT_* code based on the supplied filename.
 IW_EXPORT(int) iw_detect_fmt_from_filename(const char *fn);
 // Returns an IW_FORMAT_* code based on the (partial) memory-mapped file supplied.

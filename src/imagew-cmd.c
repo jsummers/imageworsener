@@ -572,25 +572,7 @@ static int run(struct params_struct *p)
 
 	// We have to tell the library the output format, so it can know what
 	// kinds of images are allowed (e.g. whether transparency is allowed).
-	switch(p->outfmt) {
-	case IW_FORMAT_JPEG:
-		iw_set_output_profile(ctx,IW_PROFILE_JPEG);
-		break;
-	case IW_FORMAT_BMP:
-		iw_set_output_profile(ctx,IW_PROFILE_BMP);
-		break;
-	case IW_FORMAT_TIFF:
-		iw_set_output_profile(ctx,IW_PROFILE_TIFF);
-		break;
-	case IW_FORMAT_MIFF:
-		iw_set_output_profile(ctx,IW_PROFILE_MIFF);
-		break;
-	case IW_FORMAT_WEBP:
-		iw_set_output_profile(ctx,IW_PROFILE_WEBP);
-		break;
-	default:
-		iw_set_output_profile(ctx,IW_PROFILE_PNG);
-	}
+	iw_set_output_profile(ctx, iw_get_profile_by_fmt(p->outfmt));
 
 	if(p->depth != -1) {
 		iw_set_output_depth(ctx,p->depth);
