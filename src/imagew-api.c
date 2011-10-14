@@ -318,11 +318,10 @@ int iw_get_input_image_density(struct iw_context *ctx,
 	return 0;
 }
 
-void iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr,
-   int require_valid, int warn_if_invalid)
+void iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
 {
-	ctx->caller_set_output_csdescr = !require_valid;
-	ctx->warn_invalid_output_csdescr = warn_if_invalid;
+	ctx->caller_set_output_csdescr = 1;
+	ctx->warn_invalid_output_csdescr = 1;
 	ctx->img2cs = *csdescr; // struct copy
 
 	// Detect linear colorspace:

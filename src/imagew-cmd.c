@@ -584,7 +584,7 @@ static int run(struct params_struct *p)
 		iw_set_input_colorspace(ctx,&p->cs_in);
 	}
 	if(p->cs_out_set) {
-		iw_set_output_colorspace(ctx,&p->cs_out,0,1);
+		iw_set_output_colorspace(ctx,&p->cs_out);
 	}
 
 	if(p->resize_alg_x.family) {

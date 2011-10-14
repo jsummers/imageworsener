@@ -397,9 +397,7 @@ IW_EXPORT(void) iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, i
 
 // Must be called *after* reading the file, or it will be overwritten.
 // IW copies the struct that the caller passes.
-// FIXME: This function's parameters are ugly.
-IW_EXPORT(void) iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr,
-   int require_valid, int warn_if_invalid);
+IW_EXPORT(void) iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr);
 
 // Must be called *after* reading the file, or it will be overwritten.
 // IW copies the struct that the caller passes.
