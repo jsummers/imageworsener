@@ -118,10 +118,10 @@ extern "C" {
 #define IW_PROFILE_ALWAYSSRGB    0x0080
 #define IW_PROFILE_BINARYTRNS    0x0100 // Supports color-keyed transparency
 
-#define IW_PROFILE_PAL1       0x0200
-#define IW_PROFILE_PAL2       0x0400
-#define IW_PROFILE_PAL4       0x0800
-#define IW_PROFILE_PAL8       0x1000
+#define IW_PROFILE_PAL1          0x0200
+#define IW_PROFILE_PAL2          0x0400
+#define IW_PROFILE_PAL4          0x0800
+#define IW_PROFILE_PAL8          0x1000
 
 #define IW_PROFILE_ALWAYSLINEAR  0x2000
 #define IW_PROFILE_HDRI          0x4000 // Supports floating-point samples
@@ -272,40 +272,45 @@ struct iw_iodescr;
 typedef int (*iw_readfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes, size_t *pbytesread);
 typedef int (*iw_writefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes);
 typedef int (*iw_closefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr);
+typedef int (*iw_getfilesizefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, iw_int64 *pfilesize);
 typedef int (*iw_seekfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, iw_int64 offset, int whence);
-typedef int (*iw_getfilesizefn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, size_t *pfilesize);
+typedef int (*iw_tellfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr, iw_int64 *pfileptr);
+
 // I/O descriptor
 struct iw_iodescr {
-	// An arbitrary pointer the app can use.
+	int version; // Must be set to IW_VERSION_INT
+
+	// A generic "file pointer" the app can use.
 	void *fp;
 
-	// Application-defined I/O functions:
+	// Application-defined I/O functions.
+	// All functions must return 1 on success, and 0 on failure.
+	// Whether a particular function is required depends on the module used to
+	// process the file, and is beyond the scope of the core library.
 
 	// Must read and return all bytes requested, except on end-of-file or error.
-	// On success, set *pbytesread to nbytes, and return 1.
+	// On success, set *pbytesread to nbytes.
 	// On end of file, set *pbytesread to the number of bytes read (0 to nbytes-1),
 	// and return 1.
-	// On error, return 0.
 	iw_readfn_type read_fn;
 
 	// Must write all bytes supplied.
-	// On success, return 1.
-	// On error, return 0.
 	iw_writefn_type write_fn;
 
 	// Optional "close" function.
 	iw_closefn_type close_fn;
 
-	// Seek function might be required, depending on file format.
-	// On success, return 1.
-	// On error, return 0.
-	iw_closefn_type seek_fn;
-
-	// Function to return the file size. Some image formats may require this when
-	// reading.
+	// Return the file size.
 	// Must leave the file position at the beginning of the file (or must not
 	// modify it).
 	iw_getfilesizefn_type getfilesize_fn;
+
+	// Seek to the given file position. The 'whence' parameter takes the same
+	// values as that of the standard fseek() function.
+	iw_seekfn_type seek_fn;
+
+	// Return the current file position.
+	iw_tellfn_type tell_fn;
 };
 
 #define IW_STRINGTABLENUM_CORE 0
@@ -328,10 +333,14 @@ IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
 
 IW_EXPORT(int) iw_process_image(struct iw_context *ctx);
 
-// Returns an extra pointer to buf.
-// buflen = buf size in char's.
-IW_EXPORT(const char*) iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen);
+// Returns nonzero if an error occurred.
 IW_EXPORT(int) iw_get_errorflag(struct iw_context *ctx);
+
+// If iw_get_errorflag() indicates an error, the error message can be retrieved
+// with iw_get_errormsg().
+// Caller supplies buf. buflen = buf size in chars.
+// Returns an extra pointer to buf.
+IW_EXPORT(const char*) iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen);
 
 IW_EXPORT(void) iw_set_userdata(struct iw_context *ctx, void *userdata);
 IW_EXPORT(void*) iw_get_userdata(struct iw_context *ctx);
@@ -339,14 +348,20 @@ IW_EXPORT(void*) iw_get_userdata(struct iw_context *ctx);
 typedef void (*iw_warningfn_type)(struct iw_context *ctx, const char *msg);
 IW_EXPORT(void) iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warnfn);
 
-// Set the maximum amount to allocate at one time.
+// Set the maximum amount of memory to allocate at one time.
 IW_EXPORT(void) iw_set_max_malloc(struct iw_context *ctx, size_t n);
 
+// The full size of the output image, in pixels.
+// Named "canvas_size" because future features might allow the input image
+// to be scaled to a size other than that of the canvas (e.g. to add a border).
 IW_EXPORT(void) iw_set_output_canvas_size(struct iw_context *ctx, int w, int h);
 
 // Crop before resizing.
 IW_EXPORT(void) iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h);
 
+// Inform IW about the features of your intended output file format.
+// n is a bitwise combination of IW_PROFILE_* values.
+// iw_get_profile_by_fmt() can be used to get value for n.
 IW_EXPORT(void) iw_set_output_profile(struct iw_context *ctx, unsigned int n);
 
 IW_EXPORT(void) iw_set_output_depth(struct iw_context *ctx, int bps);
@@ -395,6 +410,8 @@ IW_EXPORT(int) iw_get_input_image_density(struct iw_context *ctx,
 
 IW_EXPORT(void) iw_set_random_seed(struct iw_context *ctx, int randomize, int rand_seed);
 
+// opt: an IW_OPT_* code.
+// n: 0 to disable this class of optimizations.
 IW_EXPORT(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n);
 
 // Caller allocates the pixels with (preferably) iw_malloc_large().
@@ -445,8 +462,10 @@ IW_EXPORT(const char*) iw_get_string_direct(const struct iw_stringtableentry *st
 IW_EXPORT(const char*) iw_get_string(struct iw_context *ctx, int tablenum, int n);
 
 IW_EXPORT(unsigned int) iw_get_profile_by_fmt(int fmt);
+
 // Returns an IW_FORMAT_* code based on the supplied filename.
 IW_EXPORT(int) iw_detect_fmt_from_filename(const char *fn);
+
 // Returns an IW_FORMAT_* code based on the (partial) memory-mapped file supplied.
 // In most cases, 16 bytes is sufficient.
 IW_EXPORT(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t buflen);
@@ -492,8 +511,9 @@ IW_EXPORT(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr 
 // considered valid by IW. If not, generates a warning and returns 0.
 IW_EXPORT(int) iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
 
+// TODO: This function is currently unused, and is a candidate for removal.
 IW_EXPORT(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
-  void **pmem, size_t *psize);
+  void **pmem, iw_int64 *psize);
 
 // Allocates a block of memory. Does not check the value of n.
 // Returns NULL on failure.
@@ -517,6 +537,7 @@ IW_EXPORT(void*) iw_strdup(const char *s);
 // If mem is NULL, does nothing.
 IW_EXPORT(void) iw_free(void *mem);
 
+// Returns 0 if running on a big-endian system, 1 for little-endian.
 IW_EXPORT(int) iw_get_host_endianness(void);
 
 #endif // IW_INCLUDE_UTIL_FUNCTIONS

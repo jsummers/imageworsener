@@ -398,17 +398,18 @@ static int my_readfn(struct iw_context *ctx, struct iw_iodescr *iodescr, void *b
 	return 1;
 }
 
-static int my_getfilesizefn(struct iw_context *ctx, struct iw_iodescr *iodescr, size_t *pbytesread)
+static int my_getfilesizefn(struct iw_context *ctx, struct iw_iodescr *iodescr, iw_int64 *pfilesize)
 {
 	int ret;
 	long lret;
 	FILE *fp = (FILE*)iodescr->fp;
 
+	// TODO: Rewrite this to support >4GB file sizes.
 	ret=fseek(fp,0,SEEK_END);
 	if(ret!=0) return 0;
 	lret=ftell(fp);
 	if(lret<0) return 0;
-	*pbytesread = (size_t)lret;
+	*pfilesize = (iw_int64)lret;
 	fseek(fp,0,SEEK_SET);
 	return 1;
 }
@@ -519,6 +520,7 @@ static int run(struct params_struct *p)
 	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 
+	readdescr.version = IW_VERSION_INT;
 	readdescr.read_fn = my_readfn;
 	readdescr.getfilesize_fn = my_getfilesizefn;
 	readdescr.fp = (void*)iwcmd_fopen(p->infn,"rb");
@@ -728,7 +730,7 @@ static int run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
 	}
 
-
+	writedescr.version = IW_VERSION_INT;
 	writedescr.write_fn = my_writefn;
 	writedescr.fp = (void*)iwcmd_fopen(p->outfn,"wb");
 	if(!writedescr.fp) {

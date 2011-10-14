@@ -165,9 +165,8 @@ int iwpvt_util_randomize(struct iw_prng *prng)
 	return s;
 }
 
-
 int iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
-  void **pmem, size_t *psize)
+  void **pmem, iw_int64 *psize)
 {
 	int ret;
 	size_t bytesread;
@@ -184,7 +183,7 @@ int iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
 
 	ret = (*iodescr->read_fn)(ctx,iodescr,*pmem,*psize,&bytesread);
 	if(!ret) return 0;
-	if(bytesread != *psize) return 0;
+	if((iw_int64)bytesread != *psize) return 0;
 	return 1;
 }
 
