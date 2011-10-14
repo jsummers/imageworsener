@@ -12,7 +12,7 @@ ifeq ($(origin IW_SUPPORT_JPEG),undefined)
 IW_SUPPORT_JPEG:=1
 endif
 ifeq ($(origin IW_SUPPORT_WEBP),undefined)
-IW_SUPPORT_WEBP:=1
+IW_SUPPORT_WEBP:=0
 endif
 
 SRCDIR:=../src
