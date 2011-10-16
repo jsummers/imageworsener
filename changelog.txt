@@ -1,4 +1,6 @@
 Unreleased changes
+ - Added -noincludescreen option, for more control over how GIF images are
+   handled.
  - Added -page option, to read arbitrary images from GIF files.
  - Changed the default bit depth to always be 8, instead of having it depend
    on the depth of the input file.

@@ -547,6 +547,11 @@ Options:
    Currently, this only works with GIF files. It does not play through the GIF
    animation, so you might only get a partial image.
 
+ -includescreen
+ -noincludescreen
+   By default, a GIF image will be painted onto the GIF "screen". Use
+   -noincludescreen to extract just the individual image.
+
  -pngcmprlevel <n>
    zlib-style compression level setting for PNG files, from 0 (no compression)
    to 9 (best, slowest). Default is 9. Use -1 for the libpng default

@@ -86,6 +86,9 @@ extern "C" {
 // The first page is 1. 0=default.
 #define IW_VAL_PAGE_TO_READ      39
 
+// Used with GIF files.
+#define IW_VAL_INCLUDE_SCREEN    40
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1

@@ -148,6 +148,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
 	ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
+	ctx->include_screen = 1;
 	ctx->webp_quality = -1.0;
 	ctx->pngcmprlevel = 9;
 	ctx->opt_grayscale = 1;
@@ -532,6 +533,9 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_PAGE_TO_READ:
 		ctx->page_to_read = n;
 		break;
+	case IW_VAL_INCLUDE_SCREEN:
+		ctx->include_screen = n;
+		break;
 	case IW_VAL_JPEG_QUALITY:
 		ctx->jpeg_quality = n;
 		break;
@@ -598,6 +602,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_PAGE_TO_READ:
 		ret = ctx->page_to_read;
+		break;
+	case IW_VAL_INCLUDE_SCREEN:
+		ret = ctx->include_screen;
 		break;
 	case IW_VAL_JPEG_QUALITY:
 		ret = ctx->jpeg_quality;

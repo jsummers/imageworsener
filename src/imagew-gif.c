@@ -808,7 +808,7 @@ int iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	rctx->page = iw_get_value(ctx,IW_VAL_PAGE_TO_READ);
 	if(rctx->page<1) rctx->page = 1;
 
-	rctx->include_screen = 1;
+	rctx->include_screen = iw_get_value(ctx,IW_VAL_INCLUDE_SCREEN);
 
 	if(!iwgif_read_main(rctx))
 		goto done;

@@ -236,6 +236,7 @@ struct iw_context {
 
 	// These are not used by the core library, but codecs may use them:
 	int page_to_read;
+	int include_screen;
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
 	int pngcmprlevel;

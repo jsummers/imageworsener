@@ -266,15 +266,13 @@ GIF screen size vs. image size
 ------------------------------
 
 Every GIF file has a global "screen size", and one or more images, each with
-its own size, and an offset to indicate its position on the screen. IW always
-treats the screen size as the overall size of the image, and paints the first
+its own size, and an offset to indicate its position on the screen. By
+default, IW treats the screen size as final image size, and paints the GIF
 image onto the "screen" at the appropriate position. Any area not covered by
 the image will be made transparent.
 
-Other applications do different things. It's not unreasonable for a
-single-image application to simply extract the first image as-is. But given
-how the GIF format is actually used as of 2011, painting the image onto the
-"screen" is the behavior that makes the most sense to me.
+If you use the -noincludescreen option, it will instead ignore "screen size"
+and the image position, and extract just the selected image.
 
 MIFF support
 ------------

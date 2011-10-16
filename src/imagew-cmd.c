@@ -104,6 +104,7 @@ struct params_struct {
 	int density_policy;
 	int grayscale_formula;
 	int no_cslabel;
+	int include_screen;
 	int noopt_grayscale,noopt_binarytrns,noopt_palette;
 	int noopt_reduceto8,noopt_stripalpha;
 	int cs_in_set, cs_out_set;
@@ -521,6 +522,7 @@ static int run(struct params_struct *p)
 	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 	if(p->page_to_read>0) iw_set_value(ctx,IW_VAL_PAGE_TO_READ,p->page_to_read);
+	if(p->include_screen>=0) iw_set_value(ctx,IW_VAL_INCLUDE_SCREEN,p->include_screen);
 
 	readdescr.version = IW_VERSION_INT;
 	readdescr.read_fn = my_readfn;
@@ -1288,7 +1290,7 @@ enum iwcmd_param_types {
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
- PT_DENSITY_POLICY, PT_PAGETOREAD,
+ PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
  PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP, PT_ENCODING
@@ -1372,6 +1374,8 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"intclamp",PT_INTCLAMP,0},
 		{"nocslabel",PT_NOCSLABEL,0},
 		{"usebkgdlabel",PT_USEBKGDLABEL,0},
+		{"includescreen",PT_INCLUDESCREEN,0},
+		{"noincludescreen",PT_NOINCLUDESCREEN,0},
 		{"quiet",PT_QUIET,0},
 		{"nowarn",PT_NOWARN,0},
 		{"noinfo",PT_NOINFO,0},
@@ -1423,6 +1427,12 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_USEBKGDLABEL:
 		p->use_bkgd_label=1;
+		break;
+	case PT_INCLUDESCREEN:
+		p->include_screen=1;
+		break;
+	case PT_NOINCLUDESCREEN:
+		p->include_screen=0;
 		break;
 	case PT_INTERLACE:
 		p->interlace=1;
@@ -1819,6 +1829,7 @@ static int iwcmd_main(int argc, char* argv[])
 	p.resize_alg_y.blur = 1.0;
 	p.resize_alg_alpha.blur = 1.0;
 	p.webp_quality = -1.0;
+	p.include_screen = -1;
 
 	handle_encoding(&p,argc,argv);
 
