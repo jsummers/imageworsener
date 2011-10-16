@@ -582,7 +582,7 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 	img = rctx->img;
 
 	// Read image header information
-	if(!iwgif_read(rctx,rctx->rbuf,10)) goto done;
+	if(!iwgif_read(rctx,rctx->rbuf,9)) goto done;
 
 	rctx->image_left = iw_read_uint16le(&rctx->rbuf[0]);
 	rctx->image_top = iw_read_uint16le(&rctx->rbuf[2]);
@@ -604,7 +604,9 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 		if(!iwgif_read_color_table(rctx,&rctx->colortable)) goto done;
 	}
 
-	root_codesize = (unsigned int)rctx->rbuf[9];
+	// Read LZW code size
+	if(!iwgif_read(rctx,rctx->rbuf,1)) goto done;
+	root_codesize = (unsigned int)rctx->rbuf[0];
 
 	// The spec does not allow the "minimum code size" to be less than 2.
 	// Sizes >=12 are impossible to support.
