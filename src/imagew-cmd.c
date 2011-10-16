@@ -87,6 +87,7 @@ struct params_struct {
 	int use_crop, crop_x, crop_y, crop_w, crop_h;
 	struct rgb_color bkgd;
 	struct rgb_color bkgd2;
+	int page_to_read;
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	double webp_quality;
@@ -519,6 +520,7 @@ static int run(struct params_struct *p)
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
 	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
+	if(p->page_to_read>0) iw_set_value(ctx,IW_VAL_PAGE_TO_READ,p->page_to_read);
 
 	readdescr.version = IW_VERSION_INT;
 	readdescr.read_fn = my_readfn;
@@ -1286,7 +1288,7 @@ enum iwcmd_param_types {
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
- PT_DENSITY_POLICY,
+ PT_DENSITY_POLICY, PT_PAGETOREAD,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
  PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP, PT_ENCODING
@@ -1348,6 +1350,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"offsetvgreen",PT_OFFSET_G_V,1},
 		{"offsetvblue",PT_OFFSET_B_V,1},
 		{"offsetvrb",PT_OFFSET_RB_V,1},
+		{"page",PT_PAGETOREAD,1},
 		{"jpegquality",PT_JPEGQUALITY,1},
 		{"jpegsampling",PT_JPEGSAMPLING,1},
 		{"webpquality",PT_WEBPQUALITY,1},
@@ -1606,6 +1609,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		// Shortcut for shifting red and blue vertically in opposite directions.
 		p->offset_r_v=iwcmd_parse_dbl(v);
 		p->offset_b_v= -p->offset_r_v;
+		break;
+	case PT_PAGETOREAD:
+		p->page_to_read = iwcmd_parse_int(v);
 		break;
 	case PT_JPEGQUALITY:
 		p->jpeg_quality=iwcmd_parse_int(v);

@@ -529,6 +529,9 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_INPUT_NATIVE_GRAYSCALE:
 		ctx->img1.native_grayscale = n;
 		break;
+	case IW_VAL_PAGE_TO_READ:
+		ctx->page_to_read = n;
+		break;
 	case IW_VAL_JPEG_QUALITY:
 		ctx->jpeg_quality = n;
 		break;
@@ -592,6 +595,9 @@ int iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_INPUT_DEPTH:
 		ret = ctx->img1.bit_depth;
+		break;
+	case IW_VAL_PAGE_TO_READ:
+		ret = ctx->page_to_read;
 		break;
 	case IW_VAL_JPEG_QUALITY:
 		ret = ctx->jpeg_quality;

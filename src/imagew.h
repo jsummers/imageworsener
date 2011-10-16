@@ -82,6 +82,9 @@ extern "C" {
 
 #define IW_VAL_WEBP_QUALITY      38
 
+// The page ("image", "frame", whatever) to read from a multi-page file.
+// The first page is 1. 0=default.
+#define IW_VAL_PAGE_TO_READ      39
 
 // File formats.
 #define IW_FORMAT_UNKNOWN  0

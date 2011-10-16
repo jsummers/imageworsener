@@ -542,6 +542,11 @@ Options:
     "binarytrns": Never use binary (color-keyed) transparency.
     "all": All of the above.
 
+ -page <n>
+   Select the page to read from a multi-page file. The first page is number 1.
+   Currently, this only works with GIF files. It does not play through the GIF
+   animation, so you might only get a partial image.
+
  -pngcmprlevel <n>
    zlib-style compression level setting for PNG files, from 0 (no compression)
    to 9 (best, slowest). Default is 9. Use -1 for the libpng default

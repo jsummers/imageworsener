@@ -789,7 +789,9 @@ int iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	// Assume GIF images are sRGB.
 	rctx->csdescr.cstype = IW_CSTYPE_SRGB;
 	rctx->csdescr.sRGB_intent = IW_sRGB_INTENT_PERCEPTUAL;
-	rctx->page = 1;
+
+	rctx->page = iw_get_value(ctx,IW_VAL_PAGE_TO_READ);
+	if(rctx->page<1) rctx->page = 1;
 
 	if(!iwgif_read_main(rctx))
 		goto done;
