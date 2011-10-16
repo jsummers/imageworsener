@@ -55,6 +55,7 @@ struct iwgifreadcontext {
 	int image_width, image_height;
 	int image_left, image_top;
 
+	int include_screen; // Do we paint the image onto the "screen", or just extract it?
 	int screen_initialized;
 	int pages_seen;
 	int interlaced;
@@ -115,11 +116,7 @@ static int iwgif_read_screen_descriptor(struct iwgifreadcontext *rctx)
 	if(!iwgif_read(rctx,rctx->rbuf,7)) return 0;
 	rctx->screen_width = iw_read_uint16le(&rctx->rbuf[0]);
 	rctx->screen_height = iw_read_uint16le(&rctx->rbuf[2]);
-	if(!iw_check_image_dimensons(rctx->ctx,rctx->screen_width,rctx->screen_height)) {
-		return 0;
-	}
-	rctx->img->width = rctx->screen_width;
-	rctx->img->height = rctx->screen_height;
+	// screen_width and _height may be updated in iwgif_init_screen().
 
 	has_global_ct = (int)((rctx->rbuf[4]>>7)&0x01);
 
@@ -492,6 +489,21 @@ static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 
 	img = rctx->img;
 
+	if(!rctx->include_screen) {
+		// If ->include_screen is disabled, pretend the screen is the same size as
+		// the GIF image, and pretend the GIF image is positioned at (0,0).
+		rctx->screen_width = rctx->image_width;
+		rctx->screen_height = rctx->image_height;
+		rctx->image_left = 0;
+		rctx->image_top = 0;
+	}
+
+	img->width = rctx->screen_width;
+	img->height = rctx->screen_height;
+	if(!iw_check_image_dimensons(rctx->ctx,img->width,img->height)) {
+		return 0;
+	}
+
 	if(rctx->image_left>0 || rctx->image_top>0 || 
 		(rctx->image_left+rctx->image_width < rctx->screen_width) ||
 		(rctx->image_top+rctx->image_height < rctx->screen_height) )
@@ -632,6 +644,8 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 
 	rctx->image_left = iw_read_uint16le(&rctx->rbuf[0]);
 	rctx->image_top = iw_read_uint16le(&rctx->rbuf[2]);
+	// image_left and _top may be updated in iwgif_init_screen().
+
 	rctx->image_width = iw_read_uint16le(&rctx->rbuf[4]);
 	rctx->image_height = iw_read_uint16le(&rctx->rbuf[6]);
 
@@ -670,6 +684,7 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 
 	// The creation of the global "screen" was deferred until now, to wait until
 	// we know whether the image has transparency.
+	// (And if !rctx->include_screen, to wait until we know the size of the image.)
 	if(!iwgif_init_screen(rctx)) goto done;
 
 	rctx->total_npixels = rctx->image_width * rctx->image_height;
@@ -792,6 +807,8 @@ int iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	rctx->page = iw_get_value(ctx,IW_VAL_PAGE_TO_READ);
 	if(rctx->page<1) rctx->page = 1;
+
+	rctx->include_screen = 1;
 
 	if(!iwgif_read_main(rctx))
 		goto done;
