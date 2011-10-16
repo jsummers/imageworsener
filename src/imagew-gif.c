@@ -21,6 +21,7 @@ enum iwgif_string {
 	iws_gif_read_error=1,
 	iws_gif_unsupported,
 	iws_gif_no_image,
+	iws_gif_no_such_image,
 	iws_gif_decode_error,
 	iws_gif_inval_lzw_min,
 	iws_gif_not_a_gif
@@ -30,6 +31,7 @@ struct iw_stringtableentry iwgif_stringtable[] = {
 	{ iws_gif_read_error, "Failed to read GIF file" },
 	{ iws_gif_unsupported, "Invalid or unsupported GIF file" },
 	{ iws_gif_no_image, "No image in file" },
+	{ iws_gif_no_such_image, "Image not found" },
 	{ iws_gif_decode_error, "GIF decoding error" },
 	{ iws_gif_inval_lzw_min, "Invalid LZW minimum code size" },
 	{ iws_gif_not_a_gif, "Not a GIF file" },
@@ -47,12 +49,14 @@ struct iwgifreadcontext {
 	struct iw_image *img;
 
 	struct iw_csdescr csdescr;
+	int page; // Page to read. 1=first
 
 	int screen_width, screen_height; // Same as .img->width, .img->height
 	int image_width, image_height;
 	int image_left, image_top;
 
 	int screen_initialized;
+	int pages_seen;
 	int interlaced;
 	int bytes_per_pixel;
 	int has_transparency;
@@ -191,7 +195,6 @@ static int iwgif_read_graphics_control_ext(struct iwgifreadcontext *rctx)
 	rctx->has_transparency = (int)((rctx->rbuf[1])&0x01);
 	if(rctx->has_transparency) {
 		rctx->trans_color_index = (int)rctx->rbuf[4];
-		rctx->colortable.entry[rctx->trans_color_index].a = 0;
 	}
 
 	retval=1;
@@ -209,7 +212,13 @@ static int iwgif_read_extension(struct iwgifreadcontext *rctx)
 
 	switch(ext_type) {
 	case 0xf9:
-		if(!iwgif_read_graphics_control_ext(rctx)) goto done;
+		if(rctx->page == rctx->pages_seen+1) {
+			if(!iwgif_read_graphics_control_ext(rctx)) goto done;
+		}
+		else {
+			// This extension does not apply to the image we're processing, so ignore it.
+			if(!iwgif_skip_subblocks(rctx)) goto done;
+		}
 		break;
 	default:
 		if(!iwgif_skip_subblocks(rctx)) goto done;
@@ -410,7 +419,7 @@ static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext 
 		lzw_emit_code(rctx,d,code);
 
 		// Let k = the first character of the translation of the code.
-		// Add <old>k to the dictionary.
+		// Add <oldcode>k to the dictionary.
 		lzw_add_to_dict(d,d->oldcode,d->ct[code].firstchar);
 	}
 	else {
@@ -568,6 +577,43 @@ static int iwgif_make_row_pointers(struct iwgifreadcontext *rctx)
 	return 1;
 }
 
+static int iwgif_skip_image(struct iwgifreadcontext *rctx)
+{
+	int has_local_ct;
+	int local_ct_size;
+	int ct_num_entries;
+	int retval=0;
+
+	// Read image header information
+	if(!iwgif_read(rctx,rctx->rbuf,9)) goto done;
+
+	has_local_ct = (int)((rctx->rbuf[8]>>7)&0x01);
+	if(has_local_ct) {
+		local_ct_size = (int)(rctx->rbuf[8]&0x07);
+		ct_num_entries = 1<<(1+local_ct_size);
+	}
+
+	// Skip the local color table
+	if(has_local_ct) {
+		if(!iwgif_read(rctx,rctx->rbuf,3*ct_num_entries)) goto done;
+	}
+
+	// Skip the LZW code size
+	if(!iwgif_read(rctx,rctx->rbuf,1)) goto done;
+
+	// Skip the image pixels
+	if(!iwgif_skip_subblocks(rctx)) goto done;
+
+	// Reset anything that might have been set by a graphic control extension.
+	// Their scope is the first image that follows them.
+	rctx->has_transparency = 0;
+
+	retval=1;
+
+done:
+	return retval;
+}
+
 static int iwgif_read_image(struct iwgifreadcontext *rctx)
 {
 	int retval=0;
@@ -604,6 +650,11 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 		if(!iwgif_read_color_table(rctx,&rctx->colortable)) goto done;
 	}
 
+	// Make the transparent color transparent.
+	if(rctx->has_transparency) {
+	    rctx->colortable.entry[rctx->trans_color_index].a = 0;
+	}
+
 	// Read LZW code size
 	if(!iwgif_read(rctx,rctx->rbuf,1)) goto done;
 	root_codesize = (unsigned int)rctx->rbuf[0];
@@ -618,7 +669,7 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 	}
 
 	// The creation of the global "screen" was deferred until now, to wait until
-	// we know whether the first image has transparency.
+	// we know whether the image has transparency.
 	if(!iwgif_init_screen(rctx)) goto done;
 
 	rctx->total_npixels = rctx->image_width * rctx->image_height;
@@ -655,6 +706,7 @@ static int iwgif_read_main(struct iwgifreadcontext *rctx)
 {
 	int retval=0;
 	int i;
+	int image_found=0;
 
 	// Make all colors opaque by default.
 	for(i=0;i<256;i++) {
@@ -679,7 +731,7 @@ static int iwgif_read_main(struct iwgifreadcontext *rctx)
 	// The remainder of the file consists of blocks whose type is indicated by
 	// their initial byte.
 
-	while(1) {
+	while(!image_found) {
 		// Read block type
 		if(!iwgif_read(rctx,rctx->rbuf,1)) goto done;
 
@@ -688,12 +740,22 @@ static int iwgif_read_main(struct iwgifreadcontext *rctx)
 			if(!iwgif_read_extension(rctx)) goto done;
 			break;
 		case 0x2c: // image
-			if(!iwgif_read_image(rctx)) goto done;
-			goto ok;
+			rctx->pages_seen++;
+			if(rctx->page == rctx->pages_seen) {
+				if(!iwgif_read_image(rctx)) goto done;
+				image_found=1;
+			}
+			else {
+				if(!iwgif_skip_image(rctx)) goto done;
+			}
+			break;
 		case 0x3b: // file trailer
 			// We stop after reading the first image, so if we ever see a file
 			// trailer, something's wrong.
-			iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_no_image));
+			if(rctx->pages_seen==0)
+				iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_no_image));
+			else
+				iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_no_such_image));
 			goto done;
 		default:
 			iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_unsupported));
@@ -701,7 +763,6 @@ static int iwgif_read_main(struct iwgifreadcontext *rctx)
 		}
 	}
 
-ok:
 	retval=1;
 
 done:
@@ -728,6 +789,7 @@ int iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	// Assume GIF images are sRGB.
 	rctx->csdescr.cstype = IW_CSTYPE_SRGB;
 	rctx->csdescr.sRGB_intent = IW_sRGB_INTENT_PERCEPTUAL;
+	rctx->page = 1;
 
 	if(!iwgif_read_main(rctx))
 		goto done;
