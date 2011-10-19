@@ -267,7 +267,7 @@ int iwpvt_util_randomize(struct iw_prng*); // Returns the random seed that was u
 
 // Defined in imagew-resize.c
 void iwpvt_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype);
-void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs, int dimension);
+void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs);
 void iwpvt_weightlist_free(struct iw_context *ctx);
 
 // Defined in imagew-opt.c

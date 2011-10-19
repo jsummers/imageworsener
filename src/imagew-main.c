@@ -779,6 +779,16 @@ okay:
 	put_raw_sample(ctx,s_full,x,y,channel);
 }
 
+static void clamp_output_samples(struct iw_context *ctx)
+{
+	int i;
+
+	for(i=0;i<ctx->num_out_pix;i++) {
+		if(ctx->out_pix[i]<0.0) ctx->out_pix[i]=0.0;
+		else if(ctx->out_pix[i]>1.0) ctx->out_pix[i]=1.0;
+	}
+}
+
 static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		const struct iw_csdescr *in_csdescr, int handle_alpha_flag)
 {
@@ -840,7 +850,10 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// Now we have a row in the right format.
 		// Resize it and store it in the right place in the intermediate array.
 
-		iwpvt_resize_row_main(ctx,rs,IW_DIMENSION_V);
+		iwpvt_resize_row_main(ctx,rs);
+
+		if(ctx->intclamp)
+			clamp_output_samples(ctx);
 
 		// The intermediate pixels are in ctx->out_pix. Copy them to the intermediate array.
 		for(j=0;j<ctx->intermed_height;j++) {
@@ -882,6 +895,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int is_alpha_channel;
 	struct iw_resize_settings *rs;
 	int ditherfamily, dithersubtype;
+	int clamp_after_resize=0;
+	int clamp_after_composite=0;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
@@ -939,6 +954,11 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		}
 	}
 
+
+	if(ctx->img2.sampletype!=IW_SAMPLETYPE_FLOATINGPOINT || ctx->intclamp) {
+		clamp_after_resize = 1;
+	}
+
 	if(ctx->use_resize_settings_alpha && is_alpha_channel)
 		rs=&ctx->resize_settings_alpha;
 	else
@@ -957,7 +977,10 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 		// Resize it to out_pix
 
-		iwpvt_resize_row_main(ctx,rs,IW_DIMENSION_H);
+		iwpvt_resize_row_main(ctx,rs);
+
+		if(clamp_after_resize)
+			clamp_output_samples(ctx);
 
 		// Now convert the out_pix and put them in the final image.
 
@@ -981,7 +1004,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 			if(handle_alpha_flag) {
 				// Special processing for (partially) transparent pixels.
 				alphasamp = ctx->final_alpha[((size_t)j)*ctx->img2.width + i];
-				if(alphasamp>0.0) {
+				if(alphasamp!=0.0) {
 					tmpsamp /= alphasamp;
 				}
 			}
@@ -1004,6 +1027,11 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 				}
 
 				tmpsamp = (alphasamp)*(tmpsamp) + (1.0-alphasamp)*(bkcolor);
+
+				if(clamp_after_composite) {
+					if(tmpsamp<0.0) tmpsamp=0.0;
+					else if(tmpsamp>1.0) tmpsamp=1.0;
+				}
 			}
 
 			if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT)
