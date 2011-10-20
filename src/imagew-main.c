@@ -954,8 +954,28 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		}
 	}
 
-
-	if(ctx->img2.sampletype!=IW_SAMPLETYPE_FLOATINGPOINT || ctx->intclamp) {
+	if(ctx->intclamp) {
+		// ctx->intclamp means to clamp at pretty much every opportunity.
+		// (Setting clamp_after_composite would have no additional effect here.
+		clamp_after_resize = 1;
+	}
+	else if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		// If output is floating point, never clamp unless specifically
+		// requested.
+		;
+	}
+	else if(ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
+		// If we are applying a background color (after resizing)...
+		if(handle_alpha_flag) {
+			// then the color channels should only be clamped after applying
+			// the background...
+			clamp_after_composite = 1;
+		}
+		// (and the alpha channel should not directly be clamped at all).
+	}
+	else {
+		// The typical case: clamp after resizing, because the output format
+		// requires it.
 		clamp_after_resize = 1;
 	}
 
@@ -1589,12 +1609,15 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 	if(ctx->bkgd_checkerboard) {
 		// Non-solid-color backgrounds must be applied after resizing.
 		ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_LATE;
+		return;
 	}
 
 	// At this point, either Early or Late background application is
-	// possible, and *should* have exactly the same end result.
-	// TODO: Due to changes elsewhere, it's now probably okay to set this
-	// to EARLY always. Need to verify that.
+	// possible, and (I think) should have the same end result, *provided*
+	// that the alpha channel uses the same resampling algorithm as the color
+	// channels.
+	// The simplest thing to do is to always use Late, so that if the alpha
+	// channel does use a different algorithm, it will have an effect.
 	ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_LATE;
 }
 

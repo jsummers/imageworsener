@@ -95,8 +95,8 @@ $IW srcimg/rgb8.png actual/ccgray-10.png $DCMPR $SMALL -filter gaussian -cc 10 -
 
 $IW srcimg/g4.png actual/condgray.png $DCMPR $SMALL -filter mitchell -cc 7 -ccgray 6 -ccred 5 -condgrayscale
 
-$IW srcimg/g2t.png actual/bkgd.png $DCMPR -width 35 -height 35 -filter catrom -bkgd e42
-$IW srcimg/rgb8a.png actual/bkgd2.png $DCMPR -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
+$IW srcimg/g2t.png actual/bkgd.png $CMPR -width 35 -height 35 -filter catrom -bkgd e42
+$IW srcimg/rgb8a.png actual/bkgd2.png $CMPR -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
 
 # test downscaling
 for f in auto nearest mix box triangle gaussian lanczos
