@@ -430,8 +430,8 @@ void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, i
 		if(param1 >  10.0) param1=  10.0;
 		if(param2 < -10.0) param2= -10.0;
 		if(param2 >  10.0) param2=  10.0;
-		ctx->resize_settings[dimension].param1 = param1; // B
-		ctx->resize_settings[dimension].param2 = param2; // C
+		rs->param1 = param1; // B
+		rs->param2 = param2; // C
 		break;
 	case IW_RESIZETYPE_GAUSSIAN:
 		rs->radius = 2.0;
