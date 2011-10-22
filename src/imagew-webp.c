@@ -16,6 +16,10 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
+#if defined(WEBP_DECODER_ABI_VERSION) && (WEBP_DECODER_ABI_VERSION >= 0x0002)
+#define IW_USE_NEW_WEBP_API
+#endif
+
 enum iwwebp_string {
 	iws_webp_read_error=1,
 	iws_webp_write_error,
@@ -101,6 +105,8 @@ static void iwwebpr_convert_pixels_rgba(struct iwwebpreadcontext *rctx,
 {
 	memcpy(rctx->img->pixels,src,nsrcpix*4);
 }
+
+#ifdef IW_USE_NEW_WEBP_API
 
 static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 {
@@ -220,6 +226,76 @@ done:
 	if(fbuf) iw_free(fbuf);
 	return retval;
 }
+
+#else
+
+// TODO: Delete this section, when we abandon support for versions of libwebp
+// that don't support WebPDecBuffer, etc.
+
+static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
+{
+	struct iw_image *img;
+	int retval=0;
+	void *webpimage=NULL;
+	iw_int64 webpimage_size=0;
+	uint8_t* uncmpr_webp_pixels = NULL;
+	int width, height;
+	size_t npixels;
+	int bytes_per_pixel;
+
+	img = rctx->img;
+
+	// Read the whole WebP file into a memory block.
+	if(!iw_file_to_memory(rctx->ctx, rctx->iodescr, &webpimage, &webpimage_size)) {
+		goto done;
+	}
+
+	// Have libwebp decode that memory block, to a memory block that
+	// it allocates.
+	width=height=0;
+	uncmpr_webp_pixels = WebPDecodeRGBA(webpimage, (uint32_t)webpimage_size, &width, &height);
+	if(!uncmpr_webp_pixels) goto done;
+
+	if(!iw_check_image_dimensions(rctx->ctx,width,height))
+		goto done;
+
+	npixels = ((size_t)width)*height;
+
+	// Figure out if the image has transparency, etc.
+	iwwebp_scan_pixels(rctx,uncmpr_webp_pixels,npixels);
+
+	// Choose the color format to use for IW's internal source image.
+	if(rctx->has_color)
+		img->imgtype = rctx->has_transparency ? IW_IMGTYPE_RGBA : IW_IMGTYPE_RGB;
+	else
+		img->imgtype = rctx->has_transparency ? IW_IMGTYPE_GRAYA : IW_IMGTYPE_GRAY;
+
+	img->width = width;
+	img->height = height;
+	img->bit_depth = 8;
+	bytes_per_pixel = iw_imgtype_num_channels(img->imgtype);
+	img->bpr = bytes_per_pixel * img->width;
+	img->pixels = (unsigned char*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
+	if(!img->pixels) goto done;
+
+	switch(img->imgtype) {
+	case IW_IMGTYPE_GRAY:  iwwebpr_convert_pixels_gray(rctx,uncmpr_webp_pixels,npixels); break;
+	case IW_IMGTYPE_GRAYA: iwwebpr_convert_pixels_graya(rctx,uncmpr_webp_pixels,npixels); break;
+	case IW_IMGTYPE_RGB:   iwwebpr_convert_pixels_rgb(rctx,uncmpr_webp_pixels,npixels); break;
+	default:               iwwebpr_convert_pixels_rgba(rctx,uncmpr_webp_pixels,npixels); break;
+	}
+
+	retval=1;
+
+done:
+	if(webpimage) iw_free(webpimage);
+
+	if(uncmpr_webp_pixels) free(uncmpr_webp_pixels);
+
+	return retval;
+}
+
+#endif
 
 int iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
