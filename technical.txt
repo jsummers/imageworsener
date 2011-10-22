@@ -120,18 +120,23 @@ works twice as fast and is imperceptibly less accurate. But there are lots
 of utilities that are optimized for speed, and there would be no reason for
 IW to exist if it worked the same as everything else.
 
-I don't intend to add millions of options to IW. I want most of the options to
-have some practical purpose. It is nearly feature complete as it is.
+I don't intend to add millions of options to IW. It is nearly feature complete
+as it is. I want most of the options to have some practical purpose (which may
+include the ability to imitate what other applications do). Admittedly, some
+fairly useless options exist just for orthogonal completeness, or to scratch
+some particular itch I had.
 
 I've taken a lot of care to make sure the resizing algorithms are implemented
 correctly. I won't add an algorithm until I'm sure that I understand it. This
 isn't so easy. There's a lot of confusing and contradictory information out
 there.
 
-IW does not accept a sequence of image processing commands. Instead, tries to
-create the best image it can given the options you pass to it. For example, if
-you tell it to dither an image and resize it, it knows that it should resize
-the image first, then dither it, instead of doing it in the opposite order.
+IW's command line should not be thought of as a sequence of image processing
+commands. Instead, imagine you're describing the properties of a display
+device, and IW will try to create the best image for that device. For example,
+if you tell IW to dither an image and resize it, it knows that it should
+resize the image first, then dither it, instead of doing it in the opposite
+order.
 
 In general, you don't have to tell IW what color format to use. If you resize
 a bilevel image, you'll automatically get high quality grayscale image, not a
@@ -244,15 +249,6 @@ monitors.
 IW does not support ICC color profiles. I'll consider adding support for them
 someday, but I don't know how feasible that is.
 
-TIFF colorspaces
-----------------
-
-When writing TIFF files, IW uses the TransferFunction TIFF tag to label the
-colorspace that the output image uses. I doubt that many TIFF viewers read
-this tag, and actually, I don't know how to test whether I'm using it
-correctly. You can disable the TransferFunction tag by using the "-nocslabel"
-option.
-
 TIFF output support
 -------------------
 
@@ -262,16 +258,26 @@ It writes transparent images using unassociated alpha, which is probably less
 common in TIFF files than associated alpha, and may not be supported as well
 by TIFF viewers.
 
+TIFF colorspaces
+----------------
+
+When writing TIFF files, IW uses the TransferFunction TIFF tag to label the
+colorspace that the output image uses. I doubt that many TIFF viewers read
+this tag, and actually, I don't know how to test whether I'm using it
+correctly. You can disable the TransferFunction tag by using the "-nocslabel"
+option.
+
 GIF screen size vs. image size
 ------------------------------
 
-Every GIF file has a global "screen size", and one or more images, each with
-its own size, and an offset to indicate its position on the screen. By
-default, IW treats the screen size as final image size, and paints the GIF
-image onto the "screen" at the appropriate position. Any area not covered by
-the image will be made transparent.
+Every GIF file has a global "screen size", and a sequence of one or more
+images. Each image has its own size, and an offset to indicate its position on
+the screen. By default, IW treats the screen size as the final image size, and
+paints the GIF image (as selected by the -page option) onto the screen at the
+appropriate position. Any area not covered by the image will be made
+transparent.
 
-If you use the -noincludescreen option, it will instead ignore "screen size"
+If you use the -noincludescreen option, it will instead ignore the screen size
 and the image position, and extract just the selected image.
 
 MIFF support

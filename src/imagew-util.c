@@ -160,7 +160,6 @@ int iwpvt_util_randomize(struct iw_prng *prng)
 {
 	int s;
 	s = (int)time(NULL);
-	//srand((unsigned int)time(NULL));
 	iwpvt_prng_set_random_seed(prng, s);
 	return s;
 }
@@ -179,9 +178,9 @@ int iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
 	ret = (*iodescr->getfilesize_fn)(ctx,iodescr,psize);
 	if(!ret) return 0;
 
-	*pmem = iw_malloc(ctx,*psize);
+	*pmem = iw_malloc(ctx,(size_t)*psize);
 
-	ret = (*iodescr->read_fn)(ctx,iodescr,*pmem,*psize,&bytesread);
+	ret = (*iodescr->read_fn)(ctx,iodescr,*pmem,(size_t)*psize,&bytesread);
 	if(!ret) return 0;
 	if((iw_int64)bytesread != *psize) return 0;
 	return 1;
@@ -288,7 +287,7 @@ int iw_get_host_endianness(void)
 	union en_union {
 		iw_byte c[4];
 		int ii;
-	} en;
+	} volatile en;
 
 	// Test the host's endianness.
 	en.c[0]=0;
@@ -358,7 +357,6 @@ unsigned int iw_get_profile_by_fmt(int fmt)
 	switch(fmt) {
 
 	case IW_FORMAT_PNG:
-		p = 0x1f7f;
 		p = IW_PROFILE_TRANSPARENCY | IW_PROFILE_GRAYSCALE | IW_PROFILE_PALETTETRNS |
 		    IW_PROFILE_GRAY1 | IW_PROFILE_GRAY2 | IW_PROFILE_GRAY4 | IW_PROFILE_16BPS |
 		    IW_PROFILE_BINARYTRNS | IW_PROFILE_PAL1 | IW_PROFILE_PAL2 | IW_PROFILE_PAL4 |

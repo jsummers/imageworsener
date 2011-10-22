@@ -195,7 +195,7 @@ Options:
    reducing it in the other.
 
    The -filteralpha option lets you use a different algorithm for the alpha
-   channel.
+   channel. This may give strange results, and is probably a bad idea.
 
    IW uses the filter even if the image size isn't being changed. Many
    filters will leave the image unchanged in that case, but some (such as
@@ -203,8 +203,8 @@ Options:
    slightly.
 
    Some filters are not particularly good for general purposes. The main
-   filters you should consider using are mix, mitchell, catrom, lanczos2, and
-   lanczos.
+   filters you should consider using are lanczos, mitchell, lanczos2, catrom,
+   and mix.
 
    Full list:
 

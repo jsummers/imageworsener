@@ -765,7 +765,7 @@ static int iwgif_read_main(struct iwgifreadcontext *rctx)
 			}
 			break;
 		case 0x3b: // file trailer
-			// We stop after reading the first image, so if we ever see a file
+			// We stop after we decode an image, so if we ever see a file
 			// trailer, something's wrong.
 			if(rctx->pages_seen==0)
 				iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_no_image));
