@@ -81,7 +81,7 @@ size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 	return (size_t)(((num_pixels*bits_per_pixel)+7)/8);
 }
 
-int iw_check_image_dimensons(struct iw_context *ctx, int w, int h)
+int iw_check_image_dimensions(struct iw_context *ctx, int w, int h)
 {
 	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
 		iwpvt_errf(ctx,iws_dimensions_too_large,w,h);

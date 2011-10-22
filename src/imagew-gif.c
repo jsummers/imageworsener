@@ -500,7 +500,7 @@ static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 
 	img->width = rctx->screen_width;
 	img->height = rctx->screen_height;
-	if(!iw_check_image_dimensons(rctx->ctx,img->width,img->height)) {
+	if(!iw_check_image_dimensions(rctx->ctx,img->width,img->height)) {
 		return 0;
 	}
 

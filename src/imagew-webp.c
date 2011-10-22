@@ -169,7 +169,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 
 	uncmpr_webp_pixels = decbuffer->u.RGBA.rgba;
 
-	if(!iw_check_image_dimensons(rctx->ctx,width,height))
+	if(!iw_check_image_dimensions(rctx->ctx,width,height))
 		goto done;
 
 	npixels = ((size_t)width)*height;

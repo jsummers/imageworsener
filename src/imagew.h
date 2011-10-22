@@ -513,7 +513,7 @@ IW_EXPORT(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr 
 
 // Utility function to check that the supplied dimensions are
 // considered valid by IW. If not, generates a warning and returns 0.
-IW_EXPORT(int) iw_check_image_dimensons(struct iw_context *ctx, int w, int h);
+IW_EXPORT(int) iw_check_image_dimensions(struct iw_context *ctx, int w, int h);
 
 // TODO: This function is currently unused, and is a candidate for removal.
 IW_EXPORT(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,

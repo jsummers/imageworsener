@@ -233,7 +233,7 @@ int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 
 	img.width = cinfo.output_width;
 	img.height = cinfo.output_height;
-	if(!iw_check_image_dimensons(ctx,img.width,img.height)) {
+	if(!iw_check_image_dimensions(ctx,img.width,img.height)) {
 		goto done;
 	}
 

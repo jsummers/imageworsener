@@ -299,7 +299,7 @@ int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
 		&interlace_type, NULL, NULL);
 
-	if(!iw_check_image_dimensons(ctx,width,height)) {
+	if(!iw_check_image_dimensions(ctx,width,height)) {
 		goto done;
 	}
 

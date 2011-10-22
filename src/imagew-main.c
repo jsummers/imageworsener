@@ -1714,10 +1714,10 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->random_seed = iwpvt_util_randomize(ctx->prng);
 	}
 
-	if(!iw_check_image_dimensons(ctx,ctx->img1.width,ctx->img1.height)) {
+	if(!iw_check_image_dimensions(ctx,ctx->img1.width,ctx->img1.height)) {
 		return 0;
 	}
-	if(!iw_check_image_dimensons(ctx,w,h)) {
+	if(!iw_check_image_dimensions(ctx,w,h)) {
 		return 0;
 	}
 

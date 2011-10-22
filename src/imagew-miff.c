@@ -392,7 +392,7 @@ int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 	if(!iwmiff_read_header(&rctx))
 		goto done;
 
-	if(!iw_check_image_dimensons(rctx.ctx,img.width,img.height))
+	if(!iw_check_image_dimensions(rctx.ctx,img.width,img.height))
 		goto done;
 
 	if(rctx.is_grayscale)
