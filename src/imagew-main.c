@@ -466,6 +466,12 @@ static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr 
 	}
 }
 
+// Public version of linear_to_x_sample().
+IW_IMPL(double) iw_convert_sample_from_linear(double v, const struct iw_csdescr *csdescr)
+{
+	return (double)linear_to_x_sample(v,csdescr);
+}
+
 // Returns 0 if we should round down, 1 if we should round up.
 // TODO: It might be good to use a different-sized matrix for alpha channels
 // (e.g. 9x7), but I don't know how to make a good one.

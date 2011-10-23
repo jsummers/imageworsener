@@ -511,6 +511,7 @@ IW_EXPORT(int) iw_imgtype_num_channels(int t);
 IW_EXPORT(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
 
 IW_EXPORT(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
+IW_EXPORT(double) iw_convert_sample_from_linear(double v, const struct iw_csdescr *csdescr);
 
 // Utility function to check that the supplied dimensions are
 // considered valid by IW. If not, generates a warning and returns 0.
