@@ -902,37 +902,46 @@ static double iwcmd_parse_dbl(const char *s)
 	return result;
 }
 
+static int iwcmd_round_to_int(double x)
+{
+	if(x<0.0) return -(int)(0.5-x);
+	return (int)(0.5+x);
+}
+
 static int iwcmd_parse_int(const char *s)
 {
 	double result;
 	int charsread;
 	iwcmd_parse_number_internal(s, &result, &charsread);
-	if(result<0.0) return -(int)(0.5-result);
-	return (int)(0.5+result);
+	return iwcmd_round_to_int(result);
 }
 
 // Parse two integers separated by a comma.
+// If the string doesn't contain enough numbers, some parameters will be
+// left unchanged.
 static void iwcmd_parse_int_pair(const char *s, int *i1, int *i2)
 {
 	double nums[2];
 	int count;
 
 	iwcmd_parse_number_list(s,2,nums,&count);
-	*i1 = (int)(0.5+nums[0]);
-	*i2 = (int)(0.5+nums[1]);
+	if(count>=1) *i1 = iwcmd_round_to_int(nums[0]);
+	if(count>=2) *i2 = iwcmd_round_to_int(nums[1]);
 }
 
-// Parse four integers separated by commas.
+// Parse up to four integers separated by commas.
+// If the string doesn't contain enough numbers, some parameters will be
+// left unchanged.
 static void iwcmd_parse_int_4(const char *s, int *i1, int *i2, int *i3, int *i4)
 {
 	double nums[4];
 	int count;
 
 	iwcmd_parse_number_list(s,4,nums,&count);
-	*i1 = (int)(0.5+nums[0]);
-	*i2 = (int)(0.5+nums[1]);
-	*i3 = (int)(0.5+nums[2]);
-	*i4 = (int)(0.5+nums[3]);
+	if(count>=1) *i1 = iwcmd_round_to_int(nums[0]);
+	if(count>=2) *i2 = iwcmd_round_to_int(nums[1]);
+	if(count>=3) *i3 = iwcmd_round_to_int(nums[2]);
+	if(count>=4) *i4 = iwcmd_round_to_int(nums[3]);
 }
 
 static int hexdigit_value(char d)
@@ -1596,6 +1605,8 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		iwcmd_parse_int_pair(v,&p->bkgd_check_origin_x,&p->bkgd_check_origin_y);
 		break;
 	case PT_CROP:
+		p->crop_x = p->crop_y = 0;
+		p->crop_w = p->crop_h = -1;
 		iwcmd_parse_int_4(v,&p->crop_x,&p->crop_y,&p->crop_w,&p->crop_h);
 		p->use_crop=1;
 		break;
@@ -1646,6 +1657,8 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->jpeg_quality=iwcmd_parse_int(v);
 		break;
 	case PT_JPEGSAMPLING:
+		p->jpeg_samp_factor_h = 1;
+		p->jpeg_samp_factor_v = 1;
 		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
 		break;
 	case PT_WEBPQUALITY:
