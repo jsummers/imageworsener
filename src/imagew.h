@@ -284,8 +284,6 @@ typedef int (*iw_tellfn_type)(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 // I/O descriptor
 struct iw_iodescr {
-	int version; // Must be set to IW_VERSION_INT
-
 	// A generic "file pointer" the app can use.
 	void *fp;
 
@@ -334,8 +332,11 @@ struct iw_stringtableentry {
 	const char *s;
 };
 
-struct iw_context *iw_create_context(void);
+IW_EXPORT(struct iw_context*) iw_create_context(void);
 IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
+
+// 'v' should be IW_VERSION_INT.
+IW_EXPORT(void) iw_set_api_version(struct iw_context *ctx, int v);
 
 IW_EXPORT(int) iw_process_image(struct iw_context *ctx);
 

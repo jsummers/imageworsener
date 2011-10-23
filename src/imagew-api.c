@@ -76,6 +76,11 @@ int iw_get_errorflag(struct iw_context *ctx)
 	return ctx->error_flag;
 }
 
+void iw_set_api_version(struct iw_context *ctx, int v)
+{
+	ctx->caller_api_version = v;
+}
+
 size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 {
 	return (size_t)(((num_pixels*bits_per_pixel)+7)/8);

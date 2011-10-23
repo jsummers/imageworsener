@@ -122,6 +122,7 @@ struct iw_opt_ctx {
 };
 
 struct iw_context {
+	int caller_api_version;
 	unsigned int output_profile;
 
 	int num_in_pix;

@@ -489,6 +489,7 @@ static int run(struct params_struct *p)
 	ctx = iw_create_context();
 	if(!ctx) goto done;
 
+	iw_set_api_version(ctx,IW_VERSION_INT);
 	iw_set_userdata(ctx,(void*)p);
 	iw_set_warning_fn(ctx,my_warning_handler);
 
@@ -524,7 +525,6 @@ static int run(struct params_struct *p)
 	if(p->page_to_read>0) iw_set_value(ctx,IW_VAL_PAGE_TO_READ,p->page_to_read);
 	if(p->include_screen>=0) iw_set_value(ctx,IW_VAL_INCLUDE_SCREEN,p->include_screen);
 
-	readdescr.version = IW_VERSION_INT;
 	readdescr.read_fn = my_readfn;
 	readdescr.getfilesize_fn = my_getfilesizefn;
 	readdescr.fp = (void*)iwcmd_fopen(p->infn,"rb");
@@ -734,7 +734,6 @@ static int run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
 	}
 
-	writedescr.version = IW_VERSION_INT;
 	writedescr.write_fn = my_writefn;
 	writedescr.fp = (void*)iwcmd_fopen(p->outfn,"wb");
 	if(!writedescr.fp) {
