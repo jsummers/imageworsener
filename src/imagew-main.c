@@ -1185,7 +1185,7 @@ static int iw_process_internal(struct iw_context *ctx)
 	ctx->intermed_width = ctx->input_w;
 	ctx->intermed_height = ctx->img2.height;
 
-	csdescr_linear.cstype=IW_CSTYPE_LINEAR;
+	iw_make_linear_csdescr(&csdescr_linear);
 
 	ctx->img2.bpr = iw_calc_bytesperrow(ctx->img2.width,ctx->output_depth*ctx->img2_numchannels);
 
@@ -1709,10 +1709,10 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	// By default, set the output colorspace to sRGB in most cases.
 	if(!ctx->caller_set_output_csdescr) {
 		if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
-			ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
+			iw_make_linear_csdescr(&ctx->img2cs);
 		}
 		else {
-			ctx->img2cs.cstype = IW_CSTYPE_SRGB;
+			iw_make_srgb_csdescr(&ctx->img2cs,IW_SRGB_INTENT_PERCEPTUAL);
 		}
 	}
 
@@ -1723,7 +1723,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			if(ctx->warn_invalid_output_csdescr) {
 				iwpvt_warn(ctx,iws_warn_output_forced_linear);
 			}
-			ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
+			iw_make_linear_csdescr(&ctx->img2cs);
 		}
 	}
 

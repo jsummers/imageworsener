@@ -157,12 +157,11 @@ static void init_context(struct iw_context *ctx)
 	default_resize_settings(&ctx->resize_settings_alpha);
 	ctx->input_w = -1;
 	ctx->input_h = -1;
-	ctx->img1cs.cstype = IW_CSTYPE_SRGB;
-	ctx->img2cs.cstype = IW_CSTYPE_SRGB;
+	iw_make_srgb_csdescr(&ctx->img1cs,IW_SRGB_INTENT_PERCEPTUAL);
+	iw_make_srgb_csdescr(&ctx->img2cs,IW_SRGB_INTENT_PERCEPTUAL);
 	ctx->to_grayscale=0;
 	ctx->edge_policy = IW_EDGE_POLICY_STANDARD;
 	ctx->density_policy = IW_DENSITY_POLICY_AUTO;
-	ctx->img1cs.sRGB_intent=IW_sRGB_INTENT_PERCEPTUAL;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
@@ -337,30 +336,51 @@ IW_IMPL(int) iw_get_input_image_density(struct iw_context *ctx,
 	return 0;
 }
 
+// Detect a "gamma" colorspace that is actually linear.
+static void optimize_csdescr(struct iw_csdescr *cs)
+{
+	if(cs->cstype!=IW_CSTYPE_GAMMA) return;
+	if(cs->gamma>=0.999995 && cs->gamma<=1.000005) {
+		cs->cstype = IW_CSTYPE_LINEAR;
+	}
+}
+
+IW_IMPL(void) iw_make_linear_csdescr(struct iw_csdescr *cs)
+{
+	cs->cstype = IW_CSTYPE_LINEAR;
+	cs->gamma = 0.0;
+	cs->srgb_intent = 0;
+}
+
+IW_IMPL(void) iw_make_srgb_csdescr(struct iw_csdescr *cs, int srgb_intent)
+{
+	cs->cstype = IW_CSTYPE_SRGB;
+	cs->gamma = 0.0;
+	cs->srgb_intent = srgb_intent;
+}
+
+IW_IMPL(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma)
+{
+	cs->cstype = IW_CSTYPE_GAMMA;
+	cs->gamma = gamma;
+	if(cs->gamma<0.1) cs->gamma=0.1;
+	if(cs->gamma>10.0) cs->gamma=10.0;
+	cs->srgb_intent = 0;
+	optimize_csdescr(cs);
+}
+
 IW_IMPL(void) iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
 {
 	ctx->caller_set_output_csdescr = 1;
 	ctx->warn_invalid_output_csdescr = 1;
 	ctx->img2cs = *csdescr; // struct copy
-
-	// Detect linear colorspace:
-	if(ctx->img2cs.cstype == IW_CSTYPE_GAMMA) {
-		if(ctx->img2cs.gamma>=0.999995 && ctx->img2cs.gamma<=1.000005) {
-			ctx->img2cs.cstype = IW_CSTYPE_LINEAR;
-		}
-	}
+	optimize_csdescr(&ctx->img2cs);
 }
 
 IW_IMPL(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
 {
 	ctx->img1cs = *csdescr; // struct copy
-
-	// Detect linear colorspace:
-	if(ctx->img1cs.cstype == IW_CSTYPE_GAMMA) {
-		if(ctx->img1cs.gamma>=0.999995 && ctx->img1cs.gamma<=1.000005) {
-			ctx->img1cs.cstype = IW_CSTYPE_LINEAR;
-		}
-	}
+	optimize_csdescr(&ctx->img1cs);
 }
 
 IW_IMPL(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b)

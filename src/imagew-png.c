@@ -127,20 +127,16 @@ static void iwpng_read_colorspace(struct iw_context *ctx,
 	double file_gamma;
 	struct iw_csdescr csdescr;
 
-	memset(&csdescr,0,sizeof(struct iw_csdescr));
-
-	// default:
-	csdescr.cstype = IW_CSTYPE_SRGB;
-	csdescr.sRGB_intent = IW_sRGB_INTENT_PERCEPTUAL;
-
 	if(png_get_sRGB(png_ptr, info_ptr, &tmp)) {
-		csdescr.cstype = IW_CSTYPE_SRGB;
-		csdescr.sRGB_intent = tmp;
+		iw_make_srgb_csdescr(&csdescr,tmp);
 	}
 	else if(png_get_gAMA(png_ptr, info_ptr, &file_gamma)) {
 		file_gamma = fixup_png_gamma(file_gamma);
-		csdescr.cstype = IW_CSTYPE_GAMMA;
-		csdescr.gamma = 1.0/file_gamma;
+		iw_make_gamma_csdescr(&csdescr,1.0/file_gamma);
+	}
+	else {
+		// default:
+		iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
 	}
 
 	iw_set_input_colorspace(ctx,&csdescr);
@@ -598,7 +594,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		png_set_gAMA(png_ptr, info_ptr, 1.0);
 	}
 	else { // Assume IW_CSTYPE_SRGB
-		png_set_sRGB(png_ptr, info_ptr, csdescr.sRGB_intent);
+		png_set_sRGB(png_ptr, info_ptr, csdescr.srgb_intent);
 	}
 
 	iwpng_set_phys(ctx, png_ptr, info_ptr, &img);

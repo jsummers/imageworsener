@@ -150,8 +150,7 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 	else if(!strcmp(name,"gamma")) {
 		tmpd =  atof(val);
 		if(tmpd>=0.00001 && tmpd<=10.0) {
-			rctx->csdescr.cstype = IW_CSTYPE_GAMMA;
-			rctx->csdescr.gamma = 1.0/tmpd;
+			iw_make_gamma_csdescr(&rctx->csdescr,1.0/tmpd);
 		}
 	}
 	else if(!strcmp(name,"quantum:format")) {
@@ -382,8 +381,7 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	rctx.img = &img;
 
 	// Assume unlabeled images are sRGB
-	rctx.csdescr.cstype = IW_CSTYPE_SRGB;
-	rctx.csdescr.sRGB_intent = IW_sRGB_INTENT_PERCEPTUAL;
+	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
 
 	iw_set_string_table(ctx,IW_STRINGTABLENUM_MIFF,iwmiff_stringtable);
 

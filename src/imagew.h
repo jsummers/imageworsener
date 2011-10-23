@@ -176,10 +176,10 @@ extern "C" {
 #define IW_CSTYPE_GAMMA     2
 
 // These must be the same as the PNG definitions.
-#define IW_sRGB_INTENT_PERCEPTUAL 0
-#define IW_sRGB_INTENT_RELATIVE   1
-#define IW_sRGB_INTENT_SATURATION 2
-#define IW_sRGB_INTENT_ABSOLUTE   3
+#define IW_SRGB_INTENT_PERCEPTUAL 0
+#define IW_SRGB_INTENT_RELATIVE   1
+#define IW_SRGB_INTENT_SATURATION 2
+#define IW_SRGB_INTENT_ABSOLUTE   3
 
 #define IW_DIMENSION_H 0 // The horizontal (x) dimension.
 #define IW_DIMENSION_V 1 // The vertical (y) dimension.
@@ -239,8 +239,8 @@ extern "C" {
 
 // Colorspace descriptor
 struct iw_csdescr {
-	int cstype; // IW_CSTYPE_
-	int sRGB_intent; // used if CSTYPE==IW_CSTYPE_SRGB
+	int cstype; // IW_CSTYPE_*
+	int srgb_intent; // used if CSTYPE==IW_CSTYPE_SRGB
 	double gamma; // used if CSTYPE==IW_CSTYPE_GAMMA
 };
 
@@ -408,6 +408,14 @@ IW_EXPORT(void) iw_set_output_colorspace(struct iw_context *ctx, const struct iw
 // Must be called *after* reading the file, or it will be overwritten.
 // IW copies the struct that the caller passes.
 IW_EXPORT(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr);
+
+// Although the iw_csdescr structure is publicly visible, these functions are
+// the preferred way to set its fields.
+// The struct must be allocated by the caller, but does not need to be
+// initialized or freed in any special way.
+IW_EXPORT(void) iw_make_linear_csdescr(struct iw_csdescr *cs);
+IW_EXPORT(void) iw_make_srgb_csdescr(struct iw_csdescr *cs, int srgb_intent);
+IW_EXPORT(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma);
 
 IW_EXPORT(int) iw_get_input_image_density(struct iw_context *ctx,
    double *px, double *py, int *pcode);

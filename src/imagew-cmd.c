@@ -649,8 +649,7 @@ static int run(struct params_struct *p)
 			struct iw_csdescr cs_srgb;
 
 			// Make an sRGB descriptor to use with iw_convert_sample_to_linear.
-			memset(&cs_srgb,0,sizeof(struct iw_csdescr));
-			cs_srgb.cstype = IW_CSTYPE_SRGB;
+			iw_make_srgb_csdescr(&cs_srgb,IW_SRGB_INTENT_PERCEPTUAL);
 
 			p->bkgd.r = iw_convert_sample_to_linear(p->bkgd.r,&cs_srgb);
 			p->bkgd.g = iw_convert_sample_to_linear(p->bkgd.g,&cs_srgb);
@@ -1181,23 +1180,23 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 	namelen = iwcmd_get_name_len(s);
 
 	if(namelen==5 && len>5 && !strncmp(s,"gamma",namelen)) {
-		cs->cstype=IW_CSTYPE_GAMMA;
-		cs->gamma=iwcmd_parse_dbl(&s[namelen]);
-		if(cs->gamma<0.1) cs->gamma=0.1;
-		if(cs->gamma>10.0) cs->gamma=10.0;
+		double g;
+		g = iwcmd_parse_dbl(&s[namelen]);
+		iw_make_gamma_csdescr(cs,g);
 	}
 	else if(!strcmp(s,"linear")) {
-		cs->cstype=IW_CSTYPE_LINEAR;
+		iw_make_linear_csdescr(cs);
 	}
 	else if(len>=4 && !strncmp(s,"srgb",4)) {
-		cs->cstype=IW_CSTYPE_SRGB;
+		int intent;
 		switch(s[4]) {
-			case 'p': cs->sRGB_intent=IW_sRGB_INTENT_PERCEPTUAL; break;
-			case 'r': cs->sRGB_intent=IW_sRGB_INTENT_RELATIVE; break;
-			case 's': cs->sRGB_intent=IW_sRGB_INTENT_SATURATION; break;
-			case 'a': cs->sRGB_intent=IW_sRGB_INTENT_ABSOLUTE; break;
-			default:  cs->sRGB_intent=IW_sRGB_INTENT_PERCEPTUAL; break;
+			case 'p': intent=IW_SRGB_INTENT_PERCEPTUAL; break;
+			case 'r': intent=IW_SRGB_INTENT_RELATIVE; break;
+			case 's': intent=IW_SRGB_INTENT_SATURATION; break;
+			case 'a': intent=IW_SRGB_INTENT_ABSOLUTE; break;
+			default:  intent=IW_SRGB_INTENT_PERCEPTUAL; break;
 		}
+		iw_make_srgb_csdescr(cs,intent);
 	}
 	else {
 		iwcmd_error(p,"Unknown color space \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
