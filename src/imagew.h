@@ -213,10 +213,6 @@ extern "C" {
 #define IW_EDGE_POLICY_REPLICATE  1  // Replicate the pixels at the image edge.
 #define IW_EDGE_POLICY_STANDARD   2  // Use available samples if any are within radius; otherwise replicate.
 
-#define IW_BKGDCOLORSPACE_SRGB         0
-#define IW_BKGDCOLORSPACE_LINEAR       1
-#define IW_BKGDCOLORSPACE_SAMEASOUTPUT 10
-
 // Optimizations that IW is allowed to do:
 #define IW_OPT_GRAYSCALE    1   // optimize color to grayscale
 #define IW_OPT_PALETTE      2   // optimize to paletted images
@@ -395,8 +391,11 @@ IW_EXPORT(void) iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d
 // Color values are on a scale from 0 to 1, in the input colorspace.
 IW_EXPORT(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b);
 
-// 'cs' indicates the colorspace of the samples given by the caller (IW_BKGDCOLORSPACE_*).
-IW_EXPORT(void) iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b);
+// The background color to apply to the image.
+// Color values are on a scale from 0 to 1, in a linear colorspace.
+// This will be overridden if IW_VAL_USE_BKGD_LABEL is set, and the input file
+// contains a background color label.
+IW_EXPORT(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b);
 
 // Must also call iw_set_applybkgd. This sets the second bkgd color, and the checkerboard size in pixels.
 IW_EXPORT(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checkersize, double r2, double g2, double b2);
@@ -447,6 +446,9 @@ IW_EXPORT(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...);
 // Returns the number of bytes in the data type used to store a sample
 // internally.
 IW_EXPORT(int) iw_get_sample_size(void);
+
+IW_EXPORT(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
+IW_EXPORT(double) iw_convert_sample_from_linear(double v, const struct iw_csdescr *csdescr);
 
 // Returns an integer representing the IW version.
 // For example, 0x010203 would be version 1.2.3.
@@ -509,9 +511,6 @@ IW_EXPORT(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
 IW_EXPORT(int) iw_imgtype_num_channels(int t);
 
 IW_EXPORT(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
-
-IW_EXPORT(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
-IW_EXPORT(double) iw_convert_sample_from_linear(double v, const struct iw_csdescr *csdescr);
 
 // Utility function to check that the supplied dimensions are
 // considered valid by IW. If not, generates a warning and returns 0.

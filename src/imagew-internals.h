@@ -181,8 +181,7 @@ struct iw_context {
 
 	int apply_bkgd;
 	int apply_bkgd_strategy; // IW_BKGD_STRATEGY_*
-	int colorspace_of_bkgd;
-	int caller_set_bkgd; // FIXME: remove this
+	int caller_set_bkgd;
 	struct iw_rgb_color bkgd; // The (primary) background color that will be applied.
 	int bkgd_checkerboard; // valid if apply_bkgd is set. 0=solid, 1=checkerboard
 	int bkgd_check_size;

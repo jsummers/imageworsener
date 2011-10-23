@@ -642,7 +642,28 @@ static int run(struct params_struct *p)
 	if(p->offset_b_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_BLUE, IW_DIMENSION_V,p->offset_b_v);
 
 	if(p->apply_bkgd) {
-		iw_set_applybkgd(ctx,IW_BKGDCOLORSPACE_SRGB,p->bkgd.r,p->bkgd.g,p->bkgd.b);
+
+		// iw_set_applybkgd() requires background color to be in a linear
+		// colorspace, so convert it (from sRGB) if needed.
+		if(!p->no_gamma) {
+			struct iw_csdescr cs_srgb;
+
+			// Make an sRGB descriptor to use with iw_convert_sample_to_linear.
+			memset(&cs_srgb,0,sizeof(struct iw_csdescr));
+			cs_srgb.cstype = IW_CSTYPE_SRGB;
+
+			p->bkgd.r = iw_convert_sample_to_linear(p->bkgd.r,&cs_srgb);
+			p->bkgd.g = iw_convert_sample_to_linear(p->bkgd.g,&cs_srgb);
+			p->bkgd.b = iw_convert_sample_to_linear(p->bkgd.b,&cs_srgb);
+
+			if(p->bkgd_checkerboard) {
+				p->bkgd2.r = iw_convert_sample_to_linear(p->bkgd2.r,&cs_srgb);
+				p->bkgd2.g = iw_convert_sample_to_linear(p->bkgd2.g,&cs_srgb);
+				p->bkgd2.b = iw_convert_sample_to_linear(p->bkgd2.b,&cs_srgb);
+			}
+		}
+
+		iw_set_apply_bkgd(ctx,p->bkgd.r,p->bkgd.g,p->bkgd.b);
 		if(p->bkgd_checkerboard) {
 			iw_set_bkgd_checkerboard(ctx,p->bkgd_check_size,p->bkgd2.r,p->bkgd2.g,p->bkgd2.b);
 			iw_set_bkgd_checkerboard_origin(ctx,p->bkgd_check_origin_x,p->bkgd_check_origin_y);

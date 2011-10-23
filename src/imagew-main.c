@@ -62,11 +62,6 @@ static IW_INLINE IW_SAMPLE srgb_to_linear_sample(IW_SAMPLE v_srgb)
 	}
 }
 
-static IW_SAMPLE srgb_to_linear_sample_noinline(IW_SAMPLE v_srgb)
-{
-	return srgb_to_linear_sample(v_srgb);
-}
-
 static IW_INLINE IW_SAMPLE gamma_to_linear_sample(IW_SAMPLE v, double gamma)
 {
 	return pow(v,gamma);
@@ -1356,26 +1351,6 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 	ctx->output_depth=8;
 }
 
-static void cvt_bkgd_color_to_linear(struct iw_context *ctx,
-	const struct iw_rgb_color *clr, struct iw_rgb_color *clr_lin)
-{
-	int i;
-
-	if(ctx->colorspace_of_bkgd==IW_BKGDCOLORSPACE_LINEAR || ctx->no_gamma) {
-		*clr_lin = *clr;
-	}
-	else if(ctx->colorspace_of_bkgd==IW_BKGDCOLORSPACE_SRGB) {
-		for(i=0;i<3;i++) {
-			clr_lin->c[i] = srgb_to_linear_sample_noinline(clr->c[i]);
-		}
-	}
-	else { // assume IW_BKGDCOLORSPACE_SAMEASOUTPUT
-		for(i=0;i<3;i++) {
-			clr_lin->c[i] = x_to_linear_sample(clr->c[i],&ctx->img2cs);
-		}
-	}
-}
-
 // Make a final decision about what to use for the background color.
 // TODO: Maybe some of this should be moved to the decide_how_to_apply_bkgd()
 // function, or some other refactoring should be done.
@@ -1389,27 +1364,28 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	struct iw_rgb_color bkgd2; // Secondary background color ...
 	int i;
 
+	if(!ctx->apply_bkgd) return;
+
 	if(ctx->img1_bkgd_label_set && !ctx->caller_set_bkgd) {
 		// If the user didn't give us a background color, and the file
 		// has one, use the file's background color as the default.
 		ctx->bkgd = ctx->img1_bkgd_label; // structure copy
-		ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
 	}
 
 	bkgd1.c[0]=0.0; bkgd1.c[1]=0.0; bkgd1.c[2]=0.0;
 	bkgd2.c[0]=0.0; bkgd2.c[1]=0.0; bkgd2.c[2]=0.0;
 
-	if(ctx->use_bkgd_label && ctx->img1_bkgd_label_set && ctx->apply_bkgd) {
-		// Override -bkgd with background color from file
+	if(ctx->use_bkgd_label && ctx->img1_bkgd_label_set) {
+		// Use the background color label from the input file.
 		bkgd1 = ctx->img1_bkgd_label; // sructure copy
 		ctx->bkgd_checkerboard = 0;
 	}
 	else {
-		// Convert the target background color to linear colorspace.
-		cvt_bkgd_color_to_linear(ctx,&ctx->bkgd,&bkgd1);
-
+		// Use the background color set by the caller, or the default
+		// background color.
+		bkgd1 = ctx->bkgd;
 		if(ctx->bkgd_checkerboard) {
-			cvt_bkgd_color_to_linear(ctx,&ctx->bkgd2,&bkgd2);
+			bkgd2 = ctx->bkgd2;
 		}
 	}
 

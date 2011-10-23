@@ -166,7 +166,6 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
-	ctx->colorspace_of_bkgd = IW_BKGDCOLORSPACE_LINEAR;
 	ctx->include_screen = 1;
 	ctx->webp_quality = -1.0;
 	ctx->pngcmprlevel = 9;
@@ -364,11 +363,10 @@ IW_IMPL(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_cs
 	}
 }
 
-IW_IMPL(void) iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b)
+IW_IMPL(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b)
 {
 	ctx->apply_bkgd=1;
 	ctx->caller_set_bkgd=1;
-	ctx->colorspace_of_bkgd=cs;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=r;
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=g;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=b;
