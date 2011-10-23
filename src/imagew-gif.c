@@ -784,7 +784,7 @@ done:
 	return retval;
 }
 
-int iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
 	struct iwgifreadcontext *rctx = NULL;

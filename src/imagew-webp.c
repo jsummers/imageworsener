@@ -297,7 +297,7 @@ done:
 
 #endif
 
-int iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
 	struct iwwebpreadcontext rctx;
@@ -427,7 +427,7 @@ done:
 	return 1;
 }
 
-int iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iwwebpwritecontext wctx;
 	int retval=0;
@@ -462,7 +462,7 @@ done:
 	return retval;
 }
 
-char *iw_get_libwebp_dec_version_string(char *s, int s_len)
+IW_IMPL(char*) iw_get_libwebp_dec_version_string(char *s, int s_len)
 {
 	int v;
 	v=WebPGetDecoderVersion();
@@ -471,7 +471,7 @@ char *iw_get_libwebp_dec_version_string(char *s, int s_len)
 	return s;
 }
 
-char *iw_get_libwebp_enc_version_string(char *s, int s_len)
+IW_IMPL(char*) iw_get_libwebp_enc_version_string(char *s, int s_len)
 {
 	int v;
 	v=WebPGetEncoderVersion();

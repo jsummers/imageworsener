@@ -14,7 +14,7 @@
 #include "imagew-internals.h"
 
 // Call the caller's warning function, if defined.
-void iw_warningf(struct iw_context *ctx, const char *fmt, ...)
+IW_IMPL(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...)
 {
 	char buf[IW_ERRMSG_MAX];
 
@@ -28,7 +28,7 @@ void iw_warningf(struct iw_context *ctx, const char *fmt, ...)
 	(*ctx->warning_fn)(ctx,buf);
 }
 
-void iw_set_error(struct iw_context *ctx, const char *s)
+IW_IMPL(void) iw_set_error(struct iw_context *ctx, const char *s)
 {
 	if(ctx->error_flag) return; // Only record the first error.
 	ctx->error_flag = 1;
@@ -43,7 +43,7 @@ void iw_set_error(struct iw_context *ctx, const char *s)
 	iw_strlcpy(ctx->error_msg,s,IW_ERRMSG_MAX);
 }
 
-void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
+IW_IMPL(void) iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
 {
 	char msg[IW_ERRMSG_MAX];
 
@@ -51,7 +51,7 @@ void iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
 	iw_set_error(ctx,msg);
 }
 
-void iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
+IW_IMPL(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -59,7 +59,7 @@ void iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
 	va_end(ap);
 }
 
-const char *iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen)
+IW_IMPL(const char*) iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen)
 {
 	if(ctx->error_msg) {
 		iw_snprintf(buf,buflen,"%s",ctx->error_msg);
@@ -71,22 +71,36 @@ const char *iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen)
 	return buf;
 }
 
-int iw_get_errorflag(struct iw_context *ctx)
+IW_IMPL(int) iw_get_errorflag(struct iw_context *ctx)
 {
 	return ctx->error_flag;
 }
 
-void iw_set_api_version(struct iw_context *ctx, int v)
+IW_IMPL(void) iw_set_api_version(struct iw_context *ctx, int v)
 {
 	ctx->caller_api_version = v;
 }
 
-size_t iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
+// Given a color type, returns the number of channels.
+IW_IMPL(int) iw_imgtype_num_channels(int t)
+{
+	switch(t) {
+	case IW_IMGTYPE_RGBA:
+		return 4;
+	case IW_IMGTYPE_RGB:
+		return 3;
+	case IW_IMGTYPE_GRAYA:
+		return 2;
+	}
+	return 1;
+}
+
+IW_IMPL(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 {
 	return (size_t)(((num_pixels*bits_per_pixel)+7)/8);
 }
 
-int iw_check_image_dimensions(struct iw_context *ctx, int w, int h)
+IW_IMPL(int) iw_check_image_dimensions(struct iw_context *ctx, int w, int h)
 {
 	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
 		iwpvt_errf(ctx,iws_dimensions_too_large,w,h);
@@ -164,7 +178,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->prng = iwpvt_prng_create();
 }
 
-struct iw_context *iw_create_context(void)
+IW_IMPL(struct iw_context*) iw_create_context(void)
 {
 	struct iw_context *ctx;
 
@@ -174,7 +188,7 @@ struct iw_context *iw_create_context(void)
 	return ctx;
 }
 
-void iw_destroy_context(struct iw_context *ctx)
+IW_IMPL(void) iw_destroy_context(struct iw_context *ctx)
 {
 	if(!ctx) return;
 	if(ctx->prng) iwpvt_prng_destroy(ctx->prng);
@@ -189,7 +203,7 @@ void iw_destroy_context(struct iw_context *ctx)
 	iw_free(ctx);
 }
 
-void iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
+IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 {
 	memset(img,0,sizeof(struct iw_image));
 	img->width = ctx->optctx.width;
@@ -208,23 +222,23 @@ void iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->colorkey_b = ctx->optctx.colorkey_b;
 }
 
-void iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr)
+IW_IMPL(void) iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr)
 {
 	*csdescr = ctx->img2cs; // struct copy
 }
 
-const struct iw_palette *iw_get_output_palette(struct iw_context *ctx)
+IW_IMPL(const struct iw_palette*) iw_get_output_palette(struct iw_context *ctx)
 {
 	return ctx->optctx.palette;
 }
 
-void iw_set_output_canvas_size(struct iw_context *ctx, int w, int h)
+IW_IMPL(void) iw_set_output_canvas_size(struct iw_context *ctx, int w, int h)
 {
 	ctx->canvas_width = w;
 	ctx->canvas_height = h;
 }
 
-void iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h)
+IW_IMPL(void) iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h)
 {
 	ctx->input_start_x = x;
 	ctx->input_start_y = y;
@@ -232,17 +246,17 @@ void iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h)
 	ctx->input_h = h;
 }
 
-void iw_set_output_profile(struct iw_context *ctx, unsigned int n)
+IW_IMPL(void) iw_set_output_profile(struct iw_context *ctx, unsigned int n)
 {
 	ctx->output_profile = n;
 }
 
-void iw_set_output_depth(struct iw_context *ctx, int bps)
+IW_IMPL(void) iw_set_output_depth(struct iw_context *ctx, int bps)
 {
 	ctx->output_depth = bps;
 }
 
-void iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)
+IW_IMPL(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)
 {
 	if(channeltype>=0 && channeltype<=4) {
 		ctx->ditherfamily_by_channeltype[channeltype] = f;
@@ -267,7 +281,7 @@ void iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)
 	}
 }
 
-void iw_set_color_count(struct iw_context *ctx, int channeltype, int c)
+IW_IMPL(void) iw_set_color_count(struct iw_context *ctx, int channeltype, int c)
 {
 	if(channeltype>=0 && channeltype<=4) {
 		ctx->color_count[channeltype] = c;
@@ -286,7 +300,7 @@ void iw_set_color_count(struct iw_context *ctx, int channeltype, int c)
 	}
 }
 
-void iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimension, double offs)
+IW_IMPL(void) iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimension, double offs)
 {
 	if(channeltype<0 || channeltype>2) return;
 	if(dimension<0 || dimension>1) dimension=0;
@@ -296,13 +310,13 @@ void iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimensio
 	ctx->resize_settings[dimension].channel_offset[channeltype] = offs;
 }
 
-void iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d)
+IW_IMPL(void) iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d)
 {
 	if(channeltype<0 || channeltype>4) return;
 	ctx->significant_bits[channeltype] = d;
 }
 
-void iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b)
+IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b)
 {
 	ctx->img1_bkgd_label.c[0] = r;
 	ctx->img1_bkgd_label.c[1] = g;
@@ -310,7 +324,7 @@ void iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double 
 	ctx->img1_bkgd_label_set = 1;
 }
 
-int iw_get_input_image_density(struct iw_context *ctx,
+IW_IMPL(int) iw_get_input_image_density(struct iw_context *ctx,
    double *px, double *py, int *pcode)
 {
 	*px = 1.0;
@@ -324,7 +338,7 @@ int iw_get_input_image_density(struct iw_context *ctx,
 	return 0;
 }
 
-void iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
+IW_IMPL(void) iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
 {
 	ctx->caller_set_output_csdescr = 1;
 	ctx->warn_invalid_output_csdescr = 1;
@@ -338,7 +352,7 @@ void iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *c
 	}
 }
 
-void iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
+IW_IMPL(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
 {
 	ctx->img1cs = *csdescr; // struct copy
 
@@ -350,7 +364,7 @@ void iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *cs
 	}
 }
 
-void iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b)
+IW_IMPL(void) iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double b)
 {
 	ctx->apply_bkgd=1;
 	ctx->caller_set_bkgd=1;
@@ -360,7 +374,7 @@ void iw_set_applybkgd(struct iw_context *ctx, int cs, double r, double g, double
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=b;
 }
 
-void iw_set_bkgd_checkerboard(struct iw_context *ctx, int checksize,
+IW_IMPL(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checksize,
     double r2, double g2, double b2)
 {
 	ctx->bkgd_checkerboard=1;
@@ -370,44 +384,44 @@ void iw_set_bkgd_checkerboard(struct iw_context *ctx, int checksize,
 	ctx->bkgd2.c[IW_CHANNELTYPE_BLUE]=b2;
 }
 
-void iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y)
+IW_IMPL(void) iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y)
 {
 	ctx->bkgd_check_origin[IW_DIMENSION_H] = x;
 	ctx->bkgd_check_origin[IW_DIMENSION_V] = y;
 }
 
-void iw_set_max_malloc(struct iw_context *ctx, size_t n)
+IW_IMPL(void) iw_set_max_malloc(struct iw_context *ctx, size_t n)
 {
 	ctx->max_malloc = n;
 }
 
-void iw_set_random_seed(struct iw_context *ctx, int randomize, int rand_seed)
+IW_IMPL(void) iw_set_random_seed(struct iw_context *ctx, int randomize, int rand_seed)
 {
 	ctx->randomize = randomize;
 	ctx->random_seed = rand_seed;
 }
 
-void iw_set_userdata(struct iw_context *ctx, void *userdata)
+IW_IMPL(void) iw_set_userdata(struct iw_context *ctx, void *userdata)
 {
 	ctx->userdata = userdata;
 }
 
-void *iw_get_userdata(struct iw_context *ctx)
+IW_IMPL(void*) iw_get_userdata(struct iw_context *ctx)
 {
 	return ctx->userdata;
 }
 
-void iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warnfn)
+IW_IMPL(void) iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warnfn)
 {
 	ctx->warning_fn = warnfn;
 }
 
-void iw_set_input_image(struct iw_context *ctx, const struct iw_image *img)
+IW_IMPL(void) iw_set_input_image(struct iw_context *ctx, const struct iw_image *img)
 {
 	ctx->img1 = *img; // struct copy
 }
 
-void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, int family,
+IW_IMPL(void) iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, int family,
     double blur, double param1, double param2)
 {
 	struct iw_resize_settings *rs;
@@ -452,17 +466,17 @@ void iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, i
 	}
 }
 
-int iw_get_sample_size(void)
+IW_IMPL(int) iw_get_sample_size(void)
 {
 	return (int)sizeof(IW_SAMPLE);
 }
 
-int iw_get_version_int(void)
+IW_IMPL(int) iw_get_version_int(void)
 {
 	return IW_VERSION_INT;
 }
 
-char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len)
+IW_IMPL(char*) iw_get_version_string(struct iw_context *ctx, char *s, int s_len)
 {
 	int ver;
 	ver = iw_get_version_int();
@@ -471,7 +485,7 @@ char *iw_get_version_string(struct iw_context *ctx, char *s, int s_len)
 	return s;
 }
 
-char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
+IW_IMPL(char*) iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
 {
 	if(ctx) {
 		iw_snprintf(s,s_len,iwpvt_get_string(ctx,iws_copyright),IW_COPYRIGHT_YEAR);
@@ -482,7 +496,7 @@ char *iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
 	return s;
 }
 
-void iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
+IW_IMPL(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 {
 	iw_byte v;
 	v = n?1:0;
@@ -498,7 +512,7 @@ void iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 
 // Set a string table if it's not already set.
 // You can always reset a string table by setting st=NULL.
-void iw_set_string_table(struct iw_context *ctx, int tablenum,
+IW_IMPL(void) iw_set_string_table(struct iw_context *ctx, int tablenum,
 	const struct iw_stringtableentry *st)
 {
 	if(tablenum<0 || tablenum>=IW_NUMSTRINGTABLES) return;
@@ -508,7 +522,7 @@ void iw_set_string_table(struct iw_context *ctx, int tablenum,
 	}
 }
 
-void iw_set_value(struct iw_context *ctx, int code, int n)
+IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 {
 	switch(code) {
 	case IW_VAL_CVT_TO_GRAYSCALE:
@@ -562,7 +576,7 @@ void iw_set_value(struct iw_context *ctx, int code, int n)
 	}
 }
 
-int iw_get_value(struct iw_context *ctx, int code)
+IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 {
 	int ret=0;
 
@@ -637,7 +651,7 @@ int iw_get_value(struct iw_context *ctx, int code)
 	return ret;
 }
 
-void iw_set_value_dbl(struct iw_context *ctx, int code, double n)
+IW_IMPL(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n)
 {
 	switch(code) {
 	case IW_VAL_WEBP_QUALITY:
@@ -646,7 +660,7 @@ void iw_set_value_dbl(struct iw_context *ctx, int code, double n)
 	}
 }
 
-double iw_get_value_dbl(struct iw_context *ctx, int code)
+IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 {
 	double ret = 0.0;
 
@@ -660,7 +674,7 @@ double iw_get_value_dbl(struct iw_context *ctx, int code)
 }
 
 // Get a string, given a pointer to a string table.
-const char *iw_get_string_direct(const struct iw_stringtableentry *st, int n)
+IW_IMPL(const char*) iw_get_string_direct(const struct iw_stringtableentry *st, int n)
 {
 	int i;
 
@@ -678,7 +692,7 @@ const char *iw_get_string_direct(const struct iw_stringtableentry *st, int n)
 }
 
 // Get a string, given a string table number
-const char *iw_get_string(struct iw_context *ctx, int tablenum, int n)
+IW_IMPL(const char*) iw_get_string(struct iw_context *ctx, int tablenum, int n)
 {
 	if(tablenum<0 || tablenum>=IW_NUMSTRINGTABLES || !ctx) {
 		return "[missing string table]";

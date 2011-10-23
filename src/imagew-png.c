@@ -252,7 +252,7 @@ static void iw_read_ancillary_data(struct iw_context *ctx,
 	iwpng_read_bkgd(ctx,png_ptr,info_ptr,color_type,bit_depth);
 }
 
-int iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	png_uint_32 width, height;
 	int bit_depth, color_type, interlace_type;
@@ -494,7 +494,7 @@ static void my_png_flush_fn(png_structp png_ptr)
 {
 }
 
-int iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	iw_byte **row_pointers = NULL;
 	int i;
@@ -641,7 +641,7 @@ done:
 	return retval;
 }
 
-char *iw_get_libpng_version_string(char *s, int s_len)
+IW_IMPL(char*) iw_get_libpng_version_string(char *s, int s_len)
 {
 	const char *pv;
 	pv = png_get_libpng_ver(NULL);
@@ -649,7 +649,7 @@ char *iw_get_libpng_version_string(char *s, int s_len)
 	return s;
 }
 
-char *iw_get_zlib_version_string(char *s, int s_len)
+IW_IMPL(char) *iw_get_zlib_version_string(char *s, int s_len)
 {
 	const char *zv;
 	zv = zlibVersion();

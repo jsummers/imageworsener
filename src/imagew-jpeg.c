@@ -159,7 +159,7 @@ static void my_term_source_fn(j_decompress_ptr cinfo)
 {
 }
 
-int iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	int retval=0;
 	struct jpeg_decompress_struct cinfo;
@@ -327,7 +327,7 @@ static void my_term_destination_fn(j_compress_ptr cinfo)
 	}
 }
 
-int iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
 {
 	int retval=0;
 	struct jpeg_compress_struct cinfo;
@@ -464,7 +464,7 @@ done:
 	return retval;
 }
 
-char *iw_get_libjpeg_version_string(char *s, int s_len)
+IW_IMPL(char*) iw_get_libjpeg_version_string(char *s, int s_len)
 {
 	struct jpeg_error_mgr jerr;
 	const char *jv;

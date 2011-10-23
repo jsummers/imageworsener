@@ -22,22 +22,22 @@
 #endif
 
 
-void iw_free(void *mem)
+IW_IMPL(void) iw_free(void *mem)
 {
 	if(mem) free(mem);
 }
 
-void *iw_malloc_lowlevel(size_t n)
+IW_IMPL(void*) iw_malloc_lowlevel(size_t n)
 {
 	return malloc(n);
 }
 
-void *iw_realloc_lowlevel(void *m, size_t n)
+IW_IMPL(void*) iw_realloc_lowlevel(void *m, size_t n)
 {
 	return realloc(m,n);
 }
 
-void *iw_strdup(const char *s)
+IW_IMPL(void*) iw_strdup(const char *s)
 {
 #ifdef IW_WINDOWS
 	return _strdup(s);
@@ -46,7 +46,7 @@ void *iw_strdup(const char *s)
 #endif
 }
 
-void *iw_malloc(struct iw_context *ctx, size_t n)
+IW_IMPL(void*) iw_malloc(struct iw_context *ctx, size_t n)
 {
 	void *mem;
 
@@ -62,7 +62,7 @@ void *iw_malloc(struct iw_context *ctx, size_t n)
 	return mem;
 }
 
-void *iw_realloc(struct iw_context *ctx, void *m, size_t n)
+IW_IMPL(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n)
 {
 	void *mem;
 
@@ -81,7 +81,7 @@ void *iw_realloc(struct iw_context *ctx, void *m, size_t n)
 // Allocate a large block of memory, presumably for image data.
 // Use this if integer overflow is a possibility when multiplying
 // two factors together.
-void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2)
+IW_IMPL(void*) iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2)
 {
 	if(n1 > ctx->max_malloc/n2) {
 		iwpvt_err(ctx,iws_image_too_large);
@@ -90,7 +90,7 @@ void *iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2)
 	return iw_malloc(ctx,n1*n2);
 }
 
-void iw_strlcpy(char *dst, const char *src, size_t dstlen)
+IW_IMPL(void) iw_strlcpy(char *dst, const char *src, size_t dstlen)
 {
 	size_t n;
 	n = strlen(src);
@@ -99,7 +99,7 @@ void iw_strlcpy(char *dst, const char *src, size_t dstlen)
 	dst[n]='\0';
 }
 
-void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap)
+IW_IMPL(void) iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap)
 {
 #ifdef IW_WINDOWS
 	StringCchVPrintfA(buf,buflen,fmt,ap);
@@ -109,7 +109,7 @@ void iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap)
 #endif
 }
 
-void iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
+IW_IMPL(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -164,7 +164,7 @@ int iwpvt_util_randomize(struct iw_prng *prng)
 	return s;
 }
 
-int iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
+IW_IMPL(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
   void **pmem, iw_int64 *psize)
 {
 	int ret;
@@ -239,7 +239,7 @@ static void utf8cvt_emitunichar(struct iw_utf8cvt_struct *s, unsigned int c)
 // This UTF-8 converter is intended for use with the UTF-8 strings that are
 // hardcoded into this program. It won't work very well with
 // user-controlled strings.
-void iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
+IW_IMPL(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 {
 	struct iw_utf8cvt_struct s;
 	int sp;
@@ -282,7 +282,7 @@ void iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 }
 
 // Returns 0 if running on a big-endian system, 1 for little-endian.
-int iw_get_host_endianness(void)
+IW_IMPL(int) iw_get_host_endianness(void)
 {
 	union en_union {
 		iw_byte c[4];
@@ -298,7 +298,7 @@ int iw_get_host_endianness(void)
 	return 0;
 }
 
-int iw_detect_fmt_from_filename(const char *fn)
+IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 {
 	char *s;
 	s=strrchr(fn,'.');
@@ -317,7 +317,7 @@ int iw_detect_fmt_from_filename(const char *fn)
 	return IW_FORMAT_UNKNOWN;
 }
 
-int iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
+IW_IMPL(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
 {
 	int fmt = IW_FORMAT_UNKNOWN;
 
@@ -350,7 +350,7 @@ int iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
 	return fmt;
 }
 
-unsigned int iw_get_profile_by_fmt(int fmt)
+IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 {
 	unsigned int p;
 

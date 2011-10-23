@@ -367,7 +367,7 @@ done:
 	return retval;
 }
 
-int iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
 	struct iwmiffreadcontext rctx;
@@ -588,7 +588,7 @@ done:
 	return 1;
 }
 
-int iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iwmiffwritecontext wctx;
 	int retval=0;

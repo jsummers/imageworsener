@@ -38,20 +38,6 @@ void iwpvt_warn(struct iw_context *ctx, int n)
 	iw_warningf(ctx,"%s",iwpvt_get_string(ctx,n));
 }
 
-// Given a color type, returns the number of channels.
-int iw_imgtype_num_channels(int t)
-{
-	switch(t) {
-	case IW_IMGTYPE_RGBA:
-		return 4;
-	case IW_IMGTYPE_RGB:
-		return 3;
-	case IW_IMGTYPE_GRAYA:
-		return 2;
-	}
-	return 1;
-}
-
 // Given a color type having an alpha channel, returns the index of the
 // alpha channel.
 // Return value is not meaningful if type does not have an alpha channel.
@@ -98,7 +84,7 @@ static IW_SAMPLE x_to_linear_sample(IW_SAMPLE v, const struct iw_csdescr *csdesc
 }
 
 // Public version of x_to_linear_sample().
-double iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr)
+IW_IMPL(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr)
 {
 	return (double)x_to_linear_sample(v,csdescr);
 }
@@ -1956,7 +1942,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	return 1;
 }
 
-int iw_process_image(struct iw_context *ctx)
+IW_IMPL(int) iw_process_image(struct iw_context *ctx)
 {
 	int ret;
 	int retval = 0;

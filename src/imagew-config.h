@@ -20,6 +20,8 @@
 #endif
 #endif
 
+#define IW_IMPL(x) x
+
 #ifndef IW_SUPPORT_PNG
 #define IW_SUPPORT_PNG 1
 #endif

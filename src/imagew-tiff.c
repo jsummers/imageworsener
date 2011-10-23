@@ -590,7 +590,7 @@ done:
 	return 1;
 }
 
-int iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+IW_IMPL(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iwtiffwritecontext *tiffctx = NULL;
 	int retval=0;
