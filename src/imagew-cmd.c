@@ -90,6 +90,7 @@ struct params_struct {
 	int page_to_read;
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
+	int jpeg_arith_coding;
 	double webp_quality;
 	int pngcmprlevel;
 	int pngcmprlevel_set;
@@ -768,6 +769,8 @@ static int run(struct params_struct *p)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
 		if(p->jpeg_samp_factor_v>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
+		if(p->jpeg_arith_coding)
+			iw_set_value(ctx,IW_VAL_JPEG_ARITH_CODING,1);
 		if(!iw_write_jpeg_file(ctx,&writedescr)) goto done;
 #else
 		iw_set_error(ctx,"JPEG is not supported by this copy of imagew.");
@@ -1316,7 +1319,8 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V,
- PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
+ PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH,
+ PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
@@ -1404,6 +1408,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"usebkgdlabel",PT_USEBKGDLABEL,0},
 		{"includescreen",PT_INCLUDESCREEN,0},
 		{"noincludescreen",PT_NOINCLUDESCREEN,0},
+		{"jpegarith",PT_JPEGARITH,0},
 		{"quiet",PT_QUIET,0},
 		{"nowarn",PT_NOWARN,0},
 		{"noinfo",PT_NOINFO,0},
@@ -1464,6 +1469,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_INTERLACE:
 		p->interlace=1;
+		break;
+	case PT_JPEGARITH:
+		p->jpeg_arith_coding=1;
 		break;
 	case PT_QUIET:
 		p->nowarn=1;

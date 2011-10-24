@@ -582,6 +582,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
 		ctx->jpeg_samp_factor_v = n;
 		break;
+	case IW_VAL_JPEG_ARITH_CODING:
+		ctx->jpeg_arith_coding = n;
+		break;
 	case IW_VAL_PNG_CMPR_LEVEL:
 		ctx->pngcmprlevel = n;
 		break;
@@ -651,6 +654,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
 		ret = ctx->jpeg_samp_factor_v;
+		break;
+	case IW_VAL_JPEG_ARITH_CODING:
+		ret = ctx->jpeg_arith_coding;
 		break;
 	case IW_VAL_PNG_CMPR_LEVEL:
 		ret = ctx->pngcmprlevel;

@@ -568,6 +568,11 @@ Options:
    Each factor must be between 1 and 4. Not all combinations are allowed, for
    reasons unknown to the author of IW.
 
+ -jpegarith
+   When writing a JPEG file, use arithmetic coding instead of Huffman coding.
+   This reduces the file size by about 10%, but many image viewers don't
+   support JPEG files with arithmetic coding.
+
  -webpquality <n>
    WebP-style quality setting to use if a WebP file is written. This is on a
    scale from 0 to 100. Default is 80.

@@ -409,6 +409,8 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 	jpeg_set_defaults(&cinfo);
 
+	cinfo.arith_code = iw_get_value(ctx,IW_VAL_JPEG_ARITH_CODING) ? TRUE : FALSE;
+
 	iwjpg_set_density(ctx,&cinfo,&img);
 
 	jpeg_quality = iw_get_value(ctx,IW_VAL_JPEG_QUALITY);

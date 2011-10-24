@@ -89,6 +89,8 @@ extern "C" {
 // Used with GIF files.
 #define IW_VAL_INCLUDE_SCREEN    40
 
+#define IW_VAL_JPEG_ARITH_CODING 41
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1

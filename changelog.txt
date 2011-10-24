@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added an option to write JPEG files using arithmetic coding.
  - Don't clamp alpha samples before using them to apply a background color.
  - Added -noincludescreen option, for more control over how GIF images are
    handled.
