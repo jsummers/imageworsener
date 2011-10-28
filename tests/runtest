@@ -201,6 +201,17 @@ $IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebk
 $IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR -nowarn
 $IW srcimg/p5t.gif actual/gif1.png $CMPR
 
+# More GIF tests
+
+# Page 2 has a local color table.
+$IW srcimg/ani1.gif actual/gif2.png $CMPR -page 2
+
+# Page 4 has no transparency. This tests:
+# - to make sure page 2's color table doesn't get used
+# - to make sure page 3's transparency flag got unset
+# - the -noincludescreen option
+$IW srcimg/ani1.gif actual/gif3.png $CMPR -page 4 -noincludescreen
+
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
 
