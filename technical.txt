@@ -138,13 +138,11 @@ if you tell IW to dither an image and resize it, it knows that it should
 resize the image first, then dither it, instead of doing it in the opposite
 order.
 
-In general, you don't have to tell IW what color format to use. If you resize
-a bilevel image, you'll automatically get high quality grayscale image, not a
-low quality bilevel image. 
-
 IW does not really care about the details of how an image is stored in a file;
 it only cares about the essential image itself. For example, a 1-bit image is
-treated the same as an 8-bit representation of the same image.
+treated the same as an 8-bit representation of the same image. If you resize a
+bilevel image, you'll automatically get high quality grayscale image, not a
+low quality bilevel image. 
 
 Architecture
 ------------
@@ -171,6 +169,21 @@ The core and auxiliary libraries are separated in order to break dependencies.
 For example, if your application supports only PNG files, you can probably
 (given how most linkers work) build it without linking to libjpeg.
 
+Files in core library:
+ imagew-internals.h, imagew-main.c, imagew-resize.c, imagew-opt.c,
+ imagew-api.c, imagew-util.c
+ 
+Files in auxiliary library:
+ imagew-png.c, imagew-jpeg.c, imagew-webp.c, imagew-gif.c, imagew-miff.c,
+ imagew-bmp.c, imagew-tiff.c
+
+Files in command-line utility:
+ imagew-cmd.c, imagew.rc, imagew.ico
+
+Other files:
+ imagew.h (Public header file, Core, Aux., Command-line)
+ imagew-config.h (Core, Aux, Command-line)
+
 Double-precision floating point?
 --------------------------------
 
@@ -178,14 +191,19 @@ IW can be compiled to use any available floating point type for its internal
 representation of samples. (Unfortunately, it's impractical to make this a
 run-time option.) Its default is currently set to be "double", which is
 usually an 8-byte floating-point number. This may seem like overkill, and I
-admit, it probably is, at least for 8-bit target images.
+admit, it probably is. Using double precision shouldn't have much effect on
+performance, especially if it's compiled as a 64-bit application. But it will
+use a lot more memory.
+
+The real reason I haven't switched to single-precision is simply because I
+haven't found any particular reason to do so. IW is intended to be used on
+reasonably modern PCs, and it does not aim for low memory use or the highest
+possible performance, so this might not be much of an issue.
 
 For 8-bit target images, switching to 4-byte floating point affects very
-roughly one pixel in every 50,000. For 16-bit target images, it's more like one
-pixel in every few hundred.
-
-Using double precision shouldn't have too much effect on performance, at least
-if it's compiled as a 64-bit application. But it will use a lot more memory.
+roughly one pixel in every 50,000. For 16-bit target images, it's more like
+one pixel in every few hundred. Not that that means anything -- the image
+processing algorithms being used aren't even "correct" to that degree.
 
 4-byte floating-point numbers give you about 7 significant digits, which in
 extreme cases may not be quite enough. Particularly for 16-bit target images,
@@ -246,8 +264,12 @@ it's a reasonable assumption that most computer image files (whether by
 accident or design) are intended to be directly displayable on computer
 monitors.
 
-IW does not support ICC color profiles. I'll consider adding support for them
-someday, but I don't know how feasible that is.
+It does this even if the file format pre-dates the invention of sRGB, and/or
+the file format specification says that, by default, colors have a gamma of
+2.2 (which is similar, but not identical, to sRGB).
+
+IW does not support ICC color profiles. Full or partial support for them may
+be added in a future version.
 
 TIFF output support
 -------------------
@@ -402,21 +424,17 @@ Features I'm considering adding:
 - More options for specifying the image size to use; e.g. "enlarge the image
   only if it's smaller than a certain size".
 
-- Better detection of syntax errors on the command line.
-
 - More options for aligning the input pixels with the output pixels.
 
-- More options for virtual pixels (transparency, at least).
+- More options for virtual pixels.
 
 - Support for reading BMP files.
 
-- Options to maintain PNG and GIF background colors.
+- Ability to maintain PNG and GIF background colors.
 
-- Hilbert curve dithering. Unfortunately, this will require some changes to
-  IW's architecture.
+- Hilbert curve dithering.
 
-- Internationalization. But I'm not sure what can be done about error messages
-  that come from libpng or libjpeg.
+- Support for ICC color profiles.
 
 Contributing
 ------------

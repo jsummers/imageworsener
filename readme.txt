@@ -270,6 +270,8 @@ Options:
 
     sinc<n>
      An unwindowed sinc filter. n is the number of "lobes", and defaults to 4.
+     For experimental use only. This filter will almost always produce poor
+     results.
 
     auto
      The default. IW will select a filter to use. Currently uses "catrom" for
@@ -288,8 +290,9 @@ Options:
    specifically "mix" and "nearest".
 
    The default value is 1.0. Larger values blur the image more. A value
-   smaller than 1 may sharpen the image, at the expense of aliasing. It may
-   also make a total mess of it.
+   smaller than 1 may sharpen the image, at the expense of aliasing. But a
+   value that's too small will cause some pixels to be missed completely,
+   leaving black lines.
 
  -edge <name>
    The strategy for dealing with the pixels near the edges of images.
@@ -581,10 +584,7 @@ Options:
    Set the encoding used for text output (informational and error messages).
    This is usually unnecessary, because IW can usually figure out what
    encoding to use. However, it may be useful if you're capturing or
-   redirecting the output, or using a nonstandard terminal program such as
-   mintty.
-   This is for output only, and does not affect how command-line parameters
-   are interpreted.
+   redirecting the output, or using a nonstandard terminal program.
 
    Encoding names:
     "ascii": US-ASCII
