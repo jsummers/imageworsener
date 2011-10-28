@@ -193,7 +193,7 @@ $IW srcimg/g8a.png actual/noopt-g.png $CMPR -width 15 -noopt grayscale
 $IW srcimg/rgb8.png actual/noopt-p.png $CMPR -width 15 -noopt palette
 $IW srcimg/p4t.png actual/noopt-sa.png $CMPR -crop 0,0,6,6 -width 15 -noopt stripalpha
 $IW srcimg/g8a.png actual/noopt-bt.png $CMPR -ccalpha 2 -dither f -width 15 -noopt binarytrns
-$IW srcimg/g8.png actual/noopt-r8.png $CMPR -depth 16 -crop 0,0,8,7 -noopt reduceto8
+$IW srcimg/g8.png actual/noopt-r8.png $CMPR -depth 16 -crop 17,18,-1 -noopt reduceto8
 
 # Test background color reading
 $IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2 -pngcmprlevel 9
