@@ -182,7 +182,7 @@ Files in command-line utility:
 
 Other files:
  imagew.h (Public header file, Core, Aux., Command-line)
- imagew-config.h (Core, Aux, Command-line)
+ imagew-config.h (Core, Aux., Command-line)
 
 Double-precision floating point?
 --------------------------------

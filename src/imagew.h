@@ -252,6 +252,9 @@ struct iw_image {
 	int bit_depth;
 	int sampletype; // IW_SAMPLETYPE_*
 	int width, height;
+	// Caution: Multi-byte samples with an integer data type use big-endian
+	// byte order, while floating-point samples use the native byte order of
+	// the host system (usually little-endian).
 	iw_byte *pixels;
 	size_t bpr; // bytes per row
 	int native_grayscale; // For input images: Was the image encoded as grayscale?

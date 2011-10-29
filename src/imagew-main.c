@@ -105,7 +105,7 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt64(struct iw_context *ctx,
 	union su_union {
 		iw_byte c[8];
 		iw_float64 f;
-	} su;
+	} volatile su;
 
 	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*8;
 	for(k=0;k<8;k++) {
@@ -122,7 +122,7 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
 	union su_union {
 		iw_byte c[4];
 		iw_float32 f;
-	} su;
+	} volatile su;
 
 	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*4;
 	for(k=0;k<4;k++) {
@@ -236,12 +236,6 @@ static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
 	return 0.212655*r + 0.715158*g + 0.072187*b;
 }
 
-static IW_SAMPLE iw_color_to_grayscale_noinline(struct iw_context *ctx,
-			IW_SAMPLE r, IW_SAMPLE g, IW_SAMPLE b)
-{
-	return iw_color_to_grayscale(ctx,r,g,b);
-}
-
 // Based on color depth of the input image.
 static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 	unsigned int v, const struct iw_csdescr *csdescr)
@@ -255,7 +249,7 @@ static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 		return ((double)v) / ctx->input_maxcolorcode;
 	}
 	else if(ctx->input_color_corr_table) {
-		// If the colorspace is not LINEAR, assume we can use the lookup table.
+		// If the colorspace is not linear, assume we can use the lookup table.
 		return ctx->input_color_corr_table[v];
 	}
 
@@ -264,7 +258,6 @@ static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 }
 
 // Based on color depth of the output image.
-// TODO: Merge this with cvt_int_sample_to_linear().
 static IW_SAMPLE cvt_int_sample_to_linear_output(struct iw_context *ctx,
 	unsigned int v, const struct iw_csdescr *csdescr)
 {
@@ -387,7 +380,7 @@ static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
 	union su_union {
 		iw_byte c[4];
 		iw_float32 f;
-	} su;
+	} volatile su;
 	int i;
 	size_t pos;
 
@@ -406,7 +399,7 @@ static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
 	union su_union {
 		iw_byte c[8];
 		iw_float64 f;
-	} su;
+	} volatile su;
 	int i;
 	size_t pos;
 
@@ -1403,9 +1396,9 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 		}
 	}
 	else if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && ctx->img2.imgtype==IW_IMGTYPE_GRAY) {
-		ctx->img2_ci[0].bkgd_color_lin = iw_color_to_grayscale_noinline(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
+		ctx->img2_ci[0].bkgd_color_lin = iw_color_to_grayscale(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
 		if(ctx->bkgd_checkerboard) {
-			ctx->img2_ci[0].bkgd2_color_lin = iw_color_to_grayscale_noinline(ctx,bkgd2.c[0],bkgd2.c[1],bkgd2.c[2]);
+			ctx->img2_ci[0].bkgd2_color_lin = iw_color_to_grayscale(ctx,bkgd2.c[0],bkgd2.c[1],bkgd2.c[2]);
 		}
 	}
 	else if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY && ctx->img2.imgtype==IW_IMGTYPE_RGB) {
@@ -1414,7 +1407,7 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 		}
 	}
 	else if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY && ctx->img2.imgtype==IW_IMGTYPE_GRAY) {
-		ctx->intermed_ci[0].bkgd_color_lin = iw_color_to_grayscale_noinline(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
+		ctx->intermed_ci[0].bkgd_color_lin = iw_color_to_grayscale(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
 	}
 
 	if(ctx->bkgd_checkerboard) {
