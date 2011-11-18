@@ -280,15 +280,30 @@ struct iw_jpegwctx {
 static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct *cinfo,
 	const struct iw_image *img)
 {
+	int pref_units;
+
 	if(img->density_code==IW_DENSITY_UNITS_UNKNOWN) {
 		cinfo->density_unit=0; // unknown units
 		cinfo->X_density = (UINT16)(0.5+img->density_x);
 		cinfo->Y_density = (UINT16)(0.5+img->density_y);
 	}
 	else if(img->density_code==IW_DENSITY_UNITS_PER_METER) {
-		cinfo->density_unit=1; // dots/inch
-		cinfo->X_density = (UINT16)(0.5+ img->density_x*0.0254);
-		cinfo->Y_density = (UINT16)(0.5+ img->density_y*0.0254);
+		pref_units = iw_get_value(ctx,IW_VAL_DENSITY_PREF_UNITS);
+
+		if(pref_units==IW_DENSITY_PREF_UNITS_PER_CM ||
+			pref_units==IW_DENSITY_PREF_UNITS_PER_METER)
+		{
+			// If we think the caller prefers metric, use dots/cm.
+			cinfo->density_unit=2; // dots/cm
+			cinfo->X_density = (UINT16)(0.5+ img->density_x*0.01);
+			cinfo->Y_density = (UINT16)(0.5+ img->density_y*0.01);
+		}
+		else {
+			// Otherwise use dpi.
+			cinfo->density_unit=1; // dots/inch
+			cinfo->X_density = (UINT16)(0.5+ img->density_x*0.0254);
+			cinfo->Y_density = (UINT16)(0.5+ img->density_y*0.0254);
+		}
 	}
 }
 

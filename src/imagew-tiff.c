@@ -32,6 +32,8 @@ struct iwtiffwritecontext {
 #define IWTIFF_PHOTO_PALETTE     3
 	int photometric;
 
+	int write_density_in_cm;
+
 	unsigned int curr_filepos;
 
 	// All tags whose size can be larger than 4 bytes are
@@ -161,8 +163,14 @@ static void iwtiff_write_density(struct iwtiffwritecontext *tiffctx)
 	unsigned int x,y;
 
 	if(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
-		x = (unsigned int)(0.5+25.4*tiffctx->img->density_x);
-		y = (unsigned int)(0.5+25.4*tiffctx->img->density_y);
+		if(tiffctx->write_density_in_cm) {
+			x = (unsigned int)(0.5+10.0*tiffctx->img->density_x);
+			y = (unsigned int)(0.5+10.0*tiffctx->img->density_y);
+		}
+		else {
+			x = (unsigned int)(0.5+25.4*tiffctx->img->density_x);
+			y = (unsigned int)(0.5+25.4*tiffctx->img->density_y);
+		}
 		denom=1000;
 	}
 	else if(tiffctx->img->density_code==IW_DENSITY_UNITS_UNKNOWN) {
@@ -309,8 +317,13 @@ static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,iw_by
 		iwtiff_set_ui32(&buf[8],tiffctx->pixdens_offset+8);
 		break;
 	case IWTIFF_TAG296_RESOLUTIONUNIT:
-		// 1==no units, 2=pixels/inch
-		iwtiff_set_ui16(&buf[8],(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER)?2:1);
+		// 1==no units, 2=pixels/inch, 3=pixels/cm
+		if(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
+			iwtiff_set_ui16(&buf[8],(tiffctx->write_density_in_cm)?3:2);
+		}
+		else {
+			iwtiff_set_ui16(&buf[8],1);
+		}
 		break;
 	case IWTIFF_TAG273_STRIPOFFSETS:
 		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
@@ -370,6 +383,18 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 	append_tag(tiffctx,IWTIFF_TAG279_STRIPBYTECOUNTS);
 
 	if(tiffctx->pixdens_size>0) {
+
+		// Decide whether we'll write the density in dots/cm.
+		if(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
+			int pref_units;
+			pref_units = iw_get_value(tiffctx->ctx,IW_VAL_DENSITY_PREF_UNITS);
+			if(pref_units==IW_DENSITY_PREF_UNITS_PER_CM ||
+				pref_units==IW_DENSITY_PREF_UNITS_PER_METER)
+			{
+				tiffctx->write_density_in_cm = 1;
+			}
+		}
+
 		append_tag(tiffctx,IWTIFF_TAG282_XRESOLUTION);
 		append_tag(tiffctx,IWTIFF_TAG283_YRESOLUTION);
 		append_tag(tiffctx,IWTIFF_TAG296_RESOLUTIONUNIT);
