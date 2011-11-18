@@ -2,6 +2,9 @@
 // Part of ImageWorsener, Copyright (c) 2011 by Jason Summers.
 // For more information, see the readme.txt file.
 
+// !!! Portability warning: This module assumes that the host system uses
+// standard IEEE 754 floating point format.
+
 #include "imagew-config.h"
 
 #include <stdio.h>

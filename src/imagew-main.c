@@ -102,6 +102,8 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt64(struct iw_context *ctx,
 {
 	size_t z;
 	int k;
+	// !!! Portability warning: Using a union in this way may be nonportable,
+	// and/or may violate strict-aliasing rules.
 	union su_union {
 		iw_byte c[8];
 		iw_float64 f;
@@ -119,6 +121,8 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
 {
 	size_t z;
 	int k;
+	// !!! Portability warning: Using a union in this way may be nonportable,
+	// and/or may violate strict-aliasing rules.
 	union su_union {
 		iw_byte c[4];
 		iw_float32 f;
@@ -377,6 +381,8 @@ static void put_raw_sample(struct iw_context *ctx, double s,
 static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
 					   int x, int y, int channel)
 {
+	// !!! Portability warning: Using a union in this way may be nonportable,
+	// and/or may violate strict-aliasing rules.
 	union su_union {
 		iw_byte c[4];
 		iw_float32 f;
@@ -396,6 +402,8 @@ static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
 static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
 					   int x, int y, int channel)
 {
+	// !!! Portability warning: Using a union in this way may be nonportable,
+	// and/or may violate strict-aliasing rules.
 	union su_union {
 		iw_byte c[8];
 		iw_float64 f;

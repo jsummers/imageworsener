@@ -284,6 +284,8 @@ IW_IMPL(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 // Returns 0 if running on a big-endian system, 1 for little-endian.
 IW_IMPL(int) iw_get_host_endianness(void)
 {
+	// !!! Portability warning: Using a union in this way may be nonportable,
+	// and/or may violate strict-aliasing rules.
 	union en_union {
 		iw_byte c[4];
 		int ii;

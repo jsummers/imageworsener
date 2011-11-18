@@ -222,7 +222,9 @@ extern "C" {
 #define IW_OPT_STRIP_ALPHA  4   // strip superfluous alpha channels
 #define IW_OPT_BINARY_TRNS  5   // optimize to color-keyed binary transparency
 
-// Yeah, I know I should try to use <stdint.h> instead.
+// !!! Portability warning: These definitions make a lot of assumptions about
+// the sizes of data types.
+// TODO: Try to use <stdint.h> instead.
 #define iw_byte     unsigned char
 #define iw_float32  float
 #define iw_float64  double
