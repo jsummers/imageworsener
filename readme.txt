@@ -490,6 +490,7 @@ Options:
    display sRGB CSS/HTML colors.
 
  -density <density-policy>
+ -density <units-code><density>[,<density-y>]
    Control how the density label (i.e. pixels per inch) of the output image is
    calculated.
 
@@ -500,6 +501,10 @@ Options:
     "keep": Use the same density as the source image.
     "adjust": Adjust the density so that the target image is the same physical
        size as the source image.
+
+   Instead of a policy, you can request a specific density. Use "i" for pixels
+   per inch, or "c" for pixels per centimeter. For example, use
+   "-density i300" for 300 dpi.
 
    This is limited by the target image format's support for a density labels.
    Some formats do not support them, while others require them.

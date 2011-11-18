@@ -64,6 +64,9 @@ extern "C" {
 #define IW_VAL_INPUT_DEPTH       24
 
 #define IW_VAL_DENSITY_POLICY    25
+#define IW_VAL_DENSITY_PREF_UNITS  26
+#define IW_VAL_DENSITY_FORCED_X  27
+#define IW_VAL_DENSITY_FORCED_Y  28
 
 #define IW_VAL_JPEG_QUALITY      30
 #define IW_VAL_JPEG_SAMP_FACTOR_H  31
@@ -207,10 +210,16 @@ extern "C" {
 #define IW_DENSITY_UNITS_UNKNOWN   1
 #define IW_DENSITY_UNITS_PER_METER 2
 
+#define IW_DENSITY_PREF_UNITS_DEFAULT    0
+#define IW_DENSITY_PREF_UNITS_PER_CM     1
+#define IW_DENSITY_PREF_UNITS_PER_INCH   2
+#define IW_DENSITY_PREF_UNITS_PER_METER  3
+
 #define IW_DENSITY_POLICY_AUTO    0
 #define IW_DENSITY_POLICY_NONE    1 // Don't write a density (if possible)
 #define IW_DENSITY_POLICY_KEEP    2 // Keep density the same
 #define IW_DENSITY_POLICY_ADJUST  3 // Keep physical image size the same
+#define IW_DENSITY_POLICY_FORCED  4 // Use a specific density
 
 #define IW_EDGE_POLICY_REPLICATE  1  // Replicate the pixels at the image edge.
 #define IW_EDGE_POLICY_STANDARD   2  // Use available samples if any are within radius; otherwise replicate.

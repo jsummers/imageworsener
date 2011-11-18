@@ -561,6 +561,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_DENSITY_POLICY:
 		ctx->density_policy = n;
 		break;
+	case IW_VAL_DENSITY_PREF_UNITS:
+		ctx->density_pref_units = n;
+		break;
 	case IW_VAL_GRAYSCALE_FORMULA:
 		ctx->grayscale_formula = n;
 		break;
@@ -619,6 +622,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_DENSITY_POLICY:
 		ret = ctx->density_policy;
+		break;
+	case IW_VAL_DENSITY_PREF_UNITS:
+		ret = ctx->density_pref_units;
 		break;
 	case IW_VAL_GRAYSCALE_FORMULA:
 		ret = ctx->grayscale_formula;
@@ -681,6 +687,12 @@ IW_IMPL(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n)
 	case IW_VAL_WEBP_QUALITY:
 		ctx->webp_quality = n;
 		break;
+	case IW_VAL_DENSITY_FORCED_X:
+		ctx->density_forced_x = n;
+		break;
+	case IW_VAL_DENSITY_FORCED_Y:
+		ctx->density_forced_y = n;
+		break;
 	}
 }
 
@@ -691,6 +703,12 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 	switch(code) {
 	case IW_VAL_WEBP_QUALITY:
 		ret = ctx->webp_quality;
+		break;
+	case IW_VAL_DENSITY_FORCED_X:
+		ret = ctx->density_forced_x;
+		break;
+	case IW_VAL_DENSITY_FORCED_Y:
+		ret = ctx->density_forced_y;
 		break;
 	}
 

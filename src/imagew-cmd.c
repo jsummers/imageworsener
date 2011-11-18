@@ -103,6 +103,8 @@ struct params_struct {
 	int intclamp;
 	int edge_policy;
 	int density_policy;
+	int density_pref_units;
+	double density_forced_x, density_forced_y;
 	int grayscale_formula;
 	int no_cslabel;
 	int include_screen;
@@ -522,6 +524,11 @@ static int run(struct params_struct *p)
 	if(p->noopt_binarytrns) iw_set_allow_opt(ctx,IW_OPT_BINARY_TRNS,0);
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
 	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
+	if(p->density_policy==IW_DENSITY_POLICY_FORCED) {
+		iw_set_value(ctx,IW_VAL_DENSITY_PREF_UNITS,p->density_pref_units);
+		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_X,p->density_forced_x);
+		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_Y,p->density_forced_y);
+	}
 	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 	if(p->page_to_read>0) iw_set_value(ctx,IW_VAL_PAGE_TO_READ,p->page_to_read);
 	if(p->include_screen>=0) iw_set_value(ctx,IW_VAL_INCLUDE_SCREEN,p->include_screen);
@@ -1249,9 +1256,51 @@ static int iwcmd_process_noopt(struct params_struct *p, const char *s)
 	return 1;
 }
 
+static void iwcmd_process_forced_density(struct params_struct *p, const char *s)
+{
+	double nums[2];
+	int count;
+
+	iwcmd_parse_number_list(&s[1],2,nums,&count);
+	if(count<1) return;
+
+	p->density_policy = IW_DENSITY_POLICY_FORCED;
+
+	if(s[0]=='c')
+		p->density_pref_units = IW_DENSITY_PREF_UNITS_PER_CM;
+	else
+		p->density_pref_units = IW_DENSITY_PREF_UNITS_PER_INCH;
+
+	p->density_forced_x = nums[0];
+	if(count>=2)
+		p->density_forced_y = nums[1];
+	else
+		p->density_forced_y = nums[0];
+
+	// Convert to pixels/meter.
+	if(p->density_pref_units==IW_DENSITY_PREF_UNITS_PER_CM) {
+		p->density_forced_x *= 100.0;
+		p->density_forced_y *= 100.0;
+	}
+	else {
+		p->density_forced_x *= 100.0/2.54;
+		p->density_forced_y *= 100.0/2.54;
+	}
+}
+
 static int iwcmd_process_density(struct params_struct *p, const char *s)
 {
-	if(!strcmp(s,"auto")) {
+	int namelen;
+
+	namelen=iwcmd_get_name_len(s);
+
+	if(namelen==1 && !strncmp(s,"i",namelen)) {
+		iwcmd_process_forced_density(p,s);
+	}
+	else if(namelen==1 && !strncmp(s,"c",namelen)) {
+		iwcmd_process_forced_density(p,s);
+	}
+	else if(!strcmp(s,"auto")) {
 		p->density_policy = IW_DENSITY_POLICY_AUTO;
 	}
 	else if(!strcmp(s,"none")) {
