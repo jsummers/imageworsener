@@ -777,8 +777,9 @@ static void clamp_output_samples(struct iw_context *ctx)
 	}
 }
 
+// 'channel' is an intermediate channel number.
 static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
-		const struct iw_csdescr *in_csdescr, int handle_alpha_flag)
+		const struct iw_csdescr *in_csdescr)
 {
 	int i,j;
 	int retval=0;
@@ -787,12 +788,14 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	IW_SAMPLE *outpix = NULL;
 	int is_alpha_channel;
 	struct iw_resize_settings *rs;
+	struct iw_channelinfo_intermed *int_ci;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
 
 	ctx->weightlist.isvalid = 0;
-	is_alpha_channel = ctx->intermed_ci[channel].channeltype==IW_CHANNELTYPE_ALPHA;
+	int_ci = &ctx->intermed_ci[channel];
+	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 
 	ctx->num_in_pix = ctx->input_h;
 	inpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_in_pix * sizeof(IW_SAMPLE));
@@ -809,7 +812,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	else
 		rs=&ctx->resize_settings[IW_DIMENSION_V];
 
-	iwpvt_resize_row_precalculate(ctx,rs,ctx->intermed_ci[channel].channeltype);
+	iwpvt_resize_row_precalculate(ctx,rs,int_ci->channeltype);
 
 	for(i=0;i<ctx->input_w;i++) {
 
@@ -818,7 +821,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 
 			ctx->in_pix[j] = get_sample_cvt_to_linear(ctx,i,j,channel,in_csdescr);
 
-			if(handle_alpha_flag) { // We need opacity information also
+			if(int_ci->need_unassoc_alph_processing) { // We need opacity information also
 				tmp_alpha = get_raw_sample(ctx,i,j,ctx->img1_alpha_channel_index);
 
 				// Multiply color amount by opacity
@@ -830,7 +833,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 				// applied to them.
 				tmp_alpha = get_raw_sample(ctx,i,j,ctx->img1_alpha_channel_index);
 				ctx->in_pix[j] = (tmp_alpha)*(ctx->in_pix[j]) +
-					(1.0-tmp_alpha)*(ctx->intermed_ci[channel].bkgd_color_lin);
+					(1.0-tmp_alpha)*(int_ci->bkgd_color_lin);
 
 			}
 		}
@@ -867,7 +870,7 @@ done:
 // 'handle_alpha_flag' must be set if an alpha channel exists and this is not
 // the alpha channel.
 static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int intermed_channel,
-		const struct iw_csdescr *out_csdescr, int handle_alpha_flag)
+		const struct iw_csdescr *out_csdescr)
 {
 	int i,j;
 	int z;
@@ -879,12 +882,13 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	// Do any of the output channels use error-diffusion dithering?
 	int using_errdiffdither = 0;
 	int output_channel;
-	int output_channeltype;
 	int is_alpha_channel;
 	struct iw_resize_settings *rs;
 	int ditherfamily, dithersubtype;
 	int clamp_after_resize=0;
 	int clamp_after_composite=0;
+	struct iw_channelinfo_intermed *int_ci;
+	struct iw_channelinfo_out *out_ci;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
@@ -894,9 +898,10 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	ctx->num_in_pix = ctx->intermed_width;
 	ctx->num_out_pix = ctx->img2.width;
 
-	is_alpha_channel = ctx->intermed_ci[intermed_channel].channeltype==IW_CHANNELTYPE_ALPHA;
-	output_channel = ctx->intermed_ci[intermed_channel].corresponding_output_channel;
-	output_channeltype = ctx->img2_ci[output_channel].channeltype;
+	int_ci = &ctx->intermed_ci[intermed_channel];
+	output_channel = int_ci->corresponding_output_channel;
+	out_ci = &ctx->img2_ci[output_channel];
+	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 
 	if(!is_alpha_channel) {
 		// For non-alpha channels, allocate a buffer to hold the output samples.
@@ -908,32 +913,32 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 	// Decide if the 'nearest color table' optimization can be used
 	if(ctx->nearest_color_table && !is_alpha_channel &&
-	   ctx->img2_ci[output_channel].ditherfamily==IW_DITHERFAMILY_NONE &&
-	   ctx->img2_ci[output_channel].color_count==0)
+	   out_ci->ditherfamily==IW_DITHERFAMILY_NONE &&
+	   out_ci->color_count==0)
 	{
-		ctx->img2_ci[output_channel].use_nearest_color_table = 1;
+		out_ci->use_nearest_color_table = 1;
 	}
 	else {
-		ctx->img2_ci[output_channel].use_nearest_color_table = 0;
+		out_ci->use_nearest_color_table = 0;
 	}
 
 	// Seed the PRNG, if necessary.
-	ditherfamily = ctx->img2_ci[output_channel].ditherfamily;
-	dithersubtype = ctx->img2_ci[output_channel].dithersubtype;
+	ditherfamily = out_ci->ditherfamily;
+	dithersubtype = out_ci->dithersubtype;
 	if(ditherfamily==IW_DITHERFAMILY_RANDOM) {
 		// Decide what random seed to use. The alpha channel always has its own
 		// seed. If using "r" (not "r2") dithering, every channel has its own seed.
-		if(dithersubtype==IW_DITHERSUBTYPE_SAMEPATTERN && output_channeltype!=IW_CHANNELTYPE_ALPHA)
+		if(dithersubtype==IW_DITHERSUBTYPE_SAMEPATTERN && out_ci->channeltype!=IW_CHANNELTYPE_ALPHA)
 		{
 			iwpvt_prng_set_random_seed(ctx->prng,ctx->random_seed);
 		}
 		else {
-			iwpvt_prng_set_random_seed(ctx->prng,ctx->random_seed+output_channeltype);
+			iwpvt_prng_set_random_seed(ctx->prng,ctx->random_seed+out_ci->channeltype);
 		}
 	}
 
 	// Initialize Floyd-Steinberg dithering.
-	if(output_channel>=0 && ctx->img2_ci[output_channel].ditherfamily==IW_DITHERFAMILY_ERRDIFF) {
+	if(output_channel>=0 && out_ci->ditherfamily==IW_DITHERFAMILY_ERRDIFF) {
 		using_errdiffdither = 1;
 		for(i=0;i<ctx->img2.width;i++) {
 			for(k=0;k<IW_DITHER_MAXROWS;k++) {
@@ -954,7 +959,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	}
 	else if(ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
 		// If we are applying a background color (after resizing)...
-		if(handle_alpha_flag) {
+		if(int_ci->need_unassoc_alph_processing) {
 			// then the color channels should only be clamped after applying
 			// the background...
 			clamp_after_composite = 1;
@@ -972,7 +977,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	else
 		rs=&ctx->resize_settings[IW_DIMENSION_H];
 
-	iwpvt_resize_row_precalculate(ctx,rs,ctx->intermed_ci[intermed_channel].channeltype);
+	iwpvt_resize_row_precalculate(ctx,rs,int_ci->channeltype);
 
 	for(j=0;j<ctx->intermed_height;j++) {
 		if(is_alpha_channel) {
@@ -1009,7 +1014,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 			tmpsamp = ctx->out_pix[i];
 
-			if(handle_alpha_flag) {
+			if(int_ci->need_unassoc_alph_processing) {
 				// Special processing for (partially) transparent pixels.
 				alphasamp = ctx->final_alpha[((size_t)j)*ctx->img2.width + i];
 				if(alphasamp!=0.0) {
@@ -1017,21 +1022,21 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 				}
 			}
 
-			if(handle_alpha_flag && ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
+			if(int_ci->need_unassoc_alph_processing && ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
 				// Apply a background color (or checkerboard pattern).
 				IW_SAMPLE bkcolor;
 				if(ctx->bkgd_checkerboard) {
 					if( (((ctx->bkgd_check_origin[IW_DIMENSION_H]+i)/ctx->bkgd_check_size)%2) ==
 						(((ctx->bkgd_check_origin[IW_DIMENSION_V]+j)/ctx->bkgd_check_size)%2) )
 					{
-						bkcolor = ctx->img2_ci[output_channel].bkgd_color_lin;
+						bkcolor = out_ci->bkgd_color_lin;
 					}
 					else {
-						bkcolor = ctx->img2_ci[output_channel].bkgd2_color_lin;
+						bkcolor = out_ci->bkgd2_color_lin;
 					}
 				}
 				else {
-					bkcolor = ctx->img2_ci[output_channel].bkgd_color_lin;
+					bkcolor = out_ci->bkgd_color_lin;
 				}
 
 				tmpsamp = (alphasamp)*(tmpsamp) + (1.0-alphasamp)*(bkcolor);
@@ -1077,30 +1082,18 @@ done:
 	return retval;
 }
 
-static int iw_process_one_channel(struct iw_context *ctx, int channel,
-		const struct iw_csdescr *in_csdescr,
-		const struct iw_csdescr *out_csdescr)
+static int iw_process_one_channel(struct iw_context *ctx, int intermed_channel,
+  const struct iw_csdescr *in_csdescr, const struct iw_csdescr *out_csdescr)
 {
-	int retval = 0;
-	int handle_alpha_flag;
-
-	// Color channels need special handling when an alpha channel is present
-	handle_alpha_flag = (IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype) &&
-		ctx->intermed_ci[channel].channeltype!=IW_CHANNELTYPE_ALPHA);
-
-	if(!iw_process_cols_to_intermediate(ctx,channel,in_csdescr,handle_alpha_flag))
-	{
-		goto done;
+	if(!iw_process_cols_to_intermediate(ctx,intermed_channel,in_csdescr)) {
+		return 0;
 	}
 
-	if(!iw_process_rows_intermediate_to_final(ctx,channel,out_csdescr,handle_alpha_flag))
-	{
-		goto done;
+	if(!iw_process_rows_intermediate_to_final(ctx,intermed_channel,out_csdescr)) {
+		return 0;
 	}
 
-	retval = 1;
-done:
-	return retval;
+	return 1;
 }
 
 // Potentially make a lookup table for color correction.
@@ -1880,6 +1873,15 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	iw_set_intermed_channeltypes(ctx);
 	iw_set_out_channeltypes(ctx);
+
+	// If an alpha channel is present, set a flag on the other channels to indicate
+	// that we have to process them differently.
+	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {
+		for(i=0;i<ctx->intermed_numchannels;i++) {
+			if(ctx->intermed_ci[i].channeltype!=IW_CHANNELTYPE_ALPHA)
+				ctx->intermed_ci[i].need_unassoc_alph_processing = 1;
+		}
+	}
 
 	for(i=0;i<ctx->img2_numchannels;i++) {
 		ctx->img2_ci[i].color_count = ctx->color_count[ctx->img2_ci[i].channeltype];
