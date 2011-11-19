@@ -20,24 +20,6 @@
 #define IW_USE_NEW_WEBP_API
 #endif
 
-enum iwwebp_string {
-	iws_webp_read_error=1,
-	iws_webp_write_error,
-	iws_webp_enc_bad_imgtype
-};
-
-struct iw_stringtableentry iwwebp_stringtable[] = {
-	{ iws_webp_read_error, "Failed to read webp file" },
-	{ iws_webp_write_error, "Failed to write webp file" },
-	{ iws_webp_enc_bad_imgtype, "Internal: WebP encoder doesn\xe2\x80\x99t support this image type (%d)" },
-	{ 0, NULL }
-};
-
-static const char *iwwebp_get_string(struct iw_context *ctx, int n)
-{
-	return iw_get_string(ctx,IW_STRINGTABLENUM_WEBP,n);
-}
-
 struct iwwebpreadcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
@@ -306,8 +288,6 @@ IW_IMPL(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	memset(&rctx,0,sizeof(struct iwwebpreadcontext));
 	memset(&img,0,sizeof(struct iw_image));
 
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_WEBP,iwwebp_stringtable);
-
 	rctx.ctx = ctx;
 	rctx.iodescr = iodescr;
 	rctx.img = &img;
@@ -326,7 +306,7 @@ IW_IMPL(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 done:
 	if(!retval) {
-		iw_set_error(ctx,iwwebp_get_string(ctx,iws_webp_read_error));
+		iw_set_error(ctx,"Failed to read WebP file");
 	}
 
 	if(iodescr->close_fn)
@@ -410,7 +390,7 @@ static int iwwebp_write_main(struct iwwebpwritecontext *wctx)
 		break;
 #endif
 	default:
-		iw_set_errorf(wctx->ctx,iwwebp_get_string(wctx->ctx,iws_webp_enc_bad_imgtype),img->imgtype);
+		iw_set_errorf(wctx->ctx,"Internal: WebP encoder doesn\xe2\x80\x99t support this image type (%d)",img->imgtype);
 		goto done;
 	}
 
@@ -432,8 +412,6 @@ IW_IMPL(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodes
 	int retval=0;
 	struct iw_image img1;
 
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_WEBP,iwwebp_stringtable);
-
 	memset(&img1,0,sizeof(struct iw_image));
 	memset(&wctx,0,sizeof(struct iwwebpwritecontext));
 
@@ -452,7 +430,7 @@ IW_IMPL(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodes
 
 done:
 	if(!retval) {
-		iw_set_error(ctx,iwwebp_get_string(ctx,iws_webp_write_error));
+		iw_set_error(ctx,"Failed to write WebP file");
 	}
 
 	if(wctx.iodescr->close_fn)

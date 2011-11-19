@@ -17,8 +17,6 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-#define iw_seterror iw_set_error
-
 struct iw_pngrctx {
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
@@ -30,34 +28,6 @@ struct errstruct {
 	int write_flag; // So we can tell if we're reading, or writing.
 };
 
-enum iwpng_string {
-	iws_png_libpng_read=1,
-	iws_png_libpng_write,
-	iws_png_read_error,
-	iws_png_unexpected_eof,
-	iws_png_not_supported,
-	iws_png_read_failed,
-	iws_png_write_failed,
-	iws_png_internal_cant_write
-};
-
-struct iw_stringtableentry iwpng_stringtable[] = {
-	{ iws_png_libpng_read, "libpng reports read error: %s" },
-	{ iws_png_libpng_write, "libpng reports write error: %s" },
-	{ iws_png_read_error, "Read error" },
-	{ iws_png_unexpected_eof, "Unexpected end of file" },
-	{ iws_png_not_supported, "This PNG image type (color type=%d, bit depth=%d) is not supported" },
-	{ iws_png_read_failed, "Read failed (png)" },
-	{ iws_png_write_failed, "Write failed" },
-	{ iws_png_internal_cant_write, "Internal: Don\xe2\x80\x99t know how to write this image" },
-	{ 0, NULL }
-};
-
-static const char *iwpng_get_string(struct iw_context *ctx, int n)
-{
-	return iw_get_string(ctx,IW_STRINGTABLENUM_PNG,n);
-}
-
 static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 {
 	struct errstruct *errinfop;
@@ -68,12 +38,11 @@ static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 	j = errinfop->jbufp;
 	ctx = errinfop->ctx;
 
-	// TODO: Call a "translate_libpng_message" function.
 	if(errinfop->write_flag) {
-		iw_set_errorf(ctx,iwpng_get_string(ctx,iws_png_libpng_write),err_msg);
+		iw_set_errorf(ctx,"libpng reports write error: %s",err_msg);
 	}
 	else {
-		iw_set_errorf(ctx,iwpng_get_string(ctx,iws_png_libpng_read),err_msg);
+		iw_set_errorf(ctx,"libpng reports read error: %s",err_msg);
 	}
 
 	longjmp(*j, -1);
@@ -97,11 +66,11 @@ static void my_png_read_fn(png_structp png_ptr,
 
 	ret = (*pngrctx->iodescr->read_fn)(ctx,pngrctx->iodescr,buf,(size_t)length,&bytesread);
 	if(!ret) {
-		png_error(png_ptr,iwpng_get_string(ctx,iws_png_read_error));
+		png_error(png_ptr,"Read error");
 		return;
 	}
 	if(bytesread != (size_t)length) {
-		png_error(png_ptr,iwpng_get_string(ctx,iws_png_unexpected_eof));
+		png_error(png_ptr,"Unexpected end of file");
 		return;
 	}
 }
@@ -269,8 +238,6 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	memset(&pngrctx,0,sizeof(struct iw_pngrctx));
 	memset(&img,0,sizeof(struct iw_image));
 
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_PNG,iwpng_stringtable);
-
 	errinfo.jbufp = &jbuf;
 	errinfo.ctx = ctx;
 	errinfo.write_flag=0;
@@ -363,7 +330,7 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	}
 
 	if(!is_supported) {
-		iw_set_errorf(ctx,iwpng_get_string(ctx,iws_png_not_supported),(int)color_type,(int)bit_depth);
+		iw_set_errorf(ctx,"This PNG image type (color type=%d, bit depth=%d) is not supported",(int)color_type,(int)bit_depth);
 		goto done;
 	}
 
@@ -394,7 +361,7 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,iwpng_get_string(ctx,iws_png_read_failed));
+		iw_set_error(ctx,"Read failed");
 	}
 	if(png_ptr) {
 		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
@@ -512,8 +479,6 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	memset(&pngwctx,0,sizeof(struct iw_pngwctx));
 
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_PNG,iwpng_stringtable);
-
 	iw_get_output_image(ctx,&img);
 	iw_get_output_colorspace(ctx,&csdescr);
 
@@ -554,7 +519,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	}
 
 	if(lpng_color_type == -1) {
-		iw_seterror(ctx,iwpng_get_string(ctx,iws_png_internal_cant_write));
+		iw_set_error(ctx,"Internal: Don\xe2\x80\x99t know how to write this image");
 		goto done;
 	}
 
@@ -626,7 +591,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,iwpng_get_string(ctx,iws_png_write_failed));
+		iw_set_error(ctx,"Write failed");
 	}
 	if(png_ptr) {
 		png_destroy_write_struct(&png_ptr, &info_ptr);

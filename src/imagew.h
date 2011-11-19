@@ -328,21 +328,6 @@ struct iw_iodescr {
 	iw_tellfn_type tell_fn;
 };
 
-#define IW_STRINGTABLENUM_CORE 0
-#define IW_STRINGTABLENUM_PNG  1
-#define IW_STRINGTABLENUM_JPEG 2
-#define IW_STRINGTABLENUM_BMP  3
-#define IW_STRINGTABLENUM_TIFF 4
-#define IW_STRINGTABLENUM_MIFF 5
-#define IW_STRINGTABLENUM_WEBP 6
-#define IW_STRINGTABLENUM_GIF  7
-#define IW_NUMSTRINGTABLES 8
-
-struct iw_stringtableentry {
-	int n;
-	const char *s;
-};
-
 IW_EXPORT(struct iw_context*) iw_create_context(void);
 IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
 
@@ -464,6 +449,7 @@ IW_EXPORT(double) iw_get_value_dbl(struct iw_context *ctx, int code);
 
 IW_EXPORT(void) iw_set_error(struct iw_context *ctx, const char *s);
 IW_EXPORT(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...);
+IW_EXPORT(void) iw_warning(struct iw_context *ctx, const char *s);
 IW_EXPORT(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...);
 
 // Returns the number of bytes in the data type used to store a sample
@@ -486,10 +472,6 @@ IW_EXPORT(char*) iw_get_copyright_string(struct iw_context *ctx, char *s, int s_
 // A helper function you can use to help deal with strings received
 // from the IW library.
 IW_EXPORT(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen);
-
-IW_EXPORT(void) iw_set_string_table(struct iw_context *ctx, int tablenum, const struct iw_stringtableentry *st);
-IW_EXPORT(const char*) iw_get_string_direct(const struct iw_stringtableentry *st, int n);
-IW_EXPORT(const char*) iw_get_string(struct iw_context *ctx, int tablenum, int n);
 
 IW_EXPORT(unsigned int) iw_get_profile_by_fmt(int fmt);
 
@@ -526,6 +508,7 @@ IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);
 // functions if they wish.
 
 IW_EXPORT(void) iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
+IW_EXPORT(void) iw_warningv(struct iw_context *ctx, const char *fmt, va_list ap);
 
 IW_EXPORT(void) iw_strlcpy(char *dst, const char *src, size_t dstlen);
 IW_EXPORT(void) iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);

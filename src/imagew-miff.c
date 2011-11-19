@@ -15,34 +15,6 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-#define iw_seterror iw_set_error
-
-enum iwmiff_string {
-	iws_miff_internal_bad_type=1,
-	iws_miff_unsupp_class,
-	iws_miff_unsupp_colorspace,
-	iws_miff_unsupp_depth,
-	iws_miff_unsupp_compression,
-	iws_miff_unsupp_sampleformat,
-	iws_miff_read_failed
-};
-
-struct iw_stringtableentry iwmiff_stringtable[] = {
-	{ iws_miff_internal_bad_type, "Internal: Bad image type for MIFF" },
-	{ iws_miff_unsupp_class, "MIFF: Unsupported image class" },
-	{ iws_miff_unsupp_colorspace, "MIFF: Unsupported colorspace" },
-	{ iws_miff_unsupp_depth, "MIFF: Unsupported bit depth" },
-	{ iws_miff_unsupp_compression, "MIFF: Unsupported compression" },
-	{ iws_miff_unsupp_sampleformat, "MIFF: Unsupported sample format" },
-	{ iws_miff_read_failed, "Failed to read MIFF file" },
-	{ 0, NULL }
-};
-
-static const char *iwmiff_get_string(struct iw_context *ctx, int n)
-{
-	return iw_get_string(ctx,IW_STRINGTABLENUM_MIFF,n);
-}
-
 struct iwmiffreadcontext {
 	int host_little_endian;
 	struct iw_iodescr *iodescr;
@@ -115,7 +87,7 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 	}
 	else if(!strcmp(name,"class")) {
 		if(strcmp(val,"DirectClass")) {
-			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_class));
+			iw_set_error(rctx->ctx,"MIFF: Unsupported image class");
 			rctx->error_flag=1;
 		}
 	}
@@ -133,20 +105,20 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 			rctx->is_grayscale = 1;
 		}
 		else {
-			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_colorspace));
+			iw_set_error(rctx->ctx,"MIFF: Unsupported colorspace");
 			rctx->error_flag=1;
 		}
 	}
 	else if(!strcmp(name,"depth")) {
 		rctx->img->bit_depth = atoi(val);
 		if(rctx->img->bit_depth!=32 && rctx->img->bit_depth!=64) {
-			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_depth));
+			iw_set_error(rctx->ctx,"MIFF: Unsupported bit depth");
 			rctx->error_flag=1;
 		}
 	}
 	else if(!strcmp(name,"compression")) {
 		if(strcmp(val,"None")) {
-			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_compression));
+			iw_set_error(rctx->ctx,"MIFF: Unsupported compression");
 			rctx->error_flag=1;
 		}
 	}
@@ -158,7 +130,7 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 	}
 	else if(!strcmp(name,"quantum:format")) {
 		if(strcmp(val,"floating-point")) {
-			iw_seterror(rctx->ctx,iwmiff_get_string(rctx->ctx,iws_miff_unsupp_sampleformat));
+			iw_set_error(rctx->ctx,"MIFF: Unsupported sample format");
 			rctx->error_flag=1;
 		}
 	}
@@ -386,8 +358,6 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	// Assume unlabeled images are sRGB
 	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
 
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_MIFF,iwmiff_stringtable);
-
 	img.sampletype = IW_SAMPLETYPE_FLOATINGPOINT;
 
 	if(!iwmiff_read_header(&rctx))
@@ -421,7 +391,7 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 done:
 	if(!retval) {
-		iw_set_error(ctx,iwmiff_get_string(ctx,iws_miff_read_failed));
+		iw_set_error(ctx,"Failed to read MIFF file");
 	}
 
 	if(iodescr->close_fn)
@@ -538,7 +508,7 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 	img = wctx->img;
 
 	if(img->sampletype!=IW_SAMPLETYPE_FLOATINGPOINT) {
-		iw_seterror(wctx->ctx,iwmiff_get_string(wctx->ctx,iws_miff_internal_bad_type));
+		iw_set_error(wctx->ctx,"Internal: Bad image type for MIFF");
 		goto done;
 	}
 
@@ -594,8 +564,6 @@ IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 	struct iwmiffwritecontext wctx;
 	int retval=0;
 	struct iw_image img1;
-
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_MIFF,iwmiff_stringtable);
 
 	memset(&img1,0,sizeof(struct iw_image));
 

@@ -51,12 +51,12 @@ IW_IMPL(void*) iw_malloc(struct iw_context *ctx, size_t n)
 	void *mem;
 
 	if(n>ctx->max_malloc) {
-		iwpvt_err(ctx,iws_nomem);
+		iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
 	mem = iw_malloc_lowlevel(n);
 	if(!mem) {
-		iwpvt_err(ctx,iws_nomem);
+		iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
 	return mem;
@@ -67,12 +67,12 @@ IW_IMPL(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n)
 	void *mem;
 
 	if(n>ctx->max_malloc) {
-		iwpvt_err(ctx,iws_nomem);
+		iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
 	mem = iw_realloc_lowlevel(m,n);
 	if(!mem) {
-		iwpvt_err(ctx,iws_nomem);
+		iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
 	return mem;
@@ -84,7 +84,7 @@ IW_IMPL(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n)
 IW_IMPL(void*) iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2)
 {
 	if(n1 > ctx->max_malloc/n2) {
-		iwpvt_err(ctx,iws_image_too_large);
+		iw_set_error(ctx,"Image too large to process");
 		return NULL;
 	}
 	return iw_malloc(ctx,n1*n2);

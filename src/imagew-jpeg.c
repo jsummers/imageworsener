@@ -21,36 +21,10 @@
 #error "Wrong JSAMPLE size"
 #endif
 
-#define iw_seterror iw_set_error
-
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;
 	jmp_buf setjmp_buffer;
 };
-
-enum iwjpeg_string {
-	iws_jpeg_libjpeg_read=1,
-	iws_jpeg_libjpeg_write,
-	iws_jpeg_not_supported,
-	iws_jpeg_truncated,
-	iws_jpeg_internal_trns_unsupp,
-	iws_jpeg_internal_bad_prec
-};
-
-struct iw_stringtableentry iwjpeg_stringtable[] = {
-	{ iws_jpeg_libjpeg_read, "libjpeg reports read error: %s" },
-	{ iws_jpeg_libjpeg_write, "libjpeg reports write error: %s" },
-	{ iws_jpeg_not_supported, "Unsupported type of JPEG" },
-	{ iws_jpeg_truncated, "Error reading JPEG file" },
-	{ iws_jpeg_internal_trns_unsupp, "Internal: Transparency not supported with JPEG output" },
-	{ iws_jpeg_internal_bad_prec, "Internal: Precision %d not supported with JPEG output" },
-	{ 0, NULL }
-};
-
-static const char *iwjpeg_get_string(struct iw_context *ctx, int n)
-{
-	return iw_get_string(ctx,IW_STRINGTABLENUM_JPEG,n);
-}
 
 static void my_error_exit(j_common_ptr cinfo)
 {
@@ -166,7 +140,6 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	struct my_error_mgr jerr;
 	int cinfo_valid=0;
 	int colorspace;
-	//int j;
 	JDIMENSION rownum;
 	JSAMPLE *jsamprow;
 	int numchannels=0;
@@ -178,8 +151,6 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	memset(&jerr,0,sizeof(struct my_error_mgr));
 	memset(&jpegrctx,0,sizeof(struct iw_jpegrctx));
 
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_JPEG,iwjpeg_stringtable);
-
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = my_error_exit;
 	jerr.pub.output_message = my_output_message;
@@ -189,7 +160,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
 
-		iw_set_errorf(ctx,iwjpeg_get_string(ctx,iws_jpeg_libjpeg_read),buffer);
+		iw_set_errorf(ctx,"libjpeg reports read error: %s",buffer);
 
 		goto done;
 	}
@@ -227,7 +198,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		img.imgtype = IW_IMGTYPE_RGB;
 	}
 	else {
-		iw_seterror(ctx,iwjpeg_get_string(ctx,iws_jpeg_not_supported));
+		iw_set_error(ctx,"Unsupported type of JPEG");
 		goto done;
 	}
 
@@ -250,7 +221,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		jsamprow = &img.pixels[img.bpr * rownum];
 		jpeg_read_scanlines(&cinfo, &jsamprow, 1);
 		if(cinfo.output_scanline<=rownum) {
-			iw_seterror(ctx,iwjpeg_get_string(ctx,iws_jpeg_truncated));
+			iw_set_error(ctx,"Error reading JPEG file");
 			goto done;
 		}
 	}
@@ -363,17 +334,15 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	memset(&jerr,0,sizeof(struct my_error_mgr));
 	memset(&jpegwctx,0,sizeof(struct iw_jpegwctx));
 
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_JPEG,iwjpeg_stringtable);
-
 	iw_get_output_image(ctx,&img);
 
 	if(IW_IMGTYPE_HAS_ALPHA(img.imgtype)) {
-		iw_seterror(ctx,iwjpeg_get_string(ctx,iws_jpeg_internal_trns_unsupp));
+		iw_set_error(ctx,"Internal: Transparency not supported with JPEG output");
 		goto done;
 	}
 
 	if(img.bit_depth!=8) {
-		iw_set_errorf(ctx,iwjpeg_get_string(ctx,iws_jpeg_internal_bad_prec),img.bit_depth);
+		iw_set_errorf(ctx,"Internal: Precision %d not supported with JPEG output",img.bit_depth);
 		goto done;
 	}
 
@@ -396,7 +365,7 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
 
-		iw_set_errorf(ctx,iwjpeg_get_string(ctx,iws_jpeg_libjpeg_write),buffer);
+		iw_set_errorf(ctx,"libjpeg reports write error: %s",buffer);
 
 		goto done;
 	}

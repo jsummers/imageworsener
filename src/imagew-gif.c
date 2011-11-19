@@ -15,34 +15,6 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-#define iw_seterror iw_set_error
-
-enum iwgif_string {
-	iws_gif_read_error=1,
-	iws_gif_unsupported,
-	iws_gif_no_image,
-	iws_gif_no_such_image,
-	iws_gif_decode_error,
-	iws_gif_inval_lzw_min,
-	iws_gif_not_a_gif
-};
-
-struct iw_stringtableentry iwgif_stringtable[] = {
-	{ iws_gif_read_error, "Failed to read GIF file" },
-	{ iws_gif_unsupported, "Invalid or unsupported GIF file" },
-	{ iws_gif_no_image, "No image in file" },
-	{ iws_gif_no_such_image, "Image not found" },
-	{ iws_gif_decode_error, "GIF decoding error" },
-	{ iws_gif_inval_lzw_min, "Invalid LZW minimum code size" },
-	{ iws_gif_not_a_gif, "Not a GIF file" },
-	{ 0, NULL }
-};
-
-static const char *iwgif_get_string(struct iw_context *ctx, int n)
-{
-	return iw_get_string(ctx,IW_STRINGTABLENUM_GIF,n);
-}
-
 struct iwgifreadcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
@@ -100,7 +72,7 @@ static int iwgif_read_file_header(struct iwgifreadcontext *rctx)
 {
 	if(!iwgif_read(rctx,rctx->rbuf,6)) return 0;
 	if(rctx->rbuf[0]!='G' || rctx->rbuf[1]!='I' || rctx->rbuf[2]!='F') {
-		iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_not_a_gif));
+		iw_set_error(rctx->ctx,"Not a GIF file");
 		return 0;
 	}
 	return 1;
@@ -422,7 +394,7 @@ static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext 
 	else {
 		// No, code is not in table.
 		if(d->oldcode>=d->ct_used) {
-			iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_decode_error));
+			iw_set_error(rctx->ctx,"GIF decoding error");
 			return 0;
 		}
 
@@ -678,7 +650,7 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 	// There's no reason for the size to be larger than 8, but the spec
 	// does not seem to forbid it.
 	if(root_codesize<2 || root_codesize>11) {
-		iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_inval_lzw_min));
+		iw_set_error(rctx->ctx,"Invalid LZW minimum code size");
 		goto done;
 	}
 
@@ -768,12 +740,12 @@ static int iwgif_read_main(struct iwgifreadcontext *rctx)
 			// We stop after we decode an image, so if we ever see a file
 			// trailer, something's wrong.
 			if(rctx->pages_seen==0)
-				iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_no_image));
+				iw_set_error(rctx->ctx,"No image in file");
 			else
-				iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_no_such_image));
+				iw_set_error(rctx->ctx,"Image not found");
 			goto done;
 		default:
-			iw_seterror(rctx->ctx,iwgif_get_string(rctx->ctx,iws_gif_unsupported));
+			iw_set_error(rctx->ctx,"Invalid or unsupported GIF file");
 			goto done;
 		}
 	}
@@ -794,8 +766,6 @@ IW_IMPL(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	rctx = iw_malloc(ctx,sizeof(struct iwgifreadcontext));
 	if(!rctx) goto done;
 	memset(rctx,0,sizeof(struct iwgifreadcontext));
-
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_GIF,iwgif_stringtable);
 
 	rctx->ctx = ctx;
 	rctx->iodescr = iodescr;
@@ -820,7 +790,7 @@ IW_IMPL(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 done:
 	if(!retval) {
-		iw_seterror(ctx,iwgif_get_string(ctx,iws_gif_read_error));
+		iw_set_error(ctx,"Failed to read GIF file");
 	}
 
 	if(iodescr->close_fn)

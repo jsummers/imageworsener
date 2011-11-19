@@ -259,8 +259,6 @@ struct iw_context {
 
 	struct iw_weightlist_struct weightlist;
 	double cur_offset;
-
-	const struct iw_stringtableentry *stringtable[IW_NUMSTRINGTABLES];
 };
 
 // Defined imagew-util.c
@@ -296,8 +294,3 @@ enum iw_corestrings {
 	iws_warn_fltpt_no_posterize,
 	iws_copyright
 };
-
-const char *iwpvt_get_string(struct iw_context *ctx, int s);
-void iwpvt_errf(struct iw_context *ctx, int n, ...);
-void iwpvt_err(struct iw_context *ctx, int n);
-void iwpvt_warn(struct iw_context *ctx, int n);

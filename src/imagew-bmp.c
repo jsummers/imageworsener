@@ -23,20 +23,6 @@ struct iwbmpwritecontext {
 	const struct iw_palette *pal;
 };
 
-enum iwbmp_string {
-	iws_bmp_internal_bad_type=1
-};
-
-struct iw_stringtableentry iwbmp_stringtable[] = {
-	{ iws_bmp_internal_bad_type, "Internal: Bad image type for BMP" },
-	{ 0, NULL }
-};
-
-static const char *iwbmp_get_string(struct iw_context *ctx, int n)
-{
-	return iw_get_string(ctx,IW_STRINGTABLENUM_BMP,n);
-}
-
 static size_t iwbmp_calc_bpr(int bpp, size_t width)
 {
 	return ((bpp*width+31)/32)*4;
@@ -191,7 +177,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 			bmpctx->bitcount=8;
 	}
 	else {
-		iw_set_error(bmpctx->ctx,iwbmp_get_string(bmpctx->ctx,iws_bmp_internal_bad_type));
+		iw_set_error(bmpctx->ctx,"Internal: Bad image type for BMP");
 		goto done;
 	}
 
@@ -243,8 +229,6 @@ IW_IMPL(int) iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	struct iwbmpwritecontext bmpctx;
 	int retval=0;
 	struct iw_image img1;
-
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_BMP,iwbmp_stringtable);
 
 	memset(&img1,0,sizeof(struct iw_image));
 

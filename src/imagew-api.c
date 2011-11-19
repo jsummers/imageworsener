@@ -13,22 +13,42 @@
 
 #include "imagew-internals.h"
 
-// Call the caller's warning function, if defined.
-IW_IMPL(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...)
+static void iw_warning_internal(struct iw_context *ctx, const char *s)
+{
+	if(!ctx->warning_fn) return;
+
+	(*ctx->warning_fn)(ctx,s);
+}
+
+IW_IMPL(void) iw_warning(struct iw_context *ctx, const char *s)
+{
+	if(!ctx->warning_fn) return;
+	// TODO: Call translate_unformatted
+	iw_warning_internal(ctx,s);
+}
+
+IW_IMPL(void) iw_warningv(struct iw_context *ctx, const char *fmt, va_list ap)
 {
 	char buf[IW_ERRMSG_MAX];
 
+	// TODO: Call translate_format_string(fmt)
+	iw_vsnprintf(buf,IW_ERRMSG_MAX,fmt,ap);
+	// TODO: Call translate_postformat(buf)
+	iw_warning_internal(ctx,buf);
+}
+
+// Call the caller's warning function, if defined.
+IW_IMPL(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...)
+{
 	va_list ap;
 	if(!ctx->warning_fn) return;
 
 	va_start(ap, fmt);
-	iw_vsnprintf(buf,IW_ERRMSG_MAX,fmt,ap);
+	iw_warningv(ctx,fmt,ap);
 	va_end(ap);
-
-	(*ctx->warning_fn)(ctx,buf);
 }
 
-IW_IMPL(void) iw_set_error(struct iw_context *ctx, const char *s)
+static void iw_set_error_internal(struct iw_context *ctx, const char *s)
 {
 	if(ctx->error_flag) return; // Only record the first error.
 	ctx->error_flag = 1;
@@ -43,12 +63,23 @@ IW_IMPL(void) iw_set_error(struct iw_context *ctx, const char *s)
 	iw_strlcpy(ctx->error_msg,s,IW_ERRMSG_MAX);
 }
 
+IW_IMPL(void) iw_set_error(struct iw_context *ctx, const char *s)
+{
+	if(ctx->error_flag) return; // Only record the first error.
+	// TODO: Call translate_unformatted(s)
+	iw_set_error_internal(ctx,s);
+}
+
 IW_IMPL(void) iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
 {
 	char msg[IW_ERRMSG_MAX];
 
+	if(ctx->error_flag) return; // Only record the first error.
+
+	// TODO: Call translate_format_string(fmt)
 	iw_vsnprintf(msg,IW_ERRMSG_MAX,fmt,ap);
-	iw_set_error(ctx,msg);
+	// TODO: Call translate_postformat(buf)
+	iw_set_error_internal(ctx,msg);
 }
 
 IW_IMPL(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
@@ -62,10 +93,10 @@ IW_IMPL(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
 IW_IMPL(const char*) iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen)
 {
 	if(ctx->error_msg) {
-		iw_snprintf(buf,buflen,"%s",ctx->error_msg);
+		iw_strlcpy(buf,ctx->error_msg,buflen);
 	}
 	else {
-		iw_snprintf(buf,buflen,iwpvt_get_string(ctx,iws_err_msg_not_avail));
+		iw_strlcpy(buf,"Error message not available",buflen);
 	}
 
 	return buf;
@@ -103,12 +134,12 @@ IW_IMPL(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 IW_IMPL(int) iw_check_image_dimensions(struct iw_context *ctx, int w, int h)
 {
 	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
-		iwpvt_errf(ctx,iws_dimensions_too_large,w,h);
+		iw_set_errorf(ctx,"Image dimensions too large (%d\xc3\x97%d)",w,h);
 		return 0;
 	}
 
 	if(w<1 || h<1) {
-		iwpvt_errf(ctx,iws_dimensions_invalid,w,h);
+		iw_set_errorf(ctx,"Invalid image dimensions (%d\xc3\x97%d)",w,h);
 		return 0;
 	}
 
@@ -125,32 +156,11 @@ static void default_resize_settings(struct iw_resize_settings *rs)
 	}
 }
 
-struct iw_stringtableentry iw_corestringtable[] = {
-	{ iws_err_msg_not_avail, "Error message not available" },
-	{ iws_nomem, "Out of memory" },
-	{ iws_warn_reduce_to_8, "Reducing depth to 8; required by the output format." },
-	{ iws_warn_disable_offset_grayscale, "Disabling channel offset, due to grayscale output." },
-	{ iws_warn_trans_incomp_format, "This image may have transparency, which is incompatible with the output format. A background color will be applied." },
-	{ iws_warn_trans_incomp_offset, "This image may have transparency, which is incompatible with a channel offset. A background color will be applied." },
-	{ iws_warn_chkb_incomp_offset, "Checkerboard backgrounds are not supported when using a channel offset." },
-	{ iws_warn_output_forced_linear, "Forcing output colorspace to linear; required by the output format." },
-	{ iws_output_prof_not_set, "Output profile not set" },
-	{ iws_internal_error, "Internal error" },
-	{ iws_internal_unk_strategy, "Internal error, unknown strategy %d" },
-	{ iws_image_too_large, "Image too large to process" },
-	{ iws_dimensions_too_large, "Image dimensions too large (%d\xc3\x97%d)" },
-	{ iws_dimensions_invalid, "Invalid image dimensions (%d\xc3\x97%d)" },
-	{ iws_copyright, "Copyright \xc2\xa9 %s Jason Summers" },
-	{ iws_warn_fltpt_no_posterize, "Posterization not supported with floating point output." },
-	{ 0, NULL }
-};
-
 static void init_context(struct iw_context *ctx)
 {
 	memset(ctx,0,sizeof(struct iw_context));
 
 	ctx->max_malloc = IW_DEFAULT_MAX_MALLOC;
-	iw_set_string_table(ctx,IW_STRINGTABLENUM_CORE,iw_corestringtable);
 
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_H]);
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
@@ -505,12 +515,7 @@ IW_IMPL(char*) iw_get_version_string(struct iw_context *ctx, char *s, int s_len)
 
 IW_IMPL(char*) iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
 {
-	if(ctx) {
-		iw_snprintf(s,s_len,iwpvt_get_string(ctx,iws_copyright),IW_COPYRIGHT_YEAR);
-	}
-	else {
-		iw_snprintf(s,s_len,iw_get_string_direct(iw_corestringtable,iws_copyright),IW_COPYRIGHT_YEAR);
-	}
+	iw_snprintf(s,s_len,"Copyright \xc2\xa9 %s Jason Summers",IW_COPYRIGHT_YEAR);
 	return s;
 }
 
@@ -525,18 +530,6 @@ IW_IMPL(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 	case IW_OPT_16_TO_8: ctx->opt_16_to_8 = v; break;
 	case IW_OPT_STRIP_ALPHA: ctx->opt_strip_alpha = v; break;
 	case IW_OPT_BINARY_TRNS: ctx->opt_binary_trns = v; break;
-	}
-}
-
-// Set a string table if it's not already set.
-// You can always reset a string table by setting st=NULL.
-IW_IMPL(void) iw_set_string_table(struct iw_context *ctx, int tablenum,
-	const struct iw_stringtableentry *st)
-{
-	if(tablenum<0 || tablenum>=IW_NUMSTRINGTABLES) return;
-
-	if(st==NULL || ctx->stringtable[tablenum]==NULL) {
-		ctx->stringtable[tablenum] = st;
 	}
 }
 
@@ -713,32 +706,4 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 	}
 
 	return ret;
-}
-
-// Get a string, given a pointer to a string table.
-IW_IMPL(const char*) iw_get_string_direct(const struct iw_stringtableentry *st, int n)
-{
-	int i;
-
-	if(!st) {
-		return "[missing string table]";
-	}
-
-	for(i=0; st[i].s!=NULL; i++) {
-		if(st[i].n==n) {
-			return st[i].s;
-		}
-	}
-	return "[missing string]";
-
-}
-
-// Get a string, given a string table number
-IW_IMPL(const char*) iw_get_string(struct iw_context *ctx, int tablenum, int n)
-{
-	if(tablenum<0 || tablenum>=IW_NUMSTRINGTABLES || !ctx) {
-		return "[missing string table]";
-	}
-
-	return iw_get_string_direct(ctx->stringtable[tablenum],n);
 }
