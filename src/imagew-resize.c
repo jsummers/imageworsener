@@ -19,6 +19,15 @@
 
 
 typedef double (*iw_resamplefn_type)(struct iw_resize_settings *params, double x);
+typedef void (*iw_resamplerowfn_type)(struct iw_context *ctx);
+
+struct iw_resize_alg_info_struct {
+	int family;
+	iw_resamplerowfn_type resamplerow_fn;
+	iw_resamplefn_type filter_fn;
+	// flags: 0x01 = 'standard filter'
+	unsigned int flags;
+};
 
 static IW_INLINE double iw_sinc(double x)
 {
@@ -88,7 +97,7 @@ static double iw_filter_quadratic(struct iw_resize_settings *params, double x)
 
 // General cubic resampling based on Mitchell-Netravali definition.
 // (radius=2)
-static double iw_filter_generalcubic(struct iw_resize_settings *params, double x)
+static double iw_filter_cubic(struct iw_resize_settings *params, double x)
 {
 	double b = params->param1;
 	double c = params->param2;
@@ -166,7 +175,7 @@ static void iw_add_to_weightlist(struct iw_context *ctx, int src_pix, int dst_pi
 	ctx->weightlist.used++;
 }
 
-static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resamplefn_type rfn,
+static void iw_resample_row_create_weightlist(struct iw_context *ctx, struct iw_resize_alg_info_struct *ai,
  struct iw_resize_settings *params)
 {
 	int out_pix;
@@ -227,7 +236,7 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 				}
 			}
 
-			v = (*rfn)(params, (((double)input_pixel)-pos_in_inpix)/reduction_factor);
+			v = (*ai->filter_fn)(params, (((double)input_pixel)-pos_in_inpix)/reduction_factor);
 			v_sum += v;
 			v_count++;
 			if(input_pixel<0) pix_to_read=0;
@@ -265,7 +274,7 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 	}
 }
 
- static void iw_resample_row(struct iw_context *ctx)
+ static void iw_resize_row_std(struct iw_context *ctx)
 {
 	int i;
 	struct iw_weight_struct *w;
@@ -281,8 +290,8 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, iw_resampl
 		ctx->out_pix[w->dst_pix] += ctx->in_pix[w->src_pix] * w->weight;
 	}
 }
-	
-static void iw_resize_row_nearestneighbor(struct iw_context *ctx, double offset)
+
+static void iw_resize_row_nearest(struct iw_context *ctx)
 {
 	int out_pix;
 	double out_pix_center;
@@ -291,7 +300,7 @@ static void iw_resize_row_nearestneighbor(struct iw_context *ctx, double offset)
 
 	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
 
-		out_pix_center = (0.5+(double)out_pix-offset)/(double)ctx->num_out_pix;
+		out_pix_center = (0.5+(double)out_pix-ctx->cur_offset)/(double)ctx->num_out_pix;
 		input_pixel = (int)floor(out_pix_center*(double)ctx->num_in_pix);
 
 		if(input_pixel<0) pix_to_read=0;
@@ -373,7 +382,7 @@ static void iw_pixmix_create_weightlist(struct iw_context *ctx)
 }
 
 // Caution: Does not support offsets.
-static void resize_row_null(struct iw_context *ctx)
+static void iw_resize_row_null(struct iw_context *ctx)
 {
 	int i;
 	for(i=0;i<ctx->num_out_pix;i++) {
@@ -386,8 +395,40 @@ static void resize_row_null(struct iw_context *ctx)
 	}
 }
 
+static struct iw_resize_alg_info_struct resize_alg_info[] = {
+ { IW_RESIZETYPE_NULL,      iw_resize_row_null,    NULL,                0 },
+ { IW_RESIZETYPE_MIX,       iw_resize_row_std,     NULL,                0 },
+ { IW_RESIZETYPE_CUBIC,     iw_resize_row_std,     iw_filter_cubic,     1 },
+ { IW_RESIZETYPE_LANCZOS,   iw_resize_row_std,     iw_filter_lanczos,   1 },
+ { IW_RESIZETYPE_TRIANGLE,  iw_resize_row_std,     iw_filter_triangle,  1 },
+ { IW_RESIZETYPE_GAUSSIAN,  iw_resize_row_std,     iw_filter_gaussian,  1 },
+ { IW_RESIZETYPE_HERMITE,   iw_resize_row_std,     iw_filter_hermite,   1 },
+ { IW_RESIZETYPE_HANNING,   iw_resize_row_std,     iw_filter_hann,      1 },
+ { IW_RESIZETYPE_BLACKMAN,  iw_resize_row_std,     iw_filter_blackman,  1 },
+ { IW_RESIZETYPE_QUADRATIC, iw_resize_row_std,     iw_filter_quadratic, 1 },
+ { IW_RESIZETYPE_SINC,      iw_resize_row_std,     iw_filter_sinc,      1 },
+ { IW_RESIZETYPE_BOX,       iw_resize_row_std,     iw_filter_box,       1 },
+ { IW_RESIZETYPE_NEAREST,   iw_resize_row_nearest, NULL,                0 },
+ { 0,                       NULL,                  NULL,                0 }
+};
+
+static struct iw_resize_alg_info_struct *alg_info_by_family(int family)
+{
+	int i;
+	for(i=0; resize_alg_info[i].family; i++) {
+		if(resize_alg_info[i].family == family)
+			return &resize_alg_info[i];
+	}
+	return NULL;
+}
+
 void iwpvt_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype)
 {
+	struct iw_resize_alg_info_struct *ai;
+
+	ai = alg_info_by_family(rs->family);
+	if(!ai) return;
+
 	// Set ctx->cur_offset, to be used as the offset until this function is
 	// called again.
 	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
@@ -395,63 +436,28 @@ void iwpvt_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_sett
 	else
 		ctx->cur_offset=0.0;
 
-	if(rs->family<IW_FIRST_PRECALC_FILTER) return; // This algorithm doesn't precalculate weights.
+	if(ai->flags & 0x01) {
+		// This is a "standard" filter.
+		iw_resample_row_create_weightlist(ctx,ai,rs);
+		return;
+	}
 
-	switch(rs->family) {
-	case IW_RESIZETYPE_MIX:
+	// Other filters that use weightlists:
+	if(rs->family==IW_RESIZETYPE_MIX) {
 		iw_pixmix_create_weightlist(ctx);
-		break;
-	case IW_RESIZETYPE_HERMITE:
-		iw_resample_row_create_weightlist(ctx,iw_filter_hermite,rs);
-		break;
-	case IW_RESIZETYPE_CUBIC:
-		iw_resample_row_create_weightlist(ctx,iw_filter_generalcubic,rs);
-		break;
-	case IW_RESIZETYPE_LANCZOS:
-		iw_resample_row_create_weightlist(ctx,iw_filter_lanczos,rs);
-		break;
-	case IW_RESIZETYPE_HANNING:
-		iw_resample_row_create_weightlist(ctx,iw_filter_hann,rs);
-		break;
-	case IW_RESIZETYPE_BLACKMAN:
-		iw_resample_row_create_weightlist(ctx,iw_filter_blackman,rs);
-		break;
-	case IW_RESIZETYPE_SINC:
-		iw_resample_row_create_weightlist(ctx,iw_filter_sinc,rs);
-		break;
-	case IW_RESIZETYPE_GAUSSIAN:
-		iw_resample_row_create_weightlist(ctx,iw_filter_gaussian,rs);
-		break;
-	case IW_RESIZETYPE_LINEAR:
-		iw_resample_row_create_weightlist(ctx,iw_filter_triangle,rs);
-		break;
-	case IW_RESIZETYPE_QUADRATIC:
-		iw_resample_row_create_weightlist(ctx,iw_filter_quadratic,rs);
-		break;
-	case IW_RESIZETYPE_BOX:
-		iw_resample_row_create_weightlist(ctx,iw_filter_box,rs);
-		break;
+		return;
 	}
 }
 
 void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs)
 {
-	if(rs->family>=IW_FIRST_PRECALC_FILTER) {
-		iw_resample_row(ctx);
-		goto resizedone;
-	}
+	struct iw_resize_alg_info_struct *ai;
 
-	switch(rs->family) {
-	case IW_RESIZETYPE_NEAREST:
-		iw_resize_row_nearestneighbor(ctx,ctx->cur_offset);
-		break;
-	case IW_RESIZETYPE_NULL:
-		resize_row_null(ctx);
-		break;
-	default:
-		iw_resize_row_nearestneighbor(ctx,ctx->cur_offset);
-		break;
-	}
+	// TODO: It would be better to not redo this search for every row.
+	ai = alg_info_by_family(rs->family);
+	if(!ai) goto resizedone;
+
+	(*ai->resamplerow_fn)(ctx);
 
 resizedone:
 	return;
