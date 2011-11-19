@@ -25,7 +25,7 @@ struct iw_resize_alg_info_struct {
 	int family;
 	iw_resamplerowfn_type resamplerow_fn;
 	iw_resamplefn_type filter_fn;
-	// flags: 0x01 = 'standard filter'
+	// flags: 0x01 = 'standard' filter, 0x02 = asymmetric
 	unsigned int flags;
 };
 
@@ -37,7 +37,6 @@ static IW_INLINE double iw_sinc(double x)
 
 static double iw_filter_lanczos(struct iw_resize_settings *params, double x)
 {
-	if(x<0.0) x = -x;
 	if(x<params->radius)
 		return iw_sinc(x)*iw_sinc(x/params->radius);
 	return 0.0;
@@ -45,7 +44,6 @@ static double iw_filter_lanczos(struct iw_resize_settings *params, double x)
 
 static double iw_filter_hann(struct iw_resize_settings *params, double x)
 {
-	if(x<0.0) x = -x;
 	if(x<params->radius)
 		return iw_sinc(x)*(0.5*cos(M_PI*x/params->radius)+0.5);
 	return 0.0;
@@ -53,7 +51,6 @@ static double iw_filter_hann(struct iw_resize_settings *params, double x)
 
 static double iw_filter_blackman(struct iw_resize_settings *params, double x)
 {
-	if(x<0.0) x = -x;
 	if(x<params->radius) {
 		return iw_sinc(x) * (
 			0.5*cos(M_PI*x/params->radius) +
@@ -66,7 +63,6 @@ static double iw_filter_blackman(struct iw_resize_settings *params, double x)
 
 static double iw_filter_sinc(struct iw_resize_settings *params, double x)
 {
-	if(x<0.0) x = -x;
 	if(x<params->radius)
 		return iw_sinc(x);
 	return 0.0;
@@ -74,22 +70,18 @@ static double iw_filter_sinc(struct iw_resize_settings *params, double x)
 
 static double iw_filter_gaussian(struct iw_resize_settings *params, double x)
 {
-	//if(x>2.0 || x<=(-2.0)) return 0.0;
-
 	// The 0.797 constant is 1.0/sqrt(0.5*M_PI)
 	return exp(-2.0*x*x) * 0.79788456080286535587989;
 }
 
 static double iw_filter_triangle(struct iw_resize_settings *params, double x)
 {
-	if(x<0.0) x = -x;
 	if(x<1.0) return 1.0-x;
 	return 0.0;
 }
 
 static double iw_filter_quadratic(struct iw_resize_settings *params, double x)
 {
-	if(x<0.0) x = -x;
 	if(x<0.5) return 0.75-x*x;
 	if(x<1.5) return 0.50*(x-1.5)*(x-1.5);
 	return 0.0;
@@ -101,28 +93,25 @@ static double iw_filter_cubic(struct iw_resize_settings *params, double x)
 {
 	double b = params->param1;
 	double c = params->param2;
-	if(x<0.0) x = -x;
 
 	if(x<1.0) {
 		return (
 		  ( 12.0 -  9.0*b - 6.0*c) *x*x*x +
 	      (-18.0 + 12.0*b + 6.0*c) *x*x +
-		  (  6.0 -  2.0*b        ) )/6;
+		  (  6.0 -  2.0*b        ) )/6.0;
 	}
 	else if(x<2.0) {
 		return (
 		  (     -b -  6.0*c) *x*x*x +
 		  (  6.0*b + 30.0*c) *x*x +
 		  (-12.0*b - 48.0*c) *x +
-		  (  8.0*b + 24.0*c) )/6;
+		  (  8.0*b + 24.0*c) )/6.0;
 	}
 	return 0.0;
 }
 
 static double iw_filter_hermite(struct iw_resize_settings *params, double x)
 {
-	if(x<0.0) x = -x;
-
 	if(x<1.0) {
 		return 2.0*x*x*x -3.0*x*x +1.0;
 	}
@@ -182,6 +171,7 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, struct iw_
 	double reduction_factor;
 	double out_pix_center;
 	double pos_in_inpix;
+	double pos;
 	int input_pixel;
 	int first_input_pixel;
 	int last_input_pixel;
@@ -230,13 +220,22 @@ static void iw_resample_row_create_weightlist(struct iw_context *ctx, struct iw_
 		v_count=0;
 		for(input_pixel=first_input_pixel;input_pixel<=last_input_pixel;input_pixel++) {
 			if(ctx->edge_policy==IW_EDGE_POLICY_STANDARD) {
-				// Try to avoid using "virtual pixels".
+			// Try to avoid using "virtual pixels".
 				if(input_pixel<0 || input_pixel>=ctx->num_in_pix) {
 					continue;
 				}
 			}
 
-			v = (*ai->filter_fn)(params, (((double)input_pixel)-pos_in_inpix)/reduction_factor);
+			pos = (((double)input_pixel)-pos_in_inpix)/reduction_factor;
+			if(!(ai->flags & 0x2)) {
+				// If the filter is symmetric, then for convenience, don't call it with
+				// negative numbers.
+				if(pos<0.0)
+					pos = -pos;
+			}
+			v = (*ai->filter_fn)(params, pos);
+			if(v==0.0) continue;
+
 			v_sum += v;
 			v_count++;
 			if(input_pixel<0) pix_to_read=0;
@@ -407,7 +406,7 @@ static struct iw_resize_alg_info_struct resize_alg_info[] = {
  { IW_RESIZETYPE_BLACKMAN,  iw_resize_row_std,     iw_filter_blackman,  1 },
  { IW_RESIZETYPE_QUADRATIC, iw_resize_row_std,     iw_filter_quadratic, 1 },
  { IW_RESIZETYPE_SINC,      iw_resize_row_std,     iw_filter_sinc,      1 },
- { IW_RESIZETYPE_BOX,       iw_resize_row_std,     iw_filter_box,       1 },
+ { IW_RESIZETYPE_BOX,       iw_resize_row_std,     iw_filter_box,       0x03 },
  { IW_RESIZETYPE_NEAREST,   iw_resize_row_nearest, NULL,                0 },
  { 0,                       NULL,                  NULL,                0 }
 };
