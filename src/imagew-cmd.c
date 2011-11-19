@@ -222,6 +222,9 @@ static void iwcmd_vprint_utf8(struct params_struct *p, const char *fmt, va_list 
 }
 
 static void iwcmd_message(struct params_struct *p, const char *fmt, ...)
+  iw_gnuc_attribute ((format (printf, 2, 3)));
+
+static void iwcmd_message(struct params_struct *p, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
@@ -230,12 +233,18 @@ static void iwcmd_message(struct params_struct *p, const char *fmt, ...)
 }
 
 static void iwcmd_warning(struct params_struct *p, const char *fmt, ...)
+  iw_gnuc_attribute ((format (printf, 2, 3)));
+
+static void iwcmd_warning(struct params_struct *p, const char *fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
 	iwcmd_vprint_utf8(p,fmt,ap);
 	va_end(ap);
 }
+
+static void iwcmd_error(struct params_struct *p, const char *fmt, ...)
+  iw_gnuc_attribute ((format (printf, 2, 3)));
 
 static void iwcmd_error(struct params_struct *p, const char *fmt, ...)
 {

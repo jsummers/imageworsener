@@ -21,7 +21,7 @@ OUTLIBDIR:=../src
 OUTEXEDIR:=..
 
 CC:=gcc
-CFLAGS:=-Wall -O3
+CFLAGS:=-Wall -Wformat-security -O3
 LDFLAGS:=
 INCLUDES:=-I$(SRCDIR)
 LIBS:=

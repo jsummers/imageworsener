@@ -418,6 +418,9 @@ static void iwmiff_write_sz(struct iwmiffwritecontext *wctx, const char *s)
 }
 
 static void iwmiff_writef(struct iwmiffwritecontext *wctx, const char *fmt, ...)
+  iw_gnuc_attribute ((format (printf, 2, 3)));
+
+static void iwmiff_writef(struct iwmiffwritecontext *wctx, const char *fmt, ...)
 {
 	char buf[500];
 	va_list ap;

@@ -24,6 +24,12 @@
 extern "C" {
 #endif
 
+#ifdef __GNUC__
+#define iw_gnuc_attribute __attribute__
+#else
+#define iw_gnuc_attribute(x)
+#endif
+
 #define IW_EXPORT(x)  x
 
 // The version of the IW header files.
@@ -448,9 +454,11 @@ IW_EXPORT(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n);
 IW_EXPORT(double) iw_get_value_dbl(struct iw_context *ctx, int code);
 
 IW_EXPORT(void) iw_set_error(struct iw_context *ctx, const char *s);
-IW_EXPORT(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...);
+IW_EXPORT(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
+  iw_gnuc_attribute ((format (printf, 2, 3)));
 IW_EXPORT(void) iw_warning(struct iw_context *ctx, const char *s);
-IW_EXPORT(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...);
+IW_EXPORT(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...)
+  iw_gnuc_attribute ((format (printf, 2, 3)));
 
 // Returns the number of bytes in the data type used to store a sample
 // internally.
@@ -512,7 +520,8 @@ IW_EXPORT(void) iw_warningv(struct iw_context *ctx, const char *fmt, va_list ap)
 
 IW_EXPORT(void) iw_strlcpy(char *dst, const char *src, size_t dstlen);
 IW_EXPORT(void) iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
-IW_EXPORT(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...);
+IW_EXPORT(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
+  iw_gnuc_attribute ((format (printf, 3, 4)));
 
 IW_EXPORT(int) iw_imgtype_num_channels(int t);
 
