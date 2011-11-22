@@ -419,7 +419,7 @@ static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx
 	const iw_byte *ptr;
 	iw_byte *ptr2;
 	iw_byte clr_used[256];
-	iw_byte key_clr; // Red component of the key color
+	iw_byte key_clr=0; // Red component of the key color
 	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
@@ -491,7 +491,7 @@ static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	const iw_byte *ptr;
 	iw_byte *ptr2;
 	iw_byte clr_used[256];
-	iw_byte key_clr; // low 8-bits of red component of the key color
+	iw_byte key_clr=0; // low 8-bits of red component of the key color
 	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
@@ -559,7 +559,7 @@ static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	const iw_byte *ptr;
 	iw_byte *ptr2;
 	iw_byte clr_used[256];
-	iw_byte key_clr;
+	iw_byte key_clr=0;
 	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
@@ -619,7 +619,7 @@ static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_c
 	const iw_byte *ptr;
 	iw_byte *ptr2;
 	iw_byte clr_used[256];
-	iw_byte key_clr; // low 8-bits of the key color
+	iw_byte key_clr=0; // low 8-bits of the key color
 	iw_byte *trns_mask = NULL;
 
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
