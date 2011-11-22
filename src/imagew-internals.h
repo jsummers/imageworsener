@@ -40,23 +40,10 @@ struct iw_rgb_color {
 	IW_SAMPLE c[3]; // Indexed by IW_CHANNELTYPE[Red..Blue]
 };
 
-struct iw_weight_struct {
-	int src_pix;
-	int dst_pix;
-	double weight;
-};
-
-struct iw_weightlist_struct {
-	int used;
-	int alloc;
-	int isvalid;
-	struct iw_weight_struct *w;
-};
-
+// "Raw" settings from the application.
 struct iw_resize_settings {
 	int family;
-	double radius; // Also = "lobes" in Lanczos, etc.
-	double param1; // 'B' in Mitchell-Netravali cubics.
+	double param1; // 'B' in Mitchell-Netravali cubics. "lobes" in Lanczos, etc.
 	double param2; // 'C' in Mitchell-Netravali cubics.
 	double blur_factor;
 	double channel_offset[3]; // Indexed by IW_CHANNELTYPE_[Red..Blue]
@@ -256,9 +243,6 @@ struct iw_context {
 	double *output_rev_color_corr_table;
 
 	double *nearest_color_table;
-
-	struct iw_weightlist_struct weightlist;
-	double cur_offset;
 };
 
 // Defined imagew-util.c
@@ -269,9 +253,11 @@ iw_uint32 iwpvt_prng_rand(struct iw_prng*); // Returns a pseudorandom number.
 int iwpvt_util_randomize(struct iw_prng*); // Returns the random seed that was used.
 
 // Defined in imagew-resize.c
-void iwpvt_resize_row_precalculate(struct iw_context *ctx, struct iw_resize_settings *rs, int channeltype);
-void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_resize_settings *rs);
-void iwpvt_weightlist_free(struct iw_context *ctx);
+struct iw_rr_ctx; // "resize rows" state.
+struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
+  struct iw_resize_settings *rs, int channeltype);
+void iwpvt_resize_rows_done(struct iw_context *ctx, struct iw_rr_ctx *rrctx);
+void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_rr_ctx *rrctx);
 
 // Defined in imagew-opt.c
 void iwpvt_optimize_image(struct iw_context *ctx);

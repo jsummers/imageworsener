@@ -465,33 +465,8 @@ IW_IMPL(void) iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dim
 
 	rs->family = family;
 	rs->blur_factor = blur;
-	rs->radius = 1.0; // default
-
-	switch(family) {
-	case IW_RESIZETYPE_QUADRATIC:
-		rs->radius = 1.5;
-		break;
-	case IW_RESIZETYPE_CUBIC:
-		rs->radius = 2.0;
-		if(param1 < -10.0) param1= -10.0;
-		if(param1 >  10.0) param1=  10.0;
-		if(param2 < -10.0) param2= -10.0;
-		if(param2 >  10.0) param2=  10.0;
-		rs->param1 = param1; // B
-		rs->param2 = param2; // C
-		break;
-	case IW_RESIZETYPE_GAUSSIAN:
-		rs->radius = 2.0;
-		break;
-	case IW_RESIZETYPE_LANCZOS:
-	case IW_RESIZETYPE_HANNING:
-	case IW_RESIZETYPE_BLACKMAN:
-	case IW_RESIZETYPE_SINC:
-		rs->radius = floor(param1+0.5); // "lobes"
-		if(rs->radius<2.0) rs->radius=2.0;
-		if(rs->radius>10.0) rs->radius=10.0;
-		break;
-	}
+	rs->param1 = param1;
+	rs->param2 = param2;
 }
 
 IW_IMPL(int) iw_get_sample_size(void)

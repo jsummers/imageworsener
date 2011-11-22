@@ -381,8 +381,9 @@ IW_EXPORT(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int 
 // The shades are evenly distributed in the target color space.
 IW_EXPORT(void) iw_set_color_count(struct iw_context *ctx, int channeltype, int c);
 
+// param1: For "cubic", the B parameter. For "lanczos" etc., the number of lobes.
+// param2: For "cubic", the C parameter.
 // blur: 1.0 is normal. >1.0 blurs the image, <1.0 sharpens (&aliases) the image.
-// Not supported by all resize algorithms.
 IW_EXPORT(void) iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, int family,
     double blur, double param1, double param2);
 

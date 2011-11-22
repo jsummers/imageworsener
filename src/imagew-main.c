@@ -764,11 +764,11 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	int is_alpha_channel;
 	struct iw_resize_settings *rs;
 	struct iw_channelinfo_intermed *int_ci;
+	struct iw_rr_ctx *rrctx = NULL;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
 
-	ctx->weightlist.isvalid = 0;
 	int_ci = &ctx->intermed_ci[channel];
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 
@@ -787,7 +787,8 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	else
 		rs=&ctx->resize_settings[IW_DIMENSION_V];
 
-	iwpvt_resize_row_precalculate(ctx,rs,int_ci->channeltype);
+	rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
+	if(!rrctx) goto done;
 
 	for(i=0;i<ctx->input_w;i++) {
 
@@ -816,7 +817,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// Now we have a row in the right format.
 		// Resize it and store it in the right place in the intermediate array.
 
-		iwpvt_resize_row_main(ctx,rs);
+		iwpvt_resize_row_main(ctx,rrctx);
 
 		if(ctx->intclamp)
 			clamp_output_samples(ctx);
@@ -835,6 +836,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	retval=1;
 
 done:
+	if(rrctx) iwpvt_resize_rows_done(ctx, rrctx);
 	if(inpix) iw_free(inpix);
 	if(outpix) iw_free(outpix);
 	ctx->in_pix=NULL;
@@ -864,11 +866,10 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int clamp_after_composite=0;
 	struct iw_channelinfo_intermed *int_ci;
 	struct iw_channelinfo_out *out_ci;
+	struct iw_rr_ctx *rrctx = NULL;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
-
-	ctx->weightlist.isvalid = 0;
 
 	ctx->num_in_pix = ctx->intermed_width;
 	ctx->num_out_pix = ctx->img2.width;
@@ -952,7 +953,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	else
 		rs=&ctx->resize_settings[IW_DIMENSION_H];
 
-	iwpvt_resize_row_precalculate(ctx,rs,int_ci->channeltype);
+	rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
+	if(!rrctx) goto done;
 
 	for(j=0;j<ctx->intermed_height;j++) {
 		if(is_alpha_channel) {
@@ -965,7 +967,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 		// Resize it to out_pix
 
-		iwpvt_resize_row_main(ctx,rs);
+		iwpvt_resize_row_main(ctx,rrctx);
 
 		if(clamp_after_resize)
 			clamp_output_samples(ctx);
@@ -1050,6 +1052,7 @@ here:
 	retval=1;
 
 done:
+	if(rrctx) iwpvt_resize_rows_done(ctx, rrctx);
 	ctx->in_pix=NULL;
 	ctx->out_pix=NULL;
 	if(outpix) iw_free(outpix);
@@ -1223,7 +1226,6 @@ done:
 	for(k=0;k<IW_DITHER_MAXROWS;k++) {
 		if(ctx->dither_errors[k]) { iw_free(ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
 	}
-	iwpvt_weightlist_free(ctx);
 	return retval;
 }
 
