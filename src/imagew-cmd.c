@@ -51,9 +51,12 @@ struct rgb_color {
 
 struct resize_alg {
 	int family;
-	double blur;
 	int lobes;
 	double b,c;
+};
+
+struct resize_blur {
+	double blur;
 };
 
 struct params_struct {
@@ -68,6 +71,9 @@ struct params_struct {
 	struct resize_alg resize_alg_x;
 	struct resize_alg resize_alg_y;
 	struct resize_alg resize_alg_alpha;
+	struct resize_blur resize_blur_x;
+	struct resize_blur resize_blur_y;
+	struct resize_blur resize_blur_alpha;
 	int bestfit;
 	int depth;
 	int grayscale, condgrayscale;
@@ -390,18 +396,19 @@ done:
 	if(p->new_height<1) p->new_height=1;
 }
 
-static void iwcmd_set_resize(struct iw_context *ctx, int channel, int dimension, struct resize_alg *alg)
+static void iwcmd_set_resize(struct iw_context *ctx, int channel, int dimension,
+	struct resize_alg *alg, struct resize_blur *rblur)
 {
 	switch(alg->family) {
 	case IW_RESIZETYPE_CUBIC:
-		iw_set_resize_alg(ctx,channel,dimension,alg->family,alg->blur,alg->b,alg->c);
+		iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,alg->b,alg->c);
 		break;
 	case IW_RESIZETYPE_LANCZOS: case IW_RESIZETYPE_HANNING:
 	case IW_RESIZETYPE_BLACKMAN: case IW_RESIZETYPE_SINC:
-		iw_set_resize_alg(ctx,channel,dimension,alg->family,alg->blur,alg->lobes,0.0);
+		iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,alg->lobes,0.0);
 		break;
 	default:
-		iw_set_resize_alg(ctx,channel,dimension,alg->family,alg->blur,0.0,0.0);
+		iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,0.0,0.0);
 	}
 }
 
@@ -609,18 +616,18 @@ static int run(struct params_struct *p)
 	}
 
 	if(p->resize_alg_x.family) {
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_H,&p->resize_alg_x);
+		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_H,&p->resize_alg_x,&p->resize_blur_x);
 	}
 	if(p->resize_alg_y.family) {
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_V,&p->resize_alg_y);
+		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
 	}
 	if(p->resize_alg_alpha.family) {
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALPHA,IW_DIMENSION_V,&p->resize_alg_alpha);
+		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALPHA,IW_DIMENSION_V,&p->resize_alg_alpha,&p->resize_blur_alpha);
 	}
 
-	if( (!p->resize_alg_x.family && p->resize_alg_x.blur!=1.0) ||
-		(!p->resize_alg_y.family && p->resize_alg_y.blur!=1.0) ||
-		(!p->resize_alg_alpha.family && p->resize_alg_alpha.blur!=1.0) )
+	if( (!p->resize_alg_x.family && p->resize_blur_x.blur!=1.0) ||
+		(!p->resize_alg_y.family && p->resize_blur_y.blur!=1.0) ||
+		(!p->resize_alg_alpha.family && p->resize_blur_alpha.blur!=1.0) )
 	{
 		if(!p->nowarn)
 			iwcmd_warning(p,"Warning: -blur option requires -filter\n");
@@ -1047,7 +1054,6 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 {
 	int i;
 	int len, namelen;
-	double blur;
 	struct resizetable_struct {
 		const char *name;
 		int resizetype;
@@ -1067,11 +1073,7 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		{NULL,0}
 	};
 
-	blur = alg->blur;
 	memset(alg,0,sizeof(struct resize_alg));
-	// Hack: The 'blur' should be really be part of the string, but for now
-	// it is a separate parameter, so we must not modify it here.
-	alg->blur = blur;
 
 	for(i=0; resizetable[i].name!=NULL; i++) {
 		if(!strcmp(s,resizetable[i].name)) {
@@ -1612,16 +1614,16 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(ret<0) return 0;
 		break;
 	case PT_BLUR_FACTOR:
-		p->resize_alg_x.blur = p->resize_alg_y.blur = iwcmd_parse_dbl(v);
+		p->resize_blur_x.blur = p->resize_blur_y.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_BLUR_FACTOR_X:
-		p->resize_alg_x.blur = iwcmd_parse_dbl(v);
+		p->resize_blur_x.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_BLUR_FACTOR_Y:
-		p->resize_alg_y.blur = iwcmd_parse_dbl(v);
+		p->resize_blur_y.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_BLUR_FACTOR_ALPHA:
-		p->resize_alg_alpha.blur = iwcmd_parse_dbl(v);
+		p->resize_blur_alpha.blur = iwcmd_parse_dbl(v);
 		break;
 	case PT_DITHER:
 		p->dither_family_all=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_all);
@@ -1923,9 +1925,9 @@ static int iwcmd_main(int argc, char* argv[])
 	p.outfmt=IW_FORMAT_UNKNOWN;
 	p.output_encoding=IWCMD_ENCODING_AUTO;
 	p.output_encoding_setmode=IWCMD_ENCODING_AUTO;
-	p.resize_alg_x.blur = 1.0;
-	p.resize_alg_y.blur = 1.0;
-	p.resize_alg_alpha.blur = 1.0;
+	p.resize_blur_x.blur = 1.0;
+	p.resize_blur_y.blur = 1.0;
+	p.resize_blur_alpha.blur = 1.0;
 	p.webp_quality = -1.0;
 	p.include_screen = -1;
 
