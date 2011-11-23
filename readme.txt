@@ -294,6 +294,15 @@ Options:
    value that's too small will cause some pixels to be missed completely,
    leaving black lines.
 
+ -blur x[<n>] (-blurx -blury)
+   Set the blur factor to <n> and then, if downscaling, multiply it by the
+   scaling factor. If not given, <n> defaults to 1.0.
+
+   The purpose of this option is to make it easy to perform simple
+   interpolation. For example, use "-filter linear -blur x1" to do linear
+   interpolation. This is not a good way to downscale images, but it is
+   what many applications do.
+
  -edge <name>
    The strategy for dealing with the pixels near the edges of images.
 

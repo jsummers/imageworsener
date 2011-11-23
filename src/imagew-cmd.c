@@ -56,6 +56,7 @@ struct resize_alg {
 
 struct resize_blur {
 	double blur;
+	int interpolate; // If set, muliply 'blur' by the scaling factor (if downscaling)
 };
 
 struct params_struct {
@@ -604,24 +605,6 @@ static int run(struct params_struct *p)
 		iw_set_output_colorspace(ctx,&p->cs_out);
 	}
 
-	if(p->resize_alg_x.family) {
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_H,&p->resize_alg_x,&p->resize_blur_x);
-	}
-	if(p->resize_alg_y.family) {
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
-	}
-	if(p->resize_alg_alpha.family) {
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALPHA,IW_DIMENSION_V,&p->resize_alg_alpha,&p->resize_blur_alpha);
-	}
-
-	if( (!p->resize_alg_x.family && p->resize_blur_x.blur!=1.0) ||
-		(!p->resize_alg_y.family && p->resize_blur_y.blur!=1.0) ||
-		(!p->resize_alg_alpha.family && p->resize_blur_alpha.blur!=1.0) )
-	{
-		if(!p->nowarn)
-			iwcmd_warning(p,"Warning: -blur option requires -filter\n");
-	}
-
 	if(p->dither_family_all)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_family_all  ,p->dither_subtype_all);
 	if(p->dither_family_nonalpha) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_family_nonalpha,p->dither_subtype_nonalpha);
 	if(p->dither_family_red)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_family_red  ,p->dither_subtype_red);
@@ -744,6 +727,33 @@ static int run(struct params_struct *p)
 
 	if(p->new_width<1) p->new_width=1;
 	if(p->new_height<1) p->new_height=1;
+
+	// Wait until we know the target image size to set the resize algorithm, so
+	// that we can support our "interpolate" option.
+	if(p->resize_alg_x.family) {
+		if(p->resize_blur_x.interpolate && p->new_width<old_width) {
+			// If downscaling, "sharpen" the filter to emulate interpolation.
+			p->resize_blur_x.blur *= ((double)p->new_width)/old_width;
+		}
+		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_H,&p->resize_alg_x,&p->resize_blur_x);
+	}
+	if(p->resize_alg_y.family) {
+		if(p->resize_blur_y.interpolate && p->new_height<old_height) {
+			p->resize_blur_y.blur *= ((double)p->new_height)/old_height;
+		}
+		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
+	}
+	if(p->resize_alg_alpha.family) {
+		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALPHA,0,&p->resize_alg_alpha,&p->resize_blur_alpha);
+	}
+
+	if( (!p->resize_alg_x.family && p->resize_blur_x.blur!=1.0) ||
+		(!p->resize_alg_y.family && p->resize_blur_y.blur!=1.0) ||
+		(!p->resize_alg_alpha.family && p->resize_blur_alpha.blur!=1.0) )
+	{
+		if(!p->nowarn)
+			iwcmd_warning(p,"Warning: -blur option requires -filter\n");
+	}
 
 	if(p->noinfo) {
 		;
@@ -1150,6 +1160,27 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 done:
 	iwcmd_error(p,"Unknown resize type \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
 	return -1;
+}
+
+static int iwcmd_string_to_blurtype(struct params_struct *p,
+	const char *s, struct resize_blur *rblur)
+{
+	int namelen;
+
+	namelen=iwcmd_get_name_len(s);
+
+	if(namelen==1 && !strncmp(s,"x",namelen)) {
+		rblur->interpolate = 1;
+		if(strlen(s)==1)
+			rblur->blur = 1.0;
+		else
+			rblur->blur = iwcmd_parse_dbl(&s[namelen]);
+		return 1;
+	}
+
+	rblur->interpolate = 0;
+	rblur->blur = iwcmd_parse_dbl(s);
+	return 1;
 }
 
 static int iwcmd_string_to_dithertype(struct params_struct *p,const char *s,int *psubtype)
@@ -1605,16 +1636,21 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(ret<0) return 0;
 		break;
 	case PT_BLUR_FACTOR:
-		p->resize_blur_x.blur = p->resize_blur_y.blur = iwcmd_parse_dbl(v);
+		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_x);
+		if(ret<0) return 0;
+		p->resize_blur_y=p->resize_blur_x;
 		break;
 	case PT_BLUR_FACTOR_X:
-		p->resize_blur_x.blur = iwcmd_parse_dbl(v);
+		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_x);
+		if(ret<0) return 0;
 		break;
 	case PT_BLUR_FACTOR_Y:
-		p->resize_blur_y.blur = iwcmd_parse_dbl(v);
+		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_y);
+		if(ret<0) return 0;
 		break;
 	case PT_BLUR_FACTOR_ALPHA:
-		p->resize_blur_alpha.blur = iwcmd_parse_dbl(v);
+		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_alpha);
+		if(ret<0) return 0;
 		break;
 	case PT_DITHER:
 		p->dither_family_all=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_all);

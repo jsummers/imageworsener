@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added "-blur x" option, to make it easy to do simple interpolation.
  - Support -blur when using the "mix" filter.
  - Added a way to request a specific density label.
  - Added an option to write JPEG files using arithmetic coding.
