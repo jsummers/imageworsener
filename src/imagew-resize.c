@@ -33,6 +33,7 @@ struct iw_rr_ctx {
 	double radius; // (Does not take .blur_factor into account.)
 	double cubic_b;
 	double cubic_c;
+	double mix_param;
 
 	double blur_factor;
 	double offset;
@@ -49,12 +50,12 @@ struct iw_rr_ctx {
 	int wl_alloc;
 };
 
+
 static IW_INLINE double iw_sinc(double x)
 {
 	if(x==0.0) return 1.0;
 	return sin(M_PI*x)/(M_PI*x);
 }
-
 
 static double iw_filter_lanczos(struct iw_rr_ctx *rrctx, double x)
 {
@@ -143,6 +144,15 @@ static double iw_filter_box(struct iw_rr_ctx *rrctx, double x)
 {
 	if(x > -0.5 && x <= 0.5)
 		return 1.0;
+	return 0.0;
+}
+
+static double iw_filter_mix(struct iw_rr_ctx *rrctx, double x)
+{
+	if(x < (0.5-rrctx->mix_param/2.0))
+		return 1.0;
+	if(x < (0.5+rrctx->mix_param/2.0))
+		return 0.5-(x-0.5)/rrctx->mix_param;
 	return 0.0;
 }
 
@@ -328,76 +338,6 @@ static void iw_resize_row_nearest(struct iw_context *ctx, struct iw_rr_ctx *rrct
 	}
 }
 
-static void iw_create_weightlist_pixmix(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
-{
-	int cur_in_pix, cur_out_pix;
-	int safe_in_pix;
-	double in_pix_right_pos;
-	double out_pix_right_pos;
-	double cur_pos;
-	int est_nweights;
-
-	rrctx->wl_used = 0;
-	est_nweights = ctx->num_out_pix + ctx->num_in_pix;
-	weightlist_ensure_alloc(rrctx,est_nweights);
-	if(!rrctx->wl) {
-		return;
-	}
-
-	cur_in_pix = 0;
-	cur_out_pix = 0;
-
-	cur_pos = (-rrctx->offset)/(double)ctx->num_out_pix;
-	out_pix_right_pos = (-rrctx->offset+1.0)/(double)ctx->num_out_pix;
-
-	in_pix_right_pos = ((double)(cur_in_pix+1))/(double)ctx->num_in_pix;
-	while(in_pix_right_pos<cur_pos) {
-		// Skip over any initial input pixels that don't overlap any output pixels.
-		cur_in_pix++;
-		in_pix_right_pos = ((double)(cur_in_pix+1))/(double)ctx->num_in_pix;
-	}
-
-	safe_in_pix=cur_in_pix;
-	if(safe_in_pix>ctx->num_in_pix-1) safe_in_pix=ctx->num_in_pix-1;
-
-	// Simultaneously scan through the input and output pixels, stopping
-	// at the next pixel border for either of them.
-
-	while(cur_out_pix<ctx->num_out_pix) {
-		// Figure out whether the next pixel border is of an input pixel, or an
-		// output pixel. The code to handle these cases is similar, but not
-		// identical.
-
-		if(in_pix_right_pos<=out_pix_right_pos) {
-			// Next border is of an input pixel.
-			// Put remainder of this pixel into the output pixel.
-
-			iw_add_to_weightlist(rrctx,safe_in_pix,cur_out_pix, (in_pix_right_pos - cur_pos)*ctx->num_out_pix );
-
-			// Advance to the next input pixel.
-			// Advance cur_pos to what will be the left edge of the next input pixel.
-			cur_in_pix++;
-			safe_in_pix=cur_in_pix;
-			if(safe_in_pix>ctx->num_in_pix-1) safe_in_pix=ctx->num_in_pix-1;
-
-			cur_pos = in_pix_right_pos;
-			in_pix_right_pos = ((double)(cur_in_pix+1))/(double)ctx->num_in_pix;
-		}
-		else {
-			// Next border is of an output pixel.
-			// Put part of the input pixel into the output pixel.
-
-			iw_add_to_weightlist(rrctx,safe_in_pix,cur_out_pix, (out_pix_right_pos - cur_pos)*ctx->num_out_pix );
-
-			// Advance to the next output pixel.
-			// Advance cur_pos to what will be the left edge of the next output pixel.
-			cur_out_pix++;
-			cur_pos = out_pix_right_pos;
-			out_pix_right_pos = (-rrctx->offset+(double)(cur_out_pix+1))/(double)ctx->num_out_pix;
-		}
-	}
-}
-
 // Caution: Does not support offsets.
 static void iw_resize_row_null(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
@@ -441,7 +381,13 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		rrctx->family_flags = 0;
 		break;
 	case IW_RESIZETYPE_MIX:
-		rrctx->family_flags = 0;
+		rrctx->filter_fn = iw_filter_mix;
+		rrctx->family_flags = IW_FFF_STANDARD;
+		// Pixel mixing is implemented using a trapezoid-shaped filter
+		// whose exact shape depends on the scale factor.
+		rrctx->mix_param = ((double)ctx->num_out_pix)/ctx->num_in_pix;
+		if(rrctx->mix_param > 1.0) rrctx->mix_param = 1.0/rrctx->mix_param;
+		rrctx->radius = 0.5 + rrctx->mix_param;
 		break;
 	case IW_RESIZETYPE_BOX:
 		rrctx->filter_fn = iw_filter_box;
@@ -519,12 +465,6 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 	if(rrctx->family_flags & IW_FFF_STANDARD) {
 		// This is a "standard" filter.
 		iw_create_weightlist_std(ctx,rrctx);
-		goto done;
-	}
-
-	// Other filters that use weightlists:
-	if(rs->family==IW_RESIZETYPE_MIX) {
-		iw_create_weightlist_pixmix(ctx,rrctx);
 		goto done;
 	}
 

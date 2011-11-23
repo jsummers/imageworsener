@@ -287,7 +287,7 @@ Options:
 
    This is really a parameter of the resampling filter: if you use -blur,
    you must also use -filter. "-blur" does not work with some algorithms,
-   specifically "mix" and "nearest".
+   such as "nearest".
 
    The default value is 1.0. Larger values blur the image more. A value
    smaller than 1 may sharpen the image, at the expense of aliasing. But a
