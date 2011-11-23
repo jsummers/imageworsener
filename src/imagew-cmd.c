@@ -51,8 +51,7 @@ struct rgb_color {
 
 struct resize_alg {
 	int family;
-	int lobes;
-	double b,c;
+	double param1, param2;
 };
 
 struct resize_blur {
@@ -399,17 +398,7 @@ done:
 static void iwcmd_set_resize(struct iw_context *ctx, int channel, int dimension,
 	struct resize_alg *alg, struct resize_blur *rblur)
 {
-	switch(alg->family) {
-	case IW_RESIZETYPE_CUBIC:
-		iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,alg->b,alg->c);
-		break;
-	case IW_RESIZETYPE_LANCZOS: case IW_RESIZETYPE_HANNING:
-	case IW_RESIZETYPE_BLACKMAN: case IW_RESIZETYPE_SINC:
-		iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,alg->lobes,0.0);
-		break;
-	default:
-		iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,0.0,0.0);
-	}
+	iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,alg->param1,alg->param2);
 }
 
 static int my_readfn(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes,
@@ -1074,6 +1063,8 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 	};
 
 	memset(alg,0,sizeof(struct resize_alg));
+	alg->param1=0.0;
+	alg->param2=0.0;
 
 	for(i=0; resizetable[i].name!=NULL; i++) {
 		if(!strcmp(s,resizetable[i].name)) {
@@ -1087,9 +1078,9 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 
 	if(namelen==7 && !strncmp(s,"lanczos",namelen)) {
 		if(len>namelen)
-			alg->lobes = iwcmd_parse_int(&s[namelen]);
+			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
 		else
-			alg->lobes = 3;
+			alg->param1 = 3.0;
 		alg->family = IW_RESIZETYPE_LANCZOS;
 		return 1;
 	}
@@ -1097,41 +1088,41 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		    (namelen==7 && !strncmp(s,"hanning",namelen)) )
 	{
 		if(len>namelen)
-			alg->lobes = iwcmd_parse_int(&s[namelen]);
+			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
 		else
-			alg->lobes = 4;
+			alg->param1 = 4.0;
 		alg->family = IW_RESIZETYPE_HANNING;
 		return 1;
 	}
 	else if(namelen==8 && !strncmp(s,"blackman",namelen)) {
 		if(len>namelen)
-			alg->lobes = iwcmd_parse_int(&s[namelen]);
+			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
 		else
-			alg->lobes = 4;
+			alg->param1 = 4.0;
 		alg->family = IW_RESIZETYPE_BLACKMAN;
 		return 1;
 	}
 	else if(namelen==4 && !strncmp(s,"sinc",namelen)) {
 		if(len>namelen)
-			alg->lobes = iwcmd_parse_int(&s[namelen]);
+			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
 		else
-			alg->lobes = 4;
+			alg->param1 = 4.0;
 		alg->family = IW_RESIZETYPE_SINC;
 		return 1;
 	}
 	else if(!strcmp(s,"catrom")) {
 		alg->family = IW_RESIZETYPE_CUBIC;
-		alg->b = 0.0; alg->c = 0.5;
+		alg->param1 = 0.0; alg->param2 = 0.5;
 		return 1;
 	}
 	else if(!strcmp(s,"mitchell")) {
 		alg->family = IW_RESIZETYPE_CUBIC;
-		alg->b = 1.0/3; alg->c = 1.0/3;
+		alg->param1 = 1.0/3; alg->param2 = 1.0/3;
 		return 1;
 	}
 	else if(!strcmp(s,"bspline")) {
 		alg->family = IW_RESIZETYPE_CUBIC;
-		alg->b = 1.0; alg->c = 0.0;
+		alg->param1 = 1.0; alg->param2 = 0.0;
 		return 1;
 	}
 	else if(namelen==5 && !strncmp(s,"cubic",namelen)) {
@@ -1140,18 +1131,18 @@ static int iwcmd_string_to_resizetype(struct params_struct *p,
 		if(len < namelen+3) goto done; // error
 		cpos = strchr(s,',');
 		if(!cpos) goto done;
-		alg->b = iwcmd_parse_dbl(&s[namelen]);
-		alg->c = iwcmd_parse_dbl(cpos+1);
+		alg->param1 = iwcmd_parse_dbl(&s[namelen]);
+		alg->param2 = iwcmd_parse_dbl(cpos+1);
 		alg->family = IW_RESIZETYPE_CUBIC;
 		return 1;
 	}
 	else if(namelen==4 && !strncmp(s,"keys",namelen)) {
 		// Format is "keys<alpha>"
 		if(len>namelen)
-			alg->c = iwcmd_parse_dbl(&s[namelen]);
+			alg->param2 = iwcmd_parse_dbl(&s[namelen]);
 		else
-			alg->c = 0.5;
-		alg->b = 1.0-2.0*alg->c;
+			alg->param2 = 0.5;
+		alg->param1 = 1.0-2.0*alg->param2;
 		alg->family = IW_RESIZETYPE_CUBIC;
 		return 1;
 	}
