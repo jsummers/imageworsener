@@ -264,7 +264,7 @@ it's a reasonable assumption that most computer image files (whether by
 accident or design) are intended to be directly displayable on computer
 monitors.
 
-It does this even if the file format pre-dates the invention of sRGB, and/or
+It does this even if the file format predates the invention of sRGB, and/or
 the file format specification says that, by default, colors have a gamma of
 2.2 (which is similar, but not identical, to sRGB).
 
@@ -376,8 +376,8 @@ with images that have partial transparency. If you ordered-dither both the
 colors and the alpha channel, you can have a situation where all the (say)
 darker pixels get made transparent, leaving only the lighter pixels visible,
 and making the image much lighter than it should be. This happens because the
-same dither pattern is used for two purposes (color threshholding and
-transparency threshholding).
+same dither pattern is used for two purposes (color thresholding and
+transparency thresholding).
 
 Obscure details about clamping, backgrounds, and alpha channel resizing
 -----------------------------------------------------------------------

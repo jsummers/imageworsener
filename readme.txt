@@ -213,7 +213,7 @@ Options:
 
     mix
      Pixel mixing, a.k.a. area map. Not good for enlarging images, unless you
-     want a pixellated effect.
+     want a pixelated effect.
 
     box
      Box filter.
@@ -368,7 +368,7 @@ Options:
 
  -bkgd <color1>[,<color2>]
    Apply a background color to the transparent or partially-transparent parts
-   of the image. This is the only way to remove tranparency from an image.
+   of the image. This is the only way to remove transparency from an image.
 
    The color uses an HTML-like format with 3, 6, or 12 hex digits. For
    example:
@@ -614,10 +614,10 @@ Options:
          display garbage.
 
  -noinfo
-   Suppess informational messages.
+   Suppress informational messages.
 
  -nowarn
-   Suppess warnings.
+   Suppress warnings.
 
  -quiet
    Suppress informational messages and warnings.

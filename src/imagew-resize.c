@@ -77,8 +77,7 @@ static double iw_filter_blackman(struct iw_rr_ctx *rrctx, double x)
 		return iw_sinc(x) * (
 			0.5*cos(M_PI*x/rrctx->radius) +
 			0.08*cos(2.0*M_PI*x/rrctx->radius) +
-			+0.42
-			);
+			0.42 );
 	}
 	return 0.0;
 }
@@ -119,7 +118,7 @@ static double iw_filter_cubic(struct iw_rr_ctx *rrctx, double x)
 	if(x<1.0) {
 		return (
 		  ( 12.0 -  9.0*b - 6.0*c) *x*x*x +
-	      (-18.0 + 12.0*b + 6.0*c) *x*x +
+		  (-18.0 + 12.0*b + 6.0*c) *x*x +
 		  (  6.0 -  2.0*b        ) )/6.0;
 	}
 	else if(x<2.0) {
@@ -231,7 +230,6 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 	}
 
 	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
-
 		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/(double)ctx->num_out_pix;
 		pos_in_inpix = out_pix_center*(double)ctx->num_in_pix -0.5;
 
@@ -327,7 +325,6 @@ static void iw_resize_row_nearest(struct iw_context *ctx, struct iw_rr_ctx *rrct
 	int pix_to_read;
 
 	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
-
 		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/(double)ctx->num_out_pix;
 		input_pixel = (int)floor(out_pix_center*(double)ctx->num_in_pix);
 

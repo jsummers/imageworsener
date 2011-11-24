@@ -205,7 +205,7 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 }
 
 static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
-			IW_SAMPLE r, IW_SAMPLE g, IW_SAMPLE b)
+	IW_SAMPLE r, IW_SAMPLE g, IW_SAMPLE b)
 {
 	if(ctx->grayscale_formula==1) {
 		// Compatibility formula
@@ -280,7 +280,7 @@ static IW_SAMPLE get_sample_fltpt_cvt_to_linear(struct iw_context *ctx,
 // Return a sample, converted to a linear colorspace if it isn't already in one.
 // Channel is the output channel number.
 static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
-					   int x, int y, int channel, const struct iw_csdescr *csdescr)
+	   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
 	unsigned int v1,v2,v3;
 	IW_SAMPLE r,g,b;
@@ -321,7 +321,7 @@ static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
 
 // s is from 0.0 to 65535.0
 static IW_INLINE void put_raw_sample_16(struct iw_context *ctx, double s,
-					   int x, int y, int channel)
+	   int x, int y, int channel)
 {
 	size_t z;
 	unsigned short tmpui16;
@@ -334,7 +334,7 @@ static IW_INLINE void put_raw_sample_16(struct iw_context *ctx, double s,
 
 // s is from 0.0 to 255.0
 static IW_INLINE void put_raw_sample_8(struct iw_context *ctx, double s,
-					   int x, int y, int channel)
+	   int x, int y, int channel)
 {
 	iw_byte tmpui8;
 
@@ -344,7 +344,7 @@ static IW_INLINE void put_raw_sample_8(struct iw_context *ctx, double s,
 
 // Sample must already be scaled and in the target colorspace. E.g. 255.0 might be white.
 static void put_raw_sample(struct iw_context *ctx, double s,
-				int x, int y, int channel)
+	   int x, int y, int channel)
 {
 	switch(ctx->output_depth) {
 	case 8:  put_raw_sample_8(ctx,s,x,y,channel); break;
@@ -354,7 +354,7 @@ static void put_raw_sample(struct iw_context *ctx, double s,
 
 // s is from 0.0 to 1.0
 static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
-					   int x, int y, int channel)
+	   int x, int y, int channel)
 {
 	// !!! Portability warning: Using a union in this way may be nonportable,
 	// and/or may violate strict-aliasing rules.
@@ -375,7 +375,7 @@ static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
 
 // s is from 0.0 to 1.0
 static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
-					   int x, int y, int channel)
+	   int x, int y, int channel)
 {
 	// !!! Portability warning: Using a union in this way may be nonportable,
 	// and/or may violate strict-aliasing rules.
@@ -395,7 +395,7 @@ static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
 }
 
 static void put_raw_sample_flt(struct iw_context *ctx, double s,
-				int x, int y, int channel)
+	   int x, int y, int channel)
 {
 	switch(ctx->output_depth) {
 	case 32: put_raw_sample_flt32(ctx,s,x,y,channel); break;
@@ -448,7 +448,7 @@ IW_IMPL(double) iw_convert_sample_from_linear(double v, const struct iw_csdescr 
 // (e.g. 9x7), but I don't know how to make a good one.
 static int iw_ordered_dither(int dithersubtype, double fraction, int x, int y)
 {
-	double threshhold;
+	double threshold;
 	static const float pattern[2][64] = {
 	 { // Dispersed ordered dither
 		 0.5/64,48.5/64,12.5/64,60.5/64, 3.5/64,51.5/64,15.5/64,63.5/64,
@@ -471,23 +471,23 @@ static int iw_ordered_dither(int dithersubtype, double fraction, int x, int y)
 		 2.5/64, 8.5/64,16.5/64,26.5/64,24.5/64,14.5/64, 6.5/64, 0.5/64
 	 }};
 
-	threshhold = pattern[dithersubtype][(x%8) + 8*(y%8)];
-	return (fraction >= threshhold);
+	threshold = pattern[dithersubtype][(x%8) + 8*(y%8)];
+	return (fraction >= threshold);
 }
 
 // Returns 0 if we should round down, 1 if we should round up.
 static int iw_random_dither(struct iw_context *ctx, double fraction, int x, int y,
-			int dithersubtype, int channel)
+	int dithersubtype, int channel)
 {
-	double threshhold;
+	double threshold;
 	
-	threshhold = ((double)iwpvt_prng_rand(ctx->prng)) / (double)0xffffffff;
-	if(fraction>=threshhold) return 1;
+	threshold = ((double)iwpvt_prng_rand(ctx->prng)) / (double)0xffffffff;
+	if(fraction>=threshold) return 1;
 	return 0;
 }
 
 static void iw_errdiff_dither(struct iw_context *ctx,int dithersubtype,
-				double err,int x,int y)
+	double err,int x,int y)
 {
 	int fwd;
 	const double *m;
@@ -616,7 +616,7 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 
 // channel is the output channel
 static void put_sample_convert_from_linear_flt(struct iw_context *ctx, IW_SAMPLE samp_lin,
-					   int x, int y, int channel, const struct iw_csdescr *csdescr)
+	   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
 	put_raw_sample_flt(ctx,(double)samp_lin,x,y,channel);
 }
@@ -653,7 +653,7 @@ static double get_final_sample_using_nc_tbl(struct iw_context *ctx, IW_SAMPLE sa
 
 // channel is the output channel
 static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE samp_lin,
-					   int x, int y, int channel, const struct iw_csdescr *csdescr)
+	   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
 	double s_lin_floor_1, s_lin_ceil_1;
 	double s_cvt_floor_full, s_cvt_ceil_full;
@@ -754,7 +754,7 @@ static void clamp_output_samples(struct iw_context *ctx)
 
 // 'channel' is an intermediate channel number.
 static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
-		const struct iw_csdescr *in_csdescr)
+	const struct iw_csdescr *in_csdescr)
 {
 	int i,j;
 	int retval=0;
@@ -847,7 +847,7 @@ done:
 // 'handle_alpha_flag' must be set if an alpha channel exists and this is not
 // the alpha channel.
 static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int intermed_channel,
-		const struct iw_csdescr *out_csdescr)
+	const struct iw_csdescr *out_csdescr)
 {
 	int i,j;
 	int z;
@@ -1100,7 +1100,6 @@ static void iw_make_x_to_linear_table(struct iw_context *ctx, double **ptable,
 	*ptable = tbl;
 }
 
-// 
 static void iw_make_nearest_color_table(struct iw_context *ctx, double **ptable,
 	const struct iw_image *img, const struct iw_csdescr *csdescr)
 {
@@ -1422,7 +1421,6 @@ static void iw_restrict_to_range(int r1, int r2, int *pvar)
 	if(*pvar < r1) *pvar = r1;
 	else if(*pvar > r2) *pvar = r2;
 }
-
 
 static void decide_strategy(struct iw_context *ctx, int *ps1, int *ps2)
 {
