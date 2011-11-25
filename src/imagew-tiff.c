@@ -373,9 +373,8 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 		// Decide whether we'll write the density in dots/cm.
 		if(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
 			int pref_units;
-			pref_units = iw_get_value(tiffctx->ctx,IW_VAL_DENSITY_PREF_UNITS);
-			if(pref_units==IW_DENSITY_PREF_UNITS_PER_CM ||
-				pref_units==IW_DENSITY_PREF_UNITS_PER_METER)
+			pref_units = iw_get_value(tiffctx->ctx,IW_VAL_PREF_UNITS);
+			if(pref_units==IW_PREF_UNITS_METRIC)
 			{
 				tiffctx->write_density_in_cm = 1;
 			}

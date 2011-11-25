@@ -70,7 +70,7 @@ extern "C" {
 #define IW_VAL_INPUT_DEPTH       24
 
 #define IW_VAL_DENSITY_POLICY    25
-#define IW_VAL_DENSITY_PREF_UNITS  26
+#define IW_VAL_PREF_UNITS        26
 #define IW_VAL_DENSITY_FORCED_X  27
 #define IW_VAL_DENSITY_FORCED_Y  28
 
@@ -211,14 +211,16 @@ extern "C" {
 #define IW_DITHERFAMILY_RANDOM       3 // (default subtype = color channels use different patterns)
 #define  IW_DITHERSUBTYPE_SAMEPATTERN  1 // color channels use the same pattern
 
+// Density codes used by the API (iw_image.density_code).
 #define IW_DENSITY_UNKNOWN         0
 #define IW_DENSITY_UNITS_UNKNOWN   1
 #define IW_DENSITY_UNITS_PER_METER 2
 
-#define IW_DENSITY_PREF_UNITS_DEFAULT    0
-#define IW_DENSITY_PREF_UNITS_PER_INCH   1
-#define IW_DENSITY_PREF_UNITS_PER_CM     2
-#define IW_DENSITY_PREF_UNITS_PER_METER  3
+// Preferred measuring system. May be used when selecting density units to
+// write to the image file.
+#define IW_PREF_UNITS_DEFAULT    0
+#define IW_PREF_UNITS_METRIC     1
+#define IW_PREF_UNITS_IMPERIAL   2
 
 #define IW_DENSITY_POLICY_AUTO    0
 #define IW_DENSITY_POLICY_NONE    1 // Don't write a density (if possible)

@@ -259,11 +259,9 @@ static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct
 		cinfo->Y_density = (UINT16)(0.5+img->density_y);
 	}
 	else if(img->density_code==IW_DENSITY_UNITS_PER_METER) {
-		pref_units = iw_get_value(ctx,IW_VAL_DENSITY_PREF_UNITS);
+		pref_units = iw_get_value(ctx,IW_VAL_PREF_UNITS);
 
-		if(pref_units==IW_DENSITY_PREF_UNITS_PER_CM ||
-			pref_units==IW_DENSITY_PREF_UNITS_PER_METER)
-		{
+		if(pref_units==IW_PREF_UNITS_METRIC) {
 			// If we think the caller prefers metric, use dots/cm.
 			cinfo->density_unit=2; // dots/cm
 			cinfo->X_density = (UINT16)(0.5+ img->density_x*0.01);

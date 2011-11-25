@@ -109,8 +109,8 @@ struct params_struct {
 	int intclamp;
 	int edge_policy;
 	int density_policy;
-	int density_pref_units;
-	double density_forced_x, density_forced_y;
+	int pref_units;
+	double density_forced_x, density_forced_y; // in pixels/meter
 	int grayscale_formula;
 	int no_cslabel;
 	int include_screen;
@@ -531,7 +531,7 @@ static int run(struct params_struct *p)
 	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
 	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
 	if(p->density_policy==IW_DENSITY_POLICY_FORCED) {
-		iw_set_value(ctx,IW_VAL_DENSITY_PREF_UNITS,p->density_pref_units);
+		iw_set_value(ctx,IW_VAL_PREF_UNITS,p->pref_units);
 		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_X,p->density_forced_x);
 		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_Y,p->density_forced_y);
 	}
@@ -1299,24 +1299,22 @@ static void iwcmd_process_forced_density(struct params_struct *p, const char *s)
 
 	p->density_policy = IW_DENSITY_POLICY_FORCED;
 
-	if(s[0]=='c')
-		p->density_pref_units = IW_DENSITY_PREF_UNITS_PER_CM;
-	else
-		p->density_pref_units = IW_DENSITY_PREF_UNITS_PER_INCH;
-
 	p->density_forced_x = nums[0];
 	if(count>=2)
 		p->density_forced_y = nums[1];
 	else
 		p->density_forced_y = nums[0];
 
-	// Convert to pixels/meter.
-	if(p->density_pref_units==IW_DENSITY_PREF_UNITS_PER_CM) {
-		p->density_forced_x *= 100.0;
+	if(s[0]=='c') {
+		// Density was given in dots/cm.
+		p->pref_units = IW_PREF_UNITS_METRIC;
+		p->density_forced_x *= 100.0; // Convert to dots/meter.
 		p->density_forced_y *= 100.0;
 	}
 	else {
-		p->density_forced_x *= 100.0/2.54;
+		// Density was given in dots/inch.
+		p->pref_units = IW_PREF_UNITS_IMPERIAL;
+		p->density_forced_x *= 100.0/2.54; // Convert to dots/meter.
 		p->density_forced_y *= 100.0/2.54;
 	}
 }

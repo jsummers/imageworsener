@@ -212,7 +212,7 @@ struct iw_context {
 	int edge_policy;
 	int grayscale_formula;
 	int density_policy; // IW_DENSITY_POLICY_*
-	int density_pref_units; // Used if density_policy == FORCED. IW_DENSITY_PREF_UNITS_*.
+	int pref_units; // Used if density_policy == FORCED. IW_PREF_UNITS_*.
 	double density_forced_x, density_forced_y; // Used if density_policy == FORCED. In px/meter.
 
 	// Optimization codes. Can be set to 0 to disallow this optimization

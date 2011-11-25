@@ -529,8 +529,8 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_DENSITY_POLICY:
 		ctx->density_policy = n;
 		break;
-	case IW_VAL_DENSITY_PREF_UNITS:
-		ctx->density_pref_units = n;
+	case IW_VAL_PREF_UNITS:
+		ctx->pref_units = n;
 		break;
 	case IW_VAL_GRAYSCALE_FORMULA:
 		ctx->grayscale_formula = n;
@@ -591,8 +591,8 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_DENSITY_POLICY:
 		ret = ctx->density_policy;
 		break;
-	case IW_VAL_DENSITY_PREF_UNITS:
-		ret = ctx->density_pref_units;
+	case IW_VAL_PREF_UNITS:
+		ret = ctx->pref_units;
 		break;
 	case IW_VAL_GRAYSCALE_FORMULA:
 		ret = ctx->grayscale_formula;
