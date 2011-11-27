@@ -13,6 +13,61 @@
 
 #include "imagew-internals.h"
 
+// Translate a string, using the given flags.
+IW_IMPL(void) iw_translate(struct iw_context *ctx, unsigned int flags,
+	char *dst, size_t dstlen, const char *src)
+{
+	int ret;
+
+	dst[0]='\0';
+
+	if(ctx && ctx->translate_fn) {
+		ret = (*ctx->translate_fn)(ctx,flags,dst,dstlen,src);
+	}
+	else {
+		ret = 0;
+	}
+
+	if(!ret) {
+		// Not translated. Just copy the string.
+		iw_strlcpy(dst,src,dstlen);
+	}
+}
+
+// Formats and translates, and returns the resulting string in buf.
+// 'ctx' can be NULL, in which case no tranlation will happen.
+IW_IMPL(void) iw_translatev(struct iw_context *ctx, unsigned int flags,
+	char *dst, size_t dstlen, const char *fmt, va_list ap)
+{
+	char buf1[IW_MSG_MAX];
+	char buf2[IW_MSG_MAX];
+
+	// If not translating, just format the string directly.
+	if(!ctx || !ctx->translate_fn) {
+		iw_vsnprintf(dst,dstlen,fmt,ap);
+		return;
+	}
+
+	// String is now in fmt.
+	iw_translate(ctx,IW_TRANSLATEFLAG_FORMAT|flags,buf1,sizeof(buf1),fmt);
+	// String is now in buf1.
+	iw_vsnprintf(buf2,sizeof(buf2),buf1,ap);
+	// String is now in buf2.
+	iw_translate(ctx,IW_TRANSLATEFLAG_POSTFORMAT|flags,dst,dstlen,buf2);
+	// String is now in dst.
+}
+
+// Formats and translates, and returns the resulting string in buf
+IW_IMPL(void) iw_translatef(struct iw_context *ctx, unsigned int flags,
+	char *dst, size_t dstlen, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	iw_translatev(ctx,flags,dst,dstlen,fmt,ap);
+	va_end(ap);
+}
+
 static void iw_warning_internal(struct iw_context *ctx, const char *s)
 {
 	if(!ctx->warning_fn) return;
@@ -22,18 +77,19 @@ static void iw_warning_internal(struct iw_context *ctx, const char *s)
 
 IW_IMPL(void) iw_warning(struct iw_context *ctx, const char *s)
 {
+	char buf[IW_MSG_MAX];
+
 	if(!ctx->warning_fn) return;
-	// TODO: Call translate_unformatted
-	iw_warning_internal(ctx,s);
+	iw_translate(ctx,IW_TRANSLATEFLAG_WARNINGMSG,buf,sizeof(buf),s);
+	iw_warning_internal(ctx,buf);
 }
 
 IW_IMPL(void) iw_warningv(struct iw_context *ctx, const char *fmt, va_list ap)
 {
-	char buf[IW_ERRMSG_MAX];
+	char buf[IW_MSG_MAX];
 
-	// TODO: Call translate_format_string(fmt)
-	iw_vsnprintf(buf,IW_ERRMSG_MAX,fmt,ap);
-	// TODO: Call translate_postformat(buf)
+	if(!ctx->warning_fn) return;
+	iw_translatev(ctx,IW_TRANSLATEFLAG_WARNINGMSG,buf,sizeof(buf),fmt,ap);
 	iw_warning_internal(ctx,buf);
 }
 
@@ -41,8 +97,8 @@ IW_IMPL(void) iw_warningv(struct iw_context *ctx, const char *fmt, va_list ap)
 IW_IMPL(void) iw_warningf(struct iw_context *ctx, const char *fmt, ...)
 {
 	va_list ap;
-	if(!ctx->warning_fn) return;
 
+	if(!ctx->warning_fn) return;
 	va_start(ap, fmt);
 	iw_warningv(ctx,fmt,ap);
 	va_end(ap);
@@ -54,32 +110,31 @@ static void iw_set_error_internal(struct iw_context *ctx, const char *s)
 	ctx->error_flag = 1;
 
 	if(!ctx->error_msg) {
-		ctx->error_msg=iw_malloc_lowlevel(IW_ERRMSG_MAX*sizeof(char));
+		ctx->error_msg=iw_malloc_lowlevel(IW_MSG_MAX*sizeof(char));
 		if(!ctx->error_msg) {
 			return;
 		}
 	}
 
-	iw_strlcpy(ctx->error_msg,s,IW_ERRMSG_MAX);
+	iw_strlcpy(ctx->error_msg,s,IW_MSG_MAX);
 }
 
 IW_IMPL(void) iw_set_error(struct iw_context *ctx, const char *s)
 {
+	char buf[IW_MSG_MAX];
+
 	if(ctx->error_flag) return; // Only record the first error.
-	// TODO: Call translate_unformatted(s)
-	iw_set_error_internal(ctx,s);
+	iw_translate(ctx,IW_TRANSLATEFLAG_ERRORMSG,buf,sizeof(buf),s);
+	iw_set_error_internal(ctx,buf);
 }
 
 IW_IMPL(void) iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap)
 {
-	char msg[IW_ERRMSG_MAX];
+	char buf[IW_MSG_MAX];
 
 	if(ctx->error_flag) return; // Only record the first error.
-
-	// TODO: Call translate_format_string(fmt)
-	iw_vsnprintf(msg,IW_ERRMSG_MAX,fmt,ap);
-	// TODO: Call translate_postformat(buf)
-	iw_set_error_internal(ctx,msg);
+	iw_translatev(ctx,IW_TRANSLATEFLAG_ERRORMSG,buf,sizeof(buf),fmt,ap);
+	iw_set_error_internal(ctx,buf);
 }
 
 IW_IMPL(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
@@ -96,7 +151,7 @@ IW_IMPL(const char*) iw_get_errormsg(struct iw_context *ctx, char *buf, int bufl
 		iw_strlcpy(buf,ctx->error_msg,buflen);
 	}
 	else {
-		iw_strlcpy(buf,"Error message not available",buflen);
+		iw_translate(ctx,IW_TRANSLATEFLAG_ERRORMSG,buf,buflen,"Error message not available");
 	}
 
 	return buf;
@@ -439,6 +494,11 @@ IW_IMPL(void*) iw_get_userdata(struct iw_context *ctx)
 	return ctx->userdata;
 }
 
+IW_IMPL(void) iw_set_translate_fn(struct iw_context *ctx, iw_translatefn_type xlatefn)
+{
+	ctx->translate_fn = xlatefn;
+}
+
 IW_IMPL(void) iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warnfn)
 {
 	ctx->warning_fn = warnfn;
@@ -488,10 +548,10 @@ IW_IMPL(char*) iw_get_version_string(struct iw_context *ctx, char *s, int s_len)
 	return s;
 }
 
-IW_IMPL(char*) iw_get_copyright_string(struct iw_context *ctx, char *s, int s_len)
+IW_IMPL(char*) iw_get_copyright_string(struct iw_context *ctx, char *dst, int dstlen)
 {
-	iw_snprintf(s,s_len,"Copyright \xc2\xa9 %s Jason Summers",IW_COPYRIGHT_YEAR);
-	return s;
+	iw_translatef(ctx,0,dst,dstlen,"Copyright \xc2\xa9 %s %s",IW_COPYRIGHT_YEAR,"Jason Summers");
+	return dst;
 }
 
 IW_IMPL(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n)

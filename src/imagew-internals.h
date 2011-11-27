@@ -15,7 +15,7 @@
 #define iwpvt_stricmp strcasecmp
 #endif
 
-#define IW_ERRMSG_MAX 200
+#define IW_MSG_MAX 200 // The usual max length of error messages, etc.
 
 #if defined(IWCONFIG_SAMPLE_DOUBLE)
 #define IW_SAMPLE double
@@ -178,6 +178,7 @@ struct iw_context {
 	struct iw_rgb_color bkgd2; // The secondary background color that will be applied.
 
 	void *userdata;
+	iw_translatefn_type translate_fn;
 	iw_warningfn_type warning_fn;
 
 	// The nominal bits/sample of img2_pixels.

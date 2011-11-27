@@ -238,6 +238,11 @@ extern "C" {
 #define IW_OPT_STRIP_ALPHA  4   // strip superfluous alpha channels
 #define IW_OPT_BINARY_TRNS  5   // optimize to color-keyed binary transparency
 
+#define IW_TRANSLATEFLAG_FORMAT      0x0001 // Translating a format string
+#define IW_TRANSLATEFLAG_POSTFORMAT  0x0002 // Translating a formatted string
+#define IW_TRANSLATEFLAG_ERRORMSG    0x0010
+#define IW_TRANSLATEFLAG_WARNINGMSG  0x0020
+
 // !!! Portability warning: These definitions make a lot of assumptions about
 // the sizes of data types.
 // TODO: Try to use <stdint.h> instead.
@@ -343,6 +348,18 @@ IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
 IW_EXPORT(void) iw_set_api_version(struct iw_context *ctx, int v);
 
 IW_EXPORT(int) iw_process_image(struct iw_context *ctx);
+
+// Set the translation hook function. Strings such as error messages will be
+//  passed to this function.
+// dst: a buffer supplied by the library.
+//  If the caller chooses to translate the string, it must put the new
+//  (nul-terminated) string in dst, and return nonzero. If not, it must return 0.
+// flags: A combination of IW_TRANSLATEFLAG_ flags.
+//   If the caller translates format strings (the _FORMAT flag), it must be
+//   careful not to change the format specifiers.
+typedef int (*iw_translatefn_type)(struct iw_context *ctx,
+	unsigned int flags, char *dst, size_t dstlen, const char *src);
+IW_EXPORT(void) iw_set_translate_fn(struct iw_context *ctx, iw_translatefn_type xlatefn);
 
 // Returns nonzero if an error occurred.
 IW_EXPORT(int) iw_get_errorflag(struct iw_context *ctx);
@@ -517,6 +534,13 @@ IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);
 // are extraneous to the main purpose of the library.
 // Applications are welcome to define IW_INCLUDE_UTIL_FUNCTIONS and use these
 // functions if they wish.
+
+IW_EXPORT(void) iw_translate(struct iw_context *ctx, unsigned int flags,
+  char *dst, size_t dstlen, const char *src);
+IW_EXPORT(void) iw_translatev(struct iw_context *ctx, unsigned int flags,
+  char *dst, size_t dstlen, const char *fmt, va_list ap);
+IW_EXPORT(void) iw_translatef(struct iw_context *ctx, unsigned int flags,
+  char *dst, size_t dstlen, const char *fmt, ...);
 
 IW_EXPORT(void) iw_set_errorv(struct iw_context *ctx, const char *fmt, va_list ap);
 IW_EXPORT(void) iw_warningv(struct iw_context *ctx, const char *fmt, va_list ap);
