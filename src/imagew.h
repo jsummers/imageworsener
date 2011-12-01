@@ -100,6 +100,9 @@ extern "C" {
 
 #define IW_VAL_JPEG_ARITH_CODING 41
 
+#define IW_VAL_TRANSLATE_X       42
+#define IW_VAL_TRANSLATE_Y       43
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1

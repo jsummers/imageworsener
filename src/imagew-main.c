@@ -1563,7 +1563,9 @@ static void iw_set_auto_resizetype(struct iw_context *ctx, int size1, int size2,
 {
 	// If not changing the size, default to "null" resize if we can.
 	// (We can't do that if using a channel offset.)
-	if(size2==size1 && !ctx->offset_color_channels) {
+	if(size2==size1 && !ctx->offset_color_channels &&
+		ctx->resize_settings[dimension].translate==0.0)
+	{
 		iw_set_resize_alg(ctx, channeltype, dimension, IW_RESIZETYPE_NULL, 1.0, 0.0, 0.0);
 		return;
 	}
@@ -1745,7 +1747,11 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->offset_color_channels=0;
 	}
 
-	if(ctx->offset_color_channels) {
+	// TODO: edge_policy could be per-dimension.
+	if(ctx->offset_color_channels ||
+		ctx->resize_settings[IW_DIMENSION_H].translate!=0.0 ||
+		ctx->resize_settings[IW_DIMENSION_V].translate!=0.0)
+	{
 		// If the output samples are shifted with respect to the input pixels, even
 		// if some input samples do contribute to the output sample, it may not be
 		// enough to result in a meaningful sample value. When we try to normalize

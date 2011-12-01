@@ -518,6 +518,12 @@ Options:
    This is limited by the target image format's support for a density labels.
    Some formats do not support them, while others require them.
 
+ -translate <x>,<y>
+   Move the entire image by the given amount, measured in target pixels. This
+   is mainly intended for fine-tuning the image's position relative to the
+   pixel grid, so it's expected that the absolute value of x and y will be
+   less than 1.
+
  -offset<channel> <n> (-offsetred -offsetgreen -offsetblue -offsetrb
                        -offsetvred -offsetvgreen -offsetvblue -offsetvrb)
    While scaling the image, shift the position of a color channel by n output

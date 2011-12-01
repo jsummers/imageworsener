@@ -206,6 +206,7 @@ static void default_resize_settings(struct iw_resize_settings *rs)
 	int i;
 	rs->family = IW_RESIZETYPE_AUTO;
 	rs->blur_factor = 1.0;
+	rs->translate = 0.0;
 	for(i=0;i<3;i++) {
 		rs->channel_offset[i] = 0.0;
 	}
@@ -368,6 +369,8 @@ IW_IMPL(void) iw_set_channel_offset(struct iw_context *ctx, int channeltype, int
 	if(channeltype<0 || channeltype>2) return;
 	if(dimension<0 || dimension>1) dimension=0;
 
+	// TODO: offset_color_channels should not be set here.
+	// And maybe it should be per-dimension.
 	if(offs != 0.0) ctx->offset_color_channels=1;
 
 	ctx->resize_settings[dimension].channel_offset[channeltype] = offs;
@@ -721,6 +724,12 @@ IW_IMPL(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n)
 	case IW_VAL_DENSITY_FORCED_Y:
 		ctx->density_forced_y = n;
 		break;
+	case IW_VAL_TRANSLATE_X:
+		ctx->resize_settings[IW_DIMENSION_H].translate = n;
+		break;
+	case IW_VAL_TRANSLATE_Y:
+		ctx->resize_settings[IW_DIMENSION_V].translate = n;
+		break;
 	}
 }
 
@@ -737,6 +746,12 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_DENSITY_FORCED_Y:
 		ret = ctx->density_forced_y;
+		break;
+	case IW_VAL_TRANSLATE_X:
+		ret = ctx->resize_settings[IW_DIMENSION_H].translate;
+		break;
+	case IW_VAL_TRANSLATE_Y:
+		ret = ctx->resize_settings[IW_DIMENSION_V].translate;
 		break;
 	}
 

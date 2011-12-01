@@ -46,6 +46,7 @@ struct iw_resize_settings {
 	double param1; // 'B' in Mitchell-Netravali cubics. "lobes" in Lanczos, etc.
 	double param2; // 'C' in Mitchell-Netravali cubics.
 	double blur_factor;
+	double translate; // Amount to move the image, before applying any channel offsets.
 	double channel_offset[3]; // Indexed by IW_CHANNELTYPE_[Red..Blue]
 };
 

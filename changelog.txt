@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added -translate option, to fine-tune the position of the image.
  - Added "-blur x" option, to make it easy to do simple interpolation.
  - Support -blur when using the "mix" filter.
  - Added a way to request a specific density label.

@@ -454,10 +454,9 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 	if(rrctx->blur_factor<0.0001) rrctx->blur_factor=0.0001;
 	if(rrctx->blur_factor>10000.0) rrctx->blur_factor=10000.0;
 
+	rrctx->offset = rs->translate;
 	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
-		rrctx->offset=rs->channel_offset[channeltype];
-	else
-		rrctx->offset=0.0;
+		rrctx->offset += rs->channel_offset[channeltype];
 
 	if(rrctx->family_flags & IW_FFF_STANDARD) {
 		// This is a "standard" filter.
