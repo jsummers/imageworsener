@@ -334,6 +334,27 @@ irrelevant. IW will not attempt to retain such colors, and will make fully-
 transparent pixels black in most cases. An exception is if the output image
 uses color-keyed transparency, in which case it uses a different strategy.
 
+Box filter
+----------
+
+It's not obvious how a box filter should behave when a source pixel falls
+right on the boundary between two target pixels. There seem to be several
+options:
+1. "Clone" the source pixel, and put it into both "boxes" (target pixels).
+2. "Split" the source pixel, and put it into both boxes, but with half the
+   usual weight.
+3. Arbitrarily select one of the two boxes (which could be the left box, the
+   right box, or some other strategy like selecting the box nearest to the
+   center of the image).
+4. Ignore the problem, in which case the algorithm may behave unpredictably,
+   due to the intricacies of floating point rounding. It may sometimes clone,
+   sometimes round, and sometimes skip over a pixel completely.
+
+IW arbitrarily selects the left (or top) box. To make it select the right (or
+bottom) box instead, you could translate the image by a very small amount;
+e.g. "-translate 0.000001,0.000001". To use the "clone" strategy, use a very
+small blur; e.g. "-blur 1.000001".
+
 PNG sBIT chunks
 ---------------
 

@@ -41,8 +41,9 @@ struct iw_rr_ctx {
 	iw_resizerowfn_type resizerow_fn;
 	iw_filterfn_type filter_fn;
 #define IW_FFF_STANDARD   0x01 // A filter that uses iw_create_weightlist_std()
-#define IW_FFF_ASYMMETRIC 0x02
+#define IW_FFF_ASYMMETRIC 0x02 // Currently unused.
 #define IW_FFF_SINCBASED  0x04
+#define IW_FFF_BOXFILTERHACK 0x08
 	unsigned int family_flags; // Misc. information about the filter family
 
 	struct iw_weight_struct *wl; // weightlist
@@ -141,7 +142,7 @@ static double iw_filter_hermite(struct iw_rr_ctx *rrctx, double x)
 
 static double iw_filter_box(struct iw_rr_ctx *rrctx, double x)
 {
-	if(x > -0.5 && x <= 0.5)
+	if(x<=0.5)
 		return 1.0;
 	return 0.0;
 }
@@ -388,7 +389,7 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		break;
 	case IW_RESIZETYPE_BOX:
 		rrctx->filter_fn = iw_filter_box;
-		rrctx->family_flags = IW_FFF_STANDARD|IW_FFF_ASYMMETRIC;
+		rrctx->family_flags = IW_FFF_STANDARD|IW_FFF_BOXFILTERHACK;
 		rrctx->radius = 1.0;
 		break;
 	case IW_RESIZETYPE_TRIANGLE:
@@ -455,6 +456,12 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 	if(rrctx->blur_factor>10000.0) rrctx->blur_factor=10000.0;
 
 	rrctx->offset = rs->translate;
+	if(rrctx->family_flags & IW_FFF_BOXFILTERHACK) {
+		// This is a cheap way to avoid putting a pixel into more than one or less
+		// than one "box": change the alignment just a bit, so that a pixel will
+		// never be aligned exactly on the border between two boxes.
+		rrctx->offset -= 0.00000000001;
+	}
 	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
 		rrctx->offset += rs->channel_offset[channeltype];
 

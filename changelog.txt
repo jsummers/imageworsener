@@ -1,5 +1,5 @@
 Unreleased changes
- - (none)
+ - Changed the box filter to have more predictable behavior.
 
 Version 0.9.6 - 1 Dec 2011
  - Added -translate option, to fine-tune the position of the image.
