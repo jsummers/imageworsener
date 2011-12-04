@@ -156,11 +156,8 @@ struct iw_context {
 	int uses_errdiffdither;
 	struct iw_prng *prng; // Pseudorandom number generator state
 
-	// Algorithms to use when changing the horizontal size.
 	// Indexed by IW_DIMENSION_*.
 	struct iw_resize_settings resize_settings[2];
-	struct iw_resize_settings resize_settings_alpha;
-	int use_resize_settings_alpha;
 
 	int to_grayscale;
 

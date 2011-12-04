@@ -70,10 +70,8 @@ struct params_struct {
 	double rel_width, rel_height;
 	struct resize_alg resize_alg_x;
 	struct resize_alg resize_alg_y;
-	struct resize_alg resize_alg_alpha;
 	struct resize_blur resize_blur_x;
 	struct resize_blur resize_blur_y;
-	struct resize_blur resize_blur_alpha;
 	int bestfit;
 	int depth;
 	int grayscale, condgrayscale;
@@ -397,10 +395,10 @@ done:
 	if(p->new_height<1) p->new_height=1;
 }
 
-static void iwcmd_set_resize(struct iw_context *ctx, int channel, int dimension,
+static void iwcmd_set_resize(struct iw_context *ctx, int dimension,
 	struct resize_alg *alg, struct resize_blur *rblur)
 {
-	iw_set_resize_alg(ctx,channel,dimension,alg->family,rblur->blur,alg->param1,alg->param2);
+	iw_set_resize_alg(ctx,dimension,alg->family,rblur->blur,alg->param1,alg->param2);
 }
 
 static int my_readfn(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes,
@@ -739,21 +737,17 @@ static int run(struct params_struct *p)
 			// If downscaling, "sharpen" the filter to emulate interpolation.
 			p->resize_blur_x.blur *= ((double)p->new_width)/old_width;
 		}
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_H,&p->resize_alg_x,&p->resize_blur_x);
+		iwcmd_set_resize(ctx,IW_DIMENSION_H,&p->resize_alg_x,&p->resize_blur_x);
 	}
 	if(p->resize_alg_y.family) {
 		if(p->resize_blur_y.interpolate && p->new_height<old_height) {
 			p->resize_blur_y.blur *= ((double)p->new_height)/old_height;
 		}
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALL,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
-	}
-	if(p->resize_alg_alpha.family) {
-		iwcmd_set_resize(ctx,IW_CHANNELTYPE_ALPHA,0,&p->resize_alg_alpha,&p->resize_blur_alpha);
+		iwcmd_set_resize(ctx,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
 	}
 
 	if( (!p->resize_alg_x.family && p->resize_blur_x.blur!=1.0) ||
-		(!p->resize_alg_y.family && p->resize_blur_y.blur!=1.0) ||
-		(!p->resize_alg_alpha.family && p->resize_blur_alpha.blur!=1.0) )
+		(!p->resize_alg_y.family && p->resize_blur_y.blur!=1.0) )
 	{
 		if(!p->nowarn)
 			iwcmd_warning(p,"Warning: -blur option requires -filter\n");
@@ -1409,8 +1403,8 @@ static void do_printversion(struct params_struct *p)
 
 enum iwcmd_param_types {
  PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_DEPTH, PT_INPUTCS, PT_CS,
- PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y, PT_RESIZETYPE_ALPHA,
- PT_BLUR_FACTOR, PT_BLUR_FACTOR_X, PT_BLUR_FACTOR_Y, PT_BLUR_FACTOR_ALPHA,
+ PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
+ PT_BLUR_FACTOR, PT_BLUR_FACTOR_X, PT_BLUR_FACTOR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
  PT_CC, PT_CCCOLOR, PT_CCALPHA, PT_CCRED, PT_CCGREEN, PT_CCBLUE, PT_CCGRAY,
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
@@ -1450,11 +1444,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"filter",PT_RESIZETYPE,1},
 		{"filterx",PT_RESIZETYPE_X,1},
 		{"filtery",PT_RESIZETYPE_Y,1},
-		{"filteralpha",PT_RESIZETYPE_ALPHA,1},
 		{"blur",PT_BLUR_FACTOR,1},
 		{"blurx",PT_BLUR_FACTOR_X,1},
 		{"blury",PT_BLUR_FACTOR_Y,1},
-		{"bluralpha",PT_BLUR_FACTOR_ALPHA,1},
 		{"dither",PT_DITHER,1},
 		{"dithercolor",PT_DITHERCOLOR,1},
 		{"ditheralpha",PT_DITHERALPHA,1},
@@ -1647,10 +1639,6 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		ret=iwcmd_string_to_resizetype(p,v,&p->resize_alg_y);
 		if(ret<0) return 0;
 		break;
-	case PT_RESIZETYPE_ALPHA:
-		ret=iwcmd_string_to_resizetype(p,v,&p->resize_alg_alpha);
-		if(ret<0) return 0;
-		break;
 	case PT_BLUR_FACTOR:
 		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_x);
 		if(ret<0) return 0;
@@ -1662,10 +1650,6 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_BLUR_FACTOR_Y:
 		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_y);
-		if(ret<0) return 0;
-		break;
-	case PT_BLUR_FACTOR_ALPHA:
-		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_alpha);
 		if(ret<0) return 0;
 		break;
 	case PT_DITHER:
@@ -1974,7 +1958,6 @@ static int iwcmd_main(int argc, char* argv[])
 	p.output_encoding_setmode=IWCMD_ENCODING_AUTO;
 	p.resize_blur_x.blur = 1.0;
 	p.resize_blur_y.blur = 1.0;
-	p.resize_blur_alpha.blur = 1.0;
 	p.webp_quality = -1.0;
 	p.include_screen = -1;
 

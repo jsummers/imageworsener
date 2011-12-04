@@ -406,7 +406,7 @@ IW_EXPORT(void) iw_set_color_count(struct iw_context *ctx, int channeltype, int 
 // param1: For "cubic", the B parameter. For "lanczos" etc., the number of lobes.
 // param2: For "cubic", the C parameter.
 // blur: 1.0 is normal. >1.0 blurs the image, <1.0 sharpens (&aliases) the image.
-IW_EXPORT(void) iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, int family,
+IW_EXPORT(void) iw_set_resize_alg(struct iw_context *ctx, int dimension, int family,
     double blur, double param1, double param2);
 
 // Channeltype is an IW_CHANNELTYPE code.

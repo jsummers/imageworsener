@@ -1,4 +1,5 @@
 Unreleased changes
+ - Removed the -filteralpha feature.
  - Stopped disallowing the "s" edge policy when -translate or -offset is used.
  - Changed the default downscaling filter to catrom.
  - Changed the box filter to have more predictable behavior.

@@ -220,7 +220,6 @@ static void init_context(struct iw_context *ctx)
 
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_H]);
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
-	default_resize_settings(&ctx->resize_settings_alpha);
 	ctx->input_w = -1;
 	ctx->input_h = -1;
 	iw_make_srgb_csdescr(&ctx->img1cs,IW_SRGB_INTENT_PERCEPTUAL);
@@ -512,19 +511,13 @@ IW_IMPL(void) iw_set_input_image(struct iw_context *ctx, const struct iw_image *
 	ctx->img1 = *img; // struct copy
 }
 
-IW_IMPL(void) iw_set_resize_alg(struct iw_context *ctx, int channeltype, int dimension, int family,
+IW_IMPL(void) iw_set_resize_alg(struct iw_context *ctx, int dimension, int family,
     double blur, double param1, double param2)
 {
 	struct iw_resize_settings *rs;
 
 	if(dimension<0 || dimension>1) dimension=0;
-	if(channeltype==IW_CHANNELTYPE_ALPHA) {
-		ctx->use_resize_settings_alpha=1;
-		rs=&ctx->resize_settings_alpha;
-	}
-	else {
-		rs=&ctx->resize_settings[dimension];
-	}
+	rs=&ctx->resize_settings[dimension];
 
 	rs->family = family;
 	rs->blur_factor = blur;

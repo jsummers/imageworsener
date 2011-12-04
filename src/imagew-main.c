@@ -782,10 +782,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	if(!outpix) goto done;
 	ctx->out_pix = outpix;
 
-	if(ctx->use_resize_settings_alpha && is_alpha_channel)
-		rs=&ctx->resize_settings_alpha;
-	else
-		rs=&ctx->resize_settings[IW_DIMENSION_V];
+	rs=&ctx->resize_settings[IW_DIMENSION_V];
 
 	rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
 	if(!rrctx) goto done;
@@ -948,10 +945,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		clamp_after_resize = 1;
 	}
 
-	if(ctx->use_resize_settings_alpha && is_alpha_channel)
-		rs=&ctx->resize_settings_alpha;
-	else
-		rs=&ctx->resize_settings[IW_DIMENSION_H];
+	rs=&ctx->resize_settings[IW_DIMENSION_H];
 
 	rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
 	if(!rrctx) goto done;
@@ -1559,19 +1553,19 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 }
 
 static void iw_set_auto_resizetype(struct iw_context *ctx, int size1, int size2,
-	int channeltype, int dimension)
+	int dimension)
 {
 	// If not changing the size, default to "null" resize if we can.
 	// (We can't do that if using a channel offset.)
 	if(size2==size1 && !ctx->offset_color_channels &&
 		ctx->resize_settings[dimension].translate==0.0)
 	{
-		iw_set_resize_alg(ctx, channeltype, dimension, IW_RESIZETYPE_NULL, 1.0, 0.0, 0.0);
+		iw_set_resize_alg(ctx, dimension, IW_RESIZETYPE_NULL, 1.0, 0.0, 0.0);
 		return;
 	}
 
 	// Otherwise, default to Catmull-Rom
-	iw_set_resize_alg(ctx, channeltype, dimension, IW_RESIZETYPE_CUBIC, 1.0, 0.0, 0.5);
+	iw_set_resize_alg(ctx, dimension, IW_RESIZETYPE_CUBIC, 1.0, 0.0, 0.5);
 }
 
 static void init_channel_info(struct iw_context *ctx)
@@ -1868,10 +1862,10 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->resize_settings[IW_DIMENSION_H].family==IW_RESIZETYPE_AUTO) {
-		iw_set_auto_resizetype(ctx,ctx->input_w,ctx->img2.width,IW_CHANNELTYPE_ALL,IW_DIMENSION_H);
+		iw_set_auto_resizetype(ctx,ctx->input_w,ctx->img2.width,IW_DIMENSION_H);
 	}
 	if(ctx->resize_settings[IW_DIMENSION_V].family==IW_RESIZETYPE_AUTO) {
-		iw_set_auto_resizetype(ctx,ctx->input_h,ctx->img2.height,IW_CHANNELTYPE_ALL,IW_DIMENSION_V);
+		iw_set_auto_resizetype(ctx,ctx->input_h,ctx->img2.height,IW_DIMENSION_V);
 	}
 
 	iw_convert_density_info(ctx);

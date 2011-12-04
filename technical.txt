@@ -415,15 +415,9 @@ will not be clamped first, so it could actually contain negative opacity
 values. That's hard to envision, but the math works out, and you generally get
 the same result as if you had applied the background before resizing.
 
-If you use -filteralpha to set a different filter for the alpha channel, it
-will be honored by IW even when resizing an alpha channel that will not be
-present in the final image, due to a background color being applied. But if IW
-decides to apply the background before resizing, then no alpha channel will
-ever be resized, so -filteralpha can't have an effect.
-
 Currently, the only time IW applies a background before resizing is when a
 channel offset is being used. This means that using -offset can have
-unexpected side effects if you also use -intclamp or -filteralpha.
+unexpected side effects if you also use -intclamp.
 
 Cropping
 --------

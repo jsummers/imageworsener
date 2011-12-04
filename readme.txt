@@ -183,7 +183,7 @@ Options:
    file. If the image can be encoded at a smaller depth with no loss of
    information, IW may choose to do that.
 
- -filter <name> (-filterx -filtery -filteralpha)
+ -filter <name> (-filterx -filtery)
    The resizing algorithm to use. (It would be more accurate if this option
    were named "-resizealgorithm", but that's too hard to type.) Default is
    "auto".
@@ -193,9 +193,6 @@ Options:
    only "separable" resizing algorithms.) This may occasionally be useful for
    something, such as if you need to enlarge an image in one dimension while
    reducing it in the other.
-
-   The -filteralpha option lets you use a different algorithm for the alpha
-   channel. This may give strange results, and is probably a bad idea.
 
    IW uses the filter even if the image size isn't being changed. Many
    filters will leave the image unchanged in that case, but some (such as
@@ -281,7 +278,7 @@ Options:
      No resizing. No need to specify this, but it's documented because it may
      be selected by the "auto" method.
 
- -blur <n> (-blurx -blury -bluralpha)
+ -blur <n> (-blurx -blury)
    Adjust the width of the resampling filter.
 
    This is really a parameter of the resampling filter: if you use -blur,
