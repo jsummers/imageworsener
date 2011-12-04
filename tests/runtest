@@ -136,9 +136,9 @@ $IW srcimg/4x4.png actual/intclamp.png $DCMPR $SCALE -filter lanczos -intclamp
 $IW srcimg/4x4.png actual/grayscale.png $DCMPR $SCALE -filter catrom -grayscale
 $IW srcimg/4x4.png actual/grayscale-c.png $DCMPR $SCALE -filter catrom -grayscale -nogamma -grayscaleformula c
 
-$IW srcimg/4x4.png actual/offset.png $DCMPR $SCALE -filter mix -offsetred .333 -offsetgreen -0.2 -offsetblue -1.5
-$IW srcimg/rgb8a.png actual/offsetv.png $DCMPR $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5 -nowarn
-$IW srcimg/g2.png actual/offsetrb.png $DCMPR $SCALE -filter catrom -offsetrb .333 -offsetvrb -0.6
+$IW srcimg/4x4.png actual/offset.png $DCMPR $SCALE -filter mix -offsetred .333 -offsetgreen -0.2 -offsetblue -1.5 -edge r
+$IW srcimg/rgb8a.png actual/offsetv.png $DCMPR $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5 -edge r -nowarn
+$IW srcimg/g2.png actual/offsetrb.png $DCMPR $SCALE -filter catrom -offsetrb .333 -offsetvrb -0.6 -edge r
 
 for d in f o halftone sierra sierra2 sierralite jjn burkes atkinson r r2
 do

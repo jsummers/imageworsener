@@ -1741,26 +1741,6 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->offset_color_channels=0;
 	}
 
-	// TODO: edge_policy could be per-dimension.
-	if(ctx->offset_color_channels ||
-		ctx->resize_settings[IW_DIMENSION_H].translate!=0.0 ||
-		ctx->resize_settings[IW_DIMENSION_V].translate!=0.0)
-	{
-		// If the output samples are shifted with respect to the input pixels, even
-		// if some input samples do contribute to the output sample, it may not be
-		// enough to result in a meaningful sample value. When we try to normalize
-		// them, we could end up dividing by some tiny useless sum, or even
-		// by zero.
-		// Plus, when we reach the point where no source samples are available,
-		// we'd have to suddenly switch to a different strategy, which could result
-		// in a visible seam in the image.
-		// To avoid these problems, we require virtual pixels to be used if using
-		// a channel offset. (This is possibly overkill.)
-		if(ctx->edge_policy==IW_EDGE_POLICY_STANDARD) {
-			ctx->edge_policy=IW_EDGE_POLICY_REPLICATE;
-		}
-	}
-
 	decide_how_to_apply_bkgd(ctx);
 
 	decide_strategy(ctx,&strategy1,&strategy2);
