@@ -230,30 +230,28 @@ translate them. But on a Unix system, they are always assumed to be UTF-8.
 All strings produced by the library (e.g. error messages) are encoded in UTF-8.
 Applications must convert them if necessary.
 
-Rationale for the default resizing algorithms
----------------------------------------------
+Rationale for the default resizing algorithm
+--------------------------------------------
 
-By default, IW uses a Catmull-Rom ("catrom") filter when upscaling, and pixel
-mixing when downscaling. Why?
+By default, IW uses a Catmull-Rom ("catrom") filter for both upscaling and
+downscaling. Why?
 
 For one thing, I don't want to default to a filter that has any inherent
 blurring. A casual user would expect that when you "resize" an image without
 changing the size, it will not modify the image at all. This requirement
 eliminates mitchell, gaussian, etc.
 
+The "echoes" produced by filters like lanczos(3) are too weird, I think; and
+they can be too severe when using proper gamma correction.
+
 When upscaling, hermite, triangle, and pixel mixing just don't have acceptable
-quality. That leaves only filters that have some "ringing" artifacts, so I
-have to accept that. The "echoes" produced by filters like lanczos(3) are too
-weird, I think, so that really only leaves catrom and lanczos2. I somewhat
-arbitrarily chose catrom over lanczos2 (they are almost identical).
+quality. That really only leaves catrom and lanczos2. I somewhat arbitrarily
+chose catrom over lanczos2 (they are almost identical).
 
 When downscaling, the differences between various algorithms are much more
-subtle. I don't see a good reason to accept any "ringing", so that leaves
-hermite and triangle filters, and pixel mixing. Triangle has no benefit over
-hermite. Hermite is theoretically better than pixel mixing (due to less
-aliasing), but in the real world, pixel mixing's slightly sharper images
-usually look better. For now, I've chosen pixel mixing, but I reserve the
-right to change my mind in the future.
+subtle. Hermite and pixel mixing are both reasonable candidates, and are nice
+in that they have no ringing at all. But they're not quite as sharp as catrom,
+and can do badly with images that have thin lines or repetetive details.
 
 Colorspaces
 -----------

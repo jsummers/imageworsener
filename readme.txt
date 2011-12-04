@@ -274,9 +274,8 @@ Options:
      results.
 
     auto
-     The default. IW will select a filter to use. Currently uses "catrom" for
-     enlarging, "mix" for reducing, and usually "null" if the size is not
-     being changed.
+     The default. IW will select a filter to use. Currently uses "catrom",
+     unless the size is not being changed and "null" can be used.
 
     null
      No resizing. No need to specify this, but it's documented because it may

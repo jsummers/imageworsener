@@ -1570,14 +1570,8 @@ static void iw_set_auto_resizetype(struct iw_context *ctx, int size1, int size2,
 		return;
 	}
 
-	// If increasing the size, default is Catmull-Rom
-	if(size2>size1) {
-		iw_set_resize_alg(ctx, channeltype, dimension, IW_RESIZETYPE_CUBIC, 1.0, 0.0, 0.5);
-		return;
-	}
-
-	// Otherwise use pixel mixing.
-	iw_set_resize_alg(ctx, channeltype, dimension, IW_RESIZETYPE_MIX, 1.0, 0.0, 0.0);
+	// Otherwise, default to Catmull-Rom
+	iw_set_resize_alg(ctx, channeltype, dimension, IW_RESIZETYPE_CUBIC, 1.0, 0.0, 0.5);
 }
 
 static void init_channel_info(struct iw_context *ctx)

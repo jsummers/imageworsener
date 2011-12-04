@@ -1,4 +1,5 @@
 Unreleased changes
+ - Changed the default downscaling filter to catrom.
  - Changed the box filter to have more predictable behavior.
 
 Version 0.9.6 - 1 Dec 2011
