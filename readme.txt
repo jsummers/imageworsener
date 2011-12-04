@@ -299,7 +299,7 @@ Options:
    interpolation. This is not a good way to downscale images, but it is
    what many applications do.
 
- -edge <name>
+ -edge <name> (-edgex -edgey)
    The strategy for dealing with the pixels near the edges of images.
 
    The simplest strategy is "r" (for "replicate"). When a scaling algorithm

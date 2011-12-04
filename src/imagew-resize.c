@@ -37,6 +37,7 @@ struct iw_rr_ctx {
 
 	double blur_factor;
 	double offset;
+	int edge_policy;
 
 	iw_resizerowfn_type resizerow_fn;
 	iw_filterfn_type filter_fn;
@@ -247,7 +248,7 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 		v_sum=0.0;
 		v_count=0;
 		for(input_pixel=first_input_pixel;input_pixel<=last_input_pixel;input_pixel++) {
-			if(ctx->edge_policy==IW_EDGE_POLICY_STANDARD) {
+			if(rrctx->edge_policy==IW_EDGE_POLICY_STANDARD) {
 			// Try to avoid using "virtual pixels".
 				if(input_pixel<0 || input_pixel>=ctx->num_in_pix) {
 					continue;
@@ -450,6 +451,8 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		if(rrctx->radius<2.0) rrctx->radius=2.0;
 		if(rrctx->radius>10.0) rrctx->radius=10.0;
 	}
+
+	rrctx->edge_policy = rs->edge_policy;
 
 	rrctx->blur_factor = rs->blur_factor;
 	if(rrctx->blur_factor<0.0001) rrctx->blur_factor=0.0001;

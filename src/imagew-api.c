@@ -205,6 +205,7 @@ static void default_resize_settings(struct iw_resize_settings *rs)
 {
 	int i;
 	rs->family = IW_RESIZETYPE_AUTO;
+	rs->edge_policy = IW_EDGE_POLICY_STANDARD;
 	rs->blur_factor = 1.0;
 	rs->translate = 0.0;
 	for(i=0;i<3;i++) {
@@ -225,7 +226,6 @@ static void init_context(struct iw_context *ctx)
 	iw_make_srgb_csdescr(&ctx->img1cs,IW_SRGB_INTENT_PERCEPTUAL);
 	iw_make_srgb_csdescr(&ctx->img2cs,IW_SRGB_INTENT_PERCEPTUAL);
 	ctx->to_grayscale=0;
-	ctx->edge_policy = IW_EDGE_POLICY_STANDARD;
 	ctx->density_policy = IW_DENSITY_POLICY_AUTO;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
@@ -579,8 +579,11 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_INT_CLAMP:
 		ctx->intclamp = n;
 		break;
-	case IW_VAL_EDGE_POLICY:
-		ctx->edge_policy = n;
+	case IW_VAL_EDGE_POLICY_X:
+		ctx->resize_settings[IW_DIMENSION_H].edge_policy = n;
+		break;
+	case IW_VAL_EDGE_POLICY_Y:
+		ctx->resize_settings[IW_DIMENSION_V].edge_policy = n;
 		break;
 	case IW_VAL_DENSITY_POLICY:
 		ctx->density_policy = n;
@@ -641,8 +644,11 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_INT_CLAMP:
 		ret = ctx->intclamp;
 		break;
-	case IW_VAL_EDGE_POLICY:
-		ret = ctx->edge_policy;
+	case IW_VAL_EDGE_POLICY_X:
+		ret = ctx->resize_settings[IW_DIMENSION_H].edge_policy;
+		break;
+	case IW_VAL_EDGE_POLICY_Y:
+		ret = ctx->resize_settings[IW_DIMENSION_V].edge_policy;
 		break;
 	case IW_VAL_DENSITY_POLICY:
 		ret = ctx->density_policy;

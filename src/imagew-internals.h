@@ -43,6 +43,7 @@ struct iw_rgb_color {
 // "Raw" settings from the application.
 struct iw_resize_settings {
 	int family;
+	int edge_policy;
 	double param1; // 'B' in Mitchell-Netravali cubics. "lobes" in Lanczos, etc.
 	double param2; // 'C' in Mitchell-Netravali cubics.
 	double blur_factor;
@@ -208,7 +209,6 @@ struct iw_context {
 	int no_gamma; // Disable gamma correction. (IW_VAL_DISABLE_GAMMA)
 	int intclamp; // Clamp the intermediate samples to the 0.0-1.0 range.
 	int no_cslabel; // Disable writing of a colorspace label to the output file.
-	int edge_policy;
 	int grayscale_formula;
 	int density_policy; // IW_DENSITY_POLICY_*
 	int pref_units; // Used if density_policy == FORCED. IW_PREF_UNITS_*.

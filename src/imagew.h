@@ -42,8 +42,6 @@ extern "C" {
 // If ==1, convert to grayscale.
 #define IW_VAL_CVT_TO_GRAYSCALE  11
 
-#define IW_VAL_EDGE_POLICY       12
-
 // If ==1, disable all gamma correction.
 #define IW_VAL_DISABLE_GAMMA     13
 
@@ -55,6 +53,9 @@ extern "C" {
 
 // 0=standard formula, 1=compatibility formula
 #define IW_VAL_GRAYSCALE_FORMULA 16
+
+#define IW_VAL_EDGE_POLICY_X     17
+#define IW_VAL_EDGE_POLICY_Y     18
 
 // Test whether the input image was encoded as grayscale.
 // (Assumes the image-reading function set the iw_image::native_grayscale

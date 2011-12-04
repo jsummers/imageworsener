@@ -106,7 +106,7 @@ struct params_struct {
 	int outfmt;
 	int no_gamma;
 	int intclamp;
-	int edge_policy;
+	int edge_policy_x,edge_policy_y;
 	int density_policy;
 	int pref_units;
 	double density_forced_x, density_forced_y; // in pixels/meter
@@ -527,7 +527,8 @@ static int run(struct params_struct *p)
 	if(p->noopt_reduceto8) iw_set_allow_opt(ctx,IW_OPT_16_TO_8,0);
 	if(p->noopt_stripalpha) iw_set_allow_opt(ctx,IW_OPT_STRIP_ALPHA,0);
 	if(p->noopt_binarytrns) iw_set_allow_opt(ctx,IW_OPT_BINARY_TRNS,0);
-	if(p->edge_policy>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY,p->edge_policy);
+	if(p->edge_policy_x>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY_X,p->edge_policy_x);
+	if(p->edge_policy_y>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY_Y,p->edge_policy_y);
 	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
 	if(p->density_policy==IW_DENSITY_POLICY_FORCED) {
 		iw_set_value(ctx,IW_VAL_PREF_UNITS,p->pref_units);
@@ -1361,6 +1362,14 @@ static int iwcmd_process_density(struct params_struct *p, const char *s)
 	return 1;
 }
 
+static int process_edge_policy(struct params_struct *p, const char *s)
+{
+	if(s[0]=='s') return IW_EDGE_POLICY_STANDARD;
+	else if(s[0]=='r') return IW_EDGE_POLICY_REPLICATE;
+	iwcmd_error(p,"Unknown edge policy\n");
+	return -1;
+}
+
 static void usage_message(struct params_struct *p)
 {
 	iwcmd_message(p,
@@ -1412,7 +1421,8 @@ enum iwcmd_param_types {
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE,
  PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH,
  PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
- PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_GRAYSCALEFORMULA,
+ PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
+ PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
  PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
@@ -1483,6 +1493,8 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"infmt",PT_INFMT,1},
 		{"outfmt",PT_OUTFMT,1},
 		{"edge",PT_EDGE_POLICY,1},
+		{"edgex",PT_EDGE_POLICY_X,1},
+		{"edgey",PT_EDGE_POLICY_Y,1},
 		{"density",PT_DENSITY_POLICY,1},
 		{"grayscaleformula",PT_GRAYSCALEFORMULA,1},
 		{"noopt",PT_NOOPT,1},
@@ -1789,12 +1801,17 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		}
 		break;
 	case PT_EDGE_POLICY:
-		if(v[0]=='s') p->edge_policy=IW_EDGE_POLICY_STANDARD;
-		else if(v[0]=='r') p->edge_policy=IW_EDGE_POLICY_REPLICATE;
-		else {
-			iwcmd_error(p,"Unknown edge policy\n");
-			return 0;
-		}
+		p->edge_policy_x = process_edge_policy(p,v);
+		if(p->edge_policy_x<0) return 0;
+		p->edge_policy_y = p->edge_policy_x;
+		break;
+	case PT_EDGE_POLICY_X:
+		p->edge_policy_x = process_edge_policy(p,v);
+		if(p->edge_policy_x<0) return 0;
+		break;
+	case PT_EDGE_POLICY_Y:
+		p->edge_policy_y = process_edge_policy(p,v);
+		if(p->edge_policy_y<0) return 0;
 		break;
 	case PT_DENSITY_POLICY:
 		if(!iwcmd_process_density(p,v)) {
@@ -1945,7 +1962,8 @@ static int iwcmd_main(int argc, char* argv[])
 	p.new_width = -1;
 	p.new_height = -1;
 	p.depth = -1;
-	p.edge_policy = -1;
+	p.edge_policy_x = -1;
+	p.edge_policy_y = -1;
 	p.density_policy = -1;
 	p.bkgd_check_size = 16;
 	p.bestfit = 0;

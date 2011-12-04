@@ -1,4 +1,5 @@
 Unreleased changes
+ - Made the "edge policy" setting be per-dimension.
  - Removed the -filteralpha feature.
  - Stopped disallowing the "s" edge policy when -translate or -offset is used.
  - Changed the default downscaling filter to catrom.
