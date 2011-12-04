@@ -44,6 +44,7 @@ struct iw_rgb_color {
 struct iw_resize_settings {
 	int family;
 	int edge_policy;
+	int use_offset;
 	double param1; // 'B' in Mitchell-Netravali cubics. "lobes" in Lanczos, etc.
 	double param2; // 'C' in Mitchell-Netravali cubics.
 	double blur_factor;
@@ -161,8 +162,6 @@ struct iw_context {
 	struct iw_resize_settings resize_settings[2];
 
 	int to_grayscale;
-
-	int offset_color_channels; // Set if any of the color channel offsets may be nonzero.
 
 	// For color counts, 0 = "not set"
 	int color_count[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]

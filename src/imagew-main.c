@@ -1513,7 +1513,9 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		}
 	}
 
-	if(ctx->offset_color_channels) {
+	if(ctx->resize_settings[IW_DIMENSION_H].use_offset ||
+		ctx->resize_settings[IW_DIMENSION_V].use_offset)
+	{
 		// If this feature is enabled and the image has transparency,
 		// we must apply a solid color background (and we must apply
 		// it before resizing), regardless of whether
@@ -1557,7 +1559,7 @@ static void iw_set_auto_resizetype(struct iw_context *ctx, int size1, int size2,
 {
 	// If not changing the size, default to "null" resize if we can.
 	// (We can't do that if using a channel offset.)
-	if(size2==size1 && !ctx->offset_color_channels &&
+	if(size2==size1 && !ctx->resize_settings[dimension].use_offset &&
 		ctx->resize_settings[dimension].translate==0.0)
 	{
 		iw_set_resize_alg(ctx, dimension, IW_RESIZETYPE_NULL, 1.0, 0.0, 0.0);
@@ -1632,7 +1634,7 @@ static void iw_convert_density_info(struct iw_context *ctx)
 // sure everything looks okay.
 static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 {
-	int i;
+	int i,j;
 	int output_maxcolorcode_int;
 	int strategy1, strategy2;
 	int flag;
@@ -1730,9 +1732,23 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 
-	if(ctx->offset_color_channels && ctx->to_grayscale) {
+	// Set the .use_offset flags, based on whether the caller set any
+	// .channel_offset[]s.
+	for(i=0;i<2;i++) { // horizontal, vertical
+		for(j=0;j<3;j++) { // red, green, blue
+			if(fabs(ctx->resize_settings[i].channel_offset[j])>0.00001) {
+				ctx->resize_settings[i].use_offset=1;
+			}
+		}
+	}
+
+	if(ctx->to_grayscale &&
+		(ctx->resize_settings[IW_DIMENSION_H].use_offset ||
+		ctx->resize_settings[IW_DIMENSION_V].use_offset) )
+	{
 		iw_warning(ctx,"Disabling channel offset, due to grayscale output.");
-		ctx->offset_color_channels=0;
+		ctx->resize_settings[IW_DIMENSION_H].use_offset=0;
+		ctx->resize_settings[IW_DIMENSION_V].use_offset=0;
 	}
 
 	decide_how_to_apply_bkgd(ctx);

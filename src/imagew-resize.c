@@ -465,7 +465,7 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		// never be aligned exactly on the border between two boxes.
 		rrctx->offset -= 0.00000000001;
 	}
-	if(ctx->offset_color_channels && channeltype>=0 && channeltype<=2)
+	if(rs->use_offset && channeltype>=0 && channeltype<=2)
 		rrctx->offset += rs->channel_offset[channeltype];
 
 	if(rrctx->family_flags & IW_FFF_STANDARD) {

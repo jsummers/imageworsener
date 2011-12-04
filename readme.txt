@@ -309,8 +309,8 @@ Options:
    The default strategy is "s" (for "standard"). Instead of inventing samples
    that are beyond the edge of the source image, give extra weight to the
    smaller-than-usual number of samples that are available. If no samples
-   are available, the pixel will be colored black. This can happen if you use
-   -translate or -offset.
+   are available, the pixel will be colored black or be transparent. This can
+   happen if you use -translate or -offset.
 
  -intclamp
    IW always resizes the image first vertically, then horizontally, then
