@@ -377,7 +377,7 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		break;
 	case IW_RESIZETYPE_NEAREST:
 		rrctx->resizerow_fn = iw_resize_row_nearest;
-		rrctx->family_flags = 0;
+		rrctx->family_flags = IW_FFF_BOXFILTERHACK;
 		break;
 	case IW_RESIZETYPE_MIX:
 		rrctx->filter_fn = iw_filter_mix;

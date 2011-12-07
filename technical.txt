@@ -353,6 +353,16 @@ bottom) box instead, you could translate the image by a very small amount;
 e.g. "-translate 0.000001,0.000001". To use the "clone" strategy, use a very
 small blur; e.g. "-blur 1.000001".
 
+Nearest neighbor
+----------------
+
+When using the nearest neighbor algorithm, if a target pixel is equally close
+to two source pixels, it will be given the color of the one to the right (or
+bottom). This is the same tiebreaking logic as is used for the box filter. (It
+may sound like it's the opposite, but it's not: image features are shifted to
+the left in each case.) As with a box filter, you can change this by
+translating the image by a very small amount.
+
 PNG sBIT chunks
 ---------------
 
