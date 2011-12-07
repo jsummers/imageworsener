@@ -17,7 +17,9 @@
 #include "imagew.h"
 
 #if defined(WEBP_DECODER_ABI_VERSION) && (WEBP_DECODER_ABI_VERSION >= 0x0002)
-#define IW_USE_NEW_WEBP_API
+// Disabled at least temporarily, because I can't get transparency to work
+// with incremental decoding.
+//#define IW_WEBP_USE_INCREMENTAL_DECODING
 #endif
 
 struct iwwebpreadcontext {
@@ -88,7 +90,7 @@ static void iwwebpr_convert_pixels_rgba(struct iwwebpreadcontext *rctx,
 	memcpy(rctx->img->pixels,src,nsrcpix*4);
 }
 
-#ifdef IW_USE_NEW_WEBP_API
+#ifdef IW_WEBP_USE_INCREMENTAL_DECODING
 
 static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 {
@@ -119,6 +121,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	// This is based on experimentation, because I can't figure out the documentation.
 	decbuffer->colorspace = MODE_RGBA;
 
+	// TODO: Maybe use WebPIDecode() instead?
 	pidecoder = WebPINewDecoder(decbuffer);
 	if(!pidecoder) goto done;
 
@@ -211,9 +214,6 @@ done:
 
 #else
 
-// TODO: Delete this section, when we abandon support for versions of libwebp
-// that don't support WebPDecBuffer, etc.
-
 static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 {
 	struct iw_image *img;
@@ -272,6 +272,9 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 done:
 	if(webpimage) iw_free(webpimage);
 
+	// !!! Portability warning: This is dangerous, because this memory was
+	// allocated by libwebp. There's no way to be sure that our free() function
+	// is the right one. But libwebp forces us to do this.
 	if(uncmpr_webp_pixels) free(uncmpr_webp_pixels);
 
 	return retval;
@@ -379,7 +382,7 @@ static int iwwebp_write_main(struct iwwebpwritecontext *wctx)
 	case IW_IMGTYPE_RGB:
 		ret = WebPEncodeRGB(img->pixels, img->width, img->height, (int)img->bpr, (float)quality, &cmpr_webp_data);
 		break;
-#ifdef IW_WEBP_SUPPORT_TRANSPARENCY
+#if IW_WEBP_SUPPORT_TRANSPARENCY
 	case IW_IMGTYPE_GRAYA:
 		iwwebp_gray_to_rgb(wctx,1);
 		if(!wctx->tmppixels) goto done;
@@ -401,7 +404,11 @@ static int iwwebp_write_main(struct iwwebpwritecontext *wctx)
 	retval=1;
 
 done:
+	// !!! Portability warning: This is dangerous, because this memory was
+	// allocated by libwebp. There's no way to be sure that our free() function
+	// is the right one. But libwebp forces us to do this.
 	if(cmpr_webp_data) free(cmpr_webp_data);
+
 	if(wctx->tmppixels) iw_free(wctx->tmppixels);
 	return 1;
 }

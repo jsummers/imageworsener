@@ -385,7 +385,7 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 
 	case IW_FORMAT_WEBP:
 		p = IW_PROFILE_ALWAYSSRGB;
-#ifdef IW_WEBP_SUPPORT_TRANSPARENCY
+#if IW_WEBP_SUPPORT_TRANSPARENCY
 		p |= IW_PROFILE_TRANSPARENCY;
 #endif
 		break;
