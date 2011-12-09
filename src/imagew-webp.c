@@ -16,10 +16,15 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
+// Decoding functions available: (IW_WEBPDECMETHOD == ...)
+//  1: WebPINewDecoder()
+//  2: WebPIDecode()
+//  3: WebPDecodeRGBA()
+//  4: WebPDecode()
 #if defined(WEBP_DECODER_ABI_VERSION) && (WEBP_DECODER_ABI_VERSION >= 0x0002)
-// Disabled at least temporarily, because I can't get transparency to work
-// with incremental decoding.
-//#define IW_WEBP_USE_INCREMENTAL_DECODING
+#define IW_WEBPDECMETHOD 4
+#else
+#define IW_WEBPDECMETHOD 3
 #endif
 
 struct iwwebpreadcontext {
@@ -90,7 +95,25 @@ static void iwwebpr_convert_pixels_rgba(struct iwwebpreadcontext *rctx,
 	memcpy(rctx->img->pixels,src,nsrcpix*4);
 }
 
-#ifdef IW_WEBP_USE_INCREMENTAL_DECODING
+static const char* get_vp8_status_msg(VP8StatusCode x)
+{
+	const char *s;
+
+	switch(x) {
+	case VP8_STATUS_OK: s="OK"; break;
+	case VP8_STATUS_OUT_OF_MEMORY: s="OUT OF MEMORY"; break;
+	case VP8_STATUS_INVALID_PARAM: s="INVALID PARAM"; break;
+	case VP8_STATUS_BITSTREAM_ERROR: s="BITSTREAM ERROR"; break;
+	case VP8_STATUS_UNSUPPORTED_FEATURE: s="UNSUPPORTED FEATURE"; break;
+	case VP8_STATUS_SUSPENDED: s="SUSPENDED"; break;
+	case VP8_STATUS_USER_ABORT: s="USER ABORT"; break;
+	case VP8_STATUS_NOT_ENOUGH_DATA: s="NOT ENOUGH DATA"; break;
+	default: s="Unknown error";
+	}
+	return s;
+}
+
+#if IW_WEBPDECMETHOD == 1 // WebPINewDecoder()
 
 static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 {
@@ -121,7 +144,6 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	// This is based on experimentation, because I can't figure out the documentation.
 	decbuffer->colorspace = MODE_RGBA;
 
-	// TODO: Maybe use WebPIDecode() instead?
 	pidecoder = WebPINewDecoder(decbuffer);
 	if(!pidecoder) goto done;
 
@@ -138,13 +160,16 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 			if(status==VP8_STATUS_OK)
 				break;
 
-			if(status!=VP8_STATUS_SUSPENDED)
+			if(status!=VP8_STATUS_SUSPENDED) {
+				iw_set_errorf(rctx->ctx,"libwebp reports read error: %s",get_vp8_status_msg(status));
 				goto done;
+			}
 		}
 
 		if(bytesread<fbuf_len) {
 			// End of file reached but the decoder says it isn't finished yet.
 			// Apparently a truncated file.
+			iw_set_error(rctx->ctx,"Invalid or truncated WebP file");
 			goto done;
 		}
 	}
@@ -212,7 +237,130 @@ done:
 	return retval;
 }
 
-#else
+#endif
+
+#if IW_WEBPDECMETHOD == 2 // WebPIDecode()
+
+static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
+{
+	struct iw_image *img;
+	int retval=0;
+	const uint8_t* uncmpr_webp_pixels;
+	int width, height;
+	size_t npixels;
+	int bytes_per_pixel;
+	WebPIDecoder *pidecoder = NULL;
+	WebPDecoderConfig cfg;
+	VP8StatusCode status;
+	int ret;
+	iw_byte *fbuf = NULL;
+	const size_t fbuf_len = 32768;
+	size_t bytesread = 0;
+	int needfree_decbuffer = 0;
+
+	img = rctx->img;
+	fbuf = iw_malloc_lowlevel(fbuf_len);
+	if(!fbuf) goto done;
+
+	ret = WebPInitDecoderConfig(&cfg);
+	if(!ret) goto done;
+	needfree_decbuffer = 1;
+
+	cfg.output.colorspace = MODE_RGBA;
+	pidecoder = WebPIDecode(NULL,0,&cfg);
+	if(!pidecoder) goto done;
+
+	while(1) {
+		// Read from the WebP file...
+		ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,fbuf,fbuf_len,&bytesread);
+		if(!ret) {
+			// Read error
+			break;
+		}
+
+		if(bytesread>0) {
+			status = WebPIAppend(pidecoder, fbuf, (uint32_t)bytesread);
+			if(status==VP8_STATUS_OK)
+				break;
+
+			if(status!=VP8_STATUS_SUSPENDED) {
+				iw_set_errorf(rctx->ctx,"libwebp reports read error: %s",get_vp8_status_msg(status));
+				goto done;
+			}
+		}
+
+		if(bytesread<fbuf_len) {
+			// End of file reached but the decoder says it isn't finished yet.
+			// Apparently a truncated file.
+			iw_set_error(rctx->ctx,"Invalid or truncated WebP file");
+			goto done;
+		}
+	}
+
+	width = cfg.output.width;
+	height = cfg.output.height;
+
+	if(cfg.output.colorspace!=MODE_RGBA) {
+		goto done;
+	}
+
+	uncmpr_webp_pixels = cfg.output.u.RGBA.rgba;
+
+	if(!iw_check_image_dimensions(rctx->ctx,width,height))
+		goto done;
+
+	npixels = ((size_t)width)*height;
+
+	// Sanity checks.
+	if(cfg.output.u.RGBA.size != npixels*4) {
+		goto done;
+	}
+	if(cfg.output.u.RGBA.stride != width*4) {
+		goto done;
+	}
+
+	// Figure out if the image has transparency, etc.
+	iwwebp_scan_pixels(rctx,uncmpr_webp_pixels,npixels);
+
+	// Choose the color format to use for IW's internal source image.
+	if(rctx->has_color)
+		img->imgtype = rctx->has_transparency ? IW_IMGTYPE_RGBA : IW_IMGTYPE_RGB;
+	else
+		img->imgtype = rctx->has_transparency ? IW_IMGTYPE_GRAYA : IW_IMGTYPE_GRAY;
+
+	img->width = width;
+	img->height = height;
+	img->bit_depth = 8;
+	bytes_per_pixel = iw_imgtype_num_channels(img->imgtype);
+	img->bpr = bytes_per_pixel * img->width;
+	img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
+	if(!img->pixels) goto done;
+
+	switch(img->imgtype) {
+	case IW_IMGTYPE_GRAY:  iwwebpr_convert_pixels_gray(rctx,uncmpr_webp_pixels,npixels); break;
+	case IW_IMGTYPE_GRAYA: iwwebpr_convert_pixels_graya(rctx,uncmpr_webp_pixels,npixels); break;
+	case IW_IMGTYPE_RGB:   iwwebpr_convert_pixels_rgb(rctx,uncmpr_webp_pixels,npixels); break;
+	default:               iwwebpr_convert_pixels_rgba(rctx,uncmpr_webp_pixels,npixels); break;
+	}
+
+	retval=1;
+
+done:
+	if(pidecoder) {
+		WebPIDelete(pidecoder);
+	}
+
+	if(needfree_decbuffer) {
+		 WebPFreeDecBuffer(&cfg.output);
+	}
+
+	if(fbuf) iw_free(fbuf);
+	return retval;
+}
+
+#endif
+
+#if IW_WEBPDECMETHOD == 3 // WebPDecodeRGBA()
 
 static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 {
@@ -274,8 +422,102 @@ done:
 
 	// !!! Portability warning: This is dangerous, because this memory was
 	// allocated by libwebp. There's no way to be sure that our free() function
-	// is the right one. But libwebp forces us to do this.
+	// is the right one.
 	if(uncmpr_webp_pixels) free(uncmpr_webp_pixels);
+
+	return retval;
+}
+
+#endif
+
+#if IW_WEBPDECMETHOD == 4 // WebPDecode()
+
+static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
+{
+	struct iw_image *img;
+	int retval=0;
+	void *webpimage=NULL;
+	iw_int64 webpimage_size=0;
+	int width, height;
+	size_t npixels;
+	int bytes_per_pixel;
+	WebPDecoderConfig cfg;
+	int ret;
+	VP8StatusCode status;
+	int needfree_decbuffer=0;
+
+	img = rctx->img;
+
+	ret = WebPInitDecoderConfig(&cfg);
+	if(!ret) goto done;
+	needfree_decbuffer = 1;
+
+	// Read the whole WebP file into a memory block.
+	if(!iw_file_to_memory(rctx->ctx, rctx->iodescr, &webpimage, &webpimage_size)) {
+		goto done;
+	}
+
+	//WebPGetFeatures((const uint8_t*)webpimage, (uint32_t)webpimage_size, &cfg.input);
+	cfg.output.colorspace = MODE_RGBA;
+
+	// Have libwebp decode that memory block, to internal memory.
+	status = WebPDecode((const uint8_t*)webpimage, (uint32_t)webpimage_size, &cfg);
+	if(status != VP8_STATUS_OK) {
+		iw_set_errorf(rctx->ctx,"libwebp reports read error: %s",get_vp8_status_msg(status));
+		goto done;
+	}
+
+	width = cfg.output.width;
+	height = cfg.output.height;
+
+	if(!iw_check_image_dimensions(rctx->ctx,width,height))
+		goto done;
+
+	npixels = ((size_t)width)*height;
+
+	// Sanity checks.
+	if(cfg.output.colorspace!=MODE_RGBA) {
+		goto done;
+	}
+	if(cfg.output.u.RGBA.size != npixels*4) {
+		goto done;
+	}
+	if(cfg.output.u.RGBA.stride != width*4) {
+		goto done;
+	}
+
+	// Figure out if the image has transparency, etc.
+	iwwebp_scan_pixels(rctx,cfg.output.u.RGBA.rgba,npixels);
+
+	// Choose the color format to use for IW's internal source image.
+	if(rctx->has_color)
+		img->imgtype = rctx->has_transparency ? IW_IMGTYPE_RGBA : IW_IMGTYPE_RGB;
+	else
+		img->imgtype = rctx->has_transparency ? IW_IMGTYPE_GRAYA : IW_IMGTYPE_GRAY;
+
+	img->width = width;
+	img->height = height;
+	img->bit_depth = 8;
+	bytes_per_pixel = iw_imgtype_num_channels(img->imgtype);
+	img->bpr = bytes_per_pixel * img->width;
+	img->pixels = (unsigned char*)iw_malloc_large(rctx->ctx, img->bpr, img->height);
+	if(!img->pixels) goto done;
+
+	switch(img->imgtype) {
+	case IW_IMGTYPE_GRAY:  iwwebpr_convert_pixels_gray(rctx,cfg.output.u.RGBA.rgba,npixels); break;
+	case IW_IMGTYPE_GRAYA: iwwebpr_convert_pixels_graya(rctx,cfg.output.u.RGBA.rgba,npixels); break;
+	case IW_IMGTYPE_RGB:   iwwebpr_convert_pixels_rgb(rctx,cfg.output.u.RGBA.rgba,npixels); break;
+	default:               iwwebpr_convert_pixels_rgba(rctx,cfg.output.u.RGBA.rgba,npixels); break;
+	}
+
+	retval=1;
+
+done:
+	if(webpimage) iw_free(webpimage);
+
+	if(needfree_decbuffer) {
+		 WebPFreeDecBuffer(&cfg.output);
+	}
 
 	return retval;
 }
@@ -406,7 +648,7 @@ static int iwwebp_write_main(struct iwwebpwritecontext *wctx)
 done:
 	// !!! Portability warning: This is dangerous, because this memory was
 	// allocated by libwebp. There's no way to be sure that our free() function
-	// is the right one. But libwebp forces us to do this.
+	// is the right one.
 	if(cmpr_webp_data) free(cmpr_webp_data);
 
 	if(wctx->tmppixels) iw_free(wctx->tmppixels);
