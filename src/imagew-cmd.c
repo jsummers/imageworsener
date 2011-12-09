@@ -78,6 +78,7 @@ struct params_struct {
 	double offset_r_h, offset_g_h, offset_b_h;
 	double offset_r_v, offset_g_v, offset_b_v;
 	double translate_x, translate_y;
+	int translate_src_flag; // If 1, translate_[xy] is in source pixels.
 	int dither_family_all, dither_family_nonalpha, dither_family_alpha;
 	int dither_family_red, dither_family_green, dither_family_blue, dither_family_gray;
 	int dither_subtype_all, dither_subtype_nonalpha, dither_subtype_alpha;
@@ -636,9 +637,6 @@ static int run(struct params_struct *p)
 	if(p->offset_r_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_RED,  IW_DIMENSION_V,p->offset_r_v);
 	if(p->offset_g_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_GREEN,IW_DIMENSION_V,p->offset_g_v);
 	if(p->offset_b_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_BLUE, IW_DIMENSION_V,p->offset_b_v);
-	if(p->translate_x!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_X,p->translate_x);
-	if(p->translate_y!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_Y,p->translate_y);
-	if(p->offset_b_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_BLUE, IW_DIMENSION_V,p->offset_b_v);
 
 	if(p->apply_bkgd) {
 
@@ -730,6 +728,20 @@ static int run(struct params_struct *p)
 
 	if(p->new_width<1) p->new_width=1;
 	if(p->new_height<1) p->new_height=1;
+
+
+	if(p->translate_src_flag) {
+		// Convert from dst pixels to src pixels
+		if(p->translate_x!=0.0) {
+			p->translate_x *= ((double)p->new_width)/old_width;
+		}
+		if(p->translate_y!=0.0) {
+			p->translate_y *= ((double)p->new_height)/old_height;
+		}
+	}
+	if(p->translate_x!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_X,p->translate_x);
+	if(p->translate_y!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_Y,p->translate_y);
+
 
 	// Wait until we know the target image size to set the resize algorithm, so
 	// that we can support our "interpolate" option.
@@ -1758,7 +1770,13 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->offset_b_v= -p->offset_r_v;
 		break;
 	case PT_TRANSLATE:
-		iwcmd_parse_dbl_pair(v,&p->translate_x,&p->translate_y);
+		if(v[0]=='s') {
+			iwcmd_parse_dbl_pair(&v[1],&p->translate_x,&p->translate_y);
+			p->translate_src_flag=1;
+		}
+		else {
+			iwcmd_parse_dbl_pair(v,&p->translate_x,&p->translate_y);
+		}
 		break;
 	case PT_PAGETOREAD:
 		p->page_to_read = iwcmd_parse_int(v);

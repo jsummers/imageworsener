@@ -1,4 +1,7 @@
 Unreleased changes
+ - Added "-translate s" option, so you can specify the translation amount in
+   source pixels instead of target pixels.
+ - Enabled transparency support for WebP images.
  - Made the "edge policy" setting be per-dimension.
  - Removed the -filteralpha feature.
  - Stopped disallowing the "s" edge policy when -translate or -offset is used.

@@ -512,11 +512,13 @@ Options:
    This is limited by the target image format's support for a density labels.
    Some formats do not support them, while others require them.
 
- -translate <x>,<y>
+ -translate [s]<x>,<y>
    Move the entire image by the given amount, measured in target pixels. This
    is mainly intended for fine-tuning the image's position relative to the
    pixel grid, so it's expected that the absolute value of x and y will be
    less than 1.
+   If you use the "s" prefix, the measurements are in source pixels instead of
+   target pixels.
 
  -offset<channel> <n> (-offsetred -offsetgreen -offsetblue -offsetrb
                        -offsetvred -offsetvgreen -offsetvblue -offsetvrb)
