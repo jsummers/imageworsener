@@ -262,22 +262,3 @@ void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_rr_ctx *rrctx);
 
 // Defined in imagew-opt.c
 void iwpvt_optimize_image(struct iw_context *ctx);
-
-enum iw_corestrings {
-	iws_err_msg_not_avail=1,
-	iws_nomem,
-	iws_warn_reduce_to_8,
-	iws_warn_disable_offset_grayscale,
-	iws_warn_trans_incomp_format,
-	iws_warn_trans_incomp_offset,
-	iws_warn_chkb_incomp_offset,
-	iws_warn_output_forced_linear,
-	iws_output_prof_not_set,
-	iws_internal_error,
-	iws_internal_unk_strategy,
-	iws_image_too_large,
-	iws_dimensions_too_large,
-	iws_dimensions_invalid,
-	iws_warn_fltpt_no_posterize,
-	iws_copyright
-};

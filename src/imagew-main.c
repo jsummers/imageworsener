@@ -1391,28 +1391,25 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	}
 }
 
-#define IW_STRAT1_G_G       0x011 // source gray -> intermed gray
-#define IW_STRAT1_G_RGB     0x013 // e.g. when using a channel offset
-#define IW_STRAT1_GA_G      0x021 // could use if applying solid gray bkgd
-#define IW_STRAT1_GA_GA     0x022 //
-#define IW_STRAT1_GA_RGB    0x023 // could use if applying solid color bkgd
-#define IW_STRAT1_GA_RGBA   0x024 // e.g. when using a channel offset
-#define IW_STRAT1_RGB_G     0x031 // e.g. -grayscale
-#define IW_STRAT1_RGB_RGB   0x033
-#define IW_STRAT1_RGBA_G    0x041
-#define IW_STRAT1_RGBA_GA   0x042 // e.g. -grayscale
-#define IW_STRAT1_RGBA_RGB  0x043 // could use if applying solid bkgd
-#define IW_STRAT1_RGBA_RGBA 0x044
+#define IW_STRAT1_G_G       0x011 // -grayscale
+#define IW_STRAT1_G_RGB     0x013 // default
+#define IW_STRAT1_GA_G      0x021 // -grayscale, BKGD_STRATEGY_EARLY (never happens?)
+#define IW_STRAT1_GA_GA     0x022 // -grayscale
+#define IW_STRAT1_GA_RGB    0x023 // BKGD_STRATEGY_EARLY
+#define IW_STRAT1_GA_RGBA   0x024 // default
+#define IW_STRAT1_RGB_G     0x031 // -grayscale
+#define IW_STRAT1_RGB_RGB   0x033 // default
+#define IW_STRAT1_RGBA_G    0x041 // -grayscale, BKGD_STRATEGY_EARLY (never happens?)
+#define IW_STRAT1_RGBA_GA   0x042 // -grayscale
+#define IW_STRAT1_RGBA_RGB  0x043 // BKGD_STRATEGY_EARLY
+#define IW_STRAT1_RGBA_RGBA 0x044 // default
 
-#define IW_STRAT2_G_G       0x111 // intermed gray -> output gray
-//#define IW_STRAT2_G_RGB     0x113 // e.g. if redcc!=greencc
-#define IW_STRAT2_GA_G      0x121 // e.g. if applying a gray background
-#define IW_STRAT2_GA_GA     0x122 // ...
-//#define IW_STRAT2_GA_RGB    0x123 // e.g. if applying a color background
-//#define IW_STRAT2_GA_RGBA   0x124 // e.g. if redcc!=greencc
-#define IW_STRAT2_RGB_RGB   0x133
-#define IW_STRAT2_RGBA_RGB  0x143 // e.g. if applying a background
-#define IW_STRAT2_RGBA_RGBA 0x144
+#define IW_STRAT2_G_G       0x111 // -grayscale
+#define IW_STRAT2_GA_G      0x121 // -grayscale, BKGD_STRATEGY_LATE
+#define IW_STRAT2_GA_GA     0x122 // -grayscale
+#define IW_STRAT2_RGB_RGB   0x133 // default
+#define IW_STRAT2_RGBA_RGB  0x143 // BKGD_STRATEGY_LATE
+#define IW_STRAT2_RGBA_RGBA 0x144 // default
 
 
 static void iw_restrict_to_range(int r1, int r2, int *pvar)
