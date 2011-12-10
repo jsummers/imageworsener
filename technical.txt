@@ -449,8 +449,6 @@ Features I'm considering adding:
 
 - More options for aligning the input pixels with the output pixels.
 
-- More options for virtual pixels.
-
 - Support for reading BMP files.
 
 - Ability to maintain PNG and GIF background colors.

@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added support for transparent virtual pixels ("-edge t").
  - Added "-translate s" option, so you can specify the translation amount in
    source pixels instead of target pixels.
  - Enabled transparency support for WebP images.

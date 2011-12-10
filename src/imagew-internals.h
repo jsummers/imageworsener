@@ -54,6 +54,7 @@ struct iw_resize_settings {
 
 struct iw_channelinfo_in {
 	int channeltype;
+	int disable_fast_get_sample;
 };
 
 struct iw_channelinfo_intermed {
@@ -133,8 +134,10 @@ struct iw_context {
 
 	struct iw_image img1;
 	struct iw_csdescr img1cs;
+	int img1_imgtype_logical;
 
-	int img1_numchannels;
+	int img1_numchannels_physical;
+	int img1_numchannels_logical;
 	int img1_alpha_channel_index;
 
 	// The suggested background color stored in the input file.

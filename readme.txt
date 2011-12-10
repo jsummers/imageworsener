@@ -302,15 +302,16 @@ Options:
  -edge <name> (-edgex -edgey)
    The strategy for dealing with the pixels near the edges of images.
 
-   The simplest strategy is "r" (for "replicate"). When a scaling algorithm
-   needs to know the value of a sample beyond the edge of the image, the color
-   of the nearest sample within the image is used instead.
-
-   The default strategy is "s" (for "standard"). Instead of inventing samples
-   that are beyond the edge of the source image, give extra weight to the
-   smaller-than-usual number of samples that are available. If no samples
-   are available, the pixel will be colored black or be transparent. This can
-   happen if you use -translate or -offset.
+   Strategies available:
+    "s" (for "standard"): This is the default strategy. Instead of inventing
+       samples that are beyond the edge of the source image, give extra weight
+       to the smaller-than-usual number of samples that are available. If no
+       samples are available, the pixel will be colored black or be
+       transparent. This can happen if you use -translate or -offset.
+    "r" (for "replicate"): Pixels beyond the edges of the image are assumed to
+       be the color of the nearest pixel within the image.
+    "t" (for "transparent"): Pixels beyond the edges of the image are assumed
+       to be transparent. Note that this can be used with -bkgd.
 
  -intclamp
    IW always resizes the image first vertically, then horizontally, then

@@ -84,7 +84,7 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt64(struct iw_context *ctx,
 		iw_float64 f;
 	} volatile su;
 
-	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*8;
+	z = y*ctx->img1.bpr + (ctx->img1_numchannels_physical*x + channel)*8;
 	for(k=0;k<8;k++) {
 		su.c[k]=ctx->img1.pixels[z+k];
 	}
@@ -103,7 +103,7 @@ static IW_INLINE IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
 		iw_float32 f;
 	} volatile su;
 
-	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*4;
+	z = y*ctx->img1.bpr + (ctx->img1_numchannels_physical*x + channel)*4;
 	for(k=0;k<4;k++) {
 		su.c[k]=ctx->img1.pixels[z+k];
 	}
@@ -115,7 +115,7 @@ static IW_INLINE unsigned int get_raw_sample_16(struct iw_context *ctx,
 {
 	size_t z;
 	unsigned short tmpui16;
-	z = y*ctx->img1.bpr + (ctx->img1_numchannels*x + channel)*2;
+	z = y*ctx->img1.bpr + (ctx->img1_numchannels_physical*x + channel)*2;
 	tmpui16 = ( ((unsigned short)(ctx->img1.pixels[z+0])) <<8) | ctx->img1.pixels[z+1];
 	return tmpui16;
 }
@@ -124,7 +124,7 @@ static IW_INLINE unsigned int get_raw_sample_8(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	unsigned short tmpui8;
-	tmpui8 = ctx->img1.pixels[y*ctx->img1.bpr + ctx->img1_numchannels*x + channel];
+	tmpui8 = ctx->img1.pixels[y*ctx->img1.bpr + ctx->img1_numchannels_physical*x + channel];
 	return tmpui8;
 }
 
@@ -187,6 +187,11 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 {
 	unsigned int v;
 	int chtype;
+
+	if(channel>=ctx->img1_numchannels_physical) {
+		// This is a virtual alpha channel. Return "opaque".
+		return 1.0;
+	}
 
 	if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		if(ctx->img1.bit_depth==64) {
@@ -292,7 +297,7 @@ static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
 
 	ch = ctx->intermed_ci[channel].corresponding_input_channel;
 
-	if(ctx->support_reduced_input_bitdepths) {
+	if(ctx->img1_ci[ch].disable_fast_get_sample) {
 		// The slow way...
 		if(ctx->intermed_ci[channel].cvt_to_grayscale) {
 			r = x_to_linear_sample(get_raw_sample(ctx,x,y,ch+0),csdescr);
@@ -1250,8 +1255,8 @@ static int iw_get_channeltype(int imgtype, int channel)
 static void iw_set_input_channeltypes(struct iw_context *ctx)
 {
 	int i;
-	for(i=0;i<ctx->img1_numchannels;i++) {
-		ctx->img1_ci[i].channeltype = iw_get_channeltype(ctx->img1.imgtype,i);
+	for(i=0;i<ctx->img1_numchannels_logical;i++) {
+		ctx->img1_ci[i].channeltype = iw_get_channeltype(ctx->img1_imgtype_logical,i);
 	}
 }
 
@@ -1421,7 +1426,7 @@ static void decide_strategy(struct iw_context *ctx, int *ps1, int *ps2)
 	int s1, s2;
 
 	// Start with a default strategy
-	switch(ctx->img1.imgtype) {
+	switch(ctx->img1_imgtype_logical) {
 	case IW_IMGTYPE_RGBA:
 		if(ctx->to_grayscale) {
 			s1=IW_STRAT1_RGBA_GA;
@@ -1499,7 +1504,7 @@ static void decide_strategy(struct iw_context *ctx, int *ps1, int *ps2)
 // Choose our strategy for applying a background to the image.
 static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 {
-	if(!IW_IMGTYPE_HAS_ALPHA(ctx->img1.imgtype)) {
+	if(!IW_IMGTYPE_HAS_ALPHA(ctx->img1_imgtype_logical)) {
 		// If we know the image does not have any transparency,
 		// we don't have to do anything.
 		ctx->apply_bkgd=0;
@@ -1574,19 +1579,39 @@ static void init_channel_info(struct iw_context *ctx)
 {
 	int i;
 
-	ctx->img1_numchannels = iw_imgtype_num_channels(ctx->img1.imgtype);
-	ctx->img1_alpha_channel_index = iw_imgtype_alpha_channel_index(ctx->img1.imgtype);
+	ctx->img1_imgtype_logical = ctx->img1.imgtype;
+
+	if(ctx->resize_settings[IW_DIMENSION_H].edge_policy==IW_EDGE_POLICY_TRANSPARENT ||
+		ctx->resize_settings[IW_DIMENSION_V].edge_policy==IW_EDGE_POLICY_TRANSPARENT)
+	{
+		// Add a virtual alpha channel
+		if(ctx->img1.imgtype==IW_IMGTYPE_GRAY) {
+			ctx->img1_imgtype_logical = IW_IMGTYPE_GRAYA;
+		}
+		else if(ctx->img1.imgtype==IW_IMGTYPE_RGB)
+			ctx->img1_imgtype_logical = IW_IMGTYPE_RGBA;
+	}
+
+	ctx->img1_numchannels_physical = iw_imgtype_num_channels(ctx->img1.imgtype);
+	ctx->img1_numchannels_logical = iw_imgtype_num_channels(ctx->img1_imgtype_logical);
+	ctx->img1_alpha_channel_index = iw_imgtype_alpha_channel_index(ctx->img1_imgtype_logical);
 
 	iw_set_input_channeltypes(ctx);
 
-	ctx->img2.imgtype = ctx->img1.imgtype; // default
-	ctx->img2_numchannels = ctx->img1_numchannels; // default
-	ctx->intermed_numchannels = ctx->img1_numchannels; // default
+	ctx->img2.imgtype = ctx->img1_imgtype_logical; // default
+	ctx->img2_numchannels = ctx->img1_numchannels_logical; // default
+	ctx->intermed_numchannels = ctx->img1_numchannels_logical; // default
 
-	for(i=0;i<ctx->img1_numchannels;i++) {
+	for(i=0;i<ctx->img1_numchannels_logical;i++) {
 		ctx->intermed_ci[i].channeltype = ctx->img1_ci[i].channeltype;
 		ctx->intermed_ci[i].corresponding_input_channel = i;
 		ctx->img2_ci[i].channeltype = ctx->img1_ci[i].channeltype;
+		if(i>=ctx->img1_numchannels_physical) {
+			// This is a virtual channel, which is handled by get_raw_sample().
+			// But some optimizations cause that function to be bypassed, so we
+			// have to disable those optimizations.
+			ctx->img1_ci[i].disable_fast_get_sample = 1;
+		}
 	}
 }
 
@@ -1708,6 +1733,12 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 				ctx->insignificant_bits[i] = 0;
 				ctx->input_maxcolorcode_ext[i] = ctx->input_maxcolorcode;
 			}
+		}
+	}
+
+	if(ctx->support_reduced_input_bitdepths) {
+		for(i=0;i<ctx->img1_numchannels_physical;i++) {
+			ctx->img1_ci[i].disable_fast_get_sample=1;
 		}
 	}
 
