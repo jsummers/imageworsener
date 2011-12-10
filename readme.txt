@@ -416,6 +416,7 @@ Options:
    Enable dithering.
 
    Dither types available:
+    "none": No dithering.
     "f" or "fs": Floyd-Steinberg.
     "o": 8x8 Ordered dither.
     "halftone": A sample 8x8 halftone dither.

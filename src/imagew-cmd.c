@@ -606,13 +606,13 @@ static int run(struct params_struct *p)
 		iw_set_output_colorspace(ctx,&p->cs_out);
 	}
 
-	if(p->dither_family_all)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_family_all  ,p->dither_subtype_all);
-	if(p->dither_family_nonalpha) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_family_nonalpha,p->dither_subtype_nonalpha);
-	if(p->dither_family_red)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_family_red  ,p->dither_subtype_red);
-	if(p->dither_family_green) iw_set_dither_type(ctx,IW_CHANNELTYPE_GREEN,p->dither_family_green,p->dither_subtype_green);
-	if(p->dither_family_blue)  iw_set_dither_type(ctx,IW_CHANNELTYPE_BLUE ,p->dither_family_blue ,p->dither_subtype_blue);
-	if(p->dither_family_gray)  iw_set_dither_type(ctx,IW_CHANNELTYPE_GRAY ,p->dither_family_gray ,p->dither_subtype_gray);
-	if(p->dither_family_alpha) iw_set_dither_type(ctx,IW_CHANNELTYPE_ALPHA,p->dither_family_alpha,p->dither_subtype_alpha);
+	if(p->dither_family_all>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_family_all  ,p->dither_subtype_all);
+	if(p->dither_family_nonalpha>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_family_nonalpha,p->dither_subtype_nonalpha);
+	if(p->dither_family_red>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_family_red  ,p->dither_subtype_red);
+	if(p->dither_family_green>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_GREEN,p->dither_family_green,p->dither_subtype_green);
+	if(p->dither_family_blue>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_BLUE ,p->dither_family_blue ,p->dither_subtype_blue);
+	if(p->dither_family_gray>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_GRAY ,p->dither_family_gray ,p->dither_subtype_gray);
+	if(p->dither_family_alpha>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_ALPHA,p->dither_family_alpha,p->dither_subtype_alpha);
 
 	if(p->color_count_all) iw_set_color_count  (ctx,IW_CHANNELTYPE_ALL  ,p->color_count_all);
 	if(p->color_count_nonalpha) iw_set_color_count(ctx,IW_CHANNELTYPE_NONALPHA,p->color_count_nonalpha);
@@ -1230,10 +1230,11 @@ static int iwcmd_string_to_dithertype(struct params_struct *p,const char *s,int 
 	 {"sierra2"   ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA2},
 	 {"sierralite",IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_SIERRA42A},
 	 {"atkinson"  ,IW_DITHERFAMILY_ERRDIFF,IW_DITHERSUBTYPE_ATKINSON},
-	 {"none"      ,IW_DITHERFAMILY_NONE   ,IW_DITHERSUBTYPE_DEFAULT} // This line must be last.
+	 {"none"      ,IW_DITHERFAMILY_NONE   ,IW_DITHERSUBTYPE_DEFAULT},
+	 {NULL        ,0                      ,0}
 	};
 
-	for(i=0; dithertable[i].ditherfamily!=IW_DITHERFAMILY_NONE; i++) {
+	for(i=0; dithertable[i].name; i++) {
 		if(!strcmp(s,dithertable[i].name)) {
 			*psubtype = dithertable[i].dithersubtype;
 			return dithertable[i].ditherfamily;
@@ -1996,6 +1997,9 @@ static int iwcmd_main(int argc, char* argv[])
 	p.resize_blur_y.blur = 1.0;
 	p.webp_quality = -1.0;
 	p.include_screen = -1;
+	p.dither_family_all = p.dither_family_nonalpha = p.dither_family_alpha = -1;
+	p.dither_family_red = p.dither_family_green = p.dither_family_blue = -1;
+	p.dither_family_gray = -1;
 
 	handle_encoding(&p,argc,argv);
 
