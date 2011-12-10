@@ -234,6 +234,7 @@ extern "C" {
 
 #define IW_EDGE_POLICY_REPLICATE  1  // Replicate the pixels at the image edge.
 #define IW_EDGE_POLICY_STANDARD   2  // Use available samples if any are within radius; otherwise replicate.
+#define IW_EDGE_POLICY_TRANSPARENT 3
 
 // Optimizations that IW is allowed to do:
 #define IW_OPT_GRAYSCALE    1   // optimize color to grayscale

@@ -1379,6 +1379,7 @@ static int process_edge_policy(struct params_struct *p, const char *s)
 {
 	if(s[0]=='s') return IW_EDGE_POLICY_STANDARD;
 	else if(s[0]=='r') return IW_EDGE_POLICY_REPLICATE;
+	else if(s[0]=='t') return IW_EDGE_POLICY_TRANSPARENT;
 	iwcmd_error(p,"Unknown edge policy\n");
 	return -1;
 }

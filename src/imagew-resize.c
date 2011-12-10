@@ -21,7 +21,7 @@ typedef void (*iw_resizerowfn_type)(struct iw_context *ctx, struct iw_rr_ctx *rr
 typedef double (*iw_filterfn_type)(struct iw_rr_ctx *rrctx, double x);
 
 struct iw_weight_struct {
-	int src_pix;
+	int src_pix; // -1 means to use a virtual pixel
 	int dst_pix;
 	double weight;
 };
@@ -267,9 +267,20 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 
 			v_sum += v;
 			v_count++;
-			if(input_pixel<0) pix_to_read=0;
-			else if(input_pixel>ctx->num_in_pix-1) pix_to_read = ctx->num_in_pix-1;
-			else pix_to_read = input_pixel;
+
+			if(input_pixel<0 || input_pixel>ctx->num_in_pix-1) {
+				// The source pixel we need doesn't exist.
+				if(rrctx->edge_policy==IW_EDGE_POLICY_TRANSPARENT) {
+					pix_to_read = -1; // Use a virtual pixel
+				}
+				else { // Assume IW_EDGE_POLICY_STANDARD
+					if(input_pixel<0) pix_to_read=0;
+					else pix_to_read = ctx->num_in_pix-1;
+				}
+			}
+			else {
+				pix_to_read = input_pixel;
+			}
 
 			iw_add_to_weightlist(rrctx,pix_to_read,out_pix,v);
 		}
@@ -281,19 +292,12 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 				for(i=start_weight_idx;i<rrctx->wl_used;i++) {
 					rrctx->wl[i].weight /= v_sum;
 				}
-
 			}
 			else {
-				// This sum *should* never get very small (or negative).
-				// If it does, apparently the input samples aren't
-				// contributing in a meaningful way to the output sample
-				// (or maybe the programmer doesn't really understand the
-				// situation...).
-				// It could happen if we used a *really* bad resample filter.
-				// It could happen if a channel offset is used and we used
-				// the "Standard" edge policy (but we don't allow that).
-				// This code path is here to avoid dividing by zero,
-				// not to produce a correct sample value.
+				// Just in case we somehow have a nonzero number of weights
+				// which somehow sum to zero, set them all to zero.
+				// This isn't really a meaningful thing to do, but at least
+				// it's predictable, and keeps us from dividing by zero.
 				for(i=start_weight_idx;i<rrctx->wl_used;i++) {
 					rrctx->wl[i].weight = 0.0;
 				}
@@ -315,7 +319,15 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 
 	for(i=0;i<rrctx->wl_used;i++) {
 		w = &rrctx->wl[i];
-		ctx->out_pix[w->dst_pix] += ctx->in_pix[w->src_pix] * w->weight;
+		if(w->src_pix>=0) {
+			ctx->out_pix[w->dst_pix] += ctx->in_pix[w->src_pix] * w->weight;
+		}
+		else {
+			// Use a virtual pixel. The only relevant virtual pixel type is
+			// TRANSPARENT (REPLICATE is handled elsewhere), and a transparent
+			// pixel has all samples equal to 0. So, there's nothing to do.
+			;
+		}
 	}
 }
 
