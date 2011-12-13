@@ -128,6 +128,12 @@ $IW srcimg/4x4.png actual/us-mixed.png $DCMPR $SCALE -filterx catrom -filtery ne
 $IW srcimg/4x4.png actual/blur.png $DCMPR $SCALE -filter catrom -blur 1.5
 $IW srcimg/4x4.png actual/edge-s.png $DCMPR $SCALE -filter lanczos -edge s
 $IW srcimg/4x4.png actual/edge-r.png $DCMPR $SCALE -filter lanczos -edge r
+# Test transparent virtual pixels, with an opaque source image. And test per-
+# dimension edge policy.
+$IW srcimg/4x4.png actual/edge-t.png $CMPR $SCALE -filter mitchell -edgex t -edgey r
+# Test transparent virtual pixels, with a source image with transparency.
+# And test translating by a number of source pixels.
+$IW srcimg/p8t.png actual/edge-t2.png $CMPR $SMALL -filter hanning -edge t -translate s3,3
 
 $IW srcimg/4x4.png actual/cs-linear.png $DCMPR $SCALE -filter catrom -cs linear
 $IW srcimg/4x4.png actual/cs-gamma15.png $DCMPR -height x8.75 -filter catrom -cs gamma1.5
