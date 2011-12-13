@@ -104,6 +104,9 @@ do
  $IW srcimg/rings1.png "actual/ds-$f.png" $DCMPR -width 35 -height 35 -filter "$f"
 done
 
+# test naive linear interpolation
+$IW srcimg/rings1.png actual/ds-linearinterp.png $CMPR -w 35 -h 35 -filter triangle -blur x1
+
 # Special test for box filter.
 # A source image with odd dimensions is best.
 $IW srcimg/rgb8.png actual/ds-box.png $CMPR -w 20 -h 20 -filter box -translate 0.0000001,0
