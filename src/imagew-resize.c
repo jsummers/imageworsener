@@ -111,7 +111,6 @@ static double iw_filter_quadratic(struct iw_rr_ctx *rrctx, double x)
 }
 
 // General cubic resampling based on Mitchell-Netravali definition.
-// (radius=2)
 static double iw_filter_cubic(struct iw_rr_ctx *rrctx, double x)
 {
 	double b = rrctx->cubic_b;
@@ -235,8 +234,8 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/(double)ctx->num_out_pix;
 		pos_in_inpix = out_pix_center*(double)ctx->num_in_pix -0.5;
 
-		// There are up to radius*reduction_factor input pixels input pixels on
-		// each side of the output pixel that we need to look at.
+		// There are up to radius*reduction_factor source pixels on each side
+		// of the target pixel that we need to look at.
 
 		first_input_pixel = (int)ceil(pos_in_inpix - rrctx->radius*reduction_factor);
 		last_input_pixel = (int)floor(pos_in_inpix + rrctx->radius*reduction_factor);
@@ -249,7 +248,8 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 		v_count=0;
 		for(input_pixel=first_input_pixel;input_pixel<=last_input_pixel;input_pixel++) {
 			if(rrctx->edge_policy==IW_EDGE_POLICY_STANDARD) {
-			// Try to avoid using "virtual pixels".
+				// The STANDARD method doesn't use virtual pixels, so we can
+				// ignore out-of-range source pixels.
 				if(input_pixel<0 || input_pixel>=ctx->num_in_pix) {
 					continue;
 				}
@@ -273,7 +273,7 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 				if(rrctx->edge_policy==IW_EDGE_POLICY_TRANSPARENT) {
 					pix_to_read = -1; // Use a virtual pixel
 				}
-				else { // Assume IW_EDGE_POLICY_STANDARD
+				else { // Assume IW_EDGE_POLICY_REPLICATE
 					if(input_pixel<0) pix_to_read=0;
 					else pix_to_read = ctx->num_in_pix-1;
 				}
@@ -295,7 +295,8 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 			}
 			else {
 				// Just in case we somehow have a nonzero number of weights
-				// which somehow sum to zero, set them all to zero.
+				// which sum to zero, set them all to zero instead of trying
+				// to normalize.
 				// This isn't really a meaningful thing to do, but at least
 				// it's predictable, and keeps us from dividing by zero.
 				for(i=start_weight_idx;i<rrctx->wl_used;i++) {
@@ -331,6 +332,10 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 	}
 }
 
+// Although "nearest neighbor" can be implemented using the standard method
+// that uses a weightlist, we use a special algorithm for it. For one thing,
+// this ensures that it does literally use the nearest neighbor, and is not
+// affected by blur settings.
 static void iw_resize_row_nearest(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	int out_pix;
@@ -349,7 +354,10 @@ static void iw_resize_row_nearest(struct iw_context *ctx, struct iw_rr_ctx *rrct
 	}
 }
 
-// Caution: Does not support offsets.
+// A fast algorithm that just copies the pixels, and does no resizing.
+// If the target size is smaller than the source size, pixels will be cropped.
+// If it is larger, the extra pixels will be black or transparent.
+// Caution: Does not support translation or offsets.
 static void iw_resize_row_null(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	int i;
@@ -396,6 +404,8 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		rrctx->family_flags = IW_FFF_STANDARD;
 		// Pixel mixing is implemented using a trapezoid-shaped filter
 		// whose exact shape depends on the scale factor.
+		// Precalculate a parameter (mix_param) that will be used by
+		// iw_filter_mix(). It's also used to compute the radius.
 		rrctx->mix_param = ((double)ctx->num_out_pix)/ctx->num_in_pix;
 		if(rrctx->mix_param > 1.0) rrctx->mix_param = 1.0/rrctx->mix_param;
 		rrctx->radius = 0.5 + rrctx->mix_param;
@@ -494,6 +504,7 @@ void iwpvt_resize_rows_done(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	if(!rrctx) return;
 	iw_weightlist_free(rrctx);
+	iw_free(rrctx);
 }
 
 void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_rr_ctx *rrctx)

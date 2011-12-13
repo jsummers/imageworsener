@@ -789,6 +789,9 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 
 	rs=&ctx->resize_settings[IW_DIMENSION_V];
 
+	// TODO: Maybe rrctx should be kept around, instead of being recreated for each
+	// channel. That's possible except when the channels are processed differently,
+	// which probably only happens when using a channel offset.
 	rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
 	if(!rrctx) goto done;
 
@@ -1518,10 +1521,10 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 	if(ctx->resize_settings[IW_DIMENSION_H].use_offset ||
 		ctx->resize_settings[IW_DIMENSION_V].use_offset)
 	{
-		// If this feature is enabled and the image has transparency,
-		// we must apply a solid color background (and we must apply
-		// it before resizing), regardless of whether
-		// the user asked for it or not. It's the only strategy we support.
+		// If channel offset is enabled, and the image has transparency, we
+		// must apply a solid color background (and we must apply it before
+		// resizing), regardless of whether the user asked for it. It's the
+		// only strategy we support.
 		if(!ctx->apply_bkgd) {
 			iw_warning(ctx,"This image may have transparency, which is incompatible with a channel offset. A background color will be applied.");
 			ctx->apply_bkgd=1;
@@ -1547,12 +1550,14 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		return;
 	}
 
-	// At this point, either Early or Late background application is
-	// possible, and (I think) should have the same end result, *provided*
-	// that the alpha channel uses the same resampling algorithm as the color
-	// channels.
-	// The simplest thing to do is to always use Late, so that if the alpha
-	// channel does use a different algorithm, it will have an effect.
+	// At this point, either Early or Late background application is possible,
+	// and (I think) would, in an idealized situation, yield the same result.
+	// Things that can cause it to be different include
+	// * using a different resampling algorithm for the alpha channel (this is
+	//   no longer supported)
+	// * 'intermediate clamping'
+	// 
+	// Setting this to Late is the safe, though it is slower than Early.
 	ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_LATE;
 }
 
@@ -1560,7 +1565,7 @@ static void iw_set_auto_resizetype(struct iw_context *ctx, int size1, int size2,
 	int dimension)
 {
 	// If not changing the size, default to "null" resize if we can.
-	// (We can't do that if using a channel offset.)
+	// (We can't do that if using a translation or channel offset.)
 	if(size2==size1 && !ctx->resize_settings[dimension].use_offset &&
 		ctx->resize_settings[dimension].translate==0.0)
 	{

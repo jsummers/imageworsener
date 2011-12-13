@@ -216,24 +216,19 @@ Options:
      Box filter.
 
     triangle, linear
-     Linear interpolation, a.k.a. bilinear interpolation, a.k.a. triangle
-     filter, a.k.a. tent filter.
+     Triangle filter. When upscaling, this is the same as (bi)linear
+     interpolation. When downscaling, the term "linear interpolation" is
+     ambiguous -- see the "-blur x" option.
 
     gaussian
-     A Gaussian filter.
+     Gaussian filter, evaluated out to 4 sigma.
 
     quadratic
-     Quadratic interpolation.
+     Quadratic interpolation. A rough approximation of a Gaussian filter.
 
     cubic<B>,<C>
      Generalized cubic interpolation as defined by Mitchell-Netravali.
-     The normal range of both B and C is from 0 to 1 (though IW allows you to
-     exceed that range).
-
-     Note that the term "cubic" or "bicubic" means different things to
-     different applications. Sometimes it's IW's "bspline" filter, sometimes
-     "mitchell", sometimes "catrom", and occasionally "cubic0,1" or something
-     else.
+     The usual range of both B and C is from 0 to 1.
 
     keys<n>
      This is a subset of the cubic filters. The normal range of n is from
@@ -261,7 +256,7 @@ Options:
      Blackman filter. This is a windowed sinc filter, similar to Lanczos.
      n is the number of "lobes", and defaults to 4.
 
-    hanning<n>
+    hanning<n>, hann<n>
      A Hanning filter. This is a windowed sinc filter, similar to Lanczos.
      n is the number of "lobes", and defaults to 4.
 
@@ -279,6 +274,7 @@ Options:
      be selected by the "auto" method.
 
  -blur <n> (-blurx -blury)
+ -blur x[<n>]
    Adjust the width of the resampling filter.
 
    This is really a parameter of the resampling filter: if you use -blur,
@@ -290,11 +286,11 @@ Options:
    value that's too small will cause some pixels to be missed completely,
    leaving black lines.
 
- -blur x[<n>] (-blurx -blury)
-   Set the blur factor to <n> and then, if downscaling, multiply it by the
-   scaling factor. If not given, <n> defaults to 1.0.
+   If the "x" prefix is used, and the image is being downscaled, the blur
+   factor will be multiplied by the scale factor. If <n> is not given, it
+   defaults to 1.
 
-   The purpose of this option is to make it easy to perform simple
+   The purpose of the "x" option is to make it easy to perform simple
    interpolation. For example, use "-filter linear -blur x1" to do linear
    interpolation. This is not a good way to downscale images, but it is
    what many applications do.
