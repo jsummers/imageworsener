@@ -40,6 +40,8 @@ struct iw_rgb_color {
 	IW_SAMPLE c[3]; // Indexed by IW_CHANNELTYPE[Red..Blue]
 };
 
+struct iw_rr_ctx; // "resize rows" state; see imagew-resize.c.
+
 // "Raw" settings from the application.
 struct iw_resize_settings {
 	int family;
@@ -50,6 +52,7 @@ struct iw_resize_settings {
 	double blur_factor;
 	double translate; // Amount to move the image, before applying any channel offsets.
 	double channel_offset[3]; // Indexed by IW_CHANNELTYPE_[Red..Blue]
+	struct iw_rr_ctx *rrctx_cache;
 };
 
 struct iw_channelinfo_in {
@@ -254,7 +257,6 @@ iw_uint32 iwpvt_prng_rand(struct iw_prng*); // Returns a pseudorandom number.
 int iwpvt_util_randomize(struct iw_prng*); // Returns the random seed that was used.
 
 // Defined in imagew-resize.c
-struct iw_rr_ctx; // "resize rows" state.
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
   struct iw_resize_settings *rs, int channeltype);
 void iwpvt_resize_rows_done(struct iw_context *ctx, struct iw_rr_ctx *rrctx);

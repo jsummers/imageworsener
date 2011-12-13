@@ -767,9 +767,8 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	IW_SAMPLE *inpix = NULL;
 	IW_SAMPLE *outpix = NULL;
 	int is_alpha_channel;
-	struct iw_resize_settings *rs;
+	struct iw_resize_settings *rs = NULL;
 	struct iw_channelinfo_intermed *int_ci;
-	struct iw_rr_ctx *rrctx = NULL;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
@@ -789,11 +788,12 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 
 	rs=&ctx->resize_settings[IW_DIMENSION_V];
 
-	// TODO: Maybe rrctx should be kept around, instead of being recreated for each
-	// channel. That's possible except when the channels are processed differently,
-	// which probably only happens when using a channel offset.
-	rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
-	if(!rrctx) goto done;
+	// If the resize context for this dimension already exists, we should be
+	// able to reuse it. Otherwise, create a new one.
+	if(!rs->rrctx_cache) {
+		rs->rrctx_cache = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
+		if(!rs->rrctx_cache) goto done;
+	}
 
 	for(i=0;i<ctx->input_w;i++) {
 
@@ -822,7 +822,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// Now we have a row in the right format.
 		// Resize it and store it in the right place in the intermediate array.
 
-		iwpvt_resize_row_main(ctx,rrctx);
+		iwpvt_resize_row_main(ctx,rs->rrctx_cache);
 
 		if(ctx->intclamp)
 			clamp_output_samples(ctx);
@@ -841,7 +841,12 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	retval=1;
 
 done:
-	if(rrctx) iwpvt_resize_rows_done(ctx, rrctx);
+	if(rs && rs->use_offset && rs->rrctx_cache) {
+		// If using a channel offset, the channels may need different resize
+		// contexts. Delete the current context, so that it doesn't get reused.
+		iwpvt_resize_rows_done(ctx, rs->rrctx_cache);
+		rs->rrctx_cache = NULL;
+	}
 	if(inpix) iw_free(inpix);
 	if(outpix) iw_free(outpix);
 	ctx->in_pix=NULL;
@@ -865,13 +870,12 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int using_errdiffdither = 0;
 	int output_channel;
 	int is_alpha_channel;
-	struct iw_resize_settings *rs;
+	struct iw_resize_settings *rs = NULL;
 	int ditherfamily, dithersubtype;
 	int clamp_after_resize=0;
 	int clamp_after_composite=0;
 	struct iw_channelinfo_intermed *int_ci;
 	struct iw_channelinfo_out *out_ci;
-	struct iw_rr_ctx *rrctx = NULL;
 
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
@@ -955,8 +959,12 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 	rs=&ctx->resize_settings[IW_DIMENSION_H];
 
-	rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
-	if(!rrctx) goto done;
+	// If the resize context for this dimension already exists, we should be
+	// able to reuse it. Otherwise, create a new one.
+	if(!rs->rrctx_cache) {
+		rs->rrctx_cache = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
+		if(!rs->rrctx_cache) goto done;
+	}
 
 	for(j=0;j<ctx->intermed_height;j++) {
 		if(is_alpha_channel) {
@@ -969,7 +977,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 		// Resize it to out_pix
 
-		iwpvt_resize_row_main(ctx,rrctx);
+		iwpvt_resize_row_main(ctx,rs->rrctx_cache);
 
 		if(clamp_after_resize)
 			clamp_output_samples(ctx);
@@ -1054,7 +1062,12 @@ here:
 	retval=1;
 
 done:
-	if(rrctx) iwpvt_resize_rows_done(ctx, rrctx);
+	if(rs && rs->use_offset && rs->rrctx_cache) {
+		// If using a channel offset, the channels may need different resize
+		// contexts. Delete the current context, so that it doesn't get reused.
+		iwpvt_resize_rows_done(ctx, rs->rrctx_cache);
+		rs->rrctx_cache = NULL;
+	}
 	ctx->in_pix=NULL;
 	ctx->out_pix=NULL;
 	if(outpix) iw_free(outpix);
@@ -1147,7 +1160,7 @@ static int iw_process_internal(struct iw_context *ctx)
 {
 	int channel;
 	int retval=0;
-	int k;
+	int i,k;
 	int ret;
 	// A linear color-correction descriptor to use with alpha channels.
 	struct iw_csdescr csdescr_linear;
@@ -1226,6 +1239,14 @@ done:
 	if(ctx->final_alpha) { iw_free(ctx->final_alpha); ctx->final_alpha=NULL; }
 	for(k=0;k<IW_DITHER_MAXROWS;k++) {
 		if(ctx->dither_errors[k]) { iw_free(ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
+	}
+	// The 'resize contexts' are usually kept around so that they can be reused.
+	// Now that we're done with everything, free them.
+	for(i=0;i<2;i++) { // horizontal, vertical
+		if(ctx->resize_settings[i].rrctx_cache) {
+			iwpvt_resize_rows_done(ctx, ctx->resize_settings[i].rrctx_cache);
+			ctx->resize_settings[i].rrctx_cache = NULL;
+		}
 	}
 	return retval;
 }
