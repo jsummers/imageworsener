@@ -99,11 +99,17 @@ $IW srcimg/g2t.png actual/bkgd.png $CMPR -width 35 -height 35 -filter catrom -bk
 $IW srcimg/rgb8a.png actual/bkgd2.png $CMPR -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
 
 # test downscaling
-for f in auto nearest mix box triangle gaussian lanczos
+for f in auto mix triangle gaussian lanczos
 do
  $IW srcimg/rings1.png "actual/ds-$f.png" $DCMPR -width 35 -height 35 -filter "$f"
 done
 
+# Special test for box filter.
+# A source image with odd dimensions is best.
+$IW srcimg/rgb8.png actual/ds-box.png $CMPR -w 20 -h 20 -filter box -translate 0.0000001,0
+# Special test for nearest neighbor.
+# A source image with even dimensions is best
+$IW srcimg/4x4.png actual/ds-nearest.png $CMPR -w 2 -h 2 -filter nearest -translate 0.0000001,0
 
 $IW srcimg/4x4.png actual/cc-2.png $DCMPR $SCALE -filter catrom -cc 2
 $IW srcimg/4x4.png actual/cc-6.png $DCMPR $SCALE -filter catrom -cc 6
