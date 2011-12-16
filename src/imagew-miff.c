@@ -86,7 +86,7 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 		if(val[0]=='T') rctx->has_alpha = 1;
 	}
 	else if(!strcmp(name,"class")) {
-		if(strcmp(val,"DirectClass")) {
+		if(iw_stricmp(val,"DirectClass")) {
 			iw_set_error(rctx->ctx,"MIFF: Unsupported image class");
 			rctx->error_flag=1;
 		}
@@ -98,10 +98,10 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 		rctx->img->height = atoi(val);
 	}
 	else if(!strcmp(name,"colorspace")) {
-		if(!strcmp(val,"RGB")) {
+		if(!iw_stricmp(val,"RGB")) {
 			;
 		}
-		else if(!strcmp(val,"Gray")) {
+		else if(!iw_stricmp(val,"Gray")) {
 			rctx->is_grayscale = 1;
 		}
 		else {
@@ -117,7 +117,7 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 		}
 	}
 	else if(!strcmp(name,"compression")) {
-		if(strcmp(val,"None")) {
+		if(iw_stricmp(val,"None")) {
 			iw_set_error(rctx->ctx,"MIFF: Unsupported compression");
 			rctx->error_flag=1;
 		}
@@ -129,13 +129,13 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 		}
 	}
 	else if(!strcmp(name,"quantum:format")) {
-		if(strcmp(val,"floating-point")) {
+		if(iw_stricmp(val,"floating-point")) {
 			iw_set_error(rctx->ctx,"MIFF: Unsupported sample format");
 			rctx->error_flag=1;
 		}
 	}
 	else if(!strcmp(name,"units")) {
-		if(!strcmp(val,"PixelsPerCentimeter")) {
+		if(!iw_stricmp(val,"PixelsPerCentimeter")) {
 			rctx->density_units=1;
 		}
 	}

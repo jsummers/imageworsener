@@ -554,6 +554,7 @@ IW_EXPORT(void) iw_strlcpy(char *dst, const char *src, size_t dstlen);
 IW_EXPORT(void) iw_vsnprintf(char *buf, size_t buflen, const char *fmt, va_list ap);
 IW_EXPORT(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
   iw_gnuc_attribute ((format (printf, 3, 4)));
+IW_EXPORT(int) iw_stricmp(const char *s1, const char *s2);
 
 IW_EXPORT(int) iw_imgtype_num_channels(int t);
 

@@ -9,10 +9,8 @@
 
 #ifdef IW_WINDOWS
 #define IW_INLINE __inline
-#define iwpvt_stricmp _stricmp
 #else
 #define IW_INLINE inline
-#define iwpvt_stricmp strcasecmp
 #endif
 
 #define IW_MSG_MAX 200 // The usual max length of error messages, etc.

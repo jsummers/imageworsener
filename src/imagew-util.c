@@ -117,6 +117,15 @@ IW_IMPL(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
 	va_end(ap);
 }
 
+IW_IMPL(int) iw_stricmp(const char *s1, const char *s2)
+{
+#ifdef IW_WINDOWS
+	return _stricmp(s1,s2);
+#else
+	return strcasecmp(s1,s2);
+#endif
+}
+
 ////////////////////////////////////////////
 // A simple carry-with-multiply PRNG.
 
@@ -307,15 +316,15 @@ IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 	if(!s) return IW_FORMAT_UNKNOWN;
 	s++;
 
-	if(!iwpvt_stricmp(s,"png")) return IW_FORMAT_PNG;
-	if(!iwpvt_stricmp(s,"jpg")) return IW_FORMAT_JPEG;
-	if(!iwpvt_stricmp(s,"jpeg")) return IW_FORMAT_JPEG;
-	if(!iwpvt_stricmp(s,"bmp")) return IW_FORMAT_BMP;
-	if(!iwpvt_stricmp(s,"tif")) return IW_FORMAT_TIFF;
-	if(!iwpvt_stricmp(s,"tiff")) return IW_FORMAT_TIFF;
-	if(!iwpvt_stricmp(s,"miff")) return IW_FORMAT_MIFF;
-	if(!iwpvt_stricmp(s,"webp")) return IW_FORMAT_WEBP;
-	if(!iwpvt_stricmp(s,"gif")) return IW_FORMAT_GIF;
+	if(!iw_stricmp(s,"png")) return IW_FORMAT_PNG;
+	if(!iw_stricmp(s,"jpg")) return IW_FORMAT_JPEG;
+	if(!iw_stricmp(s,"jpeg")) return IW_FORMAT_JPEG;
+	if(!iw_stricmp(s,"bmp")) return IW_FORMAT_BMP;
+	if(!iw_stricmp(s,"tif")) return IW_FORMAT_TIFF;
+	if(!iw_stricmp(s,"tiff")) return IW_FORMAT_TIFF;
+	if(!iw_stricmp(s,"miff")) return IW_FORMAT_MIFF;
+	if(!iw_stricmp(s,"webp")) return IW_FORMAT_WEBP;
+	if(!iw_stricmp(s,"gif")) return IW_FORMAT_GIF;
 	return IW_FORMAT_UNKNOWN;
 }
 
