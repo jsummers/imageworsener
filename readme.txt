@@ -540,6 +540,14 @@ Options:
    "r" means to use a different random seed every time.
    Default is 0.
 
+ -compress <name>
+   Suggest the data compression method to use when writing the image.
+   Recognized options:
+    "none"
+    "zip"
+    "lzw"
+    "jpeg"
+
  -interlace
    Write an interlaced PNG image, or a progressive JPEG image.
 

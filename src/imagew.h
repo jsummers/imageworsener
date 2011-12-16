@@ -42,6 +42,9 @@ extern "C" {
 // If ==1, convert to grayscale.
 #define IW_VAL_CVT_TO_GRAYSCALE  11
 
+// Suggested compression algorithm
+#define IW_VAL_COMPRESSION       12
+
 // If ==1, disable all gamma correction.
 #define IW_VAL_DISABLE_GAMMA     13
 
@@ -174,6 +177,12 @@ extern "C" {
 
 #define IW_SAMPLETYPE_UINT          0
 #define IW_SAMPLETYPE_FLOATINGPOINT 1
+
+#define IW_COMPRESSION_AUTO     0
+#define IW_COMPRESSION_NONE     1
+#define IW_COMPRESSION_ZIP      2
+#define IW_COMPRESSION_LZW      3
+#define IW_COMPRESSION_JPEG     4
 
 // The CHANNELTYPE definitions must not be changed. They are used as array indices.
 #define IW_CHANNELTYPE_RED    0

@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added "-compress" option.
  - Added support for transparent virtual pixels ("-edge t").
  - Added "-translate s" option, so you can specify the translation amount in
    source pixels instead of target pixels.

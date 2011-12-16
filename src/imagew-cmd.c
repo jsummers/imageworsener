@@ -74,6 +74,7 @@ struct params_struct {
 	struct resize_blur resize_blur_y;
 	int bestfit;
 	int depth;
+	int compression;
 	int grayscale, condgrayscale;
 	double offset_r_h, offset_g_h, offset_b_h;
 	double offset_r_v, offset_g_v, offset_b_v;
@@ -784,6 +785,9 @@ static int run(struct params_struct *p)
 
 	if(!iw_process_image(ctx)) goto done;
 
+	if(p->compression>0) {
+		iw_set_value(ctx,IW_VAL_COMPRESSION,p->compression);
+	}
 	if(p->interlace) {
 		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
 	}
@@ -1384,6 +1388,16 @@ static int process_edge_policy(struct params_struct *p, const char *s)
 	return -1;
 }
 
+static int get_compression_from_name(struct params_struct *p, const char *s)
+{
+	if(!strcmp(s,"none")) return IW_COMPRESSION_NONE;
+	else if(!strcmp(s,"zip")) return IW_COMPRESSION_ZIP;
+	else if(!strcmp(s,"lzw")) return IW_COMPRESSION_LZW;
+	else if(!strcmp(s,"jpeg")) return IW_COMPRESSION_JPEG;
+	iwcmd_error(p,"Unknown compression \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
+	return -1;
+}
+
 static void usage_message(struct params_struct *p)
 {
 	iwcmd_message(p,
@@ -1433,7 +1447,7 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE,
- PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH,
+ PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH,
  PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
@@ -1498,6 +1512,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"offsetvblue",PT_OFFSET_B_V,1},
 		{"offsetvrb",PT_OFFSET_RB_V,1},
 		{"translate",PT_TRANSLATE,1},
+		{"compress",PT_COMPRESS,1},
 		{"page",PT_PAGETOREAD,1},
 		{"jpegquality",PT_JPEGQUALITY,1},
 		{"jpegsampling",PT_JPEGSAMPLING,1},
@@ -1779,6 +1794,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		else {
 			iwcmd_parse_dbl_pair(v,&p->translate_x,&p->translate_y);
 		}
+		break;
+	case PT_COMPRESS:
+		p->compression=get_compression_from_name(p,v);
+		if(p->compression<0) return 0;
 		break;
 	case PT_PAGETOREAD:
 		p->page_to_read = iwcmd_parse_int(v);

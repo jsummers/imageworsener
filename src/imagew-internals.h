@@ -228,6 +228,7 @@ struct iw_context {
 	int input_start_x, input_start_y, input_w, input_h;
 
 	// These are not used by the core library, but codecs may use them:
+	int compression; // IW_COMPRESSION_*. Suggested compression algorithm.
 	int page_to_read;
 	int include_screen;
 	int jpeg_quality;
