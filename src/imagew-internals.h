@@ -246,6 +246,8 @@ struct iw_context {
 	double *output_rev_color_corr_table;
 
 	double *nearest_color_table;
+
+	struct iw_zlib_module *zlib_module;
 };
 
 // Defined imagew-util.c

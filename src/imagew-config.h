@@ -22,9 +22,18 @@
 
 #define IW_IMPL(x) x
 
-#ifndef IW_SUPPORT_PNG
-#define IW_SUPPORT_PNG 1
+#ifndef IW_SUPPORT_ZLIB
+#define IW_SUPPORT_ZLIB 1
 #endif
+
+#ifndef IW_SUPPORT_PNG
+#if IW_SUPPORT_ZLIB == 1
+#define IW_SUPPORT_PNG 1
+#else
+#define IW_SUPPORT_PNG 0
+#endif
+#endif
+
 #ifndef IW_SUPPORT_JPEG
 #define IW_SUPPORT_JPEG 1
 #endif

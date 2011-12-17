@@ -125,7 +125,8 @@ add_library(imageworsener STATIC
  ${SRC}/imagew-miff.c
  ${SRC}/imagew-png.c
  ${SRC}/imagew-tiff.c
- ${SRC}/imagew-webp.c)
+ ${SRC}/imagew-webp.c
+ ${SRC}/imagew-zlib.c)
 
 add_executable(imagew ${SRC}/imagew-cmd.c)
 

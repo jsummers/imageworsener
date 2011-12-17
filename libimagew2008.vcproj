@@ -332,6 +332,10 @@
 				RelativePath=".\src\imagew-webp.c"
 				>
 			</File>
+			<File
+				RelativePath=".\src\imagew-zlib.c"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

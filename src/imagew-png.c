@@ -12,7 +12,6 @@
 #include <math.h>
 
 #include <png.h>
-#include <zlib.h>
 
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
@@ -607,14 +606,6 @@ IW_IMPL(char*) iw_get_libpng_version_string(char *s, int s_len)
 	const char *pv;
 	pv = png_get_libpng_ver(NULL);
 	iw_snprintf(s,s_len,"%s",pv);
-	return s;
-}
-
-IW_IMPL(char) *iw_get_zlib_version_string(char *s, int s_len)
-{
-	const char *zv;
-	zv = zlibVersion();
-	iw_snprintf(s,s_len,"%s",zv);
 	return s;
 }
 

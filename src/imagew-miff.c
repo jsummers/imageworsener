@@ -27,8 +27,17 @@ struct iwmiffreadcontext {
 	int profile_length;
 	int density_units; // 0=unknown, 1=cm
 	int density_known;
+	int compression;
 	double density_x, density_y;
 	struct iw_csdescr csdescr;
+
+	iw_byte *cbuf; // buffers compressed data
+	size_t cbuf_alloc;
+
+	// zmod: Pointer to the struct containing the zlib functions. If this is NULL,
+	// it means zlib compression is not supported.
+	struct iw_zlib_module *zmod; 
+	struct iw_zlib_context *zctx;
 };
 
 static int iwmiff_read(struct iwmiffreadcontext *rctx,
@@ -61,6 +70,76 @@ static iw_byte iwmiff_read_byte(struct iwmiffreadcontext *rctx)
 		return '\0';
 	}
 	return buf[0];
+}
+
+static iw_uint32 iwmiff_read_uint32(struct iwmiffreadcontext *rctx)
+{
+	iw_byte buf[4];
+	int ret;
+	ret = iwmiff_read(rctx,buf,4);
+	if(!ret) return 0;
+	return (buf[0]<<24) | (buf[1]<<16) | (buf[2]<<8) | buf[3];
+}
+
+static int iwmiff_read_zip_compressed_row(struct iwmiffreadcontext *rctx,
+	iw_byte *buf, size_t buflen)
+{
+	size_t cmprsize;
+	int retval=0;
+	int ret;
+
+	// If we don't have a decompression object yet, create one.
+	if(!rctx->zctx) {
+		rctx->zctx = rctx->zmod->inflate_init(rctx->ctx);
+		if(!rctx->zctx) goto done;
+	}
+
+	// In compressed MIFF files, each row of pixels is compressed independently,
+	// and preceded by a byte count.
+	cmprsize = iwmiff_read_uint32(rctx);
+	if(rctx->read_error_flag) goto done;
+
+	// When compressing, zlib supposedly never increases the size by more than
+	// 5 bytes per 16K. If the byte count is much more than that, give up.
+	if(cmprsize > buflen+100+buflen/1024) {
+		goto done;
+	}
+
+	// If necessary, allocate a buffer to read the row into.
+	if(rctx->cbuf_alloc < cmprsize) {
+		if(rctx->cbuf) {
+			iw_free(rctx->cbuf);
+			rctx->cbuf = NULL;
+		}
+	}
+	if(!rctx->cbuf) {
+		rctx->cbuf = iw_malloc(rctx->ctx, cmprsize+1024);
+		if(!rctx->cbuf) goto done;
+	}
+
+	// Read a row of compressed data from the file
+	ret = iwmiff_read(rctx,rctx->cbuf,cmprsize);
+	if(!ret) goto done;
+
+	// Decompress the row
+	ret = rctx->zmod->inflate_item(rctx->zctx,rctx->cbuf,cmprsize,buf,buflen);
+	if(!ret) goto done;
+
+	retval = 1;
+done:
+	return retval;
+}
+
+static int iwmiff_read_and_uncompress_row(struct iwmiffreadcontext *rctx,
+	iw_byte *buf, size_t buflen)
+{
+	if(rctx->compression==IW_COMPRESSION_NONE) {
+		return iwmiff_read(rctx,buf,buflen);
+	}
+	else if(rctx->compression==IW_COMPRESSION_ZIP) {
+		return iwmiff_read_zip_compressed_row(rctx,buf,buflen);
+	}
+	return 0;
 }
 
 static void iwmiff_parse_density(struct iwmiffreadcontext *rctx, const char *val)
@@ -117,7 +196,19 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 		}
 	}
 	else if(!strcmp(name,"compression")) {
-		if(iw_stricmp(val,"None")) {
+		if(!iw_stricmp(val,"None")) {
+			rctx->compression = IW_COMPRESSION_NONE;
+		}
+		else if(!iw_stricmp(val,"Zip")) {
+			if(rctx->zmod) {
+				rctx->compression = IW_COMPRESSION_ZIP;
+			}
+			else {
+				iw_set_error(rctx->ctx,"MIFF: Zip compression is not supported");
+				rctx->error_flag=1;
+			}
+		}
+		else {
 			iw_set_error(rctx->ctx,"MIFF: Unsupported compression");
 			rctx->error_flag=1;
 		}
@@ -323,7 +414,7 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 	if(!img->pixels) goto done;
 
 	for(j=0;j<img->height;j++) {
-		if(!iwmiff_read(rctx,tmprow,tmprowsize))
+		if(!iwmiff_read_and_uncompress_row(rctx,tmprow,tmprowsize))
 			goto done;
 
 		if(img->bit_depth==32) {
@@ -338,6 +429,10 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 
 done:
 	if(tmprow) free(tmprow);
+	if(rctx->zmod && rctx->zctx) {
+		rctx->zmod->inflate_end(rctx->zctx);
+		rctx->zctx = NULL;
+	}
 	return retval;
 }
 
@@ -354,6 +449,8 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	rctx.host_little_endian = iw_get_host_endianness();
 	rctx.iodescr = iodescr;
 	rctx.img = &img;
+	rctx.compression = IW_COMPRESSION_NONE;
+	rctx.zmod = iw_get_zlib_module(ctx);
 
 	// Assume unlabeled images are sRGB
 	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
@@ -393,6 +490,8 @@ done:
 	if(!retval) {
 		iw_set_error(ctx,"Failed to read MIFF file");
 	}
+
+	if(rctx.cbuf) iw_free(rctx.cbuf);
 
 	if(iodescr->close_fn)
 		(*iodescr->close_fn)(ctx,iodescr);
@@ -585,7 +684,6 @@ IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 
 	retval=1;
 
-//done:
 	if(wctx.iodescr->close_fn)
 		(*wctx.iodescr->close_fn)(ctx,wctx.iodescr);
 	return retval;

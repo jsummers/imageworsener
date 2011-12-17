@@ -545,6 +545,16 @@ IW_IMPL(char*) iw_get_copyright_string(struct iw_context *ctx, char *dst, int ds
 	return dst;
 }
 
+IW_IMPL(void) iw_set_zlib_module(struct iw_context *ctx, struct iw_zlib_module *z)
+{
+	ctx->zlib_module = z;
+}
+
+IW_IMPL(struct iw_zlib_module*) iw_get_zlib_module(struct iw_context *ctx)
+{
+	return ctx->zlib_module;
+}
+
 IW_IMPL(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 {
 	iw_byte v;

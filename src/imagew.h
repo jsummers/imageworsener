@@ -541,6 +541,9 @@ IW_EXPORT(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodes
 IW_EXPORT(char*) iw_get_libwebp_dec_version_string(char *s, int s_len);
 IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);
 
+// iw_enable_zlib() must be called to enable zlib compression in modules for
+// which it is optional.
+IW_EXPORT(void) iw_enable_zlib(struct iw_context *ctx);
 
 #ifdef IW_INCLUDE_UTIL_FUNCTIONS
 
@@ -600,6 +603,22 @@ IW_EXPORT(void) iw_free(void *mem);
 
 // Returns 0 if running on a big-endian system, 1 for little-endian.
 IW_EXPORT(int) iw_get_host_endianness(void);
+
+struct iw_zlib_context;
+
+typedef struct iw_zlib_context* (*iw_zlib_inflate_init_type)(struct iw_context *ctx);
+typedef void (*iw_zlib_inflate_end_type)(struct iw_zlib_context *zctx);
+typedef int (*iw_zlib_inflate_item_type)(struct iw_zlib_context *zctx,
+	iw_byte *src, size_t srclen, iw_byte *dst, size_t dstlen);
+
+struct iw_zlib_module {
+	iw_zlib_inflate_init_type inflate_init;
+	iw_zlib_inflate_end_type inflate_end;
+	iw_zlib_inflate_item_type inflate_item;
+};
+
+IW_EXPORT(void) iw_set_zlib_module(struct iw_context *ctx, struct iw_zlib_module *z);
+IW_EXPORT(struct iw_zlib_module*) iw_get_zlib_module(struct iw_context *ctx);
 
 #endif // IW_INCLUDE_UTIL_FUNCTIONS
 

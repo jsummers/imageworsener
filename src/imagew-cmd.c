@@ -502,6 +502,9 @@ static int run(struct params_struct *p)
 	iw_set_api_version(ctx,IW_VERSION_INT);
 	iw_set_userdata(ctx,(void*)p);
 	iw_set_warning_fn(ctx,my_warning_handler);
+#if IW_SUPPORT_ZLIB == 1
+	iw_enable_zlib(ctx);
+#endif
 
 	// Decide on the output format as early as possible, so we can give up
 	// quickly if it's not supported.
@@ -1428,8 +1431,9 @@ static void do_printversion(struct params_struct *p)
 #endif
 #if IW_SUPPORT_PNG == 1
 	iwcmd_message(p,"Uses libpng version %s\n",iw_get_libpng_version_string(buf,buflen));
-	// TODO: WebP might also use zlib, so we shouldn't just assume zlib is bundled
-	// with libpng.
+#endif
+#if IW_SUPPORT_ZLIB == 1
+	// TODO: WebP might use zlib, even if IW_SUPPORT_ZLIB is not set.
 	iwcmd_message(p,"Uses zlib version %s\n",iw_get_zlib_version_string(buf,buflen));
 #endif
 #if IW_SUPPORT_WEBP == 1
