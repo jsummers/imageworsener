@@ -102,6 +102,7 @@ static int iwmiff_read_zip_compressed_row(struct iwmiffreadcontext *rctx,
 	// When compressing, zlib supposedly never increases the size by more than
 	// 5 bytes per 16K. If the byte count is much more than that, give up.
 	if(cmprsize > buflen+100+buflen/1024) {
+		iw_set_error(rctx->ctx,"MIFF: Unsupported file or invalid Zip-compressed data");
 		goto done;
 	}
 
@@ -233,8 +234,11 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 	else if(!strcmp(name,"resolution")) {
 		iwmiff_parse_density(rctx,val);
 	}
-	else if(!strcmp(name,"profile:icc")) {
-		rctx->profile_length = atoi(val);
+	else if(!strncmp(name,"profile:",8)) {
+		// The data in a "profile" item is its size in the data section.
+		// We don't support processing this data, but we have to keep track of its
+		// total size, so we can skip over it.
+		rctx->profile_length += atoi(val);
 	}
 }
 
