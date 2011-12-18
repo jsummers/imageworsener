@@ -312,7 +312,7 @@ supported with floating point output.
 
 To use ImageMagick to write a MIFF file that IW can read, try:
 $ convert <input-file> -define quantum:format=floating-point -depth 32 \
- -compress none <output-file.miff>
+ -compress Zip <output-file.miff>
 
 Nonsquare pixels
 ----------------

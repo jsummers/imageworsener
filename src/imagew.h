@@ -611,10 +611,18 @@ typedef void (*iw_zlib_inflate_end_type)(struct iw_zlib_context *zctx);
 typedef int (*iw_zlib_inflate_item_type)(struct iw_zlib_context *zctx,
 	iw_byte *src, size_t srclen, iw_byte *dst, size_t dstlen);
 
+typedef struct iw_zlib_context* (*iw_zlib_deflate_init_type)(struct iw_context *ctx);
+typedef void (*iw_zlib_deflate_end_type)(struct iw_zlib_context *zctx);
+typedef int (*iw_zlib_deflate_item_type)(struct iw_zlib_context *zctx,
+	iw_byte *src, size_t srclen, iw_byte *dst, size_t dstlen, size_t *pdstused);
+
 struct iw_zlib_module {
 	iw_zlib_inflate_init_type inflate_init;
 	iw_zlib_inflate_end_type inflate_end;
 	iw_zlib_inflate_item_type inflate_item;
+	iw_zlib_deflate_init_type deflate_init;
+	iw_zlib_deflate_end_type deflate_end;
+	iw_zlib_deflate_item_type deflate_item;
 };
 
 IW_EXPORT(void) iw_set_zlib_module(struct iw_context *ctx, struct iw_zlib_module *z);

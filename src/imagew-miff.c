@@ -31,7 +31,7 @@ struct iwmiffreadcontext {
 	double density_x, density_y;
 	struct iw_csdescr csdescr;
 
-	iw_byte *cbuf; // buffers compressed data
+	iw_byte *cbuf; // A buffer for compressed data
 	size_t cbuf_alloc;
 
 	// zmod: Pointer to the struct containing the zlib functions. If this is NULL,
@@ -437,6 +437,10 @@ done:
 		rctx->zmod->inflate_end(rctx->zctx);
 		rctx->zctx = NULL;
 	}
+	if(rctx->cbuf) {
+		iw_free(rctx->cbuf);
+		rctx->cbuf = NULL;
+	}
 	return retval;
 }
 
@@ -495,8 +499,6 @@ done:
 		iw_set_error(ctx,"Failed to read MIFF file");
 	}
 
-	if(rctx.cbuf) iw_free(rctx.cbuf);
-
 	if(iodescr->close_fn)
 		(*iodescr->close_fn)(ctx,iodescr);
 	return retval;
@@ -505,14 +507,32 @@ done:
 struct iwmiffwritecontext {
 	int has_alpha;
 	int host_little_endian;
+	int compression;
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
+
+	iw_byte *cbuf; // A buffer for compressed data
+	size_t cbuf_alloc;
+
+	struct iw_zlib_module *zmod; 
+	struct iw_zlib_context *zctx;
 };
 
 static void iwmiff_write(struct iwmiffwritecontext *wctx, const void *buf, size_t n)
 {
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
+}
+
+static void iwmiff_write_uint32(struct iwmiffwritecontext *wctx, iw_uint32 n)
+{
+	iw_byte buf[4];
+
+	buf[0] = (n>>24);
+	buf[1] = (n>>16)&0xff;
+	buf[2] = (n>>8)&0xff;
+	buf[3] = n&0xff;
+	iwmiff_write(wctx,buf,4);
 }
 
 static void iwmiff_write_sz(struct iwmiffwritecontext *wctx, const char *s)
@@ -552,7 +572,16 @@ static void iwmiff_write_header(struct iwmiffwritecontext *wctx)
 		iwmiff_write_sz(wctx,"colorspace=RGB\n");
 	}
 
-	iwmiff_write_sz(wctx,"compression=None  quality=0\n");
+	iwmiff_write_sz(wctx,"compression=");
+	switch(wctx->compression) {
+	case IW_COMPRESSION_ZIP:
+		iwmiff_write_sz(wctx,"Zip");
+		break;
+	default:
+		iwmiff_write_sz(wctx,"None");
+	}
+
+	iwmiff_write_sz(wctx,"  quality=0\n");
 
 	if(wctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
 		iwmiff_write_sz(wctx,"units=PixelsPerCentimeter\n");
@@ -570,8 +599,7 @@ static void iwmiffw_convert_row32(struct iwmiffwritecontext *wctx,
 {
 	int i,j;
 
-	// The MIFF format is barely documented, but apparently it uses
-	// big-endian byte order.
+	// Binary sections of the MIFF format use big-endian byte order.
 	if(wctx->host_little_endian) {
 		for(i=0;i<numsamples;i++) {
 			for(j=0;j<4;j++) {
@@ -601,6 +629,52 @@ static void iwmiffw_convert_row64(struct iwmiffwritecontext *wctx,
 	}
 }
 
+static int iwmiff_write_zip_compressed_row(struct iwmiffwritecontext *wctx,
+	iw_byte *buf, size_t buflen)
+{
+	int retval=0;
+	int ret;
+	size_t out_used;
+
+	// If we don't have a compression object yet, create one.
+	if(!wctx->zctx) {
+		wctx->zctx = wctx->zmod->deflate_init(wctx->ctx);
+		if(!wctx->zctx) goto done;
+	}
+
+	// Allocate a buffer for the compressed data, if necessary.
+	// We assume that all rows are the same size, so we'll never have to
+	// increase the buffer size.
+	if(!wctx->cbuf) {
+		wctx->cbuf_alloc = buflen+100+buflen/1024;
+		wctx->cbuf = iw_malloc(wctx->ctx,wctx->cbuf_alloc);
+		if(!wctx->cbuf) goto done;
+	}
+
+	ret = wctx->zmod->deflate_item(wctx->zctx,buf,buflen,wctx->cbuf,wctx->cbuf_alloc,&out_used);
+	if(!ret) goto done;
+
+	// Write the 'count' that precedes each segment of compressed data.
+	iwmiff_write_uint32(wctx,(iw_uint32)out_used);
+	iwmiff_write(wctx,wctx->cbuf,out_used);
+	retval=1;
+done:
+	return retval;
+}
+
+static int iwmiff_compress_and_write_row(struct iwmiffwritecontext *wctx,
+	iw_byte *dstrow, size_t dstbpr)
+{
+	if(wctx->compression==IW_COMPRESSION_NONE) {
+		iwmiff_write(wctx,dstrow,dstbpr);
+		return 1;
+	}
+	else if(wctx->compression==IW_COMPRESSION_ZIP) {
+		return iwmiff_write_zip_compressed_row(wctx,dstrow,dstbpr);
+	}
+	return 0;
+}
+
 static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 {
 	struct iw_image *img;
@@ -610,6 +684,8 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 	const iw_byte *srcrow;
 	int bytes_per_sample;
 	int num_channels;
+	int cmpr_req;
+	int retval=0;
 
 	img = wctx->img;
 
@@ -644,8 +720,22 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 	// in the file with the value 0.
 	dstbpr = bytes_per_sample * num_channels * img->width;
 
-	iwmiff_write_header(wctx);
+	cmpr_req = iw_get_value(wctx->ctx,IW_VAL_COMPRESSION);
 
+	// If the caller requested no compression, do that.
+	// Otherwise use Zip compression if the zlib module is available.
+	switch(cmpr_req) {
+	case IW_COMPRESSION_NONE:
+		wctx->compression=IW_COMPRESSION_NONE;
+		break;
+	default:
+		if(wctx->zmod)
+			wctx->compression=IW_COMPRESSION_ZIP;
+		else
+			wctx->compression=IW_COMPRESSION_NONE;
+	}
+
+	iwmiff_write_header(wctx);
 
 	dstrow = iw_malloc(wctx->ctx,dstbpr);
 	if(!dstrow) goto done;
@@ -657,12 +747,21 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 		case 32: iwmiffw_convert_row32(wctx,srcrow,dstrow,img->width*num_channels); break;
 		case 64: iwmiffw_convert_row64(wctx,srcrow,dstrow,img->width*num_channels); break;
 		}
-		iwmiff_write(wctx,dstrow,dstbpr);
+		if(!iwmiff_compress_and_write_row(wctx,dstrow,dstbpr)) goto done;
 	}
 
+	retval = 1;
 done:
 	if(dstrow) iw_free(dstrow);
-	return 1;
+	if(wctx->zmod && wctx->zctx) {
+		wctx->zmod->deflate_end(wctx->zctx);
+		wctx->zctx = NULL;
+	}
+	if(wctx->cbuf) {
+		iw_free(wctx->cbuf);
+		wctx->cbuf = NULL;
+	}
+	return retval;
 }
 
 IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
@@ -680,14 +779,15 @@ IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 	wctx.iodescr=iodescr;
 
 	wctx.host_little_endian=iw_get_host_endianness();
+	wctx.zmod=iw_get_zlib_module(ctx);
 
 	iw_get_output_image(ctx,&img1);
 	wctx.img = &img1;
 
-	iwmiff_write_main(&wctx);
+	if(!iwmiff_write_main(&wctx)) goto done;
 
 	retval=1;
-
+done:
 	if(wctx.iodescr->close_fn)
 		(*wctx.iodescr->close_fn)(ctx,wctx.iodescr);
 	return retval;

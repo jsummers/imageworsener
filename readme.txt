@@ -547,6 +547,8 @@ Options:
     "zip"
     "lzw"
     "jpeg"
+   The MIFF format supports "zip" (the default) and "none". For all other
+   formats, this option currently has no effect.
 
  -interlace
    Write an interlaced PNG image, or a progressive JPEG image.
