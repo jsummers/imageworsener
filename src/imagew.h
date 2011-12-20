@@ -583,12 +583,15 @@ IW_EXPORT(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iode
 // Returns NULL on failure.
 IW_EXPORT(void*) iw_malloc_lowlevel(size_t n);
 IW_EXPORT(void*) iw_realloc_lowlevel(void *m, size_t n);
+// The "mallocz" functions initialize the memory to all 0 bytes.
+IW_EXPORT(void*) iw_mallocz_lowlevel(size_t n);
 
 // Allocates a block of memory of size n. On failure, generates an error
 // and returns NULL.
 // This function verifies that the memory block is not larger than the
 // amount set by iw_set_max_malloc().
 IW_EXPORT(void*) iw_malloc(struct iw_context *ctx, size_t n);
+IW_EXPORT(void*) iw_mallocz(struct iw_context *ctx, size_t n);
 IW_EXPORT(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n);
 
 // Same as iw_malloc, but allocates a block of memory of size n1*n2.

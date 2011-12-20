@@ -188,9 +188,8 @@ static void iwtiff_write_transferfunction(struct iwtiffwritecontext *tiffctx)
 	double linear;
 	double maxvalue;
 
-	buf = iw_malloc(tiffctx->ctx,tiffctx->transferfunc_size);
+	buf = iw_mallocz(tiffctx->ctx,tiffctx->transferfunc_size);
 	if(!buf) return;
-	memset(buf,0,tiffctx->transferfunc_size);
 
 	maxvalue = (double)(tiffctx->transferfunc_numentries-1);
 	for(i=0;i<tiffctx->transferfunc_numentries;i++) {
@@ -423,9 +422,8 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 	// Put the bitmap last
 	tiffctx->bitmap_offset = tmppos;
 
-	buf = iw_malloc(tiffctx->ctx,ifd_size);
+	buf = iw_mallocz(tiffctx->ctx,ifd_size);
 	if(!buf) goto done;
-	memset(buf,0,ifd_size);
 
 	// Set the "number of entries" field.
 
@@ -568,9 +566,8 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 	iwtiff_write_ifd(tiffctx);
 
 	// Pixels
-	dstrow = iw_malloc(tiffctx->ctx,dstbpr);
+	dstrow = iw_mallocz(tiffctx->ctx,dstbpr);
 	if(!dstrow) goto done;
-	memset(dstrow,0,dstbpr);
 
 	for(j=0;j<img->height;j++) {
 		srcrow = &img->pixels[j*img->bpr];
@@ -608,8 +605,8 @@ IW_IMPL(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 
 	memset(&img1,0,sizeof(struct iw_image));
 
-	tiffctx = iw_malloc(ctx,sizeof(struct iwtiffwritecontext));
-	memset(tiffctx,0,sizeof(struct iwtiffwritecontext));
+	tiffctx = iw_mallocz(ctx,sizeof(struct iwtiffwritecontext));
+	if(!tiffctx) goto done;
 
 	tiffctx->ctx = ctx;
 

@@ -763,9 +763,8 @@ IW_IMPL(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	int retval=0;
 
 	memset(&img,0,sizeof(struct iw_image));
-	rctx = iw_malloc(ctx,sizeof(struct iwgifreadcontext));
+	rctx = iw_mallocz(ctx,sizeof(struct iwgifreadcontext));
 	if(!rctx) goto done;
-	memset(rctx,0,sizeof(struct iwgifreadcontext));
 
 	rctx->ctx = ctx;
 	rctx->iodescr = iodescr;

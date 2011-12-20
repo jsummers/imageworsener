@@ -408,9 +408,8 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 	samples_per_row = samples_per_pixel * img->width;
 
 	tmprowsize = (img->bit_depth/8)*samples_per_row;
-	tmprow = iw_malloc(rctx->ctx,tmprowsize);
+	tmprow = iw_mallocz(rctx->ctx,tmprowsize);
 	if(!tmprow) goto done;
-	memset(tmprow,0,tmprowsize);
 
 	img->bpr = tmprowsize;
 
@@ -737,9 +736,8 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 
 	iwmiff_write_header(wctx);
 
-	dstrow = iw_malloc(wctx->ctx,dstbpr);
+	dstrow = iw_mallocz(wctx->ctx,dstbpr);
 	if(!dstrow) goto done;
-	memset(dstrow,0,dstbpr);
 
 	for(j=0;j<img->height;j++) {
 		srcrow = &img->pixels[j*img->bpr];

@@ -32,6 +32,11 @@ IW_IMPL(void*) iw_malloc_lowlevel(size_t n)
 	return malloc(n);
 }
 
+IW_IMPL(void*) iw_mallocz_lowlevel(size_t n)
+{
+	return calloc(n,1);
+}
+
 IW_IMPL(void*) iw_realloc_lowlevel(void *m, size_t n)
 {
 	return realloc(m,n);
@@ -46,7 +51,7 @@ IW_IMPL(void*) iw_strdup(const char *s)
 #endif
 }
 
-IW_IMPL(void*) iw_malloc(struct iw_context *ctx, size_t n)
+static void* iw_malloc_internal(struct iw_context *ctx, size_t n, int zflag)
 {
 	void *mem;
 
@@ -54,12 +59,25 @@ IW_IMPL(void*) iw_malloc(struct iw_context *ctx, size_t n)
 		iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
-	mem = iw_malloc_lowlevel(n);
+	if(zflag)
+		mem = iw_mallocz_lowlevel(n);
+	else
+		mem = iw_malloc_lowlevel(n);
 	if(!mem) {
 		iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
 	return mem;
+}
+
+IW_IMPL(void*) iw_malloc(struct iw_context *ctx, size_t n)
+{
+	return iw_malloc_internal(ctx,n,0);
+}
+
+IW_IMPL(void*) iw_mallocz(struct iw_context *ctx, size_t n)
+{
+	return iw_malloc_internal(ctx,n,1);
 }
 
 IW_IMPL(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n)
@@ -137,9 +155,8 @@ struct iw_prng {
 struct iw_prng *iwpvt_prng_create(void)
 {
 	struct iw_prng *prng;
-	prng = (struct iw_prng*)iw_malloc_lowlevel(sizeof(struct iw_prng));
+	prng = (struct iw_prng*)iw_mallocz_lowlevel(sizeof(struct iw_prng));
 	if(!prng) return NULL;
-	memset(prng,0,sizeof(struct iw_prng));
 	return prng;
 }
 

@@ -27,10 +27,9 @@ static struct iw_zlib_context* iw_zlib_inflate_init(struct iw_context *ctx)
 	struct iw_zlib_context *zctx;
 	int ret;
 
-	zctx = iw_malloc(ctx,sizeof(struct iw_zlib_context));
+	zctx = iw_mallocz(ctx,sizeof(struct iw_zlib_context));
 	if(!zctx) return NULL;
 
-	memset(zctx,0,sizeof(struct iw_zlib_context));
 	zctx->ctx = ctx;
 
 	ret = inflateInit(&zctx->strm);
@@ -82,10 +81,9 @@ static struct iw_zlib_context* iw_zlib_deflate_init(struct iw_context *ctx)
 	struct iw_zlib_context *zctx;
 	int ret;
 
-	zctx = iw_malloc(ctx,sizeof(struct iw_zlib_context));
+	zctx = iw_mallocz(ctx,sizeof(struct iw_zlib_context));
 	if(!zctx) return NULL;
 
-	memset(zctx,0,sizeof(struct iw_zlib_context));
 	zctx->ctx = ctx;
 
 	// TODO: Make the compression level configurable.

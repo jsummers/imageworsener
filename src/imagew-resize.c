@@ -376,9 +376,8 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 {
 	struct iw_rr_ctx *rrctx = NULL;
 
-	rrctx = iw_malloc(ctx,sizeof(struct iw_rr_ctx));
+	rrctx = iw_mallocz(ctx,sizeof(struct iw_rr_ctx));
 	if(!rrctx) goto done;
-	memset(rrctx,0,sizeof(struct iw_rr_ctx));
 
 	// rrctx stores the internal settings we'll use to resize (the current
 	// dimension of) the image.

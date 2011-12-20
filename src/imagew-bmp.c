@@ -204,9 +204,8 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 	iwbmp_write_palette(bmpctx);
 
 	// Pixels
-	dstrow = iw_malloc(bmpctx->ctx,dstbpr);
+	dstrow = iw_mallocz(bmpctx->ctx,dstbpr);
 	if(!dstrow) goto done;
-	memset(dstrow,0,dstbpr);
 
 	for(j=img->height-1;j>=0;j--) {
 		srcrow = &img->pixels[j*img->bpr];
