@@ -42,15 +42,6 @@ IW_IMPL(void*) iw_realloc_lowlevel(void *m, size_t n)
 	return realloc(m,n);
 }
 
-IW_IMPL(void*) iw_strdup(const char *s)
-{
-#ifdef IW_WINDOWS
-	return _strdup(s);
-#else
-	return strdup(s);
-#endif
-}
-
 static void* iw_malloc_internal(struct iw_context *ctx, size_t n, int zflag)
 {
 	void *mem;
