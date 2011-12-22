@@ -383,7 +383,7 @@ static void do_bestfit(struct params_struct *p, int old_width, int old_height)
 		p->new_height = x;
 		goto done;
 	}
-	
+
 	// Fit to height instead.
 	exp_factor = ((double)p->new_height) / old_height;
 	exp_factor *= (p->ydens/p->xdens);

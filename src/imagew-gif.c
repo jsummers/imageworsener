@@ -187,7 +187,7 @@ static int iwgif_read_extension(struct iwgifreadcontext *rctx)
 	default:
 		if(!iwgif_skip_subblocks(rctx)) goto done;
 	}
-	
+
 	retval=1;
 done:
 	return retval;
@@ -221,7 +221,7 @@ static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int color
 	// Because of how we de-interlace, it's not obvious whether the Y coordinate
 	// is on the screen. The easiest way is to check if the row pointer is NULL.
 	if(rctx->row_pointers[yi]==NULL) return;
-	
+
 	// Figure out what color to set the pixel to.
 
 	if(coloridx<(unsigned int)rctx->colortable.num_entries) {
@@ -471,7 +471,7 @@ static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 		return 0;
 	}
 
-	if(rctx->image_left>0 || rctx->image_top>0 || 
+	if(rctx->image_left>0 || rctx->image_top>0 ||
 		(rctx->image_left+rctx->image_width < rctx->screen_width) ||
 		(rctx->image_top+rctx->image_height < rctx->screen_height) )
 	{

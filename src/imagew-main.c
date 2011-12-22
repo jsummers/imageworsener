@@ -485,7 +485,7 @@ static int iw_random_dither(struct iw_context *ctx, double fraction, int x, int 
 	int dithersubtype, int channel)
 {
 	double threshold;
-	
+
 	threshold = ((double)iwpvt_prng_rand(ctx->prng)) / (double)0xffffffff;
 	if(fraction>=threshold) return 1;
 	return 0;
@@ -1227,7 +1227,7 @@ static int iw_process_internal(struct iw_context *ctx)
 				ret=iw_process_one_channel(ctx,channel,&csdescr_linear,&csdescr_linear);
 			else
 				ret=iw_process_one_channel(ctx,channel,&ctx->img1cs,&ctx->img2cs);
-				
+
 			if(!ret) goto done;
 		}
 	}
@@ -1577,7 +1577,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 	// * using a different resampling algorithm for the alpha channel (this is
 	//   no longer supported)
 	// * 'intermediate clamping'
-	// 
+	//
 	// Setting this to Late is the safe, though it is slower than Early.
 	ctx->apply_bkgd_strategy=IW_BKGD_STRATEGY_LATE;
 }

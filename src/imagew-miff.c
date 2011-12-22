@@ -36,7 +36,7 @@ struct iwmiffreadcontext {
 
 	// zmod: Pointer to the struct containing the zlib functions. If this is NULL,
 	// it means zlib compression is not supported.
-	struct iw_zlib_module *zmod; 
+	struct iw_zlib_module *zmod;
 	struct iw_zlib_context *zctx;
 };
 
@@ -514,7 +514,7 @@ struct iwmiffwritecontext {
 	iw_byte *cbuf; // A buffer for compressed data
 	size_t cbuf_alloc;
 
-	struct iw_zlib_module *zmod; 
+	struct iw_zlib_module *zmod;
 	struct iw_zlib_context *zctx;
 };
 

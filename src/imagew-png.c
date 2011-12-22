@@ -164,7 +164,7 @@ static void iwpng_read_sbit(struct iw_context *ctx,
 	else {
 		iw_set_input_sbit(ctx,IW_CHANNELTYPE_GRAY ,sbit->gray);
 	}
-	
+
 	if(color_type & PNG_COLOR_MASK_ALPHA) {
 		iw_set_input_sbit(ctx,IW_CHANNELTYPE_ALPHA,sbit->alpha);
 		// Apparently, it's not possible for a PNG file to indicate

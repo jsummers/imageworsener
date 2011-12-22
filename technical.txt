@@ -175,7 +175,7 @@ Files in core library:
  
 Files in auxiliary library:
  imagew-png.c, imagew-jpeg.c, imagew-webp.c, imagew-gif.c, imagew-miff.c,
- imagew-bmp.c, imagew-tiff.c
+ imagew-bmp.c, imagew-tiff.c, imagew-zlib.c
 
 Files in command-line utility:
  imagew-cmd.c, imagew.rc, imagew.ico
@@ -281,9 +281,9 @@ by TIFF viewers.
 TIFF colorspaces
 ----------------
 
-When writing TIFF files, IW uses the TransferFunction TIFF tag to label the
+When writing TIFF files, IW uses the TransferFunction TIFF tag to describe the
 colorspace that the output image uses. I doubt that many TIFF viewers read
-this tag, and actually, I don't know how to test whether I'm using it
+this tag, and actually, I don't even know how to test whether I'm using it
 correctly. You can disable the TransferFunction tag by using the "-nocslabel"
 option.
 
@@ -403,7 +403,7 @@ Ordered dithering + transparency
 Ordered (or halftone) dithering with IW can produce poor results when used
 with images that have partial transparency. If you ordered-dither both the
 colors and the alpha channel, you can have a situation where all the (say)
-darker pixels get made transparent, leaving only the lighter pixels visible,
+darker pixels are made transparent, leaving only the lighter pixels visible,
 and making the image much lighter than it should be. This happens because the
 same dither pattern is used for two purposes (color thresholding and
 transparency thresholding).
