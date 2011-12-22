@@ -63,11 +63,6 @@ static int iwgif_read(struct iwgifreadcontext *rctx,
 	return 1;
 }
 
-static int iw_read_uint16le(iw_byte *buf)
-{
-	return (int)buf[0] | (((int)buf[1])<<8);
-}
-
 static int iwgif_read_file_header(struct iwgifreadcontext *rctx)
 {
 	if(!iwgif_read(rctx,rctx->rbuf,6)) return 0;
@@ -86,8 +81,8 @@ static int iwgif_read_screen_descriptor(struct iwgifreadcontext *rctx)
 
 	// The screen descriptor is always 7 bytes in size.
 	if(!iwgif_read(rctx,rctx->rbuf,7)) return 0;
-	rctx->screen_width = iw_read_uint16le(&rctx->rbuf[0]);
-	rctx->screen_height = iw_read_uint16le(&rctx->rbuf[2]);
+	rctx->screen_width = (int)iw_get_ui16le(&rctx->rbuf[0]);
+	rctx->screen_height = (int)iw_get_ui16le(&rctx->rbuf[2]);
 	// screen_width and _height may be updated in iwgif_init_screen().
 
 	has_global_ct = (int)((rctx->rbuf[4]>>7)&0x01);
@@ -614,12 +609,12 @@ static int iwgif_read_image(struct iwgifreadcontext *rctx)
 	// Read image header information
 	if(!iwgif_read(rctx,rctx->rbuf,9)) goto done;
 
-	rctx->image_left = iw_read_uint16le(&rctx->rbuf[0]);
-	rctx->image_top = iw_read_uint16le(&rctx->rbuf[2]);
+	rctx->image_left = (int)iw_get_ui16le(&rctx->rbuf[0]);
+	rctx->image_top = (int)iw_get_ui16le(&rctx->rbuf[2]);
 	// image_left and _top may be updated in iwgif_init_screen().
 
-	rctx->image_width = iw_read_uint16le(&rctx->rbuf[4]);
-	rctx->image_height = iw_read_uint16le(&rctx->rbuf[6]);
+	rctx->image_width = (int)iw_get_ui16le(&rctx->rbuf[4]);
+	rctx->image_height = (int)iw_get_ui16le(&rctx->rbuf[6]);
 
 	rctx->interlaced = (int)((rctx->rbuf[8]>>6)&0x01);
 

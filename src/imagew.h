@@ -607,6 +607,15 @@ IW_EXPORT(void) iw_free(void *mem);
 // Returns 0 if running on a big-endian system, 1 for little-endian.
 IW_EXPORT(int) iw_get_host_endianness(void);
 
+IW_EXPORT(void) iw_set_ui16le(iw_byte *b, unsigned int n);
+IW_EXPORT(void) iw_set_ui32le(iw_byte *b, unsigned int n);
+IW_EXPORT(void) iw_set_ui16be(iw_byte *b, unsigned int n);
+IW_EXPORT(void) iw_set_ui32be(iw_byte *b, unsigned int n);
+IW_EXPORT(unsigned int) iw_get_ui16le(const iw_byte *b);
+IW_EXPORT(unsigned int) iw_get_ui32le(const iw_byte *b);
+IW_EXPORT(unsigned int) iw_get_ui16be(const iw_byte *b);
+IW_EXPORT(unsigned int) iw_get_ui32be(const iw_byte *b);
+
 struct iw_zlib_context;
 
 typedef struct iw_zlib_context* (*iw_zlib_inflate_init_type)(struct iw_context *ctx);

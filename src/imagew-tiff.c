@@ -65,24 +65,10 @@ static void iwtiff_write(struct iwtiffwritecontext *tiffctx, const void *buf, si
 	(*tiffctx->iodescr->write_fn)(tiffctx->ctx,tiffctx->iodescr,buf,n);
 }
 
-static void iwtiff_set_ui16(iw_byte *b, unsigned int n)
-{
-	b[0] = n&0xff;
-	b[1] = (n>>8)&0xff;
-}
-
-static void iwtiff_set_ui32(iw_byte *b, unsigned int n)
-{
-	b[0] = n&0xff;
-	b[1] = (n>>8)&0xff;
-	b[2] = (n>>16)&0xff;
-	b[3] = (n>>24)&0xff;
-}
-
 static void iwtiff_write_ui16(struct iwtiffwritecontext *tiffctx, unsigned int n)
 {
 	iw_byte buf[2];
-	iwtiff_set_ui16(buf,n);
+	iw_set_ui16le(buf,n);
 	iwtiff_write(tiffctx,buf,2);
 }
 
@@ -136,8 +122,8 @@ static void iwtiff_write_file_header(struct iwtiffwritecontext *tiffctx)
 	iw_byte buf[8];
 	buf[0] = 73;
 	buf[1] = 73;
-	iwtiff_set_ui16(&buf[2],42);
-	iwtiff_set_ui32(&buf[4],8); // Pointer to IFD
+	iw_set_ui16le(&buf[2],42);
+	iw_set_ui32le(&buf[4],8); // Pointer to IFD
 	iwtiff_write(tiffctx,buf,8);
 	tiffctx->curr_filepos = 8;
 }
@@ -170,10 +156,10 @@ static void iwtiff_write_density(struct iwtiffwritecontext *tiffctx)
 		denom=1;
 	}
 
-	iwtiff_set_ui32(&buf[0],x);
-	iwtiff_set_ui32(&buf[4],denom);
-	iwtiff_set_ui32(&buf[8],y);
-	iwtiff_set_ui32(&buf[12],denom);
+	iw_set_ui32le(&buf[0],x);
+	iw_set_ui32le(&buf[4],denom);
+	iw_set_ui32le(&buf[8],y);
+	iw_set_ui32le(&buf[12],denom);
 	iwtiff_write(tiffctx,buf,16);
 }
 
@@ -197,7 +183,7 @@ static void iwtiff_write_transferfunction(struct iwtiffwritecontext *tiffctx)
 
 		linear = iw_convert_sample_to_linear(targetsample,&tiffctx->csdescr);
 
-		iwtiff_set_ui16(&buf[i*2],(unsigned int)(0.5+65535.0*linear));
+		iw_set_ui16le(&buf[i*2],(unsigned int)(0.5+65535.0*linear));
 	}
 	iwtiff_write(tiffctx,buf,tiffctx->transferfunc_size);
 	iw_free(buf);
@@ -230,7 +216,7 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 				else if(c==1) v=tiffctx->pal->entry[i].g;
 				else v=tiffctx->pal->entry[i].r;
 				v |= (v<<8);
-				iwtiff_set_ui16(&buf[c*tiffctx->palentries*2+i*2],v);
+				iw_set_ui16le(&buf[c*tiffctx->palentries*2+i*2],v);
 			}
 		}
 	}
@@ -261,80 +247,80 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 
 static void write_tag_to_ifd(struct iwtiffwritecontext *tiffctx,int tagnum,iw_byte *buf)
 {
-	iwtiff_set_ui16(&buf[0],tagnum);
-	iwtiff_set_ui16(&buf[2],IWTIFF_UINT16); // tag type (default=short)
-	iwtiff_set_ui32(&buf[4],1); // value count (default=1)
-	iwtiff_set_ui32(&buf[8],0); // value or offset (default=0)
+	iw_set_ui16le(&buf[0],tagnum);
+	iw_set_ui16le(&buf[2],IWTIFF_UINT16); // tag type (default=short)
+	iw_set_ui32le(&buf[4],1); // value count (default=1)
+	iw_set_ui32le(&buf[8],0); // value or offset (default=0)
 
 	switch(tagnum) {
 	case IWTIFF_TAG256_IMAGEWIDTH:
-		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
-		iwtiff_set_ui32(&buf[8],tiffctx->img->width);
+		iw_set_ui16le(&buf[2],IWTIFF_UINT32);
+		iw_set_ui32le(&buf[8],tiffctx->img->width);
 		break;
 	case IWTIFF_TAG257_IMAGELENGTH:
-		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
-		iwtiff_set_ui32(&buf[8],tiffctx->img->height);
+		iw_set_ui16le(&buf[2],IWTIFF_UINT32);
+		iw_set_ui32le(&buf[8],tiffctx->img->height);
 		break;
 	case IWTIFF_TAG258_BITSPERSAMPLE:
-		iwtiff_set_ui32(&buf[4],tiffctx->samplesperpixel); // value count
+		iw_set_ui32le(&buf[4],tiffctx->samplesperpixel); // value count
 		if(tiffctx->bitspersample_size<=4) {
-			iwtiff_set_ui16(&buf[8],tiffctx->bitspersample);
+			iw_set_ui16le(&buf[8],tiffctx->bitspersample);
 			if(tiffctx->samplesperpixel==2) {
-				iwtiff_set_ui16(&buf[10],tiffctx->bitspersample);
+				iw_set_ui16le(&buf[10],tiffctx->bitspersample);
 			}
 		}
 		else {
-			iwtiff_set_ui32(&buf[8],tiffctx->bitspersample_offset);
+			iw_set_ui32le(&buf[8],tiffctx->bitspersample_offset);
 		}
 		break;
 	case IWTIFF_TAG259_COMPRESSION:
-		iwtiff_set_ui16(&buf[8],1);
+		iw_set_ui16le(&buf[8],1);
 		break;
 	case IWTIFF_TAG262_PHOTOMETRIC:
-		iwtiff_set_ui16(&buf[8],tiffctx->photometric);
+		iw_set_ui16le(&buf[8],tiffctx->photometric);
 		break;
 	case IWTIFF_TAG282_XRESOLUTION:
-		iwtiff_set_ui16(&buf[2],IWTIFF_RATIONAL);
-		iwtiff_set_ui32(&buf[8],tiffctx->pixdens_offset);
+		iw_set_ui16le(&buf[2],IWTIFF_RATIONAL);
+		iw_set_ui32le(&buf[8],tiffctx->pixdens_offset);
 		break;
 	case IWTIFF_TAG283_YRESOLUTION:
-		iwtiff_set_ui16(&buf[2],IWTIFF_RATIONAL);
-		iwtiff_set_ui32(&buf[8],tiffctx->pixdens_offset+8);
+		iw_set_ui16le(&buf[2],IWTIFF_RATIONAL);
+		iw_set_ui32le(&buf[8],tiffctx->pixdens_offset+8);
 		break;
 	case IWTIFF_TAG296_RESOLUTIONUNIT:
 		// 1==no units, 2=pixels/inch, 3=pixels/cm
 		if(tiffctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
-			iwtiff_set_ui16(&buf[8],(tiffctx->write_density_in_cm)?3:2);
+			iw_set_ui16le(&buf[8],(tiffctx->write_density_in_cm)?3:2);
 		}
 		else {
-			iwtiff_set_ui16(&buf[8],1);
+			iw_set_ui16le(&buf[8],1);
 		}
 		break;
 	case IWTIFF_TAG273_STRIPOFFSETS:
-		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
-		iwtiff_set_ui32(&buf[8],tiffctx->bitmap_offset);
+		iw_set_ui16le(&buf[2],IWTIFF_UINT32);
+		iw_set_ui32le(&buf[8],tiffctx->bitmap_offset);
 		break;
 	case IWTIFF_TAG277_SAMPLESPERPIXEL:
-		iwtiff_set_ui16(&buf[8],tiffctx->samplesperpixel);
+		iw_set_ui16le(&buf[8],tiffctx->samplesperpixel);
 		break;
 	case IWTIFF_TAG278_ROWSPERSTRIP:
-		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
-		iwtiff_set_ui32(&buf[8],tiffctx->img->height);
+		iw_set_ui16le(&buf[2],IWTIFF_UINT32);
+		iw_set_ui32le(&buf[8],tiffctx->img->height);
 		break;
 	case IWTIFF_TAG279_STRIPBYTECOUNTS:
-		iwtiff_set_ui16(&buf[2],IWTIFF_UINT32);
-		iwtiff_set_ui32(&buf[8],(unsigned int)tiffctx->bitmap_size);
+		iw_set_ui16le(&buf[2],IWTIFF_UINT32);
+		iw_set_ui32le(&buf[8],(unsigned int)tiffctx->bitmap_size);
 		break;
 	case IWTIFF_TAG320_COLORMAP:
-		iwtiff_set_ui32(&buf[4],3*tiffctx->palentries);
-		iwtiff_set_ui32(&buf[8],tiffctx->palette_offset);
+		iw_set_ui32le(&buf[4],3*tiffctx->palentries);
+		iw_set_ui32le(&buf[8],tiffctx->palette_offset);
 		break;
 	case IWTIFF_TAG301_TRANSFERFUNCTION:
-		iwtiff_set_ui32(&buf[4],tiffctx->transferfunc_numentries);
-		iwtiff_set_ui32(&buf[8],tiffctx->transferfunc_offset);
+		iw_set_ui32le(&buf[4],tiffctx->transferfunc_numentries);
+		iw_set_ui32le(&buf[8],tiffctx->transferfunc_offset);
 		break;
 	case IWTIFF_TAG338_EXTRASAMPLES:
-		iwtiff_set_ui16(&buf[8],2); // 2 = Unassociated alpha
+		iw_set_ui16le(&buf[8],2); // 2 = Unassociated alpha
 		break;
 	}
 }
@@ -427,14 +413,14 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 
 	// Set the "number of entries" field.
 
-	iwtiff_set_ui16(&buf[0],tiffctx->num_tags);
+	iw_set_ui16le(&buf[0],tiffctx->num_tags);
 
 	for(i=0;i<tiffctx->num_tags;i++) {
 		write_tag_to_ifd(tiffctx,tiffctx->taglist[i],&buf[2+12*i]);
 	}
 
 	// The "next IFD" pointer
-	iwtiff_set_ui32(&buf[2+12*tiffctx->num_tags],0);
+	iw_set_ui32le(&buf[2+12*tiffctx->num_tags],0);
 
 	// Write the whole IFD to the file
 	iwtiff_write(tiffctx,buf,ifd_size);

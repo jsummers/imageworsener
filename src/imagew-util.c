@@ -326,6 +326,54 @@ IW_IMPL(int) iw_get_host_endianness(void)
 	return 0;
 }
 
+IW_IMPL(void) iw_set_ui16le(iw_byte *b, unsigned int n)
+{
+	b[0] = n&0xff;
+	b[1] = (n>>8)&0xff;
+}
+
+IW_IMPL(void) iw_set_ui32le(iw_byte *b, unsigned int n)
+{
+	b[0] = n&0xff;
+	b[1] = (n>>8)&0xff;
+	b[2] = (n>>16)&0xff;
+	b[3] = (n>>24)&0xff;
+}
+
+IW_IMPL(void) iw_set_ui16be(iw_byte *b, unsigned int n)
+{
+	b[0] = (n>>8)&0xff;
+	b[1] = n&0xff;
+}
+
+IW_IMPL(void) iw_set_ui32be(iw_byte *b, unsigned int n)
+{
+	b[0] = (n>>24)&0xff;
+	b[1] = (n>>16)&0xff;
+	b[2] = (n>>8)&0xff;
+	b[3] = n&0xff;
+}
+
+IW_IMPL(unsigned int) iw_get_ui16le(const iw_byte *b)
+{
+	return b[0] | (b[1]<<8);
+}
+
+IW_IMPL(unsigned int) iw_get_ui32le(const iw_byte *b)
+{
+	return b[0] | (b[1]<<8) | (b[2]<<16) | (b[3]<<24);
+}
+
+IW_IMPL(unsigned int) iw_get_ui16be(const iw_byte *b)
+{
+	return (b[0]<<8) | b[1];
+}
+
+IW_IMPL(unsigned int) iw_get_ui32be(const iw_byte *b)
+{
+	return (b[0]<<24) | (b[1]<<16) | (b[2]<<8) | b[3];
+}
+
 IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 {
 	char *s;

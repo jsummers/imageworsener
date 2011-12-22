@@ -72,13 +72,13 @@ static iw_byte iwmiff_read_byte(struct iwmiffreadcontext *rctx)
 	return buf[0];
 }
 
-static iw_uint32 iwmiff_read_uint32(struct iwmiffreadcontext *rctx)
+static unsigned int iwmiff_read_uint32(struct iwmiffreadcontext *rctx)
 {
 	iw_byte buf[4];
 	int ret;
 	ret = iwmiff_read(rctx,buf,4);
 	if(!ret) return 0;
-	return (buf[0]<<24) | (buf[1]<<16) | (buf[2]<<8) | buf[3];
+	return iw_get_ui32be(buf);
 }
 
 static int iwmiff_read_zip_compressed_row(struct iwmiffreadcontext *rctx,
@@ -523,14 +523,11 @@ static void iwmiff_write(struct iwmiffwritecontext *wctx, const void *buf, size_
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 }
 
-static void iwmiff_write_uint32(struct iwmiffwritecontext *wctx, iw_uint32 n)
+static void iwmiff_write_uint32(struct iwmiffwritecontext *wctx, unsigned int n)
 {
 	iw_byte buf[4];
 
-	buf[0] = (n>>24);
-	buf[1] = (n>>16)&0xff;
-	buf[2] = (n>>8)&0xff;
-	buf[3] = n&0xff;
+	iw_set_ui32be(buf,n);
 	iwmiff_write(wctx,buf,4);
 }
 
@@ -654,7 +651,7 @@ static int iwmiff_write_zip_compressed_row(struct iwmiffwritecontext *wctx,
 	if(!ret) goto done;
 
 	// Write the 'count' that precedes each segment of compressed data.
-	iwmiff_write_uint32(wctx,(iw_uint32)out_used);
+	iwmiff_write_uint32(wctx,(unsigned int)out_used);
 	iwmiff_write(wctx,wctx->cbuf,out_used);
 	retval=1;
 done:

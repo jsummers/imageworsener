@@ -33,20 +33,6 @@ static void iwbmp_write(struct iwbmpwritecontext *bmpctx, const void *buf, size_
 	(*bmpctx->iodescr->write_fn)(bmpctx->ctx,bmpctx->iodescr,buf,n);
 }
 
-static void iwbmp_set_ui16(iw_byte *b, unsigned int n)
-{
-	b[0] = n&0xff;
-	b[1] = (n>>8)&0xff;
-}
-
-static void iwbmp_set_ui32(iw_byte *b, unsigned int n)
-{
-	b[0] = n&0xff;
-	b[1] = (n>>8)&0xff;
-	b[2] = (n>>16)&0xff;
-	b[3] = (n>>24)&0xff;
-}
-
 static void iwbmp_convert_row1(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
@@ -98,9 +84,9 @@ static void iwbmp_write_file_header(struct iwbmpwritecontext *bmpctx)
 	memset(&fileheader,0,sizeof(fileheader));
 	fileheader[0] = 66; // 'B'
 	fileheader[1] = 77; // 'M'
-	iwbmp_set_ui32(&fileheader[ 2],14+40+(unsigned int)bmpctx->palsize+
+	iw_set_ui32le(&fileheader[ 2],14+40+(unsigned int)bmpctx->palsize+
 		(unsigned int)bmpctx->bitssize); // bfSize
-	iwbmp_set_ui32(&fileheader[10],14+40+(unsigned int)bmpctx->palsize); // bfOffBits
+	iw_set_ui32le(&fileheader[10],14+40+(unsigned int)bmpctx->palsize); // bfOffBits
 	iwbmp_write(bmpctx,fileheader,14);
 }
 
@@ -111,13 +97,13 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *bmpctx)
 
 	memset(&header,0,sizeof(header));
 
-	iwbmp_set_ui32(&header[ 0],40);      // biSize
-	iwbmp_set_ui32(&header[ 4],bmpctx->img->width);  // biWidth
-	iwbmp_set_ui32(&header[ 8],bmpctx->img->height); // biHeight
-	iwbmp_set_ui16(&header[12],1);    // biPlanes
-	iwbmp_set_ui16(&header[14],bmpctx->bitcount);   // biBitCount
-	//iwbmp_set_ui32(&header[16],0);    // biCompression = BI_RGB
-	iwbmp_set_ui32(&header[20],(unsigned int)bmpctx->bitssize); // biSizeImage
+	iw_set_ui32le(&header[ 0],40);      // biSize
+	iw_set_ui32le(&header[ 4],bmpctx->img->width);  // biWidth
+	iw_set_ui32le(&header[ 8],bmpctx->img->height); // biHeight
+	iw_set_ui16le(&header[12],1);    // biPlanes
+	iw_set_ui16le(&header[14],bmpctx->bitcount);   // biBitCount
+	//iw_set_ui32le(&header[16],0);    // biCompression = BI_RGB
+	iw_set_ui32le(&header[20],(unsigned int)bmpctx->bitssize); // biSizeImage
 
 	if(bmpctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
 		dens_x = (unsigned int)(0.5+bmpctx->img->density_x);
@@ -126,11 +112,11 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *bmpctx)
 	else {
 		dens_x = dens_y = 2835;
 	}
-	iwbmp_set_ui32(&header[24],dens_x); // biXPelsPerMeter
-	iwbmp_set_ui32(&header[28],dens_y); // biYPelsPerMeter
+	iw_set_ui32le(&header[24],dens_x); // biXPelsPerMeter
+	iw_set_ui32le(&header[28],dens_y); // biYPelsPerMeter
 
-	iwbmp_set_ui32(&header[32],bmpctx->palentries);    // biClrUsed
-	//iwbmp_set_ui32(&header[36],0);    // biClrImportant
+	iw_set_ui32le(&header[32],bmpctx->palentries);    // biClrUsed
+	//iw_set_ui32le(&header[36],0);    // biClrImportant
 	iwbmp_write(bmpctx,header,40);
 }
 
