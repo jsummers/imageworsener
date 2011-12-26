@@ -579,10 +579,12 @@ Options:
    By default, a GIF image will be painted onto the GIF "screen". Use
    -noincludescreen to extract just the individual image.
 
- -pngcmprlevel <n>
-   zlib-style compression level setting for PNG files, from 0 (no compression)
-   to 9 (best, slowest). Default is 9. Use -1 for the libpng default
-   (probably 6).
+ -zipcmprlevel <n>
+   zlib-style compression level setting for zip/deflate/zlib compression.
+   This applies to all PNG files, and to MIFF files that use zip compression.
+   Values range from 0 (no compression) to 9 (best, slowest).
+   "-1" can be used to mean "default", but the exact meaning of this is not
+   well-defined.
 
  -jpegquality <n>
    libjpeg-style quality setting to use if a JPEG file is written. Default is

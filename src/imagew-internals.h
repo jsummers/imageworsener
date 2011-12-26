@@ -235,6 +235,7 @@ struct iw_context {
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
 	int jpeg_arith_coding; // nonzero = use arithmetic coding
 	int pngcmprlevel;
+	int deflatecmprlevel;
 	int interlaced;
 	double webp_quality;
 

@@ -80,14 +80,16 @@ static struct iw_zlib_context* iw_zlib_deflate_init(struct iw_context *ctx)
 {
 	struct iw_zlib_context *zctx;
 	int ret;
+	int cmprlevel;
 
 	zctx = iw_mallocz(ctx,sizeof(struct iw_zlib_context));
 	if(!zctx) return NULL;
 
 	zctx->ctx = ctx;
 
-	// TODO: Make the compression level configurable.
-	ret = deflateInit(&zctx->strm,7);
+	cmprlevel = iw_get_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL);
+
+	ret = deflateInit(&zctx->strm,cmprlevel);
 	if(ret!=Z_OK) {
 		iw_free(zctx);
 		return NULL;

@@ -99,8 +99,8 @@ struct params_struct {
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	int jpeg_arith_coding;
 	double webp_quality;
-	int pngcmprlevel;
-	int pngcmprlevel_set;
+	int zipcmprlevel;
+	int zipcmprlevel_set;
 	int interlace;
 	int randomize;
 	int random_seed;
@@ -802,6 +802,9 @@ static int run(struct params_struct *p)
 		goto done;
 	}
 
+	if(p->zipcmprlevel_set)
+		iw_set_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL,p->zipcmprlevel);
+
 	if(p->outfmt==IW_FORMAT_JPEG) {
 #if IW_SUPPORT_JPEG == 1
 		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
@@ -835,8 +838,6 @@ static int run(struct params_struct *p)
 	}
 	else {
 #if IW_SUPPORT_PNG == 1
-		if(p->pngcmprlevel_set)
-			iw_set_value(ctx,IW_VAL_PNG_CMPR_LEVEL,p->pngcmprlevel);
 		if(!iw_write_png_file(ctx,&writedescr)) goto done;
 #else
 		iw_set_error(ctx,"PNG is not supported by this copy of imagew.");
@@ -1452,7 +1453,7 @@ enum iwcmd_param_types {
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE,
  PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH,
- PT_WEBPQUALITY, PT_PNGCMPRLEVEL, PT_INTERLACE,
+ PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
@@ -1521,7 +1522,8 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"jpegquality",PT_JPEGQUALITY,1},
 		{"jpegsampling",PT_JPEGSAMPLING,1},
 		{"webpquality",PT_WEBPQUALITY,1},
-		{"pngcmprlevel",PT_PNGCMPRLEVEL,1},
+		{"zipcmprlevel",PT_ZIPCMPRLEVEL,1},
+		{"pngcmprlevel",PT_ZIPCMPRLEVEL,1},
 		{"randseed",PT_RANDSEED,1},
 		{"infmt",PT_INFMT,1},
 		{"outfmt",PT_OUTFMT,1},
@@ -1817,9 +1819,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_WEBPQUALITY:
 		p->webp_quality=iwcmd_parse_dbl(v);
 		break;
-	case PT_PNGCMPRLEVEL:
-		p->pngcmprlevel=iwcmd_parse_int(v);
-		p->pngcmprlevel_set=1;
+	case PT_ZIPCMPRLEVEL:
+		p->zipcmprlevel=iwcmd_parse_int(v);
+		p->zipcmprlevel_set=1;
 		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {

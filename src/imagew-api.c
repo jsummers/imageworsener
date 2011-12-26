@@ -232,7 +232,7 @@ static void init_context(struct iw_context *ctx)
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
 	ctx->include_screen = 1;
 	ctx->webp_quality = -1.0;
-	ctx->pngcmprlevel = 9;
+	ctx->deflatecmprlevel = 9;
 	ctx->opt_grayscale = 1;
 	ctx->opt_palette = 1;
 	ctx->opt_16_to_8 = 1;
@@ -623,8 +623,8 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_JPEG_ARITH_CODING:
 		ctx->jpeg_arith_coding = n;
 		break;
-	case IW_VAL_PNG_CMPR_LEVEL:
-		ctx->pngcmprlevel = n;
+	case IW_VAL_DEFLATE_CMPR_LEVEL:
+		ctx->deflatecmprlevel = n;
 		break;
 	case IW_VAL_OUTPUT_INTERLACED:
 		ctx->interlaced = n;
@@ -705,8 +705,8 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_JPEG_ARITH_CODING:
 		ret = ctx->jpeg_arith_coding;
 		break;
-	case IW_VAL_PNG_CMPR_LEVEL:
-		ret = ctx->pngcmprlevel;
+	case IW_VAL_DEFLATE_CMPR_LEVEL:
+		ret = ctx->deflatecmprlevel;
 		break;
 	case IW_VAL_OUTPUT_PALETTE_GRAYSCALE:
 		ret = ctx->optctx.palette_is_grayscale;

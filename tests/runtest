@@ -50,8 +50,8 @@ fi
 
 SCALE="-width 35 -height 35"
 SMALL="-width 15 -height 15"
-CMPR="-pngcmprlevel 9"
-DCMPR="-pngcmprlevel -1"
+CMPR="-zipcmprlevel 9"
+DCMPR="-zipcmprlevel -1"
 
 if [ ! -d actual ]
 then
@@ -205,8 +205,8 @@ $IW srcimg/rgb8a.png actual/opt-20col.png $DCMPR -width 5 -height 4 -filter mix
 
 $IW srcimg/p8t.png actual/crop-1.png $DCMPR -width 20 -crop 3,12,18,9
 
-# Test input sBIT support, and -pngcmprlevel
-$IW srcimg/rgb8a-sbit.png actual/sbit1.png -pngcmprlevel 9
+# Test input sBIT support, and -zipcmprlevel
+$IW srcimg/rgb8a-sbit.png actual/sbit1.png -zipcmprlevel 9
 
 # Test -noopt
 $IW srcimg/g8a.png actual/noopt-g.png $CMPR -width 15 -noopt grayscale -filter mix
@@ -216,8 +216,8 @@ $IW srcimg/g8a.png actual/noopt-bt.png $CMPR -ccalpha 2 -dither f -width 15 -noo
 $IW srcimg/g8.png actual/noopt-r8.png $CMPR -depth 16 -crop 17,18,-1 -noopt reduceto8
 
 # Test background color reading
-$IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2 -pngcmprlevel 9
-$IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebkgdlabel -pngcmprlevel 9
+$IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2 -zipcmprlevel 9
+$IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebkgdlabel -zipcmprlevel 9
 $IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR -nowarn
 $IW srcimg/p5t.gif actual/gif1.png $CMPR
 

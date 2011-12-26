@@ -493,7 +493,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		my_png_error_fn, my_png_warning_fn);
 	if(!png_ptr) goto done;
 
-	cmprlevel = iw_get_value(ctx,IW_VAL_PNG_CMPR_LEVEL);
+	cmprlevel = iw_get_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL);
 	if(cmprlevel >= 0) {
 		png_set_compression_level(png_ptr, cmprlevel);
 	}
