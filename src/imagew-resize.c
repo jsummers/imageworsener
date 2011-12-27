@@ -8,7 +8,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <math.h>
 
 #include "imagew-internals.h"
@@ -158,14 +157,17 @@ static double iw_filter_mix(struct iw_rr_ctx *rrctx, double x)
 
 static void weightlist_ensure_alloc(struct iw_rr_ctx *rrctx, int n)
 {
+	size_t old_alloc;
+
 	if(rrctx->wl_alloc>=n) return;
+	old_alloc = rrctx->wl_alloc;
 	rrctx->wl_alloc = n+32;
-	if(rrctx->wl) {
-		rrctx->wl = iw_realloc(rrctx->ctx,rrctx->wl,sizeof(struct iw_weight_struct)*rrctx->wl_alloc);
-	}
-	else {
-		rrctx->wl = iw_malloc(rrctx->ctx,sizeof(struct iw_weight_struct)*rrctx->wl_alloc);
-	}
+
+	// Note that rrctx->wl may be NULL, which iw_realloc() allows.
+	rrctx->wl = iw_realloc(rrctx->ctx,rrctx->wl,
+		sizeof(struct iw_weight_struct)*old_alloc,
+		sizeof(struct iw_weight_struct)*rrctx->wl_alloc);
+
 	if(!rrctx->wl) {
 		rrctx->wl_alloc = 0;
 		rrctx->wl_used = 0;
@@ -175,7 +177,7 @@ static void weightlist_ensure_alloc(struct iw_rr_ctx *rrctx, int n)
 static void iw_weightlist_free(struct iw_rr_ctx *rrctx)
 {
 	if(rrctx->wl) {
-		iw_free(rrctx->wl);
+		iw_free(rrctx->ctx,rrctx->wl);
 		rrctx->wl = NULL;
 		rrctx->wl_alloc = 0;
 		rrctx->wl_used = 0;
@@ -499,13 +501,15 @@ done:
 	return rrctx;
 }
 
+// TODO: Remove the ctx param
 void iwpvt_resize_rows_done(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	if(!rrctx) return;
 	iw_weightlist_free(rrctx);
-	iw_free(rrctx);
+	iw_free(ctx,rrctx);
 }
 
+// TODO: Remove the ctx param
 void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	if(!rrctx || !rrctx->resizerow_fn) return;

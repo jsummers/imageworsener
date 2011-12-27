@@ -109,7 +109,7 @@ static int iwmiff_read_zip_compressed_row(struct iwmiffreadcontext *rctx,
 	// If necessary, allocate a buffer to read the row into.
 	if(rctx->cbuf_alloc < cmprsize) {
 		if(rctx->cbuf) {
-			iw_free(rctx->cbuf);
+			iw_free(rctx->ctx,rctx->cbuf);
 			rctx->cbuf = NULL;
 		}
 	}
@@ -437,7 +437,7 @@ done:
 		rctx->zctx = NULL;
 	}
 	if(rctx->cbuf) {
-		iw_free(rctx->cbuf);
+		iw_free(rctx->ctx,rctx->cbuf);
 		rctx->cbuf = NULL;
 	}
 	return retval;
@@ -747,13 +747,13 @@ static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
 
 	retval = 1;
 done:
-	if(dstrow) iw_free(dstrow);
+	if(dstrow) iw_free(wctx->ctx,dstrow);
 	if(wctx->zmod && wctx->zctx) {
 		wctx->zmod->deflate_end(wctx->zctx);
 		wctx->zctx = NULL;
 	}
 	if(wctx->cbuf) {
-		iw_free(wctx->cbuf);
+		iw_free(wctx->ctx,wctx->cbuf);
 		wctx->cbuf = NULL;
 	}
 	return retval;

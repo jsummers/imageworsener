@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for custom memory allocation function.
  - Renamed -pngcmprlevel option to -zipcmprlevel, and made it apply whenever
    zip/deflate compression is used.
  - Added Zip compression support for MIFF images, and made it the default.

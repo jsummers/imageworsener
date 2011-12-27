@@ -132,7 +132,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	size_t bytesread = 0;
 
 	img = rctx->img;
-	fbuf = iw_malloc_lowlevel(fbuf_len);
+	fbuf = iw_malloc(rctx->ctx,fbuf_len);
 	if(!fbuf) goto done;
 
 	decbuffer = iw_malloc_lowlevel(sizeof(WebPDecBuffer));
@@ -259,7 +259,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	int needfree_decbuffer = 0;
 
 	img = rctx->img;
-	fbuf = iw_malloc_lowlevel(fbuf_len);
+	fbuf = iw_malloc(rctx->ctx,fbuf_len);
 	if(!fbuf) goto done;
 
 	ret = WebPInitDecoderConfig(&cfg);
@@ -513,7 +513,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	retval=1;
 
 done:
-	if(webpimage) iw_free(webpimage);
+	if(webpimage) iw_free(rctx->ctx,webpimage);
 
 	if(needfree_decbuffer) {
 		 WebPFreeDecBuffer(&cfg.output);
@@ -651,7 +651,7 @@ done:
 	// is the right one.
 	if(cmpr_webp_data) free(cmpr_webp_data);
 
-	if(wctx->tmppixels) iw_free(wctx->tmppixels);
+	if(wctx->tmppixels) iw_free(wctx->ctx,wctx->tmppixels);
 	return 1;
 }
 

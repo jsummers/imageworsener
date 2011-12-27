@@ -39,6 +39,14 @@ extern "C" {
 
 //// Codes for use with iw_get_value/iw_set_value.
 
+// The client can set API_VERSION to IW_VERSION_INT, to tell the library what
+// version of the imagew.h header file it used.
+// This can also be set to 0 (the default), in which case IW will assume the
+// correct header file version was used.
+// This may allow some compatibility problems to be detected and/or avoided.
+// This value can also be set via the iw_create_context() function.
+#define IW_VAL_API_VERSION       1
+
 // If ==1, convert to grayscale.
 #define IW_VAL_CVT_TO_GRAYSCALE  11
 
@@ -257,6 +265,9 @@ extern "C" {
 #define IW_TRANSLATEFLAG_ERRORMSG    0x0010
 #define IW_TRANSLATEFLAG_WARNINGMSG  0x0020
 
+#define IW_MALLOCFLAG_ZEROMEM     0x01
+#define IW_MALLOCFLAG_NOERRORS    0x02
+
 // !!! Portability warning: These definitions make a lot of assumptions about
 // the sizes of data types.
 // TODO: Try to use <stdint.h> instead.
@@ -355,11 +366,56 @@ struct iw_iodescr {
 	iw_tellfn_type tell_fn;
 };
 
-IW_EXPORT(struct iw_context*) iw_create_context(void);
-IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
+// Allocate n bytes of memory. Return NULL on failure.
+// If the IW_MALLOCFLAG_ZEROMEM flag is set, the new memory must be initialized
+// to all zero bytes.
+// IW will not attempt to allocate memory blocks larger than the limit set by
+// iw_set_max_malloc().
+typedef void* (*iw_mallocfn_type)(void *userdata, unsigned int flags, size_t n);
 
-// 'v' should be IW_VERSION_INT.
-IW_EXPORT(void) iw_set_api_version(struct iw_context *ctx, int v);
+// Semantics for custom realloc functions:
+// Return a pointer to an allocated memory block of size newmem_size,
+// containing as many bytes as possible (MIN(oldmem_size,newmem_size))
+// copied from oldmem.
+// oldmem may be NULL, in which case no data is copied.
+// oldmem must be freed (unless it is NULL, or equal to newmem), even on
+// failure. Note that this is different from how the the C library realloc
+// function works.
+// The 'flags' parameter is reserved, and should be ignored.
+typedef void* (*iw_reallocfn_type)(void *userdata, unsigned int flags, void *oldmem,
+	size_t oldmem_size, size_t newmem_size);
+
+// Free memory allocated with the appropriate malloc or realloc function.
+// IW will not call this function with mem set to NULL.
+typedef void (*iw_freefn_type)(void *userdata, void *mem);
+
+// A struct containing data that may be needed in iw_create_context().
+// iw_create_context() does not do very much, but does need to allocate memory,
+// so we can't wait until after it returns to define custom memory allocation
+// functions.
+struct iw_init_params {
+	int api_version; // See IW_VAL_API_VERSION.
+	void *userdata;
+
+	// The mallocfn, freefn, and reallocfn functions are optional. They can all
+	// be set to NULL, but they can't be set inconsistently. E.g. you must not
+	// define a custom mallocfn without a custom freefn.
+	// reallocfn is always optional, and can be set to NULL even if mallocfn is
+	// not NULL.
+	// For details, see the definition of iw_mallocfn_type, iw_reallocfn_type,
+	// and iw_freefn_type.
+	iw_mallocfn_type mallocfn;
+	iw_reallocfn_type reallocfn;
+	iw_freefn_type freefn;
+};
+
+// 'params' points to a struct that the caller must allocate, and set any
+// fields it needs to use. Unused fields must be set to all zero bytes.
+// 'params' can be NULL, if the caller does not need it for anything.
+// 'params' need not remain valid after iw_create_context() returns.
+IW_EXPORT(struct iw_context*) iw_create_context(struct iw_init_params *params);
+
+IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
 
 IW_EXPORT(int) iw_process_image(struct iw_context *ctx);
 
@@ -384,6 +440,8 @@ IW_EXPORT(int) iw_get_errorflag(struct iw_context *ctx);
 // Returns an extra pointer to buf.
 IW_EXPORT(const char*) iw_get_errormsg(struct iw_context *ctx, char *buf, int buflen);
 
+// An arbitrary pointer that the caller can use.
+// This can also be set via iw_create_context().
 IW_EXPORT(void) iw_set_userdata(struct iw_context *ctx, void *userdata);
 IW_EXPORT(void*) iw_get_userdata(struct iw_context *ctx);
 
@@ -579,28 +637,28 @@ IW_EXPORT(int) iw_check_image_dimensions(struct iw_context *ctx, int w, int h);
 IW_EXPORT(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
   void **pmem, iw_int64 *psize);
 
-// Allocates a block of memory. Does not check the value of n.
-// Returns NULL on failure.
-IW_EXPORT(void*) iw_malloc_lowlevel(size_t n);
-IW_EXPORT(void*) iw_realloc_lowlevel(void *m, size_t n);
-// The "mallocz" functions initialize the memory to all 0 bytes.
-IW_EXPORT(void*) iw_mallocz_lowlevel(size_t n);
-
-// Allocates a block of memory of size n. On failure, generates an error
-// and returns NULL.
-// This function verifies that the memory block is not larger than the
-// amount set by iw_set_max_malloc().
+// Various memory allocation functions.
+// In general, they allocate a block of memory of size n.
+// On failure, they generate an error (unless the IW_MALLOCFLAG_NOERRORS flag
+// is set) and return NULL.
+// They fail if an attempt is made to allocate a block larger than the amount
+// set by iw_set_max_malloc().
+IW_EXPORT(void*) iw_malloc_ex(struct iw_context *ctx, unsigned int flags, size_t n);
 IW_EXPORT(void*) iw_malloc(struct iw_context *ctx, size_t n);
+// "mallocz" initializes the memory to all 0 bytes.
 IW_EXPORT(void*) iw_mallocz(struct iw_context *ctx, size_t n);
-IW_EXPORT(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n);
-
-// Same as iw_malloc, but allocates a block of memory of size n1*n2.
-// This function is careful to avoid integer overflow.
+// iw_malloc_large is the same as iw_malloc, but allocates a block of memory of
+// size n1*n2. This function is careful to avoid integer overflow.
 IW_EXPORT(void*) iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2);
+
+IW_EXPORT(void*) iw_realloc_ex(struct iw_context *ctx, unsigned int flags,
+	void *m, size_t oldn, size_t n);
+IW_EXPORT(void*) iw_realloc(struct iw_context *ctx,
+	void *m, size_t oldn, size_t n);
 
 // Free memory allocated by an iw_malloc* function.
 // If mem is NULL, does nothing.
-IW_EXPORT(void) iw_free(void *mem);
+IW_EXPORT(void) iw_free(struct iw_context *ctx, void *mem);
 
 // Returns 0 if running on a big-endian system, 1 for little-endian.
 IW_EXPORT(int) iw_get_host_endianness(void);

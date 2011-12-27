@@ -515,7 +515,7 @@ static int iwgif_make_row_pointers(struct iwgifreadcontext *rctx)
 	int rowcount;
 	int row;
 
-	if(rctx->row_pointers) iw_free(rctx->row_pointers);
+	if(rctx->row_pointers) iw_free(rctx->ctx,rctx->row_pointers);
 	rctx->row_pointers = (iw_byte**)iw_malloc(rctx->ctx, sizeof(iw_byte*)*rctx->image_height);
 	if(!rctx->row_pointers) return 0;
 
@@ -791,8 +791,8 @@ done:
 		(*iodescr->close_fn)(ctx,iodescr);
 
 	if(rctx) {
-		if(rctx->row_pointers) iw_free(rctx->row_pointers);
-		iw_free(rctx);
+		if(rctx->row_pointers) iw_free(ctx,rctx->row_pointers);
+		iw_free(ctx,rctx);
 	}
 
 	return retval;

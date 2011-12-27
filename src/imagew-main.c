@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <math.h>
 
 #include "imagew-internals.h"
@@ -847,8 +846,8 @@ done:
 		iwpvt_resize_rows_done(ctx, rs->rrctx_cache);
 		rs->rrctx_cache = NULL;
 	}
-	if(inpix) iw_free(inpix);
-	if(outpix) iw_free(outpix);
+	if(inpix) iw_free(ctx,inpix);
+	if(outpix) iw_free(ctx,outpix);
 	ctx->in_pix=NULL;
 	ctx->out_pix=NULL;
 	return retval;
@@ -1070,7 +1069,7 @@ done:
 	}
 	ctx->in_pix=NULL;
 	ctx->out_pix=NULL;
-	if(outpix) iw_free(outpix);
+	if(outpix) iw_free(ctx,outpix);
 
 	return retval;
 }
@@ -1234,11 +1233,11 @@ static int iw_process_internal(struct iw_context *ctx)
 	retval=1;
 
 done:
-	if(ctx->intermediate) { iw_free(ctx->intermediate); ctx->intermediate=NULL; }
-	if(ctx->intermediate_alpha) { iw_free(ctx->intermediate_alpha); ctx->intermediate_alpha=NULL; }
-	if(ctx->final_alpha) { iw_free(ctx->final_alpha); ctx->final_alpha=NULL; }
+	if(ctx->intermediate) { iw_free(ctx,ctx->intermediate); ctx->intermediate=NULL; }
+	if(ctx->intermediate_alpha) { iw_free(ctx,ctx->intermediate_alpha); ctx->intermediate_alpha=NULL; }
+	if(ctx->final_alpha) { iw_free(ctx,ctx->final_alpha); ctx->final_alpha=NULL; }
 	for(k=0;k<IW_DITHER_MAXROWS;k++) {
-		if(ctx->dither_errors[k]) { iw_free(ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
+		if(ctx->dither_errors[k]) { iw_free(ctx,ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
 	}
 	// The 'resize contexts' are usually kept around so that they can be reused.
 	// Now that we're done with everything, free them.
@@ -1690,6 +1689,12 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->output_profile==0) {
 		iw_set_error(ctx,"Output profile not set");
 		return 0;
+	}
+
+	if(!ctx->prng) {
+		// TODO: It would be better to only create the random number generator
+		// if we will need it.
+		ctx->prng = iwpvt_prng_create(ctx);
 	}
 
 	if(ctx->randomize) {

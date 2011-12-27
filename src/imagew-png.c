@@ -367,7 +367,7 @@ done:
 	}
 	if(iodescr->close_fn)
 		(*iodescr->close_fn)(ctx,iodescr);
-	if(row_pointers) iw_free(row_pointers);
+	if(row_pointers) iw_free(ctx,row_pointers);
 	return retval;
 }
 
@@ -597,7 +597,7 @@ done:
 	}
 	if(iodescr->close_fn)
 		(*iodescr->close_fn)(ctx,iodescr);
-	if(row_pointers) iw_free(row_pointers);
+	if(row_pointers) iw_free(ctx,row_pointers);
 	return retval;
 }
 

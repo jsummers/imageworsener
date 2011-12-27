@@ -186,7 +186,7 @@ static void iwtiff_write_transferfunction(struct iwtiffwritecontext *tiffctx)
 		iw_set_ui16le(&buf[i*2],(unsigned int)(0.5+65535.0*linear));
 	}
 	iwtiff_write(tiffctx,buf,tiffctx->transferfunc_size);
-	iw_free(buf);
+	iw_free(tiffctx->ctx,buf);
 }
 
 static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
@@ -222,7 +222,7 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *tiffctx)
 	}
 	iwtiff_write(tiffctx,buf,tiffctx->palette_size);
 
-	iw_free(buf);
+	iw_free(tiffctx->ctx,buf);
 }
 
 #define IWTIFF_TAG256_IMAGEWIDTH 256
@@ -443,7 +443,7 @@ static void iwtiff_write_ifd(struct iwtiffwritecontext *tiffctx)
 	iwtiff_write_palette(tiffctx);
 
 done:
-	if(buf) iw_free(buf);
+	if(buf) iw_free(tiffctx->ctx,buf);
 }
 
 static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
@@ -579,7 +579,7 @@ static int iwtiff_write_main(struct iwtiffwritecontext *tiffctx)
 	}
 
 done:
-	if(dstrow) iw_free(dstrow);
+	if(dstrow) iw_free(tiffctx->ctx,dstrow);
 	return 1;
 }
 
@@ -617,6 +617,6 @@ IW_IMPL(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 done:
 	if(tiffctx->iodescr->close_fn)
 		(*tiffctx->iodescr->close_fn)(ctx,tiffctx->iodescr);
-	if(tiffctx) iw_free(tiffctx);
+	if(tiffctx) iw_free(ctx,tiffctx);
 	return retval;
 }

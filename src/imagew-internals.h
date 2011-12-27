@@ -119,6 +119,10 @@ struct iw_context {
 	int caller_api_version;
 	unsigned int output_profile;
 
+	iw_mallocfn_type mallocfn;
+	iw_reallocfn_type reallocfn;
+	iw_freefn_type freefn;
+
 	int num_in_pix;
 	int num_out_pix;
 	IW_SAMPLE *in_pix; // A single row of source samples to resample.
@@ -252,11 +256,15 @@ struct iw_context {
 };
 
 // Defined imagew-util.c
-struct iw_prng *iwpvt_prng_create(void);
-void iwpvt_prng_destroy(struct iw_prng*);
-void iwpvt_prng_set_random_seed(struct iw_prng*, int s);
-iw_uint32 iwpvt_prng_rand(struct iw_prng*); // Returns a pseudorandom number.
-int iwpvt_util_randomize(struct iw_prng*); // Returns the random seed that was used.
+struct iw_prng *iwpvt_prng_create(struct iw_context *ctx);
+void iwpvt_prng_destroy(struct iw_context *ctx, struct iw_prng *prng);
+void iwpvt_prng_set_random_seed(struct iw_prng *prng, int s);
+iw_uint32 iwpvt_prng_rand(struct iw_prng *prng); // Returns a pseudorandom number.
+int iwpvt_util_randomize(struct iw_prng *prng); // Returns the random seed that was used.
+void* iwpvt_default_malloc(void *userdata, unsigned int flags, size_t n);
+void* iwpvt_default_realloc(void *userdata, unsigned int flags,
+	void *oldmem, size_t oldmem_size, size_t newmem_size);
+void iwpvt_default_free(void *userdata, void *mem);
 
 // Defined in imagew-resize.c
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,

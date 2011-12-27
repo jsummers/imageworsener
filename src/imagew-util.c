@@ -22,40 +22,45 @@
 #endif
 
 
-IW_IMPL(void) iw_free(void *mem)
+void* iwpvt_default_malloc(void *userdata, unsigned int flags, size_t n)
 {
-	if(mem) free(mem);
-}
-
-IW_IMPL(void*) iw_malloc_lowlevel(size_t n)
-{
+	if(flags & IW_MALLOCFLAG_ZEROMEM) {
+		return calloc(n,1);
+	}
 	return malloc(n);
 }
 
-IW_IMPL(void*) iw_mallocz_lowlevel(size_t n)
+void* iwpvt_default_realloc(void *userdata, unsigned int flags, void *oldmem,
+	size_t oldmem_size, size_t newmem_size)
 {
-	return calloc(n,1);
+	void *newmem;
+	newmem = realloc(oldmem,newmem_size);
+	if(!newmem) {
+		free(oldmem);
+	}
+	return newmem;
 }
 
-IW_IMPL(void*) iw_realloc_lowlevel(void *m, size_t n)
+void iwpvt_default_free(void *userdata, void *mem)
 {
-	return realloc(m,n);
+	free(mem);
 }
 
-static void* iw_malloc_internal(struct iw_context *ctx, size_t n, int zflag)
+IW_IMPL(void*) iw_malloc_ex(struct iw_context *ctx, unsigned int flags, size_t n)
 {
 	void *mem;
 
 	if(n>ctx->max_malloc) {
-		iw_set_error(ctx,"Out of memory");
+		if(!(flags&IW_MALLOCFLAG_NOERRORS))
+			iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
-	if(zflag)
-		mem = iw_mallocz_lowlevel(n);
-	else
-		mem = iw_malloc_lowlevel(n);
+
+	mem = (*ctx->mallocfn)(ctx->userdata,flags,n);
+
 	if(!mem) {
-		iw_set_error(ctx,"Out of memory");
+		if(!(flags&IW_MALLOCFLAG_NOERRORS))
+			iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
 	return mem;
@@ -63,28 +68,12 @@ static void* iw_malloc_internal(struct iw_context *ctx, size_t n, int zflag)
 
 IW_IMPL(void*) iw_malloc(struct iw_context *ctx, size_t n)
 {
-	return iw_malloc_internal(ctx,n,0);
+	return iw_malloc_ex(ctx,0,n);
 }
 
 IW_IMPL(void*) iw_mallocz(struct iw_context *ctx, size_t n)
 {
-	return iw_malloc_internal(ctx,n,1);
-}
-
-IW_IMPL(void*) iw_realloc(struct iw_context *ctx, void *m, size_t n)
-{
-	void *mem;
-
-	if(n>ctx->max_malloc) {
-		iw_set_error(ctx,"Out of memory");
-		return NULL;
-	}
-	mem = iw_realloc_lowlevel(m,n);
-	if(!mem) {
-		iw_set_error(ctx,"Out of memory");
-		return NULL;
-	}
-	return mem;
+	return iw_malloc_ex(ctx,IW_MALLOCFLAG_ZEROMEM,n);
 }
 
 // Allocate a large block of memory, presumably for image data.
@@ -96,7 +85,67 @@ IW_IMPL(void*) iw_malloc_large(struct iw_context *ctx, size_t n1, size_t n2)
 		iw_set_error(ctx,"Image too large to process");
 		return NULL;
 	}
-	return iw_malloc(ctx,n1*n2);
+	return iw_malloc_ex(ctx,0,n1*n2);
+}
+
+// Emulate realloc using malloc, by always allocating a new memory block.
+static void* emulated_realloc(struct iw_context *ctx, unsigned int flags,
+	void *oldmem, size_t oldmem_size, size_t newmem_size)
+{
+	void *newmem;
+
+	newmem = (*ctx->mallocfn)(ctx->userdata,flags,newmem_size);
+	if(oldmem && newmem) {
+		if(oldmem_size<newmem_size)
+			memcpy(newmem,oldmem,oldmem_size);
+		else
+			memcpy(newmem,oldmem,newmem_size);
+	}
+	if(oldmem) {
+		// Our realloc functions always free the old memory, even on failure.
+		(*ctx->freefn)(ctx->userdata,oldmem);
+	}
+	return newmem;
+}
+
+IW_IMPL(void*) iw_realloc_ex(struct iw_context *ctx, unsigned int flags,
+	void *oldmem, size_t oldmem_size, size_t newmem_size)
+{
+	void *mem;
+
+	if(newmem_size>ctx->max_malloc) {
+		if(!(flags&IW_MALLOCFLAG_NOERRORS))
+			iw_set_error(ctx,"Out of memory");
+		return NULL;
+	}
+
+	if(ctx->reallocfn) {
+		mem = (*ctx->reallocfn)(ctx->userdata,flags,oldmem,oldmem_size,newmem_size);
+	}
+	else {
+		mem = emulated_realloc(ctx,flags,oldmem,oldmem_size,newmem_size);
+	}
+
+	if(!mem) {
+		if(!(flags&IW_MALLOCFLAG_NOERRORS))
+			iw_set_error(ctx,"Out of memory");
+		return NULL;
+	}
+	return mem;
+}
+
+IW_IMPL(void*) iw_realloc(struct iw_context *ctx, void *oldmem,
+	size_t oldmem_size, size_t newmem_size)
+{
+	return iw_realloc_ex(ctx,0,oldmem,oldmem_size,newmem_size);
+}
+
+IW_IMPL(void) iw_free(struct iw_context *ctx, void *mem)
+{
+	if(!mem) return;
+	// Note that this function can be used to free the ctx struct itself,
+	// so we're not allowed to use ctx after freeing the memory.
+	(*ctx->freefn)(ctx->userdata,mem);
 }
 
 IW_IMPL(void) iw_strlcpy(char *dst, const char *src, size_t dstlen)
@@ -136,24 +185,24 @@ IW_IMPL(int) iw_stricmp(const char *s1, const char *s2)
 }
 
 ////////////////////////////////////////////
-// A simple carry-with-multiply PRNG.
+// A simple carry-with-multiply pseudorandom number generator (PRNG).
 
 struct iw_prng {
 	iw_uint32 multiply;
 	iw_uint32 carry;
 };
 
-struct iw_prng *iwpvt_prng_create(void)
+struct iw_prng *iwpvt_prng_create(struct iw_context *ctx)
 {
 	struct iw_prng *prng;
-	prng = (struct iw_prng*)iw_mallocz_lowlevel(sizeof(struct iw_prng));
+	prng = (struct iw_prng*)iw_mallocz(ctx,sizeof(struct iw_prng));
 	if(!prng) return NULL;
 	return prng;
 }
 
-void iwpvt_prng_destroy(struct iw_prng *prng)
+void iwpvt_prng_destroy(struct iw_context *ctx, struct iw_prng *prng)
 {
-	if(prng) iw_free((void*)prng);
+	if(prng) iw_free(ctx,(void*)prng);
 }
 
 void iwpvt_prng_set_random_seed(struct iw_prng *prng, int s)

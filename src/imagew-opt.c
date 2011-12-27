@@ -265,7 +265,7 @@ static void iw_opt_16_to_8(struct iw_context *ctx, struct iw_opt_ctx *optctx, in
 	}
 
 	// Remove previous image if it was allocated by the optimization code.
-	if(optctx->tmp_pixels) iw_free(optctx->tmp_pixels);
+	if(optctx->tmp_pixels) iw_free(ctx,optctx->tmp_pixels);
 
 	// Attach our new image
 	optctx->tmp_pixels = newpixels;
@@ -301,7 +301,7 @@ static void iw_opt_copychannels_8(struct iw_context *ctx, struct iw_opt_ctx *opt
 	}
 
 	// Remove previous image if it was allocated by the optimization code.
-	if(optctx->tmp_pixels) iw_free(optctx->tmp_pixels);
+	if(optctx->tmp_pixels) iw_free(ctx,optctx->tmp_pixels);
 
 	// Attach our new image
 	optctx->tmp_pixels = newpixels;
@@ -343,7 +343,7 @@ static void iw_opt_copychannels_16(struct iw_context *ctx, struct iw_opt_ctx *op
 	}
 
 	// Remove previous image if it was allocated by the optimization code.
-	if(optctx->tmp_pixels) iw_free(optctx->tmp_pixels);
+	if(optctx->tmp_pixels) iw_free(ctx,optctx->tmp_pixels);
 
 	// Attach our new image
 	optctx->tmp_pixels = newpixels;
@@ -482,7 +482,7 @@ static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx
 	optctx->colorkey_b = 192;
 
 done:
-	if(trns_mask) iw_free(trns_mask);
+	if(trns_mask) iw_free(ctx,trns_mask);
 }
 
 static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
@@ -550,7 +550,7 @@ static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	optctx->colorkey_b = 192*256+192;
 
 done:
-	if(trns_mask) iw_free(trns_mask);
+	if(trns_mask) iw_free(ctx,trns_mask);
 }
 
 static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
@@ -610,7 +610,7 @@ static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	optctx->colorkey_b = key_clr;
 
 done:
-	if(trns_mask) iw_free(trns_mask);
+	if(trns_mask) iw_free(ctx,trns_mask);
 }
 
 static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_ctx *optctx)
@@ -674,7 +674,7 @@ static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_c
 	optctx->colorkey_b = 192*256+key_clr;
 
 done:
-	if(trns_mask) iw_free(trns_mask);
+	if(trns_mask) iw_free(ctx,trns_mask);
 }
 
 ////////////////////
@@ -809,7 +809,7 @@ static void iwopt_convert_to_palette_image(struct iw_context *ctx, struct iw_opt
 	}
 
 	// Remove previous image if it was allocated by the optimization code.
-	if(optctx->tmp_pixels) iw_free(optctx->tmp_pixels);
+	if(optctx->tmp_pixels) iw_free(ctx,optctx->tmp_pixels);
 
 	// Attach our new image
 	optctx->tmp_pixels = newpixels;
@@ -1049,7 +1049,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 
 done:
 	if(optctx->imgtype!=IW_IMGTYPE_PALETTE) {
-		iw_free(optctx->palette);
+		iw_free(ctx,optctx->palette);
 		optctx->palette = NULL;
 	}
 }

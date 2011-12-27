@@ -479,6 +479,22 @@ static int is_output_fmt_supported(int fmt)
 	return 0;
 }
 
+static void* my_mallocfn(void *userdata, unsigned int flags, size_t n)
+{
+	void *mem=NULL;
+
+	if(flags & IW_MALLOCFLAG_ZEROMEM)
+		mem = calloc(n,1);
+	else
+		mem = malloc(n);
+	return mem;
+}
+
+static void my_freefn(void *userdata, void *mem)
+{
+	free(mem);
+}
+
 static int run(struct params_struct *p)
 {
 	int retval = 0;
@@ -488,7 +504,9 @@ static int run(struct params_struct *p)
 	struct iw_iodescr readdescr;
 	struct iw_iodescr writedescr;
 	char errmsg[200];
+	struct iw_init_params init_params;
 
+	memset(&init_params,0,sizeof(struct iw_init_params));
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
 	memset(&writedescr,0,sizeof(struct iw_iodescr));
 
@@ -496,11 +514,14 @@ static int run(struct params_struct *p)
 		iwcmd_message(p,"%s \xe2\x86\x92 %s\n",p->infn,p->outfn);
 	}
 
-	ctx = iw_create_context();
+	init_params.api_version = IW_VERSION_INT;
+	init_params.userdata = (void*)p;
+	init_params.mallocfn = my_mallocfn;
+	init_params.freefn = my_freefn;
+
+	ctx = iw_create_context(&init_params);
 	if(!ctx) goto done;
 
-	iw_set_api_version(ctx,IW_VERSION_INT);
-	iw_set_userdata(ctx,(void*)p);
 	iw_set_warning_fn(ctx,my_warning_handler);
 #if IW_SUPPORT_ZLIB == 1
 	iw_enable_zlib(ctx);

@@ -34,7 +34,7 @@ static struct iw_zlib_context* iw_zlib_inflate_init(struct iw_context *ctx)
 
 	ret = inflateInit(&zctx->strm);
 	if(ret!=Z_OK) {
-		iw_free(zctx);
+		iw_free(ctx,zctx);
 		return NULL;
 	}
 
@@ -45,7 +45,7 @@ static void iw_zlib_inflate_end(struct iw_zlib_context *zctx)
 {
 	if(!zctx) return;
 	inflateEnd(&zctx->strm);
-	iw_free(zctx);
+	iw_free(zctx->ctx,zctx);
 }
 
 // Decompress a self-contained buffer of data.
@@ -91,7 +91,7 @@ static struct iw_zlib_context* iw_zlib_deflate_init(struct iw_context *ctx)
 
 	ret = deflateInit(&zctx->strm,cmprlevel);
 	if(ret!=Z_OK) {
-		iw_free(zctx);
+		iw_free(ctx,zctx);
 		return NULL;
 	}
 
@@ -102,7 +102,7 @@ static void iw_zlib_deflate_end(struct iw_zlib_context *zctx)
 {
 	if(!zctx) return;
 	deflateEnd(&zctx->strm);
-	iw_free(zctx);
+	iw_free(zctx->ctx,zctx);
 }
 
 static int iw_zlib_deflate_item(struct iw_zlib_context *zctx,

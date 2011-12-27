@@ -234,7 +234,7 @@ done:
 	if(cinfo_valid) jpeg_destroy_decompress(&cinfo);
 	if(iodescr->close_fn)
 		(*iodescr->close_fn)(ctx,iodescr);
-	if(jpegrctx.buffer) iw_free(jpegrctx.buffer);
+	if(jpegrctx.buffer) iw_free(ctx,jpegrctx.buffer);
 	return retval;
 }
 
@@ -441,9 +441,9 @@ done:
 
 	if(iodescr->close_fn)
 		(*iodescr->close_fn)(ctx,iodescr);
-	if(row_pointers) iw_free(row_pointers);
+	if(row_pointers) iw_free(ctx,row_pointers);
 
-	if(jpegwctx.buffer) iw_free(jpegwctx.buffer);
+	if(jpegwctx.buffer) iw_free(ctx,jpegwctx.buffer);
 
 	return retval;
 }

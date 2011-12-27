@@ -110,7 +110,7 @@ static void iw_set_error_internal(struct iw_context *ctx, const char *s)
 	ctx->error_flag = 1;
 
 	if(!ctx->error_msg) {
-		ctx->error_msg=iw_malloc_lowlevel(IW_MSG_MAX*sizeof(char));
+		ctx->error_msg=iw_malloc_ex(ctx,IW_MALLOCFLAG_NOERRORS,IW_MSG_MAX*sizeof(char));
 		if(!ctx->error_msg) {
 			return;
 		}
@@ -162,11 +162,6 @@ IW_IMPL(int) iw_get_errorflag(struct iw_context *ctx)
 	return ctx->error_flag;
 }
 
-IW_IMPL(void) iw_set_api_version(struct iw_context *ctx, int v)
-{
-	ctx->caller_api_version = v;
-}
-
 // Given a color type, returns the number of channels.
 IW_IMPL(int) iw_imgtype_num_channels(int t)
 {
@@ -213,12 +208,36 @@ static void default_resize_settings(struct iw_resize_settings *rs)
 	}
 }
 
-static void init_context(struct iw_context *ctx)
+IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 {
-	memset(ctx,0,sizeof(struct iw_context));
+	struct iw_context *ctx;
+
+	if(params && params->mallocfn) {
+		ctx = (*params->mallocfn)(params->userdata,IW_MALLOCFLAG_ZEROMEM,sizeof(struct iw_context));
+	}
+	else {
+		ctx = iwpvt_default_malloc(NULL,IW_MALLOCFLAG_ZEROMEM,sizeof(struct iw_context));
+	}
+
+	if(!ctx) return NULL;
+
+	if(params) {
+		ctx->userdata = params->userdata;
+		ctx->caller_api_version = params->api_version;
+	}
+
+	if(params && params->mallocfn) {
+		ctx->mallocfn = params->mallocfn;
+		ctx->reallocfn = params->reallocfn;
+		ctx->freefn = params->freefn;
+	}
+	else {
+		ctx->mallocfn = iwpvt_default_malloc;
+		ctx->reallocfn = iwpvt_default_realloc;
+		ctx->freefn = iwpvt_default_free;
+	}
 
 	ctx->max_malloc = IW_DEFAULT_MAX_MALLOC;
-
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_H]);
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
 	ctx->input_w = -1;
@@ -238,32 +257,23 @@ static void init_context(struct iw_context *ctx)
 	ctx->opt_16_to_8 = 1;
 	ctx->opt_strip_alpha = 1;
 	ctx->opt_binary_trns = 1;
-	ctx->prng = iwpvt_prng_create();
-}
 
-IW_IMPL(struct iw_context*) iw_create_context(void)
-{
-	struct iw_context *ctx;
-
-	ctx = iw_malloc_lowlevel(sizeof(struct iw_context));
-	if(!ctx) return NULL;
-	init_context(ctx);
 	return ctx;
 }
 
 IW_IMPL(void) iw_destroy_context(struct iw_context *ctx)
 {
 	if(!ctx) return;
-	if(ctx->prng) iwpvt_prng_destroy(ctx->prng);
-	if(ctx->img1.pixels) iw_free(ctx->img1.pixels);
-	if(ctx->img2.pixels) iw_free(ctx->img2.pixels);
-	if(ctx->error_msg) iw_free(ctx->error_msg);
-	if(ctx->optctx.tmp_pixels) iw_free(ctx->optctx.tmp_pixels);
-	if(ctx->optctx.palette) iw_free(ctx->optctx.palette);
-	if(ctx->input_color_corr_table) iw_free(ctx->input_color_corr_table);
-	if(ctx->output_rev_color_corr_table) iw_free(ctx->output_rev_color_corr_table);
-	if(ctx->nearest_color_table) iw_free(ctx->nearest_color_table);
-	iw_free(ctx);
+	if(ctx->img1.pixels) iw_free(ctx,ctx->img1.pixels);
+	if(ctx->img2.pixels) iw_free(ctx,ctx->img2.pixels);
+	if(ctx->error_msg) iw_free(ctx,ctx->error_msg);
+	if(ctx->optctx.tmp_pixels) iw_free(ctx,ctx->optctx.tmp_pixels);
+	if(ctx->optctx.palette) iw_free(ctx,ctx->optctx.palette);
+	if(ctx->input_color_corr_table) iw_free(ctx,ctx->input_color_corr_table);
+	if(ctx->output_rev_color_corr_table) iw_free(ctx,ctx->output_rev_color_corr_table);
+	if(ctx->nearest_color_table) iw_free(ctx,ctx->nearest_color_table);
+	if(ctx->prng) iwpvt_prng_destroy(ctx,ctx->prng);
+	iw_free(ctx,ctx);
 }
 
 IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
@@ -572,6 +582,9 @@ IW_IMPL(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 {
 	switch(code) {
+	case IW_VAL_API_VERSION:
+		ctx->caller_api_version = n;
+		break;
 	case IW_VAL_CVT_TO_GRAYSCALE:
 		ctx->to_grayscale = n;
 		break;
@@ -640,6 +653,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	int ret=0;
 
 	switch(code) {
+	case IW_VAL_API_VERSION:
+		ret = ctx->caller_api_version;
+		break;
 	case IW_VAL_CVT_TO_GRAYSCALE:
 		ret = ctx->to_grayscale;
 		break;
