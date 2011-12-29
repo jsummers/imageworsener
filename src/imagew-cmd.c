@@ -784,8 +784,8 @@ static int run(struct params_struct *p)
 		iwcmd_set_resize(ctx,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
 	}
 
-	if( (!p->resize_alg_x.family && p->resize_blur_x.blur!=1.0) ||
-		(!p->resize_alg_y.family && p->resize_blur_y.blur!=1.0) )
+	if( (!p->resize_alg_x.family && (p->resize_blur_x.blur!=1.0 || p->resize_blur_x.interpolate)) ||
+		(!p->resize_alg_y.family && (p->resize_blur_y.blur!=1.0 || p->resize_blur_y.interpolate)) )
 	{
 		if(!p->nowarn)
 			iwcmd_warning(p,"Warning: -blur option requires -filter\n");
