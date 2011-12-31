@@ -174,7 +174,7 @@ static void weightlist_ensure_alloc(struct iw_rr_ctx *rrctx, int n)
 	}
 }
 
-static void iw_weightlist_free(struct iw_rr_ctx *rrctx)
+static void weightlist_free(struct iw_rr_ctx *rrctx)
 {
 	if(rrctx->wl) {
 		iw_free(rrctx->ctx,rrctx->wl);
@@ -184,7 +184,7 @@ static void iw_weightlist_free(struct iw_rr_ctx *rrctx)
 	}
 }
 
-static void iw_add_to_weightlist(struct iw_rr_ctx *rrctx, int src_pix, int dst_pix, double v)
+static void weightlist_add_weight(struct iw_rr_ctx *rrctx, int src_pix, int dst_pix, double v)
 {
 	if(v==0.0) return;
 	if(rrctx->wl_used>=rrctx->wl_alloc) {
@@ -284,7 +284,7 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 				pix_to_read = input_pixel;
 			}
 
-			iw_add_to_weightlist(rrctx,pix_to_read,out_pix,v);
+			weightlist_add_weight(rrctx,pix_to_read,out_pix,v);
 		}
 
 		if(v_count>0) {
@@ -442,10 +442,10 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		rrctx->radius = 2.0;
 		rrctx->cubic_b = rs->param1;
 		rrctx->cubic_c = rs->param2;
-		if(rrctx->cubic_b < -10.0) rrctx->cubic_b= -10.0;
-		if(rrctx->cubic_b >  10.0) rrctx->cubic_b=  10.0;
-		if(rrctx->cubic_c < -10.0) rrctx->cubic_c= -10.0;
-		if(rrctx->cubic_c >  10.0) rrctx->cubic_c=  10.0;
+		if(rrctx->cubic_b < -100.0) rrctx->cubic_b= -100.0;
+		if(rrctx->cubic_b >  100.0) rrctx->cubic_b=  100.0;
+		if(rrctx->cubic_c < -100.0) rrctx->cubic_c= -100.0;
+		if(rrctx->cubic_c >  100.0) rrctx->cubic_c=  100.0;
 		break;
 	case IW_RESIZETYPE_LANCZOS:
 		rrctx->filter_fn = iw_filter_lanczos;
@@ -472,7 +472,7 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 	if(rrctx->family_flags & IW_FFF_SINCBASED) {
 		rrctx->radius = floor(rs->param1+0.5); // "lobes"
 		if(rrctx->radius<2.0) rrctx->radius=2.0;
-		if(rrctx->radius>10.0) rrctx->radius=10.0;
+		if(rrctx->radius>100.0) rrctx->radius=100.0;
 	}
 
 	rrctx->edge_policy = rs->edge_policy;
@@ -501,15 +501,13 @@ done:
 	return rrctx;
 }
 
-// TODO: Remove the ctx param
 void iwpvt_resize_rows_done(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	if(!rrctx) return;
-	iw_weightlist_free(rrctx);
+	weightlist_free(rrctx);
 	iw_free(ctx,rrctx);
 }
 
-// TODO: Remove the ctx param
 void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	if(!rrctx || !rrctx->resizerow_fn) return;

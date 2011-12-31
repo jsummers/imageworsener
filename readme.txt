@@ -465,8 +465,6 @@ Options:
    used in case IW cannot correctly figure out the colorspace automatically.
    Although it can be used to apply a gamma-correction operation to the image,
    that's not really what it's intended for.
-   If you use this, it's a good idea to also specify the output colorspace
-   using "-cs".
 
  -nogamma
    Disable all color correction.
@@ -486,7 +484,7 @@ Options:
  -nocslabel
    Do not write a colorspace label to the output image file (if applicable).
    This does not affect the image processing.
-   May be be useful for dealing with defective web browsers (I'm looking at
+   May be useful for dealing with defective web browsers (I'm looking at
    *you*, Firefox) that display sRGB image colors differently than they
    display sRGB CSS/HTML colors.
 

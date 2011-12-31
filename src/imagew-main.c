@@ -789,9 +789,11 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 
 	// If the resize context for this dimension already exists, we should be
 	// able to reuse it. Otherwise, create a new one.
-	if(!rs->rrctx_cache) {
-		rs->rrctx_cache = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
-		if(!rs->rrctx_cache) goto done;
+	if(!rs->rrctx) {
+		// TODO: The use of the word "rows" here is misleading, because we are
+		// actually resizing columns.
+		rs->rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
+		if(!rs->rrctx) goto done;
 	}
 
 	for(i=0;i<ctx->input_w;i++) {
@@ -814,14 +816,13 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 				tmp_alpha = get_raw_sample(ctx,i,j,ctx->img1_alpha_channel_index);
 				ctx->in_pix[j] = (tmp_alpha)*(ctx->in_pix[j]) +
 					(1.0-tmp_alpha)*(int_ci->bkgd_color_lin);
-
 			}
 		}
 
 		// Now we have a row in the right format.
 		// Resize it and store it in the right place in the intermediate array.
 
-		iwpvt_resize_row_main(ctx,rs->rrctx_cache);
+		iwpvt_resize_row_main(ctx,rs->rrctx);
 
 		if(ctx->intclamp)
 			clamp_output_samples(ctx);
@@ -840,11 +841,11 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	retval=1;
 
 done:
-	if(rs && rs->use_offset && rs->rrctx_cache) {
+	if(rs && rs->use_offset && rs->rrctx) {
 		// If using a channel offset, the channels may need different resize
 		// contexts. Delete the current context, so that it doesn't get reused.
-		iwpvt_resize_rows_done(ctx, rs->rrctx_cache);
-		rs->rrctx_cache = NULL;
+		iwpvt_resize_rows_done(ctx, rs->rrctx);
+		rs->rrctx = NULL;
 	}
 	if(inpix) iw_free(ctx,inpix);
 	if(outpix) iw_free(ctx,outpix);
@@ -960,9 +961,9 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 	// If the resize context for this dimension already exists, we should be
 	// able to reuse it. Otherwise, create a new one.
-	if(!rs->rrctx_cache) {
-		rs->rrctx_cache = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
-		if(!rs->rrctx_cache) goto done;
+	if(!rs->rrctx) {
+		rs->rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype);
+		if(!rs->rrctx) goto done;
 	}
 
 	for(j=0;j<ctx->intermed_height;j++) {
@@ -976,7 +977,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 		// Resize it to out_pix
 
-		iwpvt_resize_row_main(ctx,rs->rrctx_cache);
+		iwpvt_resize_row_main(ctx,rs->rrctx);
 
 		if(clamp_after_resize)
 			clamp_output_samples(ctx);
@@ -1061,11 +1062,11 @@ here:
 	retval=1;
 
 done:
-	if(rs && rs->use_offset && rs->rrctx_cache) {
+	if(rs && rs->use_offset && rs->rrctx) {
 		// If using a channel offset, the channels may need different resize
 		// contexts. Delete the current context, so that it doesn't get reused.
-		iwpvt_resize_rows_done(ctx, rs->rrctx_cache);
-		rs->rrctx_cache = NULL;
+		iwpvt_resize_rows_done(ctx, rs->rrctx);
+		rs->rrctx = NULL;
 	}
 	ctx->in_pix=NULL;
 	ctx->out_pix=NULL;
@@ -1179,13 +1180,6 @@ static int iw_process_internal(struct iw_context *ctx)
 		goto done;
 	}
 
-	if(ctx->output_depth<8) {
-		// If depth is < 8 (currently not possible), we will write partial
-		// pixels at a time, and we have to zero out the memory at the
-		// beginning.
-		memset(ctx->img2.pixels, 0, ctx->img2.bpr * ctx->img2.height);
-	}
-
 	ctx->img2.bit_depth = ctx->output_depth;
 
 	ctx->intermediate = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
@@ -1242,9 +1236,9 @@ done:
 	// The 'resize contexts' are usually kept around so that they can be reused.
 	// Now that we're done with everything, free them.
 	for(i=0;i<2;i++) { // horizontal, vertical
-		if(ctx->resize_settings[i].rrctx_cache) {
-			iwpvt_resize_rows_done(ctx, ctx->resize_settings[i].rrctx_cache);
-			ctx->resize_settings[i].rrctx_cache = NULL;
+		if(ctx->resize_settings[i].rrctx) {
+			iwpvt_resize_rows_done(ctx, ctx->resize_settings[i].rrctx);
+			ctx->resize_settings[i].rrctx = NULL;
 		}
 	}
 	return retval;
@@ -1778,7 +1772,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			if(ctx->color_count[i]) flag=1;
 		}
 		if(flag) {
-			iw_warning(ctx,"Posterization not supported with floating point output.");
+			iw_warning(ctx,"Posterization is not supported with floating point output.");
 		}
 	}
 	else {

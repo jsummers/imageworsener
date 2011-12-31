@@ -177,13 +177,6 @@ static void iwcmd_utf8_to_utf16(const char *src, WCHAR *dst, int dstlen)
 }
 #endif
 
-#ifdef _UNICODE
-static void iwcmd_utf8_to_wchar(const char *src, WCHAR *dst, int dstlen)
-{
-	iwcmd_utf8_to_utf16(src,dst,dstlen);
-}
-#endif
-
 // Output a NUL-terminated string.
 // The input string is encoded in UTF-8.
 // If the output encoding is not UTF-8, it will be converted.
@@ -197,7 +190,7 @@ static void iwcmd_puts_utf8(struct params_struct *p, const char *s)
 	switch(p->output_encoding) {
 #ifdef _UNICODE
 	case IWCMD_ENCODING_UTF16:
-		iwcmd_utf8_to_wchar(s,bufW,sizeof(bufW)/sizeof(WCHAR));
+		iwcmd_utf8_to_utf16(s,bufW,sizeof(bufW)/sizeof(WCHAR));
 		fputws(bufW,stdout);
 		break;
 #endif

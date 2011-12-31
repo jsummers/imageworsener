@@ -50,7 +50,7 @@ struct iw_resize_settings {
 	double blur_factor;
 	double translate; // Amount to move the image, before applying any channel offsets.
 	double channel_offset[3]; // Indexed by IW_CHANNELTYPE_[Red..Blue]
-	struct iw_rr_ctx *rrctx_cache;
+	struct iw_rr_ctx *rrctx;
 };
 
 struct iw_channelinfo_in {
