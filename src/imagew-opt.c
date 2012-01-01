@@ -8,7 +8,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
 #ifdef IW_WINDOWS
 #include <search.h> // for qsort
