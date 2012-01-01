@@ -257,30 +257,6 @@ static IW_SAMPLE cvt_int_sample_to_linear_output(struct iw_context *ctx,
 	return x_to_linear_sample(s,csdescr);
 }
 
-// Same as get_sample_cvt_to_linear, but for floating-point input.
-static IW_SAMPLE get_sample_fltpt_cvt_to_linear(struct iw_context *ctx,
-  int x, int y, int channel, const struct iw_csdescr *csdescr)
-{
-	IW_SAMPLE v1,v2,v3;
-	IW_SAMPLE r,g,b;
-	int ch;
-
-	ch = ctx->intermed_ci[channel].corresponding_input_channel;
-
-	if(ctx->intermed_ci[channel].cvt_to_grayscale) {
-		v1 = get_raw_sample(ctx,x,y,ch+0);
-		v2 = get_raw_sample(ctx,x,y,ch+1);
-		v3 = get_raw_sample(ctx,x,y,ch+2);
-		r = x_to_linear_sample(v1,csdescr);
-		g = x_to_linear_sample(v2,csdescr);
-		b = x_to_linear_sample(v3,csdescr);
-		return iw_color_to_grayscale(ctx,r,g,b);
-	}
-
-	v1 = get_raw_sample(ctx,x,y,ch);
-	return x_to_linear_sample(v1,csdescr);
-}
-
 // Return a sample, converted to a linear colorspace if it isn't already in one.
 // Channel is the output channel number.
 static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
@@ -289,10 +265,6 @@ static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
 	unsigned int v1,v2,v3;
 	IW_SAMPLE r,g,b;
 	int ch;
-
-	if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
-		return get_sample_fltpt_cvt_to_linear(ctx, x, y, channel, csdescr);
-	}
 
 	ch = ctx->intermed_ci[channel].corresponding_input_channel;
 
@@ -308,7 +280,8 @@ static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
 	}
 
 	// This method is faster, because it may use a gamma lookup table.
-	// But all channels have to have the nominal input bitdepth.
+	// But all channels have to have the nominal input bitdepth, and it doesn't
+	// support floating point samples, or a virtual alpha channel.
 	if(ctx->intermed_ci[channel].cvt_to_grayscale) {
 		v1 = get_raw_sample_int(ctx,x,y,ch+0);
 		v2 = get_raw_sample_int(ctx,x,y,ch+1);
@@ -1758,7 +1731,9 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 
-	if(ctx->support_reduced_input_bitdepths) {
+	if(ctx->support_reduced_input_bitdepths ||
+		ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT)
+	{
 		for(i=0;i<ctx->img1_numchannels_physical;i++) {
 			ctx->img1_ci[i].disable_fast_get_sample=1;
 		}
