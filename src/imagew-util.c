@@ -277,13 +277,14 @@ static void utf8cvt_emitunichar(struct iw_utf8cvt_struct *s, unsigned int c)
 	};
 	static const struct charmap_struct chartable[] = {
 	 {0, "?" }, // Default character
-	 {0xa9, "(c)" },
-	 {0xd7, "x" },
+	 {0x00a9, "(c)" },
+	 {0x00d7, "x" }, // multiplication sign
+	 {0x2013, "-" }, // en dash
+	 {0x2018, "'" }, // left single quote
+	 {0x2019, "'" }, // right single quote
+	 {0x201c, "\"" }, // left double quote
+	 {0x201d, "\"" }, // right double quote
 	 {0x2192, "->" },
-	 {0x2018, "'" },
-	 {0x2019, "'" },
-	 {0x201c, "\"" },
-	 {0x201d, "\"" },
 	 {0, NULL}
 	};
 
