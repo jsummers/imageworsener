@@ -159,14 +159,22 @@ static IW_INLINE unsigned int get_raw_sample_1(struct iw_context *ctx,
 	return 0;
 }
 
+// Translate a pixel position from logical to physical coordinates.
+static IW_INLINE void translate_coords(struct iw_context *ctx,
+	int x, int y, int *prx, int *pry)
+{
+	*prx = ctx->input_start_x+x;
+	*pry = ctx->input_start_y+y;
+}
+
 // Returns a value from 0 to 2^(ctx->img1.bit_depth)-1.
 // x and y are logical coordinates.
 static unsigned int get_raw_sample_int(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	int rx,ry; // physical coordinates
-	rx = ctx->input_start_x+x;
-	ry = ctx->input_start_y+y;
+
+	translate_coords(ctx,x,y,&rx,&ry);
 
 	switch(ctx->img1.bit_depth) {
 	case 8: return get_raw_sample_8(ctx,rx,ry,channel);
@@ -192,10 +200,12 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	}
 
 	if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		int rx, ry;
+		translate_coords(ctx,x,y,&rx,&ry);
 		if(ctx->img1.bit_depth==64) {
-			return get_raw_sample_flt64(ctx,x,y,channel);
+			return get_raw_sample_flt64(ctx,rx,ry,channel);
 		}
-		return get_raw_sample_flt32(ctx,x,y,channel);
+		return get_raw_sample_flt32(ctx,rx,ry,channel);
 	}
 
 	v = get_raw_sample_int(ctx,x,y,channel);
