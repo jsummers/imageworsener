@@ -1,5 +1,5 @@
 Unreleased changes
- - (none)
+ - Support reading CMYK/YCCK JPEG images.
 
 Version 0.9.7 - 30 Dec 2011
  - Support for custom memory allocation functions.

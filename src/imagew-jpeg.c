@@ -133,6 +133,29 @@ static void my_term_source_fn(j_decompress_ptr cinfo)
 {
 }
 
+static void convert_cmyk_to_rbg(struct iw_context *ctx, const JSAMPLE *src,
+	JSAMPLE *dst, int npixels)
+{
+	int i;
+	double c, m, y, k, r, g, b;
+
+	for(i=0;i<npixels;i++) {
+		c = 1.0 - ((double)src[4*i+0])/255.0;
+		m = 1.0 - ((double)src[4*i+1])/255.0;
+		y = 1.0 - ((double)src[4*i+2])/255.0;
+		k = 1.0 - ((double)src[4*i+3])/255.0;
+		r = 1.0 - c*(1.0-k) - k;
+		g = 1.0 - m*(1.0-k) - k;
+		b = 1.0 - y*(1.0-k) - k;
+		if(r<0.0) r=0.0; if(r>1.0) r=1.0;
+		if(g<0.0) g=0.0; if(g>1.0) g=1.0;
+		if(b<0.0) b=0.0; if(b>1.0) b=1.0;
+		dst[3*i+0] = (iw_byte)(0.5+255.0*r);
+		dst[3*i+1] = (iw_byte)(0.5+255.0*g);
+		dst[3*i+2] = (iw_byte)(0.5+255.0*b);
+	}
+}
+
 IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	int retval=0;
@@ -145,6 +168,8 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	int numchannels=0;
 	struct iw_image img;
 	struct iw_jpegrctx jpegrctx;
+	JSAMPLE *tmprow = NULL;
+	int cmyk_flag = 0;
 
 	memset(&img,0,sizeof(struct iw_image));
 	memset(&cinfo,0,sizeof(struct jpeg_decompress_struct));
@@ -187,15 +212,24 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	jpeg_start_decompress(&cinfo);
 
-	colorspace=cinfo.jpeg_color_space;
+	colorspace=cinfo.out_color_space;
 	numchannels=cinfo.output_components;
+
+	// libjpeg will automatically convert YCbCr images to RGB, and YCCK images
+	// to CMYK. That leaves GRAYSCALE, RGB, and CMYK for us to handle.
+	// cinfo.jpeg_color_space is the colorspace before conversion, and
+	// cinfo.out_color_space is the colorspace after conversion.
 
 	if(colorspace==JCS_GRAYSCALE && numchannels==1) {
 		img.imgtype = IW_IMGTYPE_GRAY;
 		img.native_grayscale = 1;
 	}
-	else if((colorspace==JCS_YCbCr || JCS_RGB) && numchannels==3) {
+	else if((colorspace==JCS_RGB) && numchannels==3) {
 		img.imgtype = IW_IMGTYPE_RGB;
+	}
+	else if((colorspace==JCS_CMYK) && numchannels==4) {
+		img.imgtype = IW_IMGTYPE_RGB;
+		cmyk_flag = 1;
 	}
 	else {
 		iw_set_error(ctx,"Unsupported type of JPEG");
@@ -216,10 +250,23 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		goto done;
 	}
 
+	if(cmyk_flag) {
+		tmprow = iw_malloc(ctx,4*img.width);
+		if(!tmprow) goto done;
+	}
+
 	while(cinfo.output_scanline < cinfo.output_height) {
 		rownum=cinfo.output_scanline;
 		jsamprow = &img.pixels[img.bpr * rownum];
-		jpeg_read_scanlines(&cinfo, &jsamprow, 1);
+		if(cmyk_flag) {
+			// read into tmprow, then convert and copy to img.pixels
+			jpeg_read_scanlines(&cinfo, &tmprow, 1);
+			convert_cmyk_to_rbg(ctx,tmprow,jsamprow,img.width);
+		}
+		else {
+			// read directly into img.pixels
+			jpeg_read_scanlines(&cinfo, &jsamprow, 1);
+		}
 		if(cinfo.output_scanline<=rownum) {
 			iw_set_error(ctx,"Error reading JPEG file");
 			goto done;
@@ -235,6 +282,7 @@ done:
 	if(iodescr->close_fn)
 		(*iodescr->close_fn)(ctx,iodescr);
 	if(jpegrctx.buffer) iw_free(ctx,jpegrctx.buffer);
+	if(tmprow) iw_free(ctx,tmprow);
 	return retval;
 }
 
