@@ -108,8 +108,8 @@ static int iwgif_read_screen_descriptor(struct iwgifreadcontext *rctx)
 	return 1;
 }
 
+// Read a global or local palette into memory.
 // ct->num_entries must be set by caller
-// Reads the palette entries.
 static int iwgif_read_color_table(struct iwgifreadcontext *rctx, struct iw_palette *ct)
 {
 	int i;
@@ -141,9 +141,9 @@ static int iwgif_skip_subblocks(struct iwgifreadcontext *rctx)
 	}
 }
 
-// We need transparency information, so we have to process graphics control
+// We need transparency information, so we have to process graphic control
 // extensions.
-static int iwgif_read_graphics_control_ext(struct iwgifreadcontext *rctx)
+static int iwgif_read_graphic_control_ext(struct iwgifreadcontext *rctx)
 {
 	int retval;
 
@@ -176,10 +176,11 @@ static int iwgif_read_extension(struct iwgifreadcontext *rctx)
 	switch(ext_type) {
 	case 0xf9:
 		if(rctx->page == rctx->pages_seen+1) {
-			if(!iwgif_read_graphics_control_ext(rctx)) goto done;
+			if(!iwgif_read_graphic_control_ext(rctx)) goto done;
 		}
 		else {
-			// This extension does not apply to the image we're processing, so ignore it.
+			// This extension's scope does not include the image we're
+			// processing, so ignore it.
 			if(!iwgif_skip_subblocks(rctx)) goto done;
 		}
 		break;
@@ -192,7 +193,7 @@ done:
 	return retval;
 }
 
-// Sets the (rctx->pixels_set + offset)th pixel in the logical image to the
+// Set the (rctx->pixels_set + offset)th pixel in the logical image to the
 // color represented by palette entry #coloridx.
 static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int coloridx,
 		int offset)
@@ -310,7 +311,7 @@ static void lzw_emit_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d
 		iwgif_record_pixel(rctx, (unsigned int)d->ct[code].lastchar, (int)(d->ct[code].length-1));
 		if(d->ct[code].length<=1) break;
 		// The codes are structured as a "forest" (multiple trees).
-		// Go to the parent code, which should have a length 1 less than this one.
+		// Go to the parent code, which will have a length 1 less than this one.
 		code = (unsigned int)d->ct[code].parent;
 	}
 
