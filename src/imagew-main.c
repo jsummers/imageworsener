@@ -220,12 +220,30 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
 	IW_SAMPLE r, IW_SAMPLE g, IW_SAMPLE b)
 {
-	if(ctx->grayscale_formula==1) {
-		// Compatibility formula
-		return 0.299*r + 0.587*g + 0.114*b;
+	IW_SAMPLE v0,v1,v2;
+
+	switch(ctx->grayscale_formula) {
+	case IW_GSF_WEIGHTED:
+		return ctx->grayscale_weight[0]*r +
+			ctx->grayscale_weight[1]*g +
+			ctx->grayscale_weight[2]*b;
+	case IW_GSF_ORDERBYVALUE:
+		// Sort the R, G, and B values, then use the corresponding weights.
+		if(g<=r) { v0=r; v1=g; }
+		else { v0=g; v1=r; }
+		if(b<=v1) {
+			v2=b;
+		}
+		else {
+			v2=v1;
+			if(b<=v0) { v1=b; }
+			else { v1=v0; v0=b; }
+		}
+		return ctx->grayscale_weight[0]*v0 +
+			ctx->grayscale_weight[1]*v1 +
+			ctx->grayscale_weight[2]*v2;
 	}
-	// Formula for linear colorspace
-	return 0.212655*r + 0.715158*g + 0.072187*b;
+	return 0.0;
 }
 
 // Based on color depth of the input image.
@@ -1653,6 +1671,21 @@ static void iw_convert_density_info(struct iw_context *ctx)
 	ctx->img2.density_y = ctx->img1.density_y * factor;
 }
 
+// Set the weights for the grayscale algorithm, if needed.
+static void prepare_grayscale(struct iw_context *ctx)
+{
+	switch(ctx->grayscale_formula) {
+	case IW_GSF_STANDARD:
+		ctx->grayscale_formula = IW_GSF_WEIGHTED;
+		iw_set_grayscale_weights(ctx,0.212655,0.715158,0.072187);
+		break;
+	case IW_GSF_COMPATIBLE:
+		ctx->grayscale_formula = IW_GSF_WEIGHTED;
+		iw_set_grayscale_weights(ctx,0.299,0.587,0.114);
+		break;
+	}
+}
+
 // Set up some things before we do the resize, and check to make
 // sure everything looks okay.
 static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
@@ -1684,6 +1717,10 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 	if(!iw_check_image_dimensions(ctx,w,h)) {
 		return 0;
+	}
+
+	if(ctx->to_grayscale) {
+		prepare_grayscale(ctx);
 	}
 
 	init_channel_info(ctx);
@@ -1933,6 +1970,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			ctx->opt_binary_trns = 0;
 		}
 	}
+
 	return 1;
 }
 

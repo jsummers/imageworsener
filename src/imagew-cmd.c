@@ -113,6 +113,7 @@ struct params_struct {
 	int pref_units;
 	double density_forced_x, density_forced_y; // in pixels/meter
 	int grayscale_formula;
+	double grayscale_weight[3];
 	int no_cslabel;
 	int include_screen;
 	int noopt_grayscale,noopt_binarytrns,noopt_palette;
@@ -554,7 +555,12 @@ static int run(struct params_struct *p)
 		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_X,p->density_forced_x);
 		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_Y,p->density_forced_y);
 	}
-	if(p->grayscale_formula>0) iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
+	if(p->grayscale_formula>=0) {
+		iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
+		if(p->grayscale_formula==IW_GSF_WEIGHTED || p->grayscale_formula==IW_GSF_ORDERBYVALUE) {
+			iw_set_grayscale_weights(ctx,p->grayscale_weight[0],p->grayscale_weight[1],p->grayscale_weight[2]);
+		}
+	}
 	if(p->page_to_read>0) iw_set_value(ctx,IW_VAL_PAGE_TO_READ,p->page_to_read);
 	if(p->include_screen>=0) iw_set_value(ctx,IW_VAL_INCLUDE_SCREEN,p->include_screen);
 
@@ -640,13 +646,13 @@ static int run(struct params_struct *p)
 	if(p->color_count_gray)  iw_set_color_count(ctx,IW_CHANNELTYPE_GRAY ,p->color_count_gray);
 	if(p->color_count_alpha) iw_set_color_count(ctx,IW_CHANNELTYPE_ALPHA,p->color_count_alpha);
 
-	if(p->grayscale) {
-		iw_set_value(ctx,IW_VAL_CVT_TO_GRAYSCALE,1);
-	}
-	else if(p->condgrayscale) {
+	if(p->condgrayscale) {
 		if(iw_get_value(ctx,IW_VAL_INPUT_NATIVE_GRAYSCALE)) {
 			iw_set_value(ctx,IW_VAL_CVT_TO_GRAYSCALE,1);
 		}
+	}
+	else if(p->grayscale) {
+		iw_set_value(ctx,IW_VAL_CVT_TO_GRAYSCALE,1);
 	}
 
 	if(p->offset_r_h!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_RED,  IW_DIMENSION_H,p->offset_r_h);
@@ -1406,6 +1412,38 @@ static int process_edge_policy(struct params_struct *p, const char *s)
 	return -1;
 }
 
+static int iwcmd_process_gsf(struct params_struct *p, const char *s)
+{
+	int namelen;
+	int count;
+
+	namelen=iwcmd_get_name_len(s);
+
+	if(!strcmp(s,"s")) p->grayscale_formula=IW_GSF_STANDARD;
+	else if(!strcmp(s,"c")) p->grayscale_formula=IW_GSF_COMPATIBLE;
+	else if(namelen==1 && !strncmp(s,"w",1)) {
+		iwcmd_parse_number_list(&s[1],3,p->grayscale_weight,&count);
+		if(count!=3) {
+			iwcmd_error(p,"Invalid grayscale formula\n");
+			return 0;
+		}
+		p->grayscale_formula=IW_GSF_WEIGHTED;
+	}
+	else if(namelen==1 && !strncmp(s,"v",1)) {
+		iwcmd_parse_number_list(&s[1],3,p->grayscale_weight,&count);
+		if(count<1) {
+			iwcmd_error(p,"Invalid grayscale formula\n");
+			return 0;
+		}
+		p->grayscale_formula=IW_GSF_ORDERBYVALUE;
+	}
+	else {
+		iwcmd_error(p,"Unknown grayscale formula\n");
+		return 0;
+	}
+	return 1;
+}
+
 static int get_compression_from_name(struct params_struct *p, const char *s)
 {
 	if(!strcmp(s,"none")) return IW_COMPRESSION_NONE;
@@ -1545,6 +1583,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"edgex",PT_EDGE_POLICY_X,1},
 		{"edgey",PT_EDGE_POLICY_Y,1},
 		{"density",PT_DENSITY_POLICY,1},
+		{"gsf",PT_GRAYSCALEFORMULA,1},
 		{"grayscaleformula",PT_GRAYSCALEFORMULA,1},
 		{"noopt",PT_NOOPT,1},
 		{"encoding",PT_ENCODING,1},
@@ -1878,12 +1917,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		}
 		break;
 	case PT_GRAYSCALEFORMULA:
-		if(v[0]=='s') p->grayscale_formula=0;
-		else if(v[0]=='c') p->grayscale_formula=1;
-		else {
-			iwcmd_error(p,"Unknown grayscale formula\n");
+		if(!iwcmd_process_gsf(p,v)) {
 			return 0;
 		}
+		p->grayscale=1;
 		break;
 	case PT_NOOPT:
 		if(!iwcmd_process_noopt(p,v))
@@ -2040,6 +2077,7 @@ static int iwcmd_main(int argc, char* argv[])
 	p.dither_family_all = p.dither_family_nonalpha = p.dither_family_alpha = -1;
 	p.dither_family_red = p.dither_family_green = p.dither_family_blue = -1;
 	p.dither_family_gray = -1;
+	p.grayscale_formula = -1;
 
 	handle_encoding(&p,argc,argv);
 

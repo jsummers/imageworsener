@@ -216,7 +216,8 @@ struct iw_context {
 	int no_gamma; // Disable gamma correction. (IW_VAL_DISABLE_GAMMA)
 	int intclamp; // Clamp the intermediate samples to the 0.0-1.0 range.
 	int no_cslabel; // Disable writing of a colorspace label to the output file.
-	int grayscale_formula;
+	int grayscale_formula; // IW_GSF_*
+	double grayscale_weight[3];
 	int density_policy; // IW_DENSITY_POLICY_*
 	int pref_units; // Used if density_policy == FORCED. IW_PREF_UNITS_*.
 	double density_forced_x, density_forced_y; // Used if density_policy == FORCED. In px/meter.

@@ -1,4 +1,7 @@
 Unreleased changes
+ - Support for two types of custom grayscale formulas.
+ - Added -gsf as an alias of -grayscaleformula, and made it unnecessary to
+   specify "-grayscale" if you set the grayscale formula.
  - Support reading CMYK/YCCK JPEG images.
 
 Version 0.9.7 - 30 Dec 2011

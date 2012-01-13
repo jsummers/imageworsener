@@ -244,6 +244,7 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	iw_make_srgb_csdescr(&ctx->img1cs,IW_SRGB_INTENT_PERCEPTUAL);
 	iw_make_srgb_csdescr(&ctx->img2cs,IW_SRGB_INTENT_PERCEPTUAL);
 	ctx->to_grayscale=0;
+	ctx->grayscale_formula = IW_GSF_STANDARD;
 	ctx->density_policy = IW_DENSITY_POLICY_AUTO;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
@@ -576,6 +577,21 @@ IW_IMPL(void) iw_set_allow_opt(struct iw_context *ctx, int opt, int n)
 	case IW_OPT_STRIP_ALPHA: ctx->opt_strip_alpha = v; break;
 	case IW_OPT_BINARY_TRNS: ctx->opt_binary_trns = v; break;
 	}
+}
+
+IW_IMPL(void) iw_set_grayscale_weights(struct iw_context *ctx,
+	double r, double g, double b)
+{
+	double tot;
+
+	//ctx->grayscale_formula = IW_GSF_WEIGHTED;
+
+	// Normalize, so the weights add up to 1.
+	tot = r+g+b;
+	if(tot==0.0) tot=1.0;
+	ctx->grayscale_weight[0] = r/tot;
+	ctx->grayscale_weight[1] = g/tot;
+	ctx->grayscale_weight[2] = b/tot;
 }
 
 IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)

@@ -351,11 +351,21 @@ Options:
    as grayscale. (So, you probably shouldn't use -condgrayscale on images that
    were created by IW, if you want predictable results.)
 
- -grayscaleformula <name>
-   The formula to use when converting a color image to grayscale.
-   "s" = IW's standard formula (approx. 0.21R + 0.72G + 0.07B).
-   "c" = "Compatibility" formula (approx. 0.30R + 0.59G + 0.11B).
-    The "c" formula should generally only be used with -nogamma.
+ -gsf <name> (or -grayscaleformula <name>)
+   The formula to use when converting a color image to grayscale. Using -gsf
+   implies -grayscale, unless -condgrayscale was used.
+   Available options:
+    s (default) = The standard formula, based on luminance. Equivalent to
+     "w0.212655,0.715158,0.072187". This is usually what you should use.
+    c = The "compatibility" formula. Equivalent to "w0.299,0.587,0.114".
+     This should generally only be used with -nogamma.
+    w<r>,<g>,<b> = Use custom weights for the red, green, and blue components.
+     The weights will be normalized so that they add up to 1.
+    v<max>,<mid>,<min> = Use custom weights for the component with the
+     maximum, middle, and minimum value. That is, the first weight will be
+     applied to whichever component of that pixel has the largest value, etc.
+     "v1,0,0" and "v0.5,0,0.5" have been suggested as grayscale conversion
+     formulas, though they should be used with caution.
 
  -bkgd <color1>[,<color2>]
    Apply a background color to the transparent or partially-transparent parts
@@ -475,8 +485,7 @@ Options:
    when the image is read in, but not when it is resized. That's not what
    -nogamma will do.
 
-   If you use this with "-grayscale", you should probably also use
-   "-grayscaleformula c".
+   If you use this with "-grayscale", you should probably also use "-gsf c".
 
    This does not affect the colorspace label that will be written to the output
    file. If a label is written, it may not be the label you want.

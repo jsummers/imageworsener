@@ -62,7 +62,7 @@ extern "C" {
 // normal displayable range.
 #define IW_VAL_INT_CLAMP         15
 
-// 0=standard formula, 1=compatibility formula
+// IW_GSF_*
 #define IW_VAL_GRAYSCALE_FORMULA 16
 
 #define IW_VAL_EDGE_POLICY_X     17
@@ -248,6 +248,12 @@ extern "C" {
 #define IW_DENSITY_POLICY_KEEP    2 // Keep density the same
 #define IW_DENSITY_POLICY_ADJUST  3 // Keep physical image size the same
 #define IW_DENSITY_POLICY_FORCED  4 // Use a specific density
+
+// Grayscale formula
+#define IW_GSF_STANDARD      0
+#define IW_GSF_COMPATIBLE    1
+#define IW_GSF_WEIGHTED      2
+#define IW_GSF_ORDERBYVALUE  3
 
 #define IW_EDGE_POLICY_REPLICATE  1  // Replicate the pixels at the image edge.
 #define IW_EDGE_POLICY_STANDARD   2  // Use available samples if any are within radius; otherwise replicate.
@@ -482,6 +488,9 @@ IW_EXPORT(void) iw_set_resize_alg(struct iw_context *ctx, int dimension, int fam
 // dimension: IW_DIMENSION_H: Horizontal, positive=right
 //            IW_DIMENSION_V: Vertical, positive=down
 IW_EXPORT(void) iw_set_channel_offset(struct iw_context *ctx, int channeltype, int dimension, double offs);
+
+// Also call iw_set_value(...,IW_VAL_GRAYSCALE_FORMULA,...), to set the actual formula.
+IW_EXPORT(void) iw_set_grayscale_weights(struct iw_context *ctx, double r, double g, double b);
 
 // Set the significant bits to something less than is stored in the file.
 IW_EXPORT(void) iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d);
