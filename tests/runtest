@@ -137,6 +137,8 @@ $IW srcimg/4x4.png actual/edge-t.png $CMPR $SCALE -filter mitchell -edgex t -edg
 # Test transparent virtual pixels, with a source image with transparency.
 # And test translating by a number of source pixels.
 $IW srcimg/p8t.png actual/edge-t2.png $CMPR $SMALL -filter hanning -edge t -translate s3,3
+# Misc. tests
+$IW srcimg/rgb8.png actual/edge-t3.png $CMPR $SMALL -filter lanczos5 -edge t -translate -4,-3 -grayscale -bkgd 876,554433 -checkersize 3
 
 $IW srcimg/4x4.png actual/cs-linear.png $DCMPR $SCALE -filter catrom -cs linear
 $IW srcimg/4x4.png actual/cs-gamma15.png $DCMPR -height x8.75 -filter catrom -cs gamma1.5
