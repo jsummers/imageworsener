@@ -184,6 +184,11 @@ IW_IMPL(int) iw_stricmp(const char *s1, const char *s2)
 #endif
 }
 
+IW_IMPL(void) iw_zeromem(void *mem, size_t n)
+{
+	memset(mem,0,n);
+}
+
 ////////////////////////////////////////////
 // A simple carry-with-multiply pseudorandom number generator (PRNG).
 

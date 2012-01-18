@@ -448,8 +448,8 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	struct iwmiffreadcontext rctx;
 	int retval=0;
 
-	memset(&rctx,0,sizeof(struct iwmiffreadcontext));
-	memset(&img,0,sizeof(struct iw_image));
+	iw_zeromem(&rctx,sizeof(struct iwmiffreadcontext));
+	iw_zeromem(&img,sizeof(struct iw_image));
 
 	rctx.ctx = ctx;
 	rctx.host_little_endian = iw_get_host_endianness();
@@ -764,9 +764,9 @@ IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 	int retval=0;
 	struct iw_image img1;
 
-	memset(&img1,0,sizeof(struct iw_image));
+	iw_zeromem(&img1,sizeof(struct iw_image));
 
-	memset(&wctx,0,sizeof(struct iwmiffwritecontext));
+	iw_zeromem(&wctx,sizeof(struct iwmiffwritecontext));
 
 	wctx.ctx = ctx;
 

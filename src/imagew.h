@@ -635,6 +635,8 @@ IW_EXPORT(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
   iw_gnuc_attribute ((format (printf, 3, 4)));
 IW_EXPORT(int) iw_stricmp(const char *s1, const char *s2);
 
+IW_EXPORT(void) iw_zeromem(void *mem, size_t n);
+
 IW_EXPORT(int) iw_imgtype_num_channels(int t);
 
 IW_EXPORT(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);

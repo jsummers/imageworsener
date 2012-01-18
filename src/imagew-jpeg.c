@@ -150,9 +150,9 @@ static void convert_cmyk_to_rbg(struct iw_context *ctx, const JSAMPLE *src,
 		if(r<0.0) r=0.0; if(r>1.0) r=1.0;
 		if(g<0.0) g=0.0; if(g>1.0) g=1.0;
 		if(b<0.0) b=0.0; if(b>1.0) b=1.0;
-		dst[3*i+0] = (iw_byte)(0.5+255.0*r);
-		dst[3*i+1] = (iw_byte)(0.5+255.0*g);
-		dst[3*i+2] = (iw_byte)(0.5+255.0*b);
+		dst[3*i+0] = (JSAMPLE)(0.5+255.0*r);
+		dst[3*i+1] = (JSAMPLE)(0.5+255.0*g);
+		dst[3*i+2] = (JSAMPLE)(0.5+255.0*b);
 	}
 }
 
@@ -171,10 +171,10 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	JSAMPLE *tmprow = NULL;
 	int cmyk_flag = 0;
 
-	memset(&img,0,sizeof(struct iw_image));
-	memset(&cinfo,0,sizeof(struct jpeg_decompress_struct));
-	memset(&jerr,0,sizeof(struct my_error_mgr));
-	memset(&jpegrctx,0,sizeof(struct iw_jpegrctx));
+	iw_zeromem(&img,sizeof(struct iw_image));
+	iw_zeromem(&cinfo,sizeof(struct jpeg_decompress_struct));
+	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
+	iw_zeromem(&jpegrctx,sizeof(struct iw_jpegrctx));
 
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = my_error_exit;
@@ -376,9 +376,9 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	int samp_factor_h, samp_factor_v;
 	struct iw_jpegwctx jpegwctx;
 
-	memset(&cinfo,0,sizeof(struct jpeg_compress_struct));
-	memset(&jerr,0,sizeof(struct my_error_mgr));
-	memset(&jpegwctx,0,sizeof(struct iw_jpegwctx));
+	iw_zeromem(&cinfo,sizeof(struct jpeg_compress_struct));
+	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
+	iw_zeromem(&jpegwctx,sizeof(struct iw_jpegwctx));
 
 	iw_get_output_image(ctx,&img);
 

@@ -530,8 +530,8 @@ IW_IMPL(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	struct iwwebpreadcontext rctx;
 	int retval=0;
 
-	memset(&rctx,0,sizeof(struct iwwebpreadcontext));
-	memset(&img,0,sizeof(struct iw_image));
+	iw_zeromem(&rctx,sizeof(struct iwwebpreadcontext));
+	iw_zeromem(&img,sizeof(struct iw_image));
 
 	rctx.ctx = ctx;
 	rctx.iodescr = iodescr;
@@ -661,8 +661,8 @@ IW_IMPL(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodes
 	int retval=0;
 	struct iw_image img1;
 
-	memset(&img1,0,sizeof(struct iw_image));
-	memset(&wctx,0,sizeof(struct iwwebpwritecontext));
+	iw_zeromem(&img1,sizeof(struct iw_image));
+	iw_zeromem(&wctx,sizeof(struct iwwebpwritecontext));
 
 	wctx.ctx = ctx;
 

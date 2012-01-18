@@ -278,7 +278,7 @@ IW_IMPL(void) iw_destroy_context(struct iw_context *ctx)
 
 IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 {
-	memset(img,0,sizeof(struct iw_image));
+	iw_zeromem(img,sizeof(struct iw_image));
 	img->width = ctx->optctx.width;
 	img->height = ctx->optctx.height;
 	img->imgtype = ctx->optctx.imgtype;

@@ -588,7 +588,7 @@ IW_IMPL(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 	int retval=0;
 	struct iw_image img1;
 
-	memset(&img1,0,sizeof(struct iw_image));
+	iw_zeromem(&img1,sizeof(struct iw_image));
 
 	tiffctx = iw_mallocz(ctx,sizeof(struct iwtiffwritecontext));
 	if(!tiffctx) goto done;

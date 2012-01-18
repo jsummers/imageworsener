@@ -80,7 +80,7 @@ static void iwbmp_write_file_header(struct iwbmpwritecontext *bmpctx)
 
 	if(!bmpctx->include_file_header) return;
 
-	memset(&fileheader,0,sizeof(fileheader));
+	iw_zeromem(fileheader,sizeof(fileheader));
 	fileheader[0] = 66; // 'B'
 	fileheader[1] = 77; // 'M'
 	iw_set_ui32le(&fileheader[ 2],14+40+(unsigned int)bmpctx->palsize+
@@ -94,7 +94,7 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *bmpctx)
 	unsigned int dens_x, dens_y;
 	iw_byte header[40];
 
-	memset(&header,0,sizeof(header));
+	iw_zeromem(header,sizeof(header));
 
 	iw_set_ui32le(&header[ 0],40);      // biSize
 	iw_set_ui32le(&header[ 4],bmpctx->img->width);  // biWidth
@@ -133,7 +133,7 @@ static void iwbmp_write_palette(struct iwbmpwritecontext *bmpctx)
 			buf[3] = 0;
 		}
 		else {
-			memset(buf,0,4);
+			iw_zeromem(buf,4);
 		}
 		iwbmp_write(bmpctx,buf,4);
 	}
@@ -214,9 +214,9 @@ IW_IMPL(int) iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	int retval=0;
 	struct iw_image img1;
 
-	memset(&img1,0,sizeof(struct iw_image));
+	iw_zeromem(&img1,sizeof(struct iw_image));
 
-	memset(&bmpctx,0,sizeof(struct iwbmpwritecontext));
+	iw_zeromem(&bmpctx,sizeof(struct iwbmpwritecontext));
 
 	bmpctx.ctx = ctx;
 	bmpctx.include_file_header = 1;

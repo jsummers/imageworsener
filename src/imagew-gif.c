@@ -275,7 +275,7 @@ static void lzw_init(struct lzwdeccontext *d, unsigned int root_codesize)
 {
 	unsigned int i;
 
-	memset(d,0,sizeof(struct lzwdeccontext));
+	iw_zeromem(d,sizeof(struct lzwdeccontext));
 
 	d->root_codesize = root_codesize;
 	d->num_root_codes = 1<<d->root_codesize;
@@ -497,7 +497,7 @@ static int iwgif_init_screen(struct iwgifreadcontext *rctx)
 	if(!img->pixels) goto done;
 
 	// Start by clearing the screen to black, or transparent black.
-	memset(img->pixels,0,img->bpr*img->height);
+	iw_zeromem(img->pixels,img->bpr*img->height);
 
 	retval=1;
 done:
@@ -757,7 +757,7 @@ IW_IMPL(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	struct iwgifreadcontext *rctx = NULL;
 	int retval=0;
 
-	memset(&img,0,sizeof(struct iw_image));
+	iw_zeromem(&img,sizeof(struct iw_image));
 	rctx = iw_mallocz(ctx,sizeof(struct iwgifreadcontext));
 	if(!rctx) goto done;
 

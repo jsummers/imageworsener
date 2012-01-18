@@ -427,7 +427,7 @@ static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx
 	// Try to find a color that's not used in the image.
 	// Looking for all 2^24 possible colors is too much work.
 	// We will just look for 256 predefined colors: R={0-255},G=192,B=192
-	memset(clr_used,0,256*sizeof(iw_byte));
+	iw_zeromem(clr_used,256);
 
 	// Hard to decide how to do this. I don't want the optimization phase
 	// to modify img2.pixels, though that would be the easiest method.
@@ -496,7 +496,7 @@ static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
-	memset(clr_used,0,256*sizeof(iw_byte));
+	iw_zeromem(clr_used,256);
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
 	if(!trns_mask) goto done;
@@ -564,7 +564,7 @@ static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
-	memset(clr_used,0,256*sizeof(iw_byte));
+	iw_zeromem(clr_used,256);
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
 	if(!trns_mask) goto done;
@@ -624,7 +624,7 @@ static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_c
 	if(!(ctx->output_profile&IW_PROFILE_BINARYTRNS)) return;
 	if(!ctx->opt_binary_trns) return;
 
-	memset(clr_used,0,256*sizeof(iw_byte));
+	iw_zeromem(clr_used,256);
 
 	trns_mask = iw_malloc_large(ctx, optctx->width, optctx->height);
 	if(!trns_mask) goto done;
@@ -908,7 +908,7 @@ static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx
 	if(optctx->palette->num_entries > max_entries)
 		return 0;
 
-	memset(clr_used,0,256*sizeof(iw_byte));
+	iw_zeromem(clr_used,256);
 
 	for(i=0;i<optctx->palette->num_entries;i++) {
 		if(optctx->palette->entry[i].a>0) { // Look at all the nontransparent entries.
@@ -1115,7 +1115,7 @@ void iwpvt_optimize_image(struct iw_context *ctx)
 
 	optctx = &ctx->optctx;
 
-	//memset(optctx,0,sizeof(struct iw_opt_ctx));
+	//iw_zeromem(optctx,sizeof(struct iw_opt_ctx));
 	optctx->width = ctx->img2.width;
 	optctx->height = ctx->img2.height;
 	optctx->imgtype = ctx->img2.imgtype;

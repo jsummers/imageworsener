@@ -234,8 +234,8 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	png_infop  info_ptr = NULL;
 	struct iw_pngrctx pngrctx;
 
-	memset(&pngrctx,0,sizeof(struct iw_pngrctx));
-	memset(&img,0,sizeof(struct iw_image));
+	iw_zeromem(&pngrctx,sizeof(struct iw_pngrctx));
+	iw_zeromem(&img,sizeof(struct iw_image));
 
 	errinfo.jbufp = &jbuf;
 	errinfo.ctx = ctx;
@@ -400,7 +400,7 @@ static void iwpng_set_binary_trns(struct iw_context *ctx,
 {
 	png_color_16 newtrns;
 
-	memset(&newtrns,0,sizeof(png_color_16));
+	iw_zeromem(&newtrns,sizeof(png_color_16));
 
 	if(img->has_colorkey_trns) {
 		if(lpng_color_type==PNG_COLOR_TYPE_GRAY) {
@@ -476,7 +476,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	int cmprlevel;
 	struct iw_pngwctx pngwctx;
 
-	memset(&pngwctx,0,sizeof(struct iw_pngwctx));
+	iw_zeromem(&pngwctx,sizeof(struct iw_pngwctx));
 
 	iw_get_output_image(ctx,&img);
 	iw_get_output_colorspace(ctx,&csdescr);
