@@ -787,9 +787,6 @@ done:
 		iw_set_error(ctx,"Failed to read GIF file");
 	}
 
-	if(iodescr->close_fn)
-		(*iodescr->close_fn)(ctx,iodescr);
-
 	if(rctx) {
 		if(rctx->row_pointers) iw_free(ctx,rctx->row_pointers);
 		iw_free(ctx,rctx);

@@ -496,9 +496,6 @@ done:
 	if(!retval) {
 		iw_set_error(ctx,"Failed to read MIFF file");
 	}
-
-	if(iodescr->close_fn)
-		(*iodescr->close_fn)(ctx,iodescr);
 	return retval;
 }
 
@@ -782,7 +779,5 @@ IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 
 	retval=1;
 done:
-	if(wctx.iodescr->close_fn)
-		(*wctx.iodescr->close_fn)(ctx,wctx.iodescr);
 	return retval;
 }

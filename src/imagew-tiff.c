@@ -614,8 +614,6 @@ IW_IMPL(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 	retval=1;
 
 done:
-	if(tiffctx->iodescr->close_fn)
-		(*tiffctx->iodescr->close_fn)(ctx,tiffctx->iodescr);
 	if(tiffctx) iw_free(ctx,tiffctx);
 	return retval;
 }

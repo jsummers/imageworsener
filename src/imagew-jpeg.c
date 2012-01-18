@@ -279,8 +279,6 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 done:
 	if(cinfo_valid) jpeg_destroy_decompress(&cinfo);
-	if(iodescr->close_fn)
-		(*iodescr->close_fn)(ctx,iodescr);
 	if(jpegrctx.buffer) iw_free(ctx,jpegrctx.buffer);
 	if(tmprow) iw_free(ctx,tmprow);
 	return retval;
@@ -487,8 +485,6 @@ done:
 	if(compress_created)
 		jpeg_destroy_compress(&cinfo);
 
-	if(iodescr->close_fn)
-		(*iodescr->close_fn)(ctx,iodescr);
 	if(row_pointers) iw_free(ctx,row_pointers);
 
 	if(jpegwctx.buffer) iw_free(ctx,jpegwctx.buffer);

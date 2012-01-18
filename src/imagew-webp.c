@@ -553,9 +553,6 @@ done:
 	if(!retval) {
 		iw_set_error(ctx,"Failed to read WebP file");
 	}
-
-	if(iodescr->close_fn)
-		(*iodescr->close_fn)(ctx,iodescr);
 	return retval;
 }
 
@@ -681,10 +678,6 @@ done:
 	if(!retval) {
 		iw_set_error(ctx,"Failed to write WebP file");
 	}
-
-	if(wctx.iodescr->close_fn)
-		(*wctx.iodescr->close_fn)(ctx,wctx.iodescr);
-
 	return retval;
 }
 

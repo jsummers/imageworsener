@@ -356,7 +356,8 @@ struct iw_iodescr {
 	// Must write all bytes supplied.
 	iw_writefn_type write_fn;
 
-	// Optional "close" function.
+	// Optional "close" function. IW will never call this, but the app can use
+	// it for convenience.
 	iw_closefn_type close_fn;
 
 	// Return the file size.

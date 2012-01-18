@@ -365,8 +365,6 @@ done:
 	if(png_ptr) {
 		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
 	}
-	if(iodescr->close_fn)
-		(*iodescr->close_fn)(ctx,iodescr);
 	if(row_pointers) iw_free(ctx,row_pointers);
 	return retval;
 }
@@ -595,8 +593,6 @@ done:
 	if(png_ptr) {
 		png_destroy_write_struct(&png_ptr, &info_ptr);
 	}
-	if(iodescr->close_fn)
-		(*iodescr->close_fn)(ctx,iodescr);
 	if(row_pointers) iw_free(ctx,row_pointers);
 	return retval;
 }
