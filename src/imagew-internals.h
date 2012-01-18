@@ -117,6 +117,7 @@ struct iw_opt_ctx {
 
 struct iw_context {
 	int caller_api_version;
+	int use_count;
 	unsigned int output_profile;
 
 	iw_mallocfn_type mallocfn;
