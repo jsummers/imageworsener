@@ -1635,6 +1635,10 @@ static void iw_convert_density_info(struct iw_context *ctx)
 {
 	double factor;
 
+	if(!iw_is_valid_density(ctx->img1.density_x,ctx->img1.density_y,ctx->img1.density_code)) {
+		ctx->img1.density_code=IW_DENSITY_UNKNOWN;
+	}
+
 	if(ctx->density_policy==IW_DENSITY_POLICY_FORCED) {
 		ctx->img2.density_code = IW_DENSITY_UNITS_PER_METER;
 		ctx->img2.density_x = ctx->density_forced_x;

@@ -646,6 +646,8 @@ IW_EXPORT(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel);
 // considered valid by IW. If not, generates a warning and returns 0.
 IW_EXPORT(int) iw_check_image_dimensions(struct iw_context *ctx, int w, int h);
 
+IW_EXPORT(int) iw_is_valid_density(double density_x, double density_y, int density_code);
+
 IW_EXPORT(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodescr,
   void **pmem, iw_int64 *psize);
 
