@@ -135,7 +135,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	fbuf = iw_malloc(rctx->ctx,fbuf_len);
 	if(!fbuf) goto done;
 
-	decbuffer = iw_malloc_lowlevel(sizeof(WebPDecBuffer));
+	decbuffer = iw_malloc(rctx->ctx,sizeof(WebPDecBuffer));
 	if(!decbuffer) goto done;
 	WebPInitDecBuffer(decbuffer);
 
@@ -231,9 +231,9 @@ done:
 	}
 	if(decbuffer) {
 		WebPFreeDecBuffer(decbuffer);
-		iw_free(decbuffer);
+		iw_free(rctx->ctx,decbuffer);
 	}
-	if(fbuf) iw_free(fbuf);
+	if(fbuf) iw_free(rctx->ctx,fbuf);
 	return retval;
 }
 
@@ -354,7 +354,7 @@ done:
 		 WebPFreeDecBuffer(&cfg.output);
 	}
 
-	if(fbuf) iw_free(fbuf);
+	if(fbuf) iw_free(rctx->ctx,fbuf);
 	return retval;
 }
 
@@ -418,7 +418,7 @@ static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
 	retval=1;
 
 done:
-	if(webpimage) iw_free(webpimage);
+	if(webpimage) iw_free(rctx->ctx,webpimage);
 
 	// !!! Portability warning: This is dangerous, because this memory was
 	// allocated by libwebp. There's no way to be sure that our free() function
