@@ -27,8 +27,8 @@ free software world, the leader is ImageMagick (http://www.imagemagick.org/).
 Or you might prefer ImageMagick's conservative alter-ego, GraphicsMagick
 (http://www.graphicsmagick.org/).
 
-Building from source
---------------------
+Installing / Building from source
+---------------------------------
 
 Dependencies (optional):
   libpng <http://www.libpng.org/pub/png/libpng.html>
@@ -55,7 +55,23 @@ executable file named "imagew" or "imagew.exe".
 To compile without libwebp: Set the "IW_SUPPORT_WEBP" environment variable to
 "0" (type "IW_SUPPORT_WEBP=0 make").
 
-* Using CMake
+* Using autotools
+
+Official source releases contain a file named "configure". In simplest form,
+run "./configure", then "make".
+
+Many options can be passed to the "configure" utility. Run
+"./configure --help" for help. Suggested options:
+   ./configure --disable-shared CFLAGS="-g -O3"
+
+If there is no "configure" file in the distribution you're using, you need to
+generate it by running "scripts/autogen.sh". You must have GNU autotools
+(autoconf, automake, libtool) installed.
+
+To clean up the mess made by autogen.sh, you can run
+"scripts/autogen.sh clean".
+
+* Using CMake (deprecated?)
 
 CMake is a utility that generates Makefiles and project files.
 
