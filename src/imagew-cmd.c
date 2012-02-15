@@ -794,10 +794,10 @@ static int run(struct params_struct *p)
 		;
 	}
 	else if(p->new_width==old_width && p->new_height==old_height) {
-		iwcmd_message(p,"Processing (%d\xc3\x97%d)\n",p->new_width,p->new_height);
+		iwcmd_message(p,"Processing: %d\xc3\x97%d\n",p->new_width,p->new_height);
 	}
 	else {
-		iwcmd_message(p,"Resizing (%d\xc3\x97%d) \xe2\x86\x92 (%d\xc3\x97%d)\n",old_width,old_height,
+		iwcmd_message(p,"Resizing: %d\xc3\x97%d \xe2\x86\x92 %d\xc3\x97%d\n",old_width,old_height,
 			p->new_width,p->new_height);
 	}
 
@@ -1473,11 +1473,11 @@ static void do_printversion(struct params_struct *p)
 	buflen = (int)(sizeof(buf)/sizeof(char));
 
 	ver = iw_get_version_int();
-	iwcmd_message(p,"ImageWorsener version %s (%d-bit, %d bits/sample)\n",
-		iw_get_version_string(NULL,buf,buflen),
-		(int)(8*sizeof(void*)), 8*iw_get_sample_size() );
-
+	iwcmd_message(p,"ImageWorsener version %s\n",iw_get_version_string(NULL,buf,buflen));
 	iwcmd_message(p,"%s\n",iw_get_copyright_string(NULL,buf,buflen));
+	iwcmd_message(p,"Features: %d-bit",(int)(8*sizeof(void*)));
+	iwcmd_message(p,", %d bits/sample",8*iw_get_sample_size());
+	iwcmd_message(p,"\n");
 
 #if IW_SUPPORT_JPEG == 1
 	iwcmd_message(p,"Uses libjpeg version %s\n",iw_get_libjpeg_version_string(buf,buflen));
