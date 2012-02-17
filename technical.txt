@@ -37,7 +37,7 @@ Dependencies (optional):
   libwebp
      <http://www.webmproject.org/code/#libwebp_webp_image_decoder_library>
 
-Here are three possible ways to build ImageWorsener:
+Here are four possible ways to build ImageWorsener:
 
 * Prebuilt Visual Studio 2008 project files
 
@@ -58,18 +58,22 @@ To compile without libwebp: Set the "IW_SUPPORT_WEBP" environment variable to
 * Using autotools
 
 Official source releases contain a file named "configure". In simplest form,
-run "./configure", then "make".
+run
+   ./configure
+then
+   make
 
-Many options can be passed to the "configure" utility. Run
-"./configure --help" for help. Suggested options:
-   ./configure --disable-shared CFLAGS="-g -O3"
+Many options can be passed to the "configure" utility. For help, run
+   ./configure --help
+Suggested options:
+   CFLAGS="-g -O3" ./configure --disable-shared
 
 If there is no "configure" file in the distribution you're using, you need to
-generate it by running "scripts/autogen.sh". You must have GNU autotools
-(autoconf, automake, libtool) installed.
-
-To clean up the mess made by autogen.sh, you can run
-"scripts/autogen.sh clean".
+generate it by running 
+   scripts/autogen.sh
+You must have GNU autotools (autoconf, automake, libtool) installed. To clean
+up the mess made by autogen.sh, run
+   scripts/autogen.sh clean
 
 * Using CMake (deprecated?)
 

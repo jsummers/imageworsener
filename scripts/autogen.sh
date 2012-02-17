@@ -24,11 +24,6 @@ fi
 # Stop if something fails.
 set -e
 
-#echo "Writing Makefile.am"
-#cat << EOF > Makefile.am
-#SUBDIRS=src
-#EOF
-
 echo "Writing Makefile.am"
 cat << EOF > Makefile.am
 lib_LTLIBRARIES=libimageworsener.la

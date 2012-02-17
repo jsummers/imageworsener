@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for building using GNU autotools.
  - Support for two types of custom grayscale formulas.
  - Added -gsf as an alias of -grayscaleformula, and made it unnecessary to
    specify "-grayscale" if you set the grayscale formula.

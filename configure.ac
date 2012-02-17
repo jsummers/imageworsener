@@ -1,4 +1,5 @@
 
+dnl TODO: Figure out the actual minimum version that will work.
 AC_PREREQ([2.63])
 AC_INIT([imagew], [0.9.7])
 dnl AC_CONFIG_SRCDIR is just any unique file: a sanity check
@@ -9,14 +10,20 @@ AC_CONFIG_MACRO_DIR([m4])
 LT_INIT()
 
 dnl Checks for programs.
+
 AC_PROG_CC
+dnl AM_PROG_CC_C_O is required by the "subdir-options" setting.
 AM_PROG_CC_C_O
 AM_PROG_LIBTOOL
 
 AC_CONFIG_FILES([Makefile])
+dnl "subdir-options" puts object files in subdirectories, instead of in
+dnl the current directory.
 AM_INIT_AUTOMAKE([subdir-objects])
 
 dnl Checks for libraries.
+
+dnl ---------- zlib ----------
 AC_ARG_WITH([zlib],
     [AS_HELP_STRING([--without-zlib], [disable ZLIB support])],
     [with_zlib=$withval],
@@ -30,6 +37,7 @@ AC_ARG_WITH(zlib-lib-dir,
 
 if test "$with_zlib" != 'no'; then
  if test "x$with_zlib_include_dir" != "x"; then
+dnl TODO: Is modifying CPPFLAGS and LDFLAGS the best practice?
   CPPFLAGS="-I$with_zlib_include_dir $CPPFLAGS"
  fi
  AC_CHECK_HEADERS([zlib.h])
