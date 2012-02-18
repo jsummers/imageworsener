@@ -1,4 +1,7 @@
 Unreleased changes
+ - (none)
+
+Version 0.9.8 - 18 Feb 2012
  - Support for building using GNU autotools.
  - Support for two types of custom grayscale formulas.
  - Added -gsf as an alias of -grayscaleformula, and made it unnecessary to

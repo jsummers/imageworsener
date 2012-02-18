@@ -31,7 +31,7 @@ libimageworsener_la_SOURCES=src/imagew-api.c src/imagew-gif.c \
  src/imagew-miff.c src/imagew-resize.c src/imagew-webp.c src/imagew-bmp.c \
  src/imagew-jpeg.c src/imagew-opt.c src/imagew-tiff.c src/imagew-zlib.c \
  src/imagew-main.c src/imagew-png.c src/imagew-util.c
-libimageworsener_la_LDFLAGS=-release 0.9.7
+libimageworsener_la_LDFLAGS=-release 0.9.8
 bin_PROGRAMS=imagew
 imagew_SOURCES=src/imagew-cmd.c
 imagew_LDADD=libimageworsener.la

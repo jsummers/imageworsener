@@ -13,8 +13,8 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 IWICON  ICON  "resources/imagew.ico"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,9,7,1
- PRODUCTVERSION 0,9,7,1
+ FILEVERSION 0,9,8,1
+ PRODUCTVERSION 0,9,8,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -32,14 +32,14 @@ BEGIN
             VALUE "Comments", "\0"
             VALUE "CompanyName", "Jason Summers\0"
             VALUE "FileDescription", "ImageWorsener\0"
-            VALUE "FileVersion", "0, 9, 7, 1\0"
+            VALUE "FileVersion", "0, 9, 8, 1\0"
             VALUE "InternalName", "imagew\0"
-            VALUE "LegalCopyright", "Copyright (c) 2011 By Jason Summers\0"
+            VALUE "LegalCopyright", "Copyright (c) 2011-2012 Jason Summers\0"
             VALUE "LegalTrademarks", "\0"
             VALUE "OriginalFilename", "imagew.exe\0"
             VALUE "PrivateBuild", "\0"
             VALUE "ProductName", "ImageWorsener\0"
-            VALUE "ProductVersion", "0, 9, 7, 1\0"
+            VALUE "ProductVersion", "0, 9, 8, 1\0"
             VALUE "SpecialBuild", "\0"
         END
     END
