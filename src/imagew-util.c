@@ -290,6 +290,7 @@ static void utf8cvt_emitunichar(struct iw_utf8cvt_struct *s, unsigned int c)
 	 {0x201c, "\"" }, // left double quote
 	 {0x201d, "\"" }, // right double quote
 	 {0x2192, "->" },
+	 {0xfeff, "" }, // zero-width no-break space
 	 {0, NULL}
 	};
 
@@ -308,9 +309,8 @@ static void utf8cvt_emitunichar(struct iw_utf8cvt_struct *s, unsigned int c)
 	}
 }
 
-// This UTF-8 converter is intended for use with the UTF-8 strings that are
-// hardcoded into this program. It won't work very well with
-// user-controlled strings.
+// This UTF-8 converter is intended to be safe to use with malformed data, but
+// it may not handle it in the best possible way. It mostly just skips over it.
 IW_IMPL(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 {
 	struct iw_utf8cvt_struct s;
@@ -329,12 +329,15 @@ IW_IMPL(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 		c = (unsigned char)src[sp];
 		if(c<128) { // Only byte of a 1-byte sequence
 			utf8cvt_emitoctet(&s,c);
+			bytes_expected=0;
 		}
 		else if(c<0xc0) { // Continuation byte
-			pending_char = (pending_char<<6)|(c&0x3f);
-			bytes_expected--;
-			if(bytes_expected<1) {
-				utf8cvt_emitunichar(&s,pending_char);
+			if(bytes_expected>0) {
+  				pending_char = (pending_char<<6)|(c&0x3f);
+				bytes_expected--;
+				if(bytes_expected<1) {
+					utf8cvt_emitunichar(&s,pending_char);
+				}
 			}
 		}
 		else if(c<0xe0) { // 1st byte of a 2-byte sequence
