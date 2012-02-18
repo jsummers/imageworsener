@@ -52,12 +52,12 @@ echo "Running autoheader"
 autoheader
 
 # Create dummy files that autoconf thinks are important
-touch COPYING
+echo "Please refer to the file COPYING.txt" > COPYING
+echo "Please refer to the file readme.txt" > README
+echo "Please refer to the file changelog.txt" > ChangeLog
+echo "Please refer to the 'Building from source' section of the file technical.txt" > INSTALL
 touch AUTHORS
-touch ChangeLog
 touch NEWS
-touch README
-#touch INSTALL
 
 # Create configure
 echo "Running autoconf"
