@@ -1,5 +1,5 @@
 Unreleased changes
- - (none)
+ - Support for writing BMP files with RLE8 compression.
 
 Version 0.9.8 - 18 Feb 2012
  - Support for building using GNU autotools.

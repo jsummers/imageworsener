@@ -420,6 +420,13 @@ static int my_getfilesizefn(struct iw_context *ctx, struct iw_iodescr *iodescr, 
 	return 1;
 }
 
+static int my_seekfn(struct iw_context *ctx, struct iw_iodescr *iodescr, iw_int64 offset, int whence)
+{
+	FILE *fp = (FILE*)iodescr->fp;
+	fseek(fp,(long)offset,whence);
+	return 1;
+}
+
 static int my_writefn(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes)
 {
 	fwrite(buf,1,nbytes,(FILE*)iodescr->fp);
@@ -816,6 +823,7 @@ static int run(struct params_struct *p)
 	}
 
 	writedescr.write_fn = my_writefn;
+	writedescr.seek_fn = my_seekfn;
 	writedescr.fp = (void*)iwcmd_fopen(p->outfn,"wb");
 	if(!writedescr.fp) {
 		iw_set_errorf(ctx,"Failed to open for writing (error code=%d)",(int)errno);
@@ -1450,6 +1458,7 @@ static int get_compression_from_name(struct params_struct *p, const char *s)
 	else if(!strcmp(s,"zip")) return IW_COMPRESSION_ZIP;
 	else if(!strcmp(s,"lzw")) return IW_COMPRESSION_LZW;
 	else if(!strcmp(s,"jpeg")) return IW_COMPRESSION_JPEG;
+	else if(!strcmp(s,"rle")) return IW_COMPRESSION_RLE;
 	iwcmd_error(p,"Unknown compression \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
 	return -1;
 }

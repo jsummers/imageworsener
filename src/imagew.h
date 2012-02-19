@@ -191,6 +191,7 @@ extern "C" {
 #define IW_COMPRESSION_ZIP      2
 #define IW_COMPRESSION_LZW      3
 #define IW_COMPRESSION_JPEG     4
+#define IW_COMPRESSION_RLE      5
 
 // The CHANNELTYPE definitions must not be changed. They are used as array indices.
 #define IW_CHANNELTYPE_RED    0

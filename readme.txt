@@ -554,8 +554,10 @@ Options:
     "zip"
     "lzw"
     "jpeg"
-   The MIFF format supports "zip" (the default) and "none". For all other
-   formats, this option currently has no effect.
+    "rle"
+   The MIFF format supports "zip" (the default) and "none".
+   The BMP format supports "rle" and "none" (the default).
+   For all other formats, this option currently has no effect.
 
  -interlace
    Write an interlaced PNG image, or a progressive JPEG image.
