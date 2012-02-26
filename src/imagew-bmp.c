@@ -726,7 +726,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 	}
 	else if(img->imgtype==IW_IMGTYPE_PALETTE) {
 		if(!bmpctx->pal) goto done;
-		if(bmpctx->pal->num_entries<=2)
+		if(bmpctx->pal->num_entries<=2 && cmpr_req!=IW_COMPRESSION_RLE)
 			bmpctx->bitcount=1;
 		else if(bmpctx->pal->num_entries<=16)
 			bmpctx->bitcount=4;

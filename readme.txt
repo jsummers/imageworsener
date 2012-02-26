@@ -556,7 +556,8 @@ Options:
     "jpeg"
     "rle"
    The MIFF format supports "zip" (the default) and "none".
-   The BMP format supports "rle" and "none" (the default).
+   The BMP format supports "rle" and "none" (the default). RLE compression
+    will only be used if the number of colors is 256 or fewer.
    For all other formats, this option currently has no effect.
 
  -interlace
