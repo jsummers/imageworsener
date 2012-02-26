@@ -182,6 +182,12 @@ struct rle_context {
 	size_t total_bytes_written; // Bytes written, after compression
 };
 
+//============================ RLE8 encoder ============================
+
+// TODO: The RLE8 and RLE4 encoders are more different than they should be.
+// The RLE8 encoder could probably be made more similar to the (more
+// complicated) RLE4 encoder.
+
 static void rle8_write_unc(struct rle_context *rctx)
 {
 	int i;
@@ -240,7 +246,7 @@ static void rle8_write_unc_and_run(struct rle_context *rctx)
 		iw_set_error(rctx->ctx,"Internal: RLE encode error 6");
 		return;
 	}
-	
+
 	dstbuf[0] = (iw_byte)rctx->run_len;
 	dstbuf[1] = rctx->run_byte;
 	iwbmp_write(rctx->bmpctx,dstbuf,2);
@@ -353,21 +359,21 @@ static int rle8_compress_row(struct rle_context *rctx)
 		// increases the cost. For 3,5,...,253, we can add another byte for
 		// free, so we should never fail to do that.
 		if((rctx->unc_len&0x1) && rctx->unc_len!=1) {
-			iw_set_errorf(rctx->ctx,"Internal: BMP RLE decode error 1");
+			iw_set_errorf(rctx->ctx,"Internal: BMP RLE encode error 1");
 			goto done;
 		}
 
 		// unc_len can be at most 252 at this point.
 		// If it were 254, it should have been written out already.
 		if(rctx->unc_len>252) {
-			iw_set_error(rctx->ctx,"Internal: BMP RLE decode error 2");
+			iw_set_error(rctx->ctx,"Internal: BMP RLE encode error 2");
 			goto done;
 		}
 
 		// run_len can be at most 254 at this point.
 		// If it were 255, it should have been written out already.
 		if(rctx->run_len>254) {
-			iw_set_error(rctx->ctx,"Internal: BMP RLE decode error 3");
+			iw_set_error(rctx->ctx,"Internal: BMP RLE encode error 3");
 			goto done;
 		}
 	}
@@ -387,6 +393,235 @@ static int rle8_compress_row(struct rle_context *rctx)
 done:
 	return retval;
 }
+
+//============================ RLE4 encoder ============================
+
+// Calculate the most efficient way to split a run of uncompressible pixels.
+// This only finds the first place to split the run. If the run is still
+// over 255 pixels, call it again to find the next split.
+static size_t rle4_get_best_unc_split(size_t n)
+{
+	// For <=255 pixels, we can never do better than storing it as one run.
+	if(n<=255) return n;
+
+	// With runs of 252, we can store 252/128 = 1.96875 pixels/byte.
+	// With runs of 255, we can store 255/130 = 1.96153 pixels/byte.
+	// Hence, using runs of 252 is the most efficient way to store a large
+	// number of uncompressible pixels.
+	// (Lengths other than 252 or 255 are no help.)
+	// However, there are three exceptional cases where, if we split at 252,
+	// the most efficient encoding will no longer be possible:
+	if(n==257 || n==510 || n==765) return 255;
+
+	return 252;
+}
+
+// Returns the incremental cost of adding a pixel to the current UNC
+// (which is always either 0 or 2).
+// To derive this function, I calculated the optimal cost of every length,
+// and enumerated the exceptions to the (n%4)?0:2 rule.
+// The exceptions are mostly caused by the cases where
+// rle4_get_best_unc_split() returns 255 instead of 252.
+static int rle4_get_incr_unc_cost(struct rle_context *rctx)
+{
+	int n;
+	int m;
+
+	n = (int)rctx->unc_len;
+
+	if(n==2 || n==255 || n==257 || n==507 || n==510) return 2;
+	if(n==256 || n==508) return 0;
+
+	if(n>=759) {
+		m = n%252;
+		if(m==3 || m==6 || m==9) return 2;
+		if(m==4 || m==8) return 0;
+	}
+
+	return (n%4)?0:2;
+}
+
+static void rle4_write_unc(struct rle_context *rctx)
+{
+	iw_byte dstbuf[128];
+	size_t pixels_to_write;
+	size_t bytes_to_write;
+
+	if(rctx->unc_len<1) return;
+
+	// Note that, unlike the RLE8 encoder, we allow this function to be called
+	// with uncompressed runs of arbitrary length.
+
+	while(rctx->unc_len>0) {
+		pixels_to_write = rle4_get_best_unc_split(rctx->unc_len);
+
+		if(pixels_to_write<3) {
+			// The minimum length for an uncompressed run is 3. For shorter runs
+			// write them "compressed".
+			dstbuf[0] = (iw_byte)pixels_to_write;
+			dstbuf[1] = (rctx->srcrow[rctx->pending_data_start]<<4);
+			if(pixels_to_write>1)
+				dstbuf[1] |= (rctx->srcrow[rctx->pending_data_start+1]);
+
+			// The actual writing will occur below. Just indicate how many bytes
+			// of dstbuf[] to write.
+			bytes_to_write = 2;
+		}
+		else {
+			size_t i;
+
+			// Write the length of the uncompressed run.
+			dstbuf[0] = 0x00;
+			dstbuf[1] = (iw_byte)pixels_to_write;
+			iwbmp_write(rctx->bmpctx,dstbuf,2);
+			rctx->total_bytes_written+=2;
+
+			// Put the data to write in dstbuf[].
+			bytes_to_write = 2*((pixels_to_write+3)/4);
+			iw_zeromem(dstbuf,bytes_to_write);
+
+			for(i=0;i<pixels_to_write;i++) {
+				if(i&0x1) dstbuf[i/2] |= rctx->srcrow[rctx->pending_data_start+i];
+				else dstbuf[i/2] = rctx->srcrow[rctx->pending_data_start+i]<<4;
+			}
+		}
+
+		iwbmp_write(rctx->bmpctx,dstbuf,bytes_to_write);
+		rctx->total_bytes_written += bytes_to_write;
+		rctx->unc_len -= pixels_to_write;
+		rctx->pending_data_start += pixels_to_write;
+	}
+}
+
+static void rle4_write_unc_and_run(struct rle_context *rctx)
+{
+	iw_byte dstbuf[2];
+
+	rle4_write_unc(rctx);
+
+	if(rctx->run_len<1) {
+		return;
+	}
+	if(rctx->run_len>255) {
+		iw_set_error(rctx->ctx,"Internal: RLE encode error 6");
+		return;
+	}
+
+	dstbuf[0] = (iw_byte)rctx->run_len;
+	dstbuf[1] = rctx->run_byte;
+	iwbmp_write(rctx->bmpctx,dstbuf,2);
+	rctx->total_bytes_written+=2;
+
+	rctx->pending_data_start+=rctx->run_len;
+	rctx->run_len=0;
+}
+
+static int rle4_compress_row(struct rle_context *rctx)
+{
+	int i;
+	iw_byte dstbuf[2];
+	iw_byte next_pix;
+	int retval = 0;
+
+	rctx->pending_data_start=0;
+	rctx->unc_len=0;
+	rctx->run_len=0;
+
+	for(i=0;i<rctx->img_width;i++) {
+
+		// Read the next pixel
+		next_pix = rctx->srcrow[i];
+
+		// --------------------------------------------------------------
+		// Add the pixel we just read to either the UNC or the RUN data.
+
+		if(rctx->run_len==0) {
+			// We don't have a RUN, so we can put this pixel there.
+			rctx->run_len = 1;
+			rctx->run_byte = next_pix<<4;
+		}
+		else if(rctx->run_len==1) {
+			// If the run is 1, we can always add a 2nd pixel
+			rctx->run_byte |= next_pix;
+			rctx->run_len++;
+		}
+		else if(rctx->run_len>=2 && (rctx->run_len&1)==0 && next_pix==(rctx->run_byte>>4)) {
+			// pixel fits in the current run; add it.
+			rctx->run_len++;
+		}
+		else if(rctx->run_len>=3 && (rctx->run_len&1) && next_pix==(rctx->run_byte&0x0f)) {
+			// pixel fits in the current run; add it.
+			rctx->run_len++;
+		}
+		else if(rctx->unc_len==0 && rctx->run_len==2) {
+			// We have one previous byte, and it's different from this one.
+			// Move it to UNC, and make this one the RUN.
+			rctx->unc_len+=rctx->run_len;
+			rctx->run_byte = next_pix<<4;
+			rctx->run_len = 1;
+		}
+		else if(rctx->unc_len>0 && rctx->run_len<(rctx->unc_len<=2 ? 6 : 8)) {
+			// TODO: The above logic probably isn't optimal.
+
+			// We have a run, but it's not long enough to be beneficial.
+			// Convert it to uncompressed bytes.
+			rctx->unc_len += rctx->run_len;
+
+			// Put the next byte in RLE. (It might get moved to UNC, below.)
+			rctx->run_len = 1;
+			rctx->run_byte = next_pix<<4;
+		}
+		else {
+			// Nowhere to put the byte: write out everything, and start fresh.
+			rle4_write_unc_and_run(rctx);
+			rctx->run_len = 1;
+			rctx->run_byte = next_pix<<4;
+		}
+
+		// --------------------------------------------------------------
+		// If any RUN bytes that can be added to UNC for free, do so.
+		while(rctx->unc_len>0 && rctx->run_len>0 && rle4_get_incr_unc_cost(rctx)==0) {
+			rctx->unc_len++;
+			rctx->run_len--;
+		}
+
+		// --------------------------------------------------------------
+		// If we hit certain high water marks, write out the current data.
+
+		if(rctx->run_len>=255) {
+			// The maximum size for an RLE segment.
+			rle4_write_unc_and_run(rctx);
+		}
+
+		// --------------------------------------------------------------
+		// Sanity check(s). This can be removed if we're sure the algorithm
+		// is bug-free.
+
+		// run_len can be at most 254 at this point.
+		// If it were 255, it should have been written out already.
+		if(rctx->run_len>255) {
+			iw_set_error(rctx->ctx,"Internal: BMP RLE encode error 3");
+			goto done;
+		}
+	}
+
+	// End of row. Write out anything left over.
+	rle4_write_unc_and_run(rctx);
+
+	// Write an end-of-line marker (0 0), or if this is the last row,
+	// an end-of-bitmap marker (0 1).
+	dstbuf[0]=0x00;
+	dstbuf[1]= (rctx->cur_row==0)? 0x01 : 0x00;
+	iwbmp_write(rctx->bmpctx,dstbuf,2);
+	rctx->total_bytes_written+=2;
+
+	retval = 1;
+
+done:
+	return retval;
+}
+
+//======================================================================
 
 // Seek back and write the "file size" and "bits size" fields.
 static int rle_patch_file_size(struct iwbmpwritecontext *bmpctx,size_t rlesize)
@@ -412,7 +647,7 @@ static int rle_patch_file_size(struct iwbmpwritecontext *bmpctx,size_t rlesize)
 	return 1;
 }
 
-static int iwbmp_write_pixels_rle8(struct iwbmpwritecontext *bmpctx,
+static int iwbmp_write_pixels_compressed(struct iwbmpwritecontext *bmpctx,
 	struct iw_image *img)
 {
 	struct rle_context rctx;
@@ -430,28 +665,20 @@ static int iwbmp_write_pixels_rle8(struct iwbmpwritecontext *bmpctx,
 		// Compress and write a row of pixels
 		rctx.srcrow = &img->pixels[j*img->bpr];
 		rctx.cur_row = j;
-		if(!rle8_compress_row(&rctx)) goto done;
+
+		if(bmpctx->bitcount==4) {
+			if(!rle4_compress_row(&rctx)) goto done;
+		}
+		else if(bmpctx->bitcount==8) {
+			if(!rle8_compress_row(&rctx)) goto done;
+		}
+		else {
+			goto done;
+		}
 	}
 
 	// Back-patch the 'file size' and 'bits size' fields
 	rle_patch_file_size(bmpctx,rctx.total_bytes_written);
-
-	retval = 1;
-done:
-	return retval;
-}
-
-static int iwbmp_write_pixels_compressed(struct iwbmpwritecontext *bmpctx,
-	struct iw_image *img)
-{
-	int retval=0;
-	if(bmpctx->bitcount==8) {
-		iwbmp_write_pixels_rle8(bmpctx,img);
-	}
-	else {
-		// TODO: Support RLE4
-		goto done;
-	}
 
 	retval = 1;
 done:
@@ -511,7 +738,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 		goto done;
 	}
 
-	if(cmpr_req==IW_COMPRESSION_RLE && bmpctx->bitcount==8) {
+	if(cmpr_req==IW_COMPRESSION_RLE && (bmpctx->bitcount==4 || bmpctx->bitcount==8)) {
 		bmpctx->compressed = 1;
 	}
 
