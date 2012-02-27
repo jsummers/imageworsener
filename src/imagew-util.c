@@ -333,7 +333,7 @@ IW_IMPL(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 		}
 		else if(c<0xc0) { // Continuation byte
 			if(bytes_expected>0) {
-  				pending_char = (pending_char<<6)|(c&0x3f);
+				pending_char = (pending_char<<6)|(c&0x3f);
 				bytes_expected--;
 				if(bytes_expected<1) {
 					utf8cvt_emitunichar(&s,pending_char);
