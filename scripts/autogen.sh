@@ -10,7 +10,7 @@ if [ "$1" = "clean" ]
 then
  rm -rf autom4te.cache m4
  rm -f autoscan.log aclocal.m4 depcomp missing install-sh 
- rm -f src/Makefile.am src/Makefile.in Makefile.am Makefile.in
+ rm -f src/Makefile.in Makefile.in
  rm -f src/Makefile Makefile configure config.h.in
  rm -f config.status stamp-h1 config.log config.h src/.dirstamp
  rm -f AUTHORS ChangeLog COPYING INSTALL NEWS README
@@ -23,20 +23,6 @@ fi
 
 # Stop if something fails.
 set -e
-
-echo "Writing Makefile.am"
-cat << EOF > Makefile.am
-lib_LTLIBRARIES=libimageworsener.la
-libimageworsener_la_SOURCES=src/imagew-api.c src/imagew-gif.c \
- src/imagew-miff.c src/imagew-resize.c src/imagew-webp.c src/imagew-bmp.c \
- src/imagew-jpeg.c src/imagew-opt.c src/imagew-tiff.c src/imagew-zlib.c \
- src/imagew-main.c src/imagew-png.c src/imagew-util.c
-libimageworsener_la_LDFLAGS=-release 0.9.8
-bin_PROGRAMS=imagew
-imagew_SOURCES=src/imagew-cmd.c
-imagew_LDADD=libimageworsener.la
-include_HEADERS=src/imagew.h
-EOF
 
 # From Makefile.am and configure.ac, create aclocal.m4
 echo "Running aclocal"
