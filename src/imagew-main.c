@@ -841,9 +841,9 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	retval=1;
 
 done:
-	if(rs && rs->use_offset && rs->rrctx) {
-		// If using a channel offset, the channels may need different resize
-		// contexts. Delete the current context, so that it doesn't get reused.
+	if(rs && rs->disable_rrctx_cache && rs->rrctx) {
+		// In some cases, the channels may need different resize contexts.
+		// Delete the current context, so that it doesn't get reused.
 		iwpvt_resize_rows_done(ctx, rs->rrctx);
 		rs->rrctx = NULL;
 	}
@@ -1062,9 +1062,9 @@ here:
 	retval=1;
 
 done:
-	if(rs && rs->use_offset && rs->rrctx) {
-		// If using a channel offset, the channels may need different resize
-		// contexts. Delete the current context, so that it doesn't get reused.
+	if(rs && rs->disable_rrctx_cache && rs->rrctx) {
+		// In some cases, the channels may need different resize contexts.
+		// Delete the current context, so that it doesn't get reused.
 		iwpvt_resize_rows_done(ctx, rs->rrctx);
 		rs->rrctx = NULL;
 	}
@@ -1855,6 +1855,23 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	decide_how_to_apply_bkgd(ctx);
+
+	// Decide if we can cache the resize settings.
+	for(i=0;i<2;i++) {
+		if(ctx->resize_settings[i].use_offset ||
+		  (ctx->apply_bkgd &&
+		   ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY &&
+		   ctx->resize_settings[i].edge_policy==IW_EDGE_POLICY_TRANSPARENT))
+		{
+			// If a channel offset is used, we have to disable caching, because each the
+			// offset is stored in the cache, and it won't be the same for all channels.
+			// If transparent virtual pixels will be converted to the background color
+			// during the resize, we have to disable caching, because the background
+			// sample value is stored in the cache, and it may be different for each
+			// channel.
+			ctx->resize_settings[i].disable_rrctx_cache=1;
+		}
+	}
 
 	decide_strategy(ctx,&strategy1,&strategy2);
 

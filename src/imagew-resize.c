@@ -37,6 +37,7 @@ struct iw_rr_ctx {
 	double blur_factor;
 	double offset;
 	int edge_policy;
+	double edge_sample_value;
 
 	iw_resizerowfn_type resizerow_fn;
 	iw_filterfn_type filter_fn;
@@ -327,9 +328,11 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 		}
 		else {
 			// Use a virtual pixel. The only relevant virtual pixel type is
-			// TRANSPARENT (REPLICATE is handled elsewhere), and a transparent
-			// pixel has all samples equal to 0. So, there's nothing to do.
-			;
+			// TRANSPARENT (REPLICATE is handled elsewhere).
+			// The value to use was previously calculated and stored in
+			// ->edge_sample_value (it's almost always 0, i.e. "transparent
+			// black").
+			ctx->out_pix[w->dst_pix] += rrctx->edge_sample_value * w->weight;
 		}
 	}
 }
@@ -476,6 +479,14 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 	}
 
 	rrctx->edge_policy = rs->edge_policy;
+
+	// Record the sample value that may be used for virtual pixels.
+	rrctx->edge_sample_value = 0.0;
+	if(rrctx->edge_policy==IW_EDGE_POLICY_TRANSPARENT && ctx->apply_bkgd &&
+	   ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY)
+	{
+		rrctx->edge_sample_value = ctx->intermed_ci[channeltype].bkgd_color_lin;
+	}
 
 	rrctx->blur_factor = rs->blur_factor;
 	if(rrctx->blur_factor<0.0001) rrctx->blur_factor=0.0001;

@@ -45,6 +45,7 @@ struct iw_resize_settings {
 	int family;
 	int edge_policy;
 	int use_offset;
+	int disable_rrctx_cache;
 	double param1; // 'B' in Mitchell-Netravali cubics. "lobes" in Lanczos, etc.
 	double param2; // 'C' in Mitchell-Netravali cubics.
 	double blur_factor;
