@@ -175,6 +175,8 @@ $IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace -nowarn
 
 # Test writing BMP
 $IW srcimg/g2.png actual/bmp1.bmp -width 11 -filter mix
+$IW srcimg/rgb8.png actual/bmp2.bmp $SCALE -cc 6 -dither f -compress rle
+$IW srcimg/rgb8.png actual/bmp3.bmp $SCALE -cc 2 -ccgreen 4 -dither o -compress rle
 
 # Test writing TIFF
 $IW srcimg/g4.png actual/tiff1.tif -width 11 -cc 16 -grayscale -filter mix
