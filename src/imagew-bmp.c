@@ -516,6 +516,29 @@ static void rle4_write_unc_and_run(struct rle_context *rctx)
 	rctx->run_len=0;
 }
 
+// Should we move the pending compressible data to the "uncompressed"
+// segment (return 1), or should we write it to disk as a compressed run of
+// pixels (0)?
+static int ok_to_move_to_unc(struct rle_context *rctx)
+{
+	// This logic is probably not optimal in every case.
+	// One possible improvement might be to adjust the thresholds when
+	// unc_len+run_len is around 255 or higher.
+	// Other improvements might require looking ahead at pixels we haven't
+	// read yet.
+
+	if(rctx->unc_len==0) {
+		return (rctx->run_len<4);
+	}
+	else if(rctx->unc_len<=2) {
+		return (rctx->run_len<6);
+	}
+	else {
+		return (rctx->run_len<8);
+	}
+	return 0;
+}
+
 static int rle4_compress_row(struct rle_context *rctx)
 {
 	int i;
@@ -560,11 +583,9 @@ static int rle4_compress_row(struct rle_context *rctx)
 			rctx->run_byte = next_pix<<4;
 			rctx->run_len = 1;
 		}
-		else if(rctx->unc_len>0 && rctx->run_len<(rctx->unc_len<=2 ? 6 : 8)) {
-			// TODO: The above logic probably isn't optimal.
-
-			// We have a run, but it's not long enough to be beneficial.
-			// Convert it to uncompressed bytes.
+		else if(ok_to_move_to_unc(rctx)) {
+			// We have a compressible run, but we think it's not long enough to be
+			// beneficial. Convert it to uncompressed bytes.
 			rctx->unc_len += rctx->run_len;
 
 			// Put the next byte in RLE. (It might get moved to UNC, below.)
