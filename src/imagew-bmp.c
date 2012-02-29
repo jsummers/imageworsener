@@ -190,7 +190,7 @@ struct rle_context {
 
 static void rle8_write_unc(struct rle_context *rctx)
 {
-	int i;
+	size_t i;
 	iw_byte dstbuf[2];
 
 	if(rctx->unc_len<1) return;
@@ -276,7 +276,7 @@ static void rle8_write_unc_and_run(struct rle_context *rctx)
 // to be written out.
 static int rle8_compress_row(struct rle_context *rctx)
 {
-	int i;
+	size_t i;
 	iw_byte dstbuf[2];
 	iw_byte next_byte;
 	int retval = 0;
@@ -308,7 +308,7 @@ static int rle8_compress_row(struct rle_context *rctx)
 			rctx->unc_len++;
 			rctx->run_byte = next_byte;
 		}
-		else if(rctx->unc_len>0 && rctx->run_len<(rctx->unc_len==1 ? 3 : 4)) {
+		else if(rctx->unc_len>0 && rctx->run_len<(rctx->unc_len==1 ? 3U : 4U)) {
 			// We have a run, but it's not long enough to be beneficial.
 			// Convert it to uncompressed bytes.
 			// A good rule is that a run length of 4 or more (3 or more if
@@ -541,7 +541,7 @@ static int ok_to_move_to_unc(struct rle_context *rctx)
 
 static int rle4_compress_row(struct rle_context *rctx)
 {
-	int i;
+	size_t i;
 	iw_byte dstbuf[2];
 	iw_byte next_pix;
 	int retval = 0;
