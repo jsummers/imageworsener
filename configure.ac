@@ -19,7 +19,7 @@ AM_PROG_LIBTOOL
 AC_CONFIG_FILES([Makefile])
 dnl "subdir-options" puts object files in subdirectories, instead of in
 dnl the current directory.
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 dnl Checks for libraries.
 

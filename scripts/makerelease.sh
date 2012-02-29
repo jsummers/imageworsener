@@ -43,8 +43,8 @@ rm -f rel/imageworsener-src-$VERSION.tar.gz
  git ls-tree -r --name-only --full-tree master | grep -v '\.git'
 
  # Include autotools generated files.
- ls m4/* AUTHORS COPYING ChangeLog INSTALL Makefile.am Makefile.in \
-NEWS README aclocal.m4 compile config.guess config.h.in config.sub \
+ ls m4/* COPYING INSTALL Makefile.in \
+aclocal.m4 compile config.guess config.h.in config.sub \
 configure depcomp install-sh ltmain.sh missing
 
 ) > rel/filelist

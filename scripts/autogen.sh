@@ -13,7 +13,7 @@ then
  rm -f src/Makefile.in Makefile.in
  rm -f src/Makefile Makefile configure config.h.in
  rm -f config.status stamp-h1 config.log config.h src/.dirstamp
- rm -f AUTHORS ChangeLog COPYING INSTALL NEWS README
+ rm -f COPYING INSTALL
  rm -f config.guess config.sub ltmain.sh libtool compile
  rm -f src/*.o src/*.lo src/*.la libimageworsener.la
  rm -rf src/.deps .libs src/.libs
@@ -39,11 +39,7 @@ autoheader
 
 # Create dummy files that autoconf thinks are important
 echo "Please refer to the file COPYING.txt" > COPYING
-echo "Please refer to the file readme.txt" > README
-echo "Please refer to the file changelog.txt" > ChangeLog
 echo "Please refer to the 'Building from source' section of the file technical.txt" > INSTALL
-touch AUTHORS
-touch NEWS
 
 # Create configure
 echo "Running autoconf"
