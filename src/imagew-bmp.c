@@ -742,6 +742,12 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 
 	cmpr_req = iw_get_value(bmpctx->ctx,IW_VAL_COMPRESSION);
 
+	// If any kind of compression was requested, use RLE if possible.
+	if(cmpr_req==IW_COMPRESSION_AUTO || cmpr_req==IW_COMPRESSION_NONE)
+		cmpr_req = IW_COMPRESSION_NONE;
+	else
+		cmpr_req = IW_COMPRESSION_RLE;
+
 	if(img->imgtype==IW_IMGTYPE_RGB) {
 		bmpctx->bitcount=24;
 	}
