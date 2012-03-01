@@ -1,7 +1,7 @@
 
 dnl TODO: Figure out the actual minimum version that will work.
 AC_PREREQ([2.63])
-AC_INIT([imagew], [0.9.8])
+AC_INIT([imageworsener], [0.9.8])
 dnl AC_CONFIG_SRCDIR is just any unique file: a sanity check
 AC_CONFIG_SRCDIR([src/imagew.h])
 AM_CONFIG_HEADER([config.h])
@@ -17,6 +17,7 @@ AM_PROG_CC_C_O
 AM_PROG_LIBTOOL
 
 AC_CONFIG_FILES([Makefile])
+dnl "foreign" removes the need for some files (NEWS, AUTHORS, ...).
 dnl "subdir-options" puts object files in subdirectories, instead of in
 dnl the current directory.
 AM_INIT_AUTOMAKE([foreign subdir-objects])
