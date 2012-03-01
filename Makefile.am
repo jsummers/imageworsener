@@ -3,6 +3,7 @@ libimageworsener_la_SOURCES=src/imagew-main.c \
  src/imagew-api.c \
  src/imagew-resize.c \
  src/imagew-opt.c \
+ src/imagew-allfmts.c \
  src/imagew-bmp.c \
  src/imagew-gif.c \
  src/imagew-miff.c \

@@ -442,6 +442,22 @@ IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 	return IW_FORMAT_UNKNOWN;
 }
 
+IW_IMPL(const char*) iw_get_fmt_name(int fmt)
+{
+	static const char *n;
+	n=NULL;
+	switch(fmt) {
+	case IW_FORMAT_PNG:  n="PNG";  break;
+	case IW_FORMAT_JPEG: n="JPEG"; break;
+	case IW_FORMAT_BMP:  n="BMP";  break;
+	case IW_FORMAT_TIFF: n="TIFF"; break;
+	case IW_FORMAT_MIFF: n="MIFF"; break;
+	case IW_FORMAT_WEBP: n="WebP"; break;
+	case IW_FORMAT_GIF:  n="GIF";  break;
+	}
+	return n;
+}
+
 IW_IMPL(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
 {
 	int fmt = IW_FORMAT_UNKNOWN;
@@ -518,4 +534,47 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 	}
 
 	return p;
+}
+
+// The imagew-allfmts.c file is probably a more logical place for the
+// iw_is_*_fmt_supported() functions, but putting them there could create
+// unnecessary dependencies on third-party libraries.
+
+IW_IMPL(int) iw_is_input_fmt_supported(int fmt)
+{
+	switch(fmt) {
+#if IW_SUPPORT_PNG == 1
+	case IW_FORMAT_PNG:
+#endif
+#if IW_SUPPORT_JPEG == 1
+	case IW_FORMAT_JPEG:
+#endif
+#if IW_SUPPORT_WEBP == 1
+	case IW_FORMAT_WEBP:
+#endif
+	case IW_FORMAT_MIFF:
+	case IW_FORMAT_GIF:
+		return 1;
+	}
+	return 0;
+}
+
+IW_IMPL(int) iw_is_output_fmt_supported(int fmt)
+{
+	switch(fmt) {
+#if IW_SUPPORT_PNG == 1
+	case IW_FORMAT_PNG:
+#endif
+#if IW_SUPPORT_JPEG == 1
+	case IW_FORMAT_JPEG:
+#endif
+#if IW_SUPPORT_WEBP == 1
+	case IW_FORMAT_WEBP:
+#endif
+	case IW_FORMAT_BMP:
+	case IW_FORMAT_TIFF:
+	case IW_FORMAT_MIFF:
+		return 1;
+	}
+	return 0;
 }

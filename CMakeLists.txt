@@ -119,6 +119,7 @@ add_library(imageworsener STATIC
  ${SRC}/imagew-opt.c
  ${SRC}/imagew-resize.c
  ${SRC}/imagew-util.c
+ ${SRC}/imagew-allfmts.c
  ${SRC}/imagew-bmp.c
  ${SRC}/imagew-gif.c
  ${SRC}/imagew-jpeg.c

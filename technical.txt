@@ -195,7 +195,7 @@ Files in core library:
  
 Files in auxiliary library:
  imagew-png.c, imagew-jpeg.c, imagew-webp.c, imagew-gif.c, imagew-miff.c,
- imagew-bmp.c, imagew-tiff.c, imagew-zlib.c
+ imagew-bmp.c, imagew-tiff.c, imagew-zlib.c, imagew-allfmts.c
 
 Files in command-line utility:
  imagew-cmd.c, imagew.rc, imagew.ico

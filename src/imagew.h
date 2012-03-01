@@ -589,9 +589,16 @@ IW_EXPORT(unsigned int) iw_get_profile_by_fmt(int fmt);
 // Returns an IW_FORMAT_* code based on the supplied filename.
 IW_EXPORT(int) iw_detect_fmt_from_filename(const char *fn);
 
+// Returns a pointer to a static string like "PNG", "JPEG", etc.
+// If format is unknown, returns NULL.
+IW_EXPORT(const char*) iw_get_fmt_name(int fmt);
+
 // Returns an IW_FORMAT_* code based on the (partial) memory-mapped file supplied.
 // In most cases, 16 bytes is sufficient.
 IW_EXPORT(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t buflen);
+
+IW_EXPORT(int) iw_is_input_fmt_supported(int fmt);
+IW_EXPORT(int) iw_is_output_fmt_supported(int fmt);
 
 IW_EXPORT(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
@@ -609,6 +616,11 @@ IW_EXPORT(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iod
 IW_EXPORT(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(char*) iw_get_libwebp_dec_version_string(char *s, int s_len);
 IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);
+
+IW_EXPORT(int) iw_read_file_by_fmt(struct iw_context *ctx,
+	struct iw_iodescr *iodescr, int fmt);
+IW_EXPORT(int) iw_write_file_by_fmt(struct iw_context *ctx,
+	struct iw_iodescr *writedescr, int fmt);
 
 // iw_enable_zlib() must be called to enable zlib compression in modules for
 // which it is optional.

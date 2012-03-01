@@ -330,22 +330,6 @@ static int get_fmt_from_name(const char *s)
 	return IW_FORMAT_UNKNOWN;
 }
 
-static const char *get_fmt_name(int fmt)
-{
-	static const char *n;
-	n="(unknown)";
-	switch(fmt) {
-	case IW_FORMAT_PNG:  n="PNG";  break;
-	case IW_FORMAT_JPEG: n="JPEG"; break;
-	case IW_FORMAT_BMP:  n="BMP";  break;
-	case IW_FORMAT_TIFF: n="TIFF"; break;
-	case IW_FORMAT_MIFF: n="MIFF"; break;
-	case IW_FORMAT_WEBP: n="WebP"; break;
-	case IW_FORMAT_GIF:  n="GIF";  break;
-	}
-	return n;
-}
-
 // Reads the first few bytes in the file to try to figure out
 // the file format. Then sets the file pointer back to the
 // beginning of the file.
@@ -441,45 +425,6 @@ static int iwcmd_calc_rel_size(double rel, int d)
 	return n;
 }
 
-static int is_input_fmt_supported(int fmt)
-{
-	switch(fmt) {
-#if IW_SUPPORT_PNG == 1
-	case IW_FORMAT_PNG:
-#endif
-#if IW_SUPPORT_JPEG == 1
-	case IW_FORMAT_JPEG:
-#endif
-#if IW_SUPPORT_WEBP == 1
-	case IW_FORMAT_WEBP:
-#endif
-	case IW_FORMAT_MIFF:
-	case IW_FORMAT_GIF:
-		return 1;
-	}
-	return 0;
-}
-
-static int is_output_fmt_supported(int fmt)
-{
-	switch(fmt) {
-#if IW_SUPPORT_PNG == 1
-	case IW_FORMAT_PNG:
-#endif
-#if IW_SUPPORT_JPEG == 1
-	case IW_FORMAT_JPEG:
-#endif
-#if IW_SUPPORT_WEBP == 1
-	case IW_FORMAT_WEBP:
-#endif
-	case IW_FORMAT_BMP:
-	case IW_FORMAT_TIFF:
-	case IW_FORMAT_MIFF:
-		return 1;
-	}
-	return 0;
-}
-
 static void* my_mallocfn(void *userdata, unsigned int flags, size_t n)
 {
 	void *mem=NULL;
@@ -506,6 +451,7 @@ static int run(struct params_struct *p)
 	struct iw_iodescr writedescr;
 	char errmsg[200];
 	struct iw_init_params init_params;
+	const char *s;
 
 	memset(&init_params,0,sizeof(struct iw_init_params));
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
@@ -537,8 +483,10 @@ static int run(struct params_struct *p)
 		iw_set_error(ctx,"Unknown output format; use -outfmt.");
 		goto done;
 	}
-	else if(!is_output_fmt_supported(p->outfmt)) {
-		iw_set_errorf(ctx,"Writing %s files is not supported.",get_fmt_name(p->outfmt));
+	else if(!iw_is_output_fmt_supported(p->outfmt)) {
+		s = iw_get_fmt_name(p->outfmt);
+		if(!s) s="(unknown)";
+		iw_set_errorf(ctx,"Writing %s files is not supported.",s);
 		goto done;
 	}
 
@@ -587,35 +535,8 @@ static int run(struct params_struct *p)
 		iw_set_error(ctx,"Unknown input file format.");
 		goto done;
 	}
-	else if(!is_input_fmt_supported(p->infmt)) {
-		iw_set_errorf(ctx,"Reading %s files is not supported.",get_fmt_name(p->infmt));
-	}
 
-	switch(p->infmt) {
-#if IW_SUPPORT_PNG == 1
-	case IW_FORMAT_PNG:
-		if(!iw_read_png_file(ctx,&readdescr)) goto done;
-		break;
-#endif
-#if IW_SUPPORT_JPEG == 1
-	case IW_FORMAT_JPEG:
-		if(!iw_read_jpeg_file(ctx,&readdescr)) goto done;
-		break;
-#endif
-#if IW_SUPPORT_WEBP == 1
-	case IW_FORMAT_WEBP:
-		if(!iw_read_webp_file(ctx,&readdescr)) goto done;
-		break;
-#endif
-	case IW_FORMAT_MIFF:
-		if(!iw_read_miff_file(ctx,&readdescr)) goto done;
-		break;
-	case IW_FORMAT_GIF:
-		if(!iw_read_gif_file(ctx,&readdescr)) goto done;
-		break;
-	default:
-		goto done;
-	}
+	if(!iw_read_file_by_fmt(ctx,&readdescr,p->infmt)) goto done;
 
 	fclose((FILE*)readdescr.fp);
 	readdescr.fp=NULL;
@@ -834,7 +755,6 @@ static int run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL,p->zipcmprlevel);
 
 	if(p->outfmt==IW_FORMAT_JPEG) {
-#if IW_SUPPORT_JPEG == 1
 		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
 		if(p->jpeg_samp_factor_h>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
@@ -842,35 +762,12 @@ static int run(struct params_struct *p)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
 		if(p->jpeg_arith_coding)
 			iw_set_value(ctx,IW_VAL_JPEG_ARITH_CODING,1);
-		if(!iw_write_jpeg_file(ctx,&writedescr)) goto done;
-#else
-		iw_set_error(ctx,"JPEG is not supported by this copy of imagew.");
-#endif
-	}
-	else if(p->outfmt==IW_FORMAT_BMP) {
-		if(!iw_write_bmp_file(ctx,&writedescr)) goto done;
-	}
-	else if(p->outfmt==IW_FORMAT_TIFF) {
-		if(!iw_write_tiff_file(ctx,&writedescr)) goto done;
-	}
-	else if(p->outfmt==IW_FORMAT_MIFF) {
-		if(!iw_write_miff_file(ctx,&writedescr)) goto done;
 	}
 	else if(p->outfmt==IW_FORMAT_WEBP) {
-#if IW_SUPPORT_WEBP == 1
 		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
-		if(!iw_write_webp_file(ctx,&writedescr)) goto done;
-#else
-		iw_set_error(ctx,"WebP is not supported by this copy of imagew.");
-#endif
 	}
-	else {
-#if IW_SUPPORT_PNG == 1
-		if(!iw_write_png_file(ctx,&writedescr)) goto done;
-#else
-		iw_set_error(ctx,"PNG is not supported by this copy of imagew.");
-#endif
-	}
+
+	if(!iw_write_file_by_fmt(ctx,&writedescr,p->outfmt)) goto done;
 
 	fclose((FILE*)writedescr.fp);
 	writedescr.fp=NULL;
