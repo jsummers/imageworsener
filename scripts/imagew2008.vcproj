@@ -21,8 +21,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			OutputDirectory="..\$(ConfigurationName)"
+			IntermediateDirectory="..\$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="1"
 			>
@@ -65,7 +65,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng\Debug\libpng.lib ..\zlib\Debug\zlib.lib ..\jpeg\Debug\libjpeg.lib ..\libwebp\Debug\libwebp.lib"
+				AdditionalDependencies="..\..\libpng\Debug\libpng.lib ..\..\zlib\Debug\zlib.lib ..\..\jpeg\Debug\libjpeg.lib ..\..\libwebp\Debug\libwebp.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -95,8 +95,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="$(SolutionDir)Debug64"
-			IntermediateDirectory="Debug64"
+			OutputDirectory="..\Debug64"
+			IntermediateDirectory="..\Debug64"
 			ConfigurationType="1"
 			CharacterSet="1"
 			>
@@ -140,7 +140,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng\Debug64\libpng.lib ..\zlib\Debug64\zlib.lib ..\jpeg\Debug64\libjpeg.lib ..\libwebp\Debug64\libwebp.lib"
+				AdditionalDependencies="..\..\libpng\Debug64\libpng.lib ..\..\zlib\Debug64\zlib.lib ..\..\jpeg\Debug64\libjpeg.lib ..\..\libwebp\Debug64\libwebp.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -170,8 +170,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
-			IntermediateDirectory="$(ConfigurationName)"
+			OutputDirectory="..\$(ConfigurationName)"
+			IntermediateDirectory="..\$(ConfigurationName)"
 			ConfigurationType="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -215,7 +215,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng\Release\libpng.lib ..\zlib\Release\zlib.lib ..\jpeg\Release\libjpeg.lib ..\libwebp\Release\libwebp.lib"
+				AdditionalDependencies="..\..\libpng\Release\libpng.lib ..\..\zlib\Release\zlib.lib ..\..\jpeg\Release\libjpeg.lib ..\..\libwebp\Release\libwebp.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -247,8 +247,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="$(SolutionDir)Release64"
-			IntermediateDirectory="Release64"
+			OutputDirectory="..\Release64"
+			IntermediateDirectory="..\Release64"
 			ConfigurationType="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -293,7 +293,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="..\libpng\Release64\libpng.lib ..\zlib\Release64\zlib.lib ..\jpeg\Release64\libjpeg.lib ..\libwebp\Release64\libwebp.lib"
+				AdditionalDependencies="..\..\libpng\Release64\libpng.lib ..\..\zlib\Release64\zlib.lib ..\..\jpeg\Release64\libjpeg.lib ..\..\libwebp\Release64\libwebp.lib"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				SubSystem="1"
@@ -333,7 +333,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\imagew-cmd.c"
+				RelativePath="..\src\imagew-cmd.c"
 				>
 			</File>
 		</Filter>
@@ -343,11 +343,11 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\src\imagew-config.h"
+				RelativePath="..\src\imagew-config.h"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew.h"
+				RelativePath="..\src\imagew.h"
 				>
 			</File>
 		</Filter>
@@ -357,7 +357,7 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\src\imagew.rc"
+				RelativePath="..\src\imagew.rc"
 				>
 			</File>
 		</Filter>

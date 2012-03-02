@@ -21,8 +21,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="LibDebug"
-			IntermediateDirectory="LibDebug"
+			OutputDirectory="..\LibDebug"
+			IntermediateDirectory="..\LibDebug"
 			ConfigurationType="4"
 			CharacterSet="1"
 			>
@@ -44,7 +44,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\zlib&quot;;&quot;..\libpng&quot;;&quot;..\jpeg&quot;;..\libwebp\src"
+				AdditionalIncludeDirectories="&quot;..\..\zlib&quot;;&quot;..\..\libpng&quot;;&quot;..\..\jpeg&quot;;..\..\libwebp\src"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -84,8 +84,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="LibDebug64"
-			IntermediateDirectory="LibDebug64"
+			OutputDirectory="..\LibDebug64"
+			IntermediateDirectory="..\LibDebug64"
 			ConfigurationType="4"
 			CharacterSet="1"
 			>
@@ -108,7 +108,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;..\zlib&quot;;&quot;..\libpng&quot;;&quot;..\jpeg&quot;;..\libwebp\src"
+				AdditionalIncludeDirectories="&quot;..\..\zlib&quot;;&quot;..\..\libpng&quot;;&quot;..\..\jpeg&quot;;..\..\libwebp\src"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -148,8 +148,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="LibRelease"
-			IntermediateDirectory="LibRelease"
+			OutputDirectory="..\LibRelease"
+			IntermediateDirectory="..\LibRelease"
 			ConfigurationType="4"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -173,7 +173,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;..\zlib&quot;;&quot;..\libpng&quot;;&quot;..\jpeg&quot;;..\libwebp\src"
+				AdditionalIncludeDirectories="&quot;..\..\zlib&quot;;&quot;..\..\libpng&quot;;&quot;..\..\jpeg&quot;;..\..\libwebp\src"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -212,8 +212,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="LibRelease64"
-			IntermediateDirectory="LibRelease64"
+			OutputDirectory="..\LibRelease64"
+			IntermediateDirectory="..\LibRelease64"
 			ConfigurationType="4"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -238,7 +238,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="&quot;..\zlib&quot;;&quot;..\libpng&quot;;&quot;..\jpeg&quot;;..\libwebp\src"
+				AdditionalIncludeDirectories="&quot;..\..\zlib&quot;;&quot;..\..\libpng&quot;;&quot;..\..\jpeg&quot;;..\..\libwebp\src"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="true"
@@ -285,59 +285,59 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\src\imagew-allfmts.c"
+				RelativePath="..\src\imagew-allfmts.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-api.c"
+				RelativePath="..\src\imagew-api.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-bmp.c"
+				RelativePath="..\src\imagew-bmp.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-gif.c"
+				RelativePath="..\src\imagew-gif.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-jpeg.c"
+				RelativePath="..\src\imagew-jpeg.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-main.c"
+				RelativePath="..\src\imagew-main.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-miff.c"
+				RelativePath="..\src\imagew-miff.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-opt.c"
+				RelativePath="..\src\imagew-opt.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-png.c"
+				RelativePath="..\src\imagew-png.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-resize.c"
+				RelativePath="..\src\imagew-resize.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-tiff.c"
+				RelativePath="..\src\imagew-tiff.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-util.c"
+				RelativePath="..\src\imagew-util.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-webp.c"
+				RelativePath="..\src\imagew-webp.c"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-zlib.c"
+				RelativePath="..\src\imagew-zlib.c"
 				>
 			</File>
 		</Filter>
@@ -347,15 +347,15 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\src\imagew-config.h"
+				RelativePath="..\src\imagew-config.h"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew-internals.h"
+				RelativePath="..\src\imagew-internals.h"
 				>
 			</File>
 			<File
-				RelativePath=".\src\imagew.h"
+				RelativePath="..\src\imagew.h"
 				>
 			</File>
 		</Filter>
