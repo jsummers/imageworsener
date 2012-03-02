@@ -41,7 +41,7 @@ Here are four possible ways to build ImageWorsener:
 
 * Prebuilt Visual Studio 2008 project files
 
-Open the imagew2008.sln file in Visual Studio 2008 or newer.
+Open the scripts/imagew2008.sln file in Visual Studio 2008 or newer.
 
 To compile without libwebp: Edit the project settings to not link to
 libwebp.lib, and change the line in src/imagew-config.h to

@@ -8,6 +8,6 @@
 /LibRelease64
 *.suo
 *.ncb
-/imagew2008.vcproj.*
-/libimagew2008.vcproj.*
+/scripts/imagew2008.vcproj.*
+/scripts/libimagew2008.vcproj.*
 /tests/actual
