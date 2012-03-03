@@ -1,6 +1,7 @@
 #!/bin/bash
 
 VERSION=0.9.8
+WINDOWS_DOCS='readme.txt technical.txt COPYING.txt'
 
 if [ ! -f technical.txt ]
 then
@@ -16,13 +17,26 @@ fi
 
 mkdir -p rel
 
-# Make the 32-bit Windows binary package.
-rm -f rel/imageworsener-win32-$VERSION.zip
-zip -9 -j rel/imageworsener-win32-$VERSION.zip Release/imagew.exe readme.txt technical.txt COPYING.txt
 
-# Make the 64-bit Windows binary package.
-rm -f rel/imageworsener-win64-$VERSION.zip
-zip -9 -j rel/imageworsener-win64-$VERSION.zip Release64/imagew.exe readme.txt technical.txt COPYING.txt
+make_windows_package() {
+	local platform=$1
+	local from_folder=$2
+
+	local output_filename="rel/imageworsener-${platform}-${VERSION}.zip"
+	local input_binary="${from_folder}"/imagew.exe
+
+	rm -f "${output_filename}"
+	if [ -f "${input_binary}" ]
+	then
+		zip -9 -j "${output_filename}" "${input_binary}" ${WINDOWS_DOCS}
+	else
+		echo "Skipping binary package for platform \"${platform}\" (file \"${input_binary}\" missing)."
+	fi
+}
+
+make_windows_package win32 Release
+make_windows_package win64 Release64
+
 
 # Make the source package.
 rm -f rel/imageworsener-src-$VERSION.tar.gz
