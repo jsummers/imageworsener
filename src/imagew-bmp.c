@@ -11,6 +11,402 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
+#define IWBMP_BI_RGB       0 // = uncompressed
+#define IWBMP_BI_RLE8      1
+#define IWBMP_BI_RLE4      2
+#define IWBMP_BI_BITFIELDS 3
+#define IWBMP_BI_JPEG      4
+#define IWBMP_BI_PNG       5
+
+static size_t iwbmp_calc_bpr(int bpp, size_t width)
+{
+	return ((bpp*width+31)/32)*4;
+}
+
+struct iwbmpreadcontext {
+	struct iw_iodescr *iodescr;
+	struct iw_context *ctx;
+	struct iw_image *img;
+	int bmpversion;
+	int width, height;
+	int topdown;
+	unsigned int bitcount; // bits per pixel
+	unsigned int compression; // IWBMP_BI_*
+	unsigned int palette_entries;
+	size_t fileheader_size;
+	size_t infoheader_size;
+	size_t bitfields_nbytes;
+	size_t palette_nbytes;
+	size_t bfOffBits;
+	struct iw_palette palette;
+};
+
+static int iwbmp_read(struct iwbmpreadcontext *rctx,
+		iw_byte *buf, size_t buflen)
+{
+	int ret;
+	size_t bytesread = 0;
+
+	ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
+		buf,buflen,&bytesread);
+	if(!ret || bytesread!=buflen) {
+		return 0;
+	}
+	return 1;
+}
+
+static int iwbmp_skip_bytes(struct iwbmpreadcontext *rctx, size_t n)
+{
+	iw_byte buf[1024];
+	size_t still_to_read;
+	size_t num_to_read;
+
+	still_to_read = n;
+	while(still_to_read>0) {
+		num_to_read = still_to_read;
+		if(num_to_read>1024) num_to_read=1024;
+		if(!iwbmp_read(rctx,buf,num_to_read)) {
+			return 0;
+		}
+		still_to_read -= num_to_read;
+	}
+	return 1;
+}
+
+static int iwbmp_read_file_header(struct iwbmpreadcontext *rctx)
+{
+	iw_byte buf[14];
+
+	if(!iwbmp_read(rctx,buf,14)) return 0;
+	if(buf[0]!=66 || buf[1]!=77) {
+		iw_set_error(rctx->ctx,"Not a BMP file");
+		return 0;
+	}
+
+	rctx->fileheader_size = 14;
+	rctx->bfOffBits = iw_get_ui32le(&buf[10]);
+	return 1;
+}
+
+static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
+{
+	iw_byte buf[40];
+	int retval = 0;
+	unsigned int nplanes;
+	unsigned int biSizeImage;
+	int biXPelsPerMeter, biYPelsPerMeter;
+	unsigned int biClrUsed;
+
+	// First, read just the "size" field. It tells the size of the header
+	// structure, and identifies the BMP version.
+	if(!iwbmp_read(rctx,buf,4)) goto done;
+	rctx->infoheader_size = iw_get_ui32le(&buf[0]);
+
+	if(rctx->infoheader_size==40) {
+		rctx->bmpversion=3;
+
+		// Read the rest of the header.
+		if(!iwbmp_read(rctx,&buf[4],rctx->infoheader_size-4)) goto done;
+		rctx->width = iw_get_i32le(&buf[4]);
+		rctx->height = iw_get_i32le(&buf[8]);
+		if(rctx->height<0) {
+			rctx->height = -rctx->height;
+			rctx->topdown = 1;
+		}
+
+		nplanes = iw_get_ui16le(&buf[12]);
+
+		rctx->bitcount = iw_get_ui16le(&buf[14]);
+		rctx->compression = iw_get_ui32le(&buf[16]);
+		if(rctx->compression==IWBMP_BI_BITFIELDS) {
+			// The compression field is overloaded: BITFIELDS is not a type of
+			// compression. Un-overload it.
+			rctx->bitfields_nbytes=12;
+			rctx->compression=IWBMP_BI_RGB;
+		}
+
+		biSizeImage = iw_get_ui32le(&buf[20]);
+		biXPelsPerMeter = iw_get_i32le(&buf[24]);
+		biYPelsPerMeter = iw_get_i32le(&buf[28]);
+
+		biClrUsed = iw_get_ui32le(&buf[32]);
+		// The documentation of the biClrUsed field is not very clear.
+		// I'm going to assume that if biClrUsed is 0 and bitcount<=8, then
+		// the number of palette colors is the maximum that would be useful
+		// for that bitcount. In all other cases, the number of palette colors
+		// equals biClrUsed.
+		if(biClrUsed==0 && rctx->bitcount<=8) {
+			rctx->palette_entries = 1<<rctx->bitcount;
+		}
+		else {
+			rctx->palette_entries = biClrUsed;
+		}
+	}
+	else if(rctx->infoheader_size==12) {
+		// This is a rare old-style "OS/2" bitmap.
+		rctx->bmpversion=2;
+		if(!iwbmp_read(rctx,&buf[4],rctx->infoheader_size-4)) goto done;
+
+		rctx->width = iw_get_ui16le(&buf[4]);
+		rctx->height = iw_get_ui16le(&buf[6]);
+		nplanes = iw_get_ui16le(&buf[8]);
+		rctx->bitcount = iw_get_ui16le(&buf[10]);
+		if(rctx->bitcount<=8) {
+			rctx->palette_entries = 1<<rctx->bitcount;
+		}
+	}
+	else {
+		iw_set_error(rctx->ctx,"Unsupported BMP version");
+		goto done;
+	}
+
+	if(!iw_check_image_dimensions(rctx->ctx,rctx->width,rctx->height)) {
+		goto done;
+	}
+
+	if(nplanes!=1) {
+		iw_set_error(rctx->ctx,"Unsupported type of BMP image");
+		goto done;
+	}
+
+	if(rctx->bmpversion==2) {
+		rctx->palette_nbytes = 3*rctx->palette_entries;
+	}
+	else {
+		rctx->palette_nbytes = 4*rctx->palette_entries;
+
+		rctx->img->density_code = IW_DENSITY_UNITS_PER_METER;
+		rctx->img->density_x = (double)biXPelsPerMeter;
+		rctx->img->density_y = (double)biYPelsPerMeter;
+		if(!iw_is_valid_density(rctx->img->density_x,rctx->img->density_y,rctx->img->density_code)) {
+			rctx->img->density_code=IW_DENSITY_UNKNOWN;
+		}
+	}
+
+	retval = 1;
+
+done:
+	return retval;
+}
+
+static int iwbmp_read_bitfields(struct iwbmpreadcontext *rctx)
+{
+	iw_byte buf[12];
+	if(!iwbmp_read(rctx,buf,12)) return 0;
+	// TODO
+	return 1;
+}
+
+static int iwbmp_read_palette(struct iwbmpreadcontext *rctx)
+{
+	size_t i;
+	iw_byte buf[1024];
+	size_t b;
+
+	// TODO: Maybe we should allow palettes with >256 colors.
+	if(rctx->palette_entries>256) return 0;
+
+	b = (rctx->bmpversion==2) ? 3 : 4; // bytes per palette entry
+
+	if(!iwbmp_read(rctx,buf,rctx->palette_nbytes)) return 0;
+	rctx->palette.num_entries = rctx->palette_entries;
+	for(i=0;i<rctx->palette_entries;i++) {
+		rctx->palette.entry[i].b = buf[i*b+0];
+		rctx->palette.entry[i].g = buf[i*b+1];
+		rctx->palette.entry[i].r = buf[i*b+2];
+		rctx->palette.entry[i].a = 255;
+	}
+	return 1;
+}
+
+static void bmpr_convert_row_24(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+{
+	size_t i;
+	for(i=0;i<rctx->width;i++) {
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 0] = src[i*3+2];
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 1] = src[i*3+1];
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 2] = src[i*3+0];
+	}
+}
+
+static void bmpr_convert_row_8(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+{
+	size_t i;
+	for(i=0;i<rctx->width;i++) {
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 0] = rctx->palette.entry[src[i]].r;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 1] = rctx->palette.entry[src[i]].g;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 2] = rctx->palette.entry[src[i]].b;
+	}
+}
+
+static void bmpr_convert_row_4(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+{
+	size_t i;
+	int pal_index;
+
+	for(i=0;i<rctx->width;i++) {
+		pal_index = (i&0x1) ? src[i/2]&0x0f : src[i/2]>>4;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 0] = rctx->palette.entry[pal_index].r;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 1] = rctx->palette.entry[pal_index].g;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 2] = rctx->palette.entry[pal_index].b;
+	}
+}
+
+static void bmpr_convert_row_1(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+{
+	size_t i;
+	int pal_index;
+
+	for(i=0;i<rctx->width;i++) {
+		pal_index = (src[i/8] & (1<<(7-i%8))) ? 1 : 0;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 0] = rctx->palette.entry[pal_index].r;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 1] = rctx->palette.entry[pal_index].g;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 2] = rctx->palette.entry[pal_index].b;
+	}
+}
+
+static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
+{
+	iw_byte *rowbuf = NULL;
+	size_t bmp_bpr;
+	size_t j;
+	size_t targetrow;
+	int retval = 0;
+
+	bmp_bpr = iwbmp_calc_bpr(rctx->bitcount,rctx->width);
+
+	rctx->img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx,rctx->img->bpr,rctx->img->height);
+	if(!rctx->img->pixels) goto done;
+
+	rowbuf = iw_malloc(rctx->ctx,bmp_bpr);
+
+	for(j=0;j<rctx->img->height;j++) {
+		targetrow = rctx->topdown ? j : rctx->img->height-1-j;
+
+		// Read a row of the BMP file.
+		if(!iwbmp_read(rctx,rowbuf,bmp_bpr)) {
+			goto done;
+		}
+		switch(rctx->bitcount) {
+		case 24:
+			bmpr_convert_row_24(rctx,rowbuf,targetrow);
+			break;
+		case 8:
+			bmpr_convert_row_8(rctx,rowbuf,targetrow);
+			break;
+		case 4:
+			bmpr_convert_row_4(rctx,rowbuf,targetrow);
+			break;
+		case 1:
+			bmpr_convert_row_1(rctx,rowbuf,targetrow);
+			break;
+		}
+	}
+
+	retval = 1;
+done:
+	if(rowbuf) iw_free(rctx->ctx,rowbuf);
+	return retval;
+}
+
+static int iwbmp_read_bits(struct iwbmpreadcontext *rctx)
+{
+	int retval = 0;
+
+	rctx->img->width = rctx->width;
+	rctx->img->height = rctx->height;
+
+	if(rctx->bitcount!=24 && rctx->bitcount!=8 && rctx->bitcount!=4 &&
+		rctx->bitcount!=1)
+	{
+		iw_set_errorf(rctx->ctx,"BMP bit count %d not supported",(int)rctx->bitcount);
+		goto done;
+	}
+
+	// If applicable, use the fileheader's "bits offset" field to locate the
+	// bitmap bits.
+	if(rctx->fileheader_size>0) {
+		size_t expected_offbits;
+
+		expected_offbits = rctx->fileheader_size + rctx->infoheader_size +
+			rctx->bitfields_nbytes + rctx->palette_nbytes;
+
+		if(rctx->bfOffBits==expected_offbits) {
+			;
+		}
+		else if(rctx->bfOffBits>expected_offbits && rctx->bfOffBits<1000000) {
+			// Apparently, there's some extra space between the header data and
+			// the bits. If it's not unreasonably large, skip over it.
+			if(!iwbmp_skip_bytes(rctx, rctx->bfOffBits - expected_offbits)) goto done;
+		}
+		else {
+			iw_set_error(rctx->ctx,"Invalid BMP bits offset");
+			goto done;
+		}
+	}
+
+	rctx->img->imgtype = IW_IMGTYPE_RGB;
+	rctx->img->bit_depth = 8;
+	rctx->img->bpr = iw_calc_bytesperrow(rctx->width,24);
+
+	if(rctx->compression==IWBMP_BI_RGB) {
+		if(!bmpr_read_uncompressed(rctx)) goto done;
+	}
+	else if(rctx->compression==IWBMP_BI_RLE8) {
+		iw_set_error(rctx->ctx,"RLE8 compression not supported");
+		goto done;
+	}
+	else if(rctx->compression==IWBMP_BI_RLE4) {
+		iw_set_error(rctx->ctx,"RLE4 compression not supported");
+		goto done;
+	}
+	else {
+		iw_set_errorf(rctx->ctx,"Unsupported BMP compression type (%d)",(int)rctx->compression);
+		goto done;
+	}
+
+	retval = 1;
+done:
+	return retval;
+}
+
+IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+{
+	struct iwbmpreadcontext rctx;
+	struct iw_image img;
+	struct iw_csdescr csdescr;
+	int retval = 0;
+
+	iw_zeromem(&rctx,sizeof(struct iwbmpreadcontext));
+	iw_zeromem(&img,sizeof(struct iw_image));
+
+	rctx.ctx = ctx;
+	rctx.img = &img;
+	rctx.iodescr = iodescr;
+
+	if(!iwbmp_read_file_header(&rctx)) goto done;
+	if(!iwbmp_read_info_header(&rctx)) goto done;
+	if(rctx.bitfields_nbytes>0) {
+		if(!iwbmp_read_bitfields(&rctx)) goto done;
+	}
+	if(rctx.palette_entries>0) {
+		if(!iwbmp_read_palette(&rctx)) goto done;
+	}
+	if(!iwbmp_read_bits(&rctx)) goto done;
+
+	iw_set_input_image(ctx, &img);
+
+	iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
+	iw_set_input_colorspace(ctx,&csdescr);
+
+	retval = 1;
+done:
+	if(!retval) {
+		iw_set_error(ctx,"BMP read failed");
+	}
+	return retval;
+}
+
 struct iwbmpwritecontext {
 	int include_file_header;
 	int bitcount;
@@ -25,11 +421,6 @@ struct iwbmpwritecontext {
 	const struct iw_palette *pal;
 	size_t total_written;
 };
-
-static size_t iwbmp_calc_bpr(int bpp, size_t width)
-{
-	return ((bpp*width+31)/32)*4;
-}
 
 static void iwbmp_write(struct iwbmpwritecontext *bmpctx, const void *buf, size_t n)
 {
@@ -111,10 +502,10 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *bmpctx)
 	iw_set_ui16le(&header[12],1);    // biPlanes
 	iw_set_ui16le(&header[14],bmpctx->bitcount);   // biBitCount
 
-	cmpr = 0; // BI_RGB
+	cmpr = IWBMP_BI_RGB;
 	if(bmpctx->compressed) {
-		if(bmpctx->bitcount==8) cmpr = 1; // BI_RLE8
-		else if(bmpctx->bitcount==4) cmpr = 2; // BI_RLE4
+		if(bmpctx->bitcount==8) cmpr = IWBMP_BI_RLE8;
+		else if(bmpctx->bitcount==4) cmpr = IWBMP_BI_RLE4;
 	}
 	iw_set_ui32le(&header[16],cmpr); // biCompression
 
@@ -648,19 +1039,26 @@ done:
 static int rle_patch_file_size(struct iwbmpwritecontext *bmpctx,size_t rlesize)
 {
 	iw_byte buf[4];
+	size_t fileheader_size;
 
 	if(!bmpctx->iodescr->seek_fn) {
 		iw_set_error(bmpctx->ctx,"Writing compressed BMP requires a seek function");
 		return 0;
 	}
 
-	// Patch the file size
-	(*bmpctx->iodescr->seek_fn)(bmpctx->ctx,bmpctx->iodescr,2,SEEK_SET);
-	iw_set_ui32le(buf,(unsigned int)(14+40+bmpctx->palsize+rlesize));
-	iwbmp_write(bmpctx,buf,4);
+	if(bmpctx->include_file_header) {
+		// Patch the file size in the file header
+		(*bmpctx->iodescr->seek_fn)(bmpctx->ctx,bmpctx->iodescr,2,SEEK_SET);
+		iw_set_ui32le(buf,(unsigned int)(14+40+bmpctx->palsize+rlesize));
+		iwbmp_write(bmpctx,buf,4);
+		fileheader_size = 14;
+	}
+	else {
+		fileheader_size = 0;
+	}
 
 	// Patch the "bits" size
-	(*bmpctx->iodescr->seek_fn)(bmpctx->ctx,bmpctx->iodescr,14+20,SEEK_SET);
+	(*bmpctx->iodescr->seek_fn)(bmpctx->ctx,bmpctx->iodescr,fileheader_size+20,SEEK_SET);
 	iw_set_ui32le(buf,(unsigned int)rlesize);
 	iwbmp_write(bmpctx,buf,4);
 

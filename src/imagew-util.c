@@ -413,6 +413,11 @@ IW_IMPL(unsigned int) iw_get_ui32le(const iw_byte *b)
 	return b[0] | (b[1]<<8) | (b[2]<<16) | (b[3]<<24);
 }
 
+IW_IMPL(int) iw_get_i32le(const iw_byte *b)
+{
+	return (iw_int32)(iw_uint32)(b[0] | (b[1]<<8) | (b[2]<<16) | (b[3]<<24));
+}
+
 IW_IMPL(unsigned int) iw_get_ui16be(const iw_byte *b)
 {
 	return (b[0]<<8) | b[1];
@@ -554,6 +559,7 @@ IW_IMPL(int) iw_is_input_fmt_supported(int fmt)
 #endif
 	case IW_FORMAT_MIFF:
 	case IW_FORMAT_GIF:
+	case IW_FORMAT_BMP:
 		return 1;
 	}
 	return 0;

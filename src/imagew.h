@@ -282,6 +282,7 @@ extern "C" {
 #define iw_float32  float
 #define iw_float64  double
 #define iw_uint16   unsigned short
+#define iw_int32    int
 #define iw_uint32   unsigned int
 #ifdef IW_WINDOWS
 #define iw_int64    __int64
@@ -607,6 +608,7 @@ IW_EXPORT(char*) iw_get_zlib_version_string(char *s, int s_len);
 IW_EXPORT(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_write_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(char*) iw_get_libjpeg_version_string(char *s, int s_len);
+IW_EXPORT(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
@@ -695,6 +697,7 @@ IW_EXPORT(void) iw_set_ui32le(iw_byte *b, unsigned int n);
 IW_EXPORT(void) iw_set_ui16be(iw_byte *b, unsigned int n);
 IW_EXPORT(void) iw_set_ui32be(iw_byte *b, unsigned int n);
 IW_EXPORT(unsigned int) iw_get_ui16le(const iw_byte *b);
+IW_EXPORT(int) iw_get_i32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui16be(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32be(const iw_byte *b);

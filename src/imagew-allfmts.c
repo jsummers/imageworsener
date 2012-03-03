@@ -55,6 +55,8 @@ IW_IMPL(int) iw_read_file_by_fmt(struct iw_context *ctx,
 		break;
 
 	case IW_FORMAT_BMP:
+		supported=1;
+		retval = iw_read_bmp_file(ctx,readdescr);
 		break;
 
 	case IW_FORMAT_TIFF:
