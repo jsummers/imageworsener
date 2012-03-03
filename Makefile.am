@@ -29,3 +29,4 @@ EXTRA_DIST = readme.txt technical.txt COPYING.txt changelog.txt \
  tests/srcimg \
  tests/expected
 
+ACLOCAL_AMFLAGS = -I m4
