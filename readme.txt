@@ -168,8 +168,8 @@ Options:
      png: PNG
      jpeg, jpg: JPEG
      webp: WebP
+     bmp: Windows BMP
      gif: GIF (-infmt only)
-     bmp: BMP (-outfmt only)
      tiff, tif: TIFF (-outfmt only)
      miff: MIFF (experimental; limited support)
 

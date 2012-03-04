@@ -221,7 +221,7 @@ static int iwbmp_read_palette(struct iwbmpreadcontext *rctx)
 
 static void bmpr_convert_row_24(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
 {
-	size_t i;
+	int i;
 	for(i=0;i<rctx->width;i++) {
 		rctx->img->pixels[row*rctx->img->bpr + i*3 + 0] = src[i*3+2];
 		rctx->img->pixels[row*rctx->img->bpr + i*3 + 1] = src[i*3+1];
@@ -231,7 +231,7 @@ static void bmpr_convert_row_24(struct iwbmpreadcontext *rctx,const iw_byte *src
 
 static void bmpr_convert_row_8(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
 {
-	size_t i;
+	int i;
 	for(i=0;i<rctx->width;i++) {
 		rctx->img->pixels[row*rctx->img->bpr + i*3 + 0] = rctx->palette.entry[src[i]].r;
 		rctx->img->pixels[row*rctx->img->bpr + i*3 + 1] = rctx->palette.entry[src[i]].g;
@@ -241,7 +241,7 @@ static void bmpr_convert_row_8(struct iwbmpreadcontext *rctx,const iw_byte *src,
 
 static void bmpr_convert_row_4(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
 {
-	size_t i;
+	int i;
 	int pal_index;
 
 	for(i=0;i<rctx->width;i++) {
@@ -254,7 +254,7 @@ static void bmpr_convert_row_4(struct iwbmpreadcontext *rctx,const iw_byte *src,
 
 static void bmpr_convert_row_1(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
 {
-	size_t i;
+	int i;
 	int pal_index;
 
 	for(i=0;i<rctx->width;i++) {
@@ -269,7 +269,7 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 {
 	iw_byte *rowbuf = NULL;
 	size_t bmp_bpr;
-	size_t j;
+	int j;
 	size_t targetrow;
 	int retval = 0;
 
@@ -306,6 +306,120 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 	retval = 1;
 done:
 	if(rowbuf) iw_free(rctx->ctx,rowbuf);
+	return retval;
+}
+
+static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
+{
+	int retval = 0;
+	int pos_x, pos_y;
+	iw_byte buf[255];
+	size_t n_pix;
+	size_t n_bytes;
+	size_t i;
+	size_t pal_index;
+
+	// The position of the next pixel to set.
+	// pos_y is in IW coordinates (top=0), not BMP coordinates (bottom=0).
+	pos_x = 0;
+	pos_y = rctx->img->height-1;
+
+	iw_zeromem(rctx->img->pixels,rctx->img->bpr*rctx->img->height);
+
+	while(1) {
+		// If we've reached the end of the bitmap, stop.
+		if(pos_y<0) break;
+		if(pos_y==0 && pos_x>=rctx->img->width) break;
+
+		if(!iwbmp_read(rctx,buf,2)) goto done;
+		if(buf[0]==0) {
+			if(buf[1]==0) {
+				// End of Line
+				pos_y--;
+				pos_x=0;
+			}
+			else if(buf[1]==1) {
+				// (Premature) End of Bitmap
+				break;
+			}
+			else if(buf[1]==2) {
+				// DELTA
+				iw_set_error(rctx->ctx,"RLE with delta codes is not supported");
+				goto done;
+			}
+			else {
+				// A uncompressed segment
+				n_pix = (size_t)buf[1]; // Number of uncompressed pixels which follow
+				if(rctx->compression==IWBMP_BI_RLE4) {
+					n_bytes = ((n_pix+3)/4)*2;
+				}
+				else {
+					n_bytes = ((n_pix+1)/2)*2;
+				}
+				if(!iwbmp_read(rctx,buf,n_bytes)) goto done;
+				for(i=0;i<n_pix;i++) {
+					if(pos_x<rctx->img->width) {
+						if(rctx->compression==IWBMP_BI_RLE4) {
+							pal_index = (i%2) ? buf[i/2]&0x0f : buf[i/2]>>4;
+						}
+						else {
+							pal_index = buf[i];
+						}
+						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 0] = rctx->palette.entry[pal_index].r;
+						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 1] = rctx->palette.entry[pal_index].g;
+						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 2] = rctx->palette.entry[pal_index].b;
+						pos_x++;
+					}
+				}
+			}
+		}
+		else {
+			// An RLE-compressed segment
+			n_pix = (size_t)buf[0];
+			for(i=0;i<n_pix;i++) {
+				if(pos_x<rctx->img->width) {
+					if(rctx->compression==IWBMP_BI_RLE4) {
+						pal_index = (i%2) ? buf[1]&0x0f : buf[1]>>4;
+					}
+					else {
+						pal_index = buf[1];
+					}
+					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 0] = rctx->palette.entry[pal_index].r;
+					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 1] = rctx->palette.entry[pal_index].g;
+					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 2] = rctx->palette.entry[pal_index].b;
+					pos_x++;
+				}
+			}
+		}
+	}
+
+	retval = 1;
+done:
+	return retval;
+}
+
+static int bmpr_read_rle(struct iwbmpreadcontext *rctx)
+{
+	int retval = 0;
+
+	if(!(rctx->compression==IWBMP_BI_RLE8 && rctx->bitcount==8) &&
+		!(rctx->compression==IWBMP_BI_RLE4 && rctx->bitcount==4))
+	{
+		iw_set_error(rctx->ctx,"Compression type incompatible with image type");
+	}
+
+	if(rctx->topdown) {
+		// The documentation says that top-down images may not be compressed.
+		iw_set_error(rctx->ctx,"Compression not allowed with top-down images");
+	}
+
+	rctx->img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx,rctx->img->bpr,rctx->img->height);
+	if(!rctx->img->pixels) goto done;
+
+	if(!bmpr_read_rle_internal(rctx)) goto done;
+
+	retval = 1;
+done:
 	return retval;
 }
 
@@ -352,13 +466,8 @@ static int iwbmp_read_bits(struct iwbmpreadcontext *rctx)
 	if(rctx->compression==IWBMP_BI_RGB) {
 		if(!bmpr_read_uncompressed(rctx)) goto done;
 	}
-	else if(rctx->compression==IWBMP_BI_RLE8) {
-		iw_set_error(rctx->ctx,"RLE8 compression not supported");
-		goto done;
-	}
-	else if(rctx->compression==IWBMP_BI_RLE4) {
-		iw_set_error(rctx->ctx,"RLE4 compression not supported");
-		goto done;
+	else if(rctx->compression==IWBMP_BI_RLE8 || rctx->compression==IWBMP_BI_RLE4) {
+		if(!bmpr_read_rle(rctx)) goto done;
 	}
 	else {
 		iw_set_errorf(rctx->ctx,"Unsupported BMP compression type (%d)",(int)rctx->compression);
