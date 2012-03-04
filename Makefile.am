@@ -30,3 +30,14 @@ EXTRA_DIST = readme.txt technical.txt COPYING.txt changelog.txt \
  tests/expected
 
 ACLOCAL_AMFLAGS = -I m4
+
+check-local:  # Run test suite with support for VPATH builds (e.g. make distcheck)
+	mkdir -p tests
+	test -e tests/expected || ln -s "$(abs_top_srcdir)"/tests/expected tests/expected
+	test -e tests/srcimg || ln -s "$(abs_top_srcdir)"/tests/srcimg tests/srcimg
+	cd tests && "$(abs_top_srcdir)"/tests/runtest
+	rm tests/expected 2>/dev/null ; true
+	rm tests/srcimg 2>/dev/null ; true
+
+distclean-local:  # Clean up after so distcleancheck is happy
+	rm -Rf tests/actual/
