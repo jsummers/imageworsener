@@ -273,6 +273,10 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 	size_t targetrow;
 	int retval = 0;
 
+	rctx->img->imgtype = IW_IMGTYPE_RGB;
+	rctx->img->bit_depth = 8;
+	rctx->img->bpr = iw_calc_bytesperrow(rctx->width,24);
+
 	bmp_bpr = iwbmp_calc_bpr(rctx->bitcount,rctx->width);
 
 	rctx->img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx,rctx->img->bpr,rctx->img->height);
@@ -309,6 +313,8 @@ done:
 	return retval;
 }
 
+// Read and decompress RLE8 or RLE4-compressed bits, and write pixels to
+// rctx->img->pixels.
 static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 {
 	int retval = 0;
@@ -324,6 +330,8 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 	pos_x = 0;
 	pos_y = rctx->img->height-1;
 
+	// Initially make all pixels transparent, so that any any pixels we
+	// don't modify will be transparent.
 	iw_zeromem(rctx->img->pixels,rctx->img->bpr*rctx->img->height);
 
 	while(1) {
@@ -343,9 +351,15 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 				break;
 			}
 			else if(buf[1]==2) {
-				// DELTA
-				iw_set_error(rctx->ctx,"RLE with delta codes is not supported");
-				goto done;
+				// DELTA: The next two bytes are unsigned values representing
+				// the relative position of the next pixel from the "current
+				// position".
+				// I interpret "current position" to mean the position at which
+				// the next pixel would normally have been.
+				if(!iwbmp_read(rctx,buf,2)) goto done;
+
+				if(pos_x<rctx->img->width) pos_x += buf[0];
+				pos_y -= buf[1];
 			}
 			else {
 				// A uncompressed segment
@@ -365,9 +379,10 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 						else {
 							pal_index = buf[i];
 						}
-						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 0] = rctx->palette.entry[pal_index].r;
-						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 1] = rctx->palette.entry[pal_index].g;
-						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 2] = rctx->palette.entry[pal_index].b;
+						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 0] = rctx->palette.entry[pal_index].r;
+						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 1] = rctx->palette.entry[pal_index].g;
+						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 2] = rctx->palette.entry[pal_index].b;
+						rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 3] = 255;
 						pos_x++;
 					}
 				}
@@ -384,9 +399,10 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 					else {
 						pal_index = buf[1];
 					}
-					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 0] = rctx->palette.entry[pal_index].r;
-					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 1] = rctx->palette.entry[pal_index].g;
-					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*3 + 2] = rctx->palette.entry[pal_index].b;
+					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 0] = rctx->palette.entry[pal_index].r;
+					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 1] = rctx->palette.entry[pal_index].g;
+					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 2] = rctx->palette.entry[pal_index].b;
+					rctx->img->pixels[rctx->img->bpr*pos_y + pos_x*4 + 3] = 255;
 					pos_x++;
 				}
 			}
@@ -396,6 +412,42 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 	retval = 1;
 done:
 	return retval;
+}
+
+static int bmpr_has_transparency(struct iw_image *img)
+{
+	size_t i,j;
+
+	if(img->imgtype!=IW_IMGTYPE_RGBA) return 0;
+
+	for(j=0;j<img->height;j++) {
+		for(i=0;i<img->width;i++) {
+			if(img->pixels[j*img->bpr + i*4 + 3] != 255)
+				return 1;
+		}
+	}
+	return 0;
+}
+
+// Remove the alpha channel.
+// This doesn't free the extra memory used by the alpha channel, it just
+// moves the pixels around in-place.
+static void bmpr_strip_alpha(struct iw_image *img)
+{
+	size_t i,j;
+	size_t oldbpr;
+
+	img->imgtype = IW_IMGTYPE_RGB;
+	oldbpr = img->bpr;
+	img->bpr = iw_calc_bytesperrow(img->width,24);
+
+	for(j=0;j<img->height;j++) {
+		for(i=0;i<img->width;i++) {
+			img->pixels[j*img->bpr + i*3 + 0] = img->pixels[j*oldbpr + i*4 + 0];
+			img->pixels[j*img->bpr + i*3 + 1] = img->pixels[j*oldbpr + i*4 + 1];
+			img->pixels[j*img->bpr + i*3 + 2] = img->pixels[j*oldbpr + i*4 + 2];
+		}
+	}
 }
 
 static int bmpr_read_rle(struct iwbmpreadcontext *rctx)
@@ -413,10 +465,24 @@ static int bmpr_read_rle(struct iwbmpreadcontext *rctx)
 		iw_set_error(rctx->ctx,"Compression not allowed with top-down images");
 	}
 
+	// RLE-compressed BMP images don't have to assign a color to every pixel,
+	// and it's reasonable to interpret undefined pixels as transparent.
+	// I'm not going to worry about handling compressed BMP images as
+	// efficiently as possible, so start with an RGBA image, and convert to
+	// RGB format later if (as is almost always the case) there was no
+	// transparency.
+	rctx->img->imgtype = IW_IMGTYPE_RGBA;
+	rctx->img->bit_depth = 8;
+	rctx->img->bpr = iw_calc_bytesperrow(rctx->width,32);
+
 	rctx->img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx,rctx->img->bpr,rctx->img->height);
 	if(!rctx->img->pixels) goto done;
 
 	if(!bmpr_read_rle_internal(rctx)) goto done;
+
+	if(!bmpr_has_transparency(rctx->img)) {
+		bmpr_strip_alpha(rctx->img);
+	}
 
 	retval = 1;
 done:
@@ -458,10 +524,6 @@ static int iwbmp_read_bits(struct iwbmpreadcontext *rctx)
 			goto done;
 		}
 	}
-
-	rctx->img->imgtype = IW_IMGTYPE_RGB;
-	rctx->img->bit_depth = 8;
-	rctx->img->bpr = iw_calc_bytesperrow(rctx->width,24);
 
 	if(rctx->compression==IWBMP_BI_RGB) {
 		if(!bmpr_read_uncompressed(rctx)) goto done;
