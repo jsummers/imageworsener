@@ -612,6 +612,10 @@ Options:
    This reduces the file size by about 10%, but many image viewers don't
    support JPEG files with arithmetic coding.
 
+ -bmptrns
+   Attempt to write a BMP image with transparency. Refer to technical.txt for
+   more information.
+
  -webpquality <n>
    WebP-style quality setting to use if a WebP file is written. This is on a
    scale from 0 to 100. Default is 80.

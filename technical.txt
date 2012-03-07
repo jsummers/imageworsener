@@ -417,6 +417,29 @@ like this:
 So, the interpretation is slightly different (e.g. 0.14285714 instead of
 0.14117647).
 
+BMP transparency
+----------------
+
+Windows BMP images that use RLE compression can leave some pixels undefined,
+by using "delta" codes, or premature end-of-line codes. Some applications
+(such as IW, Mozilla Firefox, and Google Chrome) interpret undefined pixels as
+being transparent.
+
+IW has a "-bmptrns" option to create such a transparent BMP, but it's kind of
+a hack. It will only work if the final image has no more than 255 opaque
+colors, and does not have partial transparency. If that's not the case, it will
+fail, and create no image at all.
+
+Transparent BMP images can actually have up to 256 opaque colors, not 255, but
+IW currently limits it to 255. It will take a lot of work to make it support
+the 256th color.
+
+IW is not really a good application to use to create images that are restricted
+to a certain number of colors, because it does not support palette
+optimization. If for some reason you want to make a transparent BMP image, the
+best way may be to use some other application to write an optimized GIF image,
+then use IW to convert to BMP format.
+
 Ordered dithering + transparency
 --------------------------------
 

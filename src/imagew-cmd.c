@@ -98,6 +98,7 @@ struct params_struct {
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	int jpeg_arith_coding;
+	int bmp_trns;
 	double webp_quality;
 	int zipcmprlevel;
 	int zipcmprlevel_set;
@@ -452,6 +453,7 @@ static int run(struct params_struct *p)
 	char errmsg[200];
 	struct iw_init_params init_params;
 	const char *s;
+	unsigned int profile;
 
 	memset(&init_params,0,sizeof(struct iw_init_params));
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
@@ -545,7 +547,14 @@ static int run(struct params_struct *p)
 
 	// We have to tell the library the output format, so it can know what
 	// kinds of images are allowed (e.g. whether transparency is allowed).
-	iw_set_output_profile(ctx, iw_get_profile_by_fmt(p->outfmt));
+	profile = iw_get_profile_by_fmt(p->outfmt);
+	if(p->bmp_trns && p->outfmt==IW_FORMAT_BMP) {
+		// TODO: This is part of a "temporary" hack.
+		// We support BMP transparency, but with a maximum of 255 opaque
+		// colors, instead of the full 256 that ought to be supported.
+		profile |= IW_PROFILE_PALETTETRNS|IW_PROFILE_TRANSPARENCY;
+	}
+	iw_set_output_profile(ctx, profile);
 
 	if(p->depth != -1) {
 		iw_set_output_depth(ctx,p->depth);
@@ -1410,7 +1419,7 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE,
- PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH,
+ PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH, PT_BMPTRNS,
  PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
@@ -1505,6 +1514,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"includescreen",PT_INCLUDESCREEN,0},
 		{"noincludescreen",PT_NOINCLUDESCREEN,0},
 		{"jpegarith",PT_JPEGARITH,0},
+		{"bmptrns",PT_BMPTRNS,0},
 		{"quiet",PT_QUIET,0},
 		{"nowarn",PT_NOWARN,0},
 		{"noinfo",PT_NOINFO,0},
@@ -1568,6 +1578,10 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_JPEGARITH:
 		p->jpeg_arith_coding=1;
+		break;
+	case PT_BMPTRNS:
+		p->bmp_trns=1;
+		p->compression=IW_COMPRESSION_RLE;
 		break;
 	case PT_QUIET:
 		p->nowarn=1;

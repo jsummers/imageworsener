@@ -416,7 +416,7 @@ done:
 
 static int bmpr_has_transparency(struct iw_image *img)
 {
-	size_t i,j;
+	int i,j;
 
 	if(img->imgtype!=IW_IMGTYPE_RGBA) return 0;
 
@@ -434,7 +434,7 @@ static int bmpr_has_transparency(struct iw_image *img)
 // moves the pixels around in-place.
 static void bmpr_strip_alpha(struct iw_image *img)
 {
-	size_t i,j;
+	int i,j;
 	size_t oldbpr;
 
 	img->imgtype = IW_IMGTYPE_RGB;
@@ -818,6 +818,25 @@ static void rle8_write_unc_and_run(struct rle_context *rctx)
 	rctx->run_len=0;
 }
 
+static void rle_write_trns(struct rle_context *rctx, int num_trns)
+{
+	iw_byte dstbuf[4];
+	int num_remaining = num_trns;
+	int num_to_write;
+
+	while(num_remaining>0) {
+		num_to_write = num_remaining;
+		if(num_to_write>255) num_to_write=255;
+		dstbuf[0]=0x00; // 00 02 = Delta
+		dstbuf[1]=0x02;
+		dstbuf[2]=(iw_byte)num_to_write; // X offset
+		dstbuf[3]=0x00; // Y offset
+		iwbmp_write(rctx->bmpctx,dstbuf,4);
+		rctx->total_bytes_written+=4;
+		num_remaining -= num_to_write;
+	}
+}
+
 // The RLE format used by BMP files is pretty simple, but I've gone to some
 // effort to optimize it for file size, which makes for a complicated
 // algorithm.
@@ -841,6 +860,8 @@ static int rle8_compress_row(struct rle_context *rctx)
 	size_t i;
 	iw_byte dstbuf[2];
 	iw_byte next_byte;
+	int next_pix_is_trns;
+	int num_trns = 0; // number of consecutive transparent pixels seen
 	int retval = 0;
 
 	rctx->pending_data_start=0;
@@ -851,6 +872,20 @@ static int rle8_compress_row(struct rle_context *rctx)
 
 		// Read the next byte.
 		next_byte = rctx->srcrow[i];
+
+		next_pix_is_trns = (rctx->bmpctx->pal->entry[next_byte].a==0);
+
+		if(num_trns>0 && !next_pix_is_trns) {
+			rle_write_trns(rctx,num_trns);
+			num_trns=0;
+		}
+		else if(next_pix_is_trns) {
+			if (rctx->unc_len>0 || rctx->run_len>0) {
+				rle8_write_unc_and_run(rctx);
+			}
+			num_trns++;
+			continue;
+		}
 
 		// --------------------------------------------------------------
 		// Add the byte we just read to either the UNC or the RUN data.
@@ -1106,6 +1141,8 @@ static int rle4_compress_row(struct rle_context *rctx)
 	size_t i;
 	iw_byte dstbuf[2];
 	iw_byte next_pix;
+	int next_pix_is_trns;
+	int num_trns = 0; // number of consecutive transparent pixels seen
 	int retval = 0;
 
 	rctx->pending_data_start=0;
@@ -1116,6 +1153,19 @@ static int rle4_compress_row(struct rle_context *rctx)
 
 		// Read the next pixel
 		next_pix = rctx->srcrow[i];
+
+		next_pix_is_trns = (rctx->bmpctx->pal->entry[next_pix].a==0);
+		if(num_trns>0 && !next_pix_is_trns) {
+			rle_write_trns(rctx,num_trns);
+			num_trns=0;
+		}
+		else if(next_pix_is_trns) {
+			if (rctx->unc_len>0 || rctx->run_len>0) {
+				rle4_write_unc_and_run(rctx);
+			}
+			num_trns++;
+			continue;
+		}
 
 		// --------------------------------------------------------------
 		// Add the pixel we just read to either the UNC or the RUN data.
@@ -1301,11 +1351,27 @@ done:
 	return;
 }
 
+// 0 = no transparency
+// 1 = binary transparency
+// 2 = partial transparency
+static int check_palette_transparency(const struct iw_palette *p)
+{
+	int i;
+	int retval = 0;
+
+	for(i=0;i<p->num_entries;i++) {
+		if(p->entry[i].a!=255) retval=1;
+		if(p->entry[i].a!=255 && p->entry[i].a!=0) return 2;
+	}
+	return retval;
+}
+
 static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 {
 	struct iw_image *img;
 	int cmpr_req;
 	int retval = 0;
+	int x;
 
 	img = bmpctx->img;
 
@@ -1322,12 +1388,29 @@ static int iwbmp_write_main(struct iwbmpwritecontext *bmpctx)
 	}
 	else if(img->imgtype==IW_IMGTYPE_PALETTE) {
 		if(!bmpctx->pal) goto done;
+
+		x = check_palette_transparency(bmpctx->pal);
+
+		if(x==2) {
+			iw_set_error(bmpctx->ctx,"Cannot save this image as a transparent BMP: Has partial transparency");
+			goto done;
+		}
+		else if(x!=0 && cmpr_req!=IW_COMPRESSION_RLE) {
+			iw_set_error(bmpctx->ctx,"Cannot save as a transparent BMP: RLE compression required");
+			goto done;
+		}
+
 		if(bmpctx->pal->num_entries<=2 && cmpr_req!=IW_COMPRESSION_RLE)
 			bmpctx->bitcount=1;
 		else if(bmpctx->pal->num_entries<=16)
 			bmpctx->bitcount=4;
 		else
 			bmpctx->bitcount=8;
+	}
+	else if(img->imgtype==IW_IMGTYPE_RGBA) {
+		// It should only be possible to get here if the user enabled the transparent-BMP hack.
+		iw_set_error(bmpctx->ctx,"Cannot save this image as a transparent BMP: Too many colors");
+		goto done;
 	}
 	else {
 		iw_set_error(bmpctx->ctx,"Internal: Bad image type for BMP");
