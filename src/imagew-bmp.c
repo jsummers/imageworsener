@@ -835,6 +835,7 @@ static void rle_write_trns(struct rle_context *rctx, int num_trns)
 		rctx->total_bytes_written+=4;
 		num_remaining -= num_to_write;
 	}
+	rctx->pending_data_start += num_trns;
 }
 
 // The RLE format used by BMP files is pretty simple, but I've gone to some
