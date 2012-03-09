@@ -420,25 +420,26 @@ So, the interpretation is slightly different (e.g. 0.14285714 instead of
 BMP transparency
 ----------------
 
-Windows BMP images that use RLE compression can leave some pixels undefined,
-by using "delta" codes, or premature end-of-line codes. Some applications
-(such as IW, Mozilla Firefox, and Google Chrome) interpret undefined pixels as
-being transparent.
+Windows BMP images that use RLE compression can leave the color of some pixels
+undefined, by using "delta" codes, or premature end-of-line codes. Many
+applications interpret these undefined pixels as being the color of the first
+color in the palette. Others interpret them as black. Still others (such as
+IW, Mozilla Firefox, and Google Chrome) interpret them as transparent.
 
 IW has a "-bmptrns" option to create such a transparent BMP, but it's kind of
 a hack. It will only work if the final image has no more than 255 opaque
 colors, and does not have partial transparency. If that's not the case, it will
-fail, and create no image at all.
+fail, and write no image at all.
 
-Transparent BMP images can actually have up to 256 opaque colors, not 255, but
-IW currently limits it to 255. It will take a lot of work to make it support
-the 256th color.
+Transparent BMP images can have up to 256 opaque colors, but IW currently
+limits it to 255. It leaves the first palette color unused, and assigns it a
+bright color, so that it's likely to contrast with the foreground image.
 
 IW is not really a good application to use to create images that are restricted
-to a certain number of colors, because it does not support palette
-optimization. If for some reason you want to make a transparent BMP image, the
-best way may be to use some other application to write an optimized GIF image,
-then use IW to convert to BMP format.
+to a certain number of colors, because it does not support generating optimized
+palettes. If your image has too many colors, the best you can do is to
+posterize it. For example:
+  imagew in.png out.bmp -bmptrns -cc 6 -ccgreen 7 -ccalpha 2 -dither f
 
 Ordered dithering + transparency
 --------------------------------

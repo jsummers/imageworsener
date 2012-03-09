@@ -703,15 +703,32 @@ static void iwbmp_write_palette(struct iwbmpwritecontext *bmpctx)
 	iw_byte buf[4];
 
 	if(bmpctx->palentries<1) return;
+
+	buf[3] = 0; // Reserved field; always 0.
+
 	for(i=0;i<bmpctx->palentries;i++) {
 		if(i<bmpctx->pal->num_entries) {
-			buf[0] = bmpctx->pal->entry[i].b;
-			buf[1] = bmpctx->pal->entry[i].g;
-			buf[2] = bmpctx->pal->entry[i].r;
-			buf[3] = 0;
+			if(bmpctx->pal->entry[i].a == 0) {
+				// A transparent color. Because of the way we handle writing
+				// transparent BMP images, the first palette entry may be a
+				// fully transparent color, whose index will not be used when
+				// we write the image. But many apps will interpret our
+				// "transparent" pixels as having color #0. So, set it to an
+				// arbitrary high-contrast color (magenta).
+				// If and when we support writing background color labels,
+				// that's probably what we should use here instead.
+				buf[0] = 255;
+				buf[1] = 0;
+				buf[2] = 255;
+			}
+			else {
+				buf[0] = bmpctx->pal->entry[i].b;
+				buf[1] = bmpctx->pal->entry[i].g;
+				buf[2] = bmpctx->pal->entry[i].r;
+			}
 		}
 		else {
-			iw_zeromem(buf,4);
+			buf[0] = buf[1] = buf[2] = 0;
 		}
 		iwbmp_write(bmpctx,buf,4);
 	}
