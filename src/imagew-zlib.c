@@ -19,6 +19,18 @@ struct iw_zlib_context {
 	z_stream strm;
 };
 
+static voidpf my_zlib_malloc(voidpf opaque, uInt items, uInt size)
+{
+	struct iw_zlib_context *zctx = (struct iw_zlib_context*)opaque;
+	return iw_malloc(zctx->ctx,((size_t)items)*size);
+}
+
+static void my_zlib_free(voidpf opaque, voidpf address)
+{
+	struct iw_zlib_context *zctx = (struct iw_zlib_context*)opaque;
+	iw_free(zctx->ctx,address);
+}
+
 // Create a iw_zlib_context object, and initialize it for decompression.
 // Returns NULL if anything failed.
 // On success, iw_zlib_inflate_end() must eventually be called to free it.
@@ -31,6 +43,9 @@ static struct iw_zlib_context* iw_zlib_inflate_init(struct iw_context *ctx)
 	if(!zctx) return NULL;
 
 	zctx->ctx = ctx;
+	zctx->strm.opaque = (voidpf)zctx;
+	zctx->strm.zalloc = my_zlib_malloc;
+	zctx->strm.zfree = my_zlib_free;
 
 	ret = inflateInit(&zctx->strm);
 	if(ret!=Z_OK) {
@@ -86,6 +101,9 @@ static struct iw_zlib_context* iw_zlib_deflate_init(struct iw_context *ctx)
 	if(!zctx) return NULL;
 
 	zctx->ctx = ctx;
+	zctx->strm.opaque = (voidpf)zctx;
+	zctx->strm.zalloc = my_zlib_malloc;
+	zctx->strm.zfree = my_zlib_free;
 
 	cmprlevel = iw_get_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL);
 
