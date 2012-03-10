@@ -27,6 +27,18 @@ struct errstruct {
 	int write_flag; // So we can tell if we're reading, or writing.
 };
 
+static png_voidp my_png_malloc_fn(png_structp png_ptr, png_alloc_size_t n)
+{
+	struct iw_context *ctx = (struct iw_context*)png_get_mem_ptr(png_ptr);
+	return iw_malloc(ctx,(size_t)n);
+}
+
+static void my_png_free_fn(png_structp png_ptr, png_voidp mem)
+{
+	struct iw_context *ctx = (struct iw_context*)png_get_mem_ptr(png_ptr);
+	iw_free(ctx,mem);
+}
+
 static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 {
 	struct errstruct *errinfop;
@@ -234,10 +246,11 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 		goto done;
 	}
 
-	png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING,(void*)(&errinfo),
-		my_png_error_fn, my_png_warning_fn);
-
+	png_ptr = png_create_read_struct_2(PNG_LIBPNG_VER_STRING,
+		(void*)(&errinfo), my_png_error_fn, my_png_warning_fn,
+		(void*)ctx, my_png_malloc_fn, my_png_free_fn);
 	if(!png_ptr) goto done;
+
 	info_ptr = png_create_info_struct(png_ptr);
 	if(!info_ptr) goto done;
 
@@ -476,8 +489,9 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		goto done;
 	}
 
-	png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING,(void*)(&errinfo),
-		my_png_error_fn, my_png_warning_fn);
+	png_ptr = png_create_write_struct_2(PNG_LIBPNG_VER_STRING,
+		(void*)(&errinfo), my_png_error_fn, my_png_warning_fn,
+		(void*)ctx, my_png_malloc_fn, my_png_free_fn);
 	if(!png_ptr) goto done;
 
 	cmprlevel = iw_get_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL);
