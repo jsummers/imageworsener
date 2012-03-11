@@ -39,6 +39,11 @@ struct iwbmpreadcontext {
 	size_t palette_nbytes;
 	size_t bfOffBits;
 	struct iw_palette palette;
+
+	// For 16- & 32-bit images:
+	unsigned int bf_mask[3];
+	int bf_high_bit[3];
+	int bf_bits_count[3]; // number of bits in each channel
 };
 
 static int iwbmp_read(struct iwbmpreadcontext *rctx,
@@ -117,6 +122,11 @@ static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
 		nplanes = iw_get_ui16le(&buf[12]);
 
 		rctx->bitcount = iw_get_ui16le(&buf[14]);
+		if(rctx->bitcount!=1 && rctx->bitcount!=4 && rctx->bitcount!=8 &&
+			rctx->bitcount!=16 && rctx->bitcount!=24 && rctx->bitcount!=32)
+		{
+			goto done;
+		}
 		rctx->compression = iw_get_ui32le(&buf[16]);
 		if(rctx->compression==IWBMP_BI_BITFIELDS) {
 			// The compression field is overloaded: BITFIELDS is not a type of
@@ -151,6 +161,11 @@ static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
 		rctx->height = iw_get_ui16le(&buf[6]);
 		nplanes = iw_get_ui16le(&buf[8]);
 		rctx->bitcount = iw_get_ui16le(&buf[10]);
+		if(rctx->bitcount!=1 && rctx->bitcount!=4 &&
+			rctx->bitcount!=8 && rctx->bitcount!=24)
+		{
+			goto done;
+		}
 		if(rctx->bitcount<=8) {
 			rctx->palette_entries = 1<<rctx->bitcount;
 		}
@@ -189,12 +204,70 @@ done:
 	return retval;
 }
 
+// Find the highest/lowest bit that is set.
+static int find_high_bit(unsigned int x)
+{
+	int i;
+	for(i=31;i>=0;i--) {
+		if(x&(1<<i)) return i;
+	}
+	return 0;
+}
+static int find_low_bit(unsigned int x)
+{
+	int i;
+	for(i=0;i<=31;i++) {
+		if(x&(1<<i)) return i;
+	}
+	return 0;
+}
+
 static int iwbmp_read_bitfields(struct iwbmpreadcontext *rctx)
 {
 	iw_byte buf[12];
+	int low_bit[3];
+	int k;
+
 	if(!iwbmp_read(rctx,buf,12)) return 0;
-	// TODO
+
+	for(k=0;k<3;k++) {
+		rctx->bf_mask[k] = iw_get_ui32le(&buf[k*4]);
+		if(rctx->bf_mask[k]==0) return 0;
+
+		// The bits representing the mask for each channel are required to be
+		// contiguous, so all we need to do is find the highest and lowest bit.
+		rctx->bf_high_bit[k] = find_high_bit(rctx->bf_mask[k]);
+
+		// Check if the mask specifies an invalid bit
+		if(rctx->bf_high_bit[k] > (int)(rctx->bitcount-1)) return 0;
+
+		low_bit[k] = find_low_bit(rctx->bf_mask[k]);
+		rctx->bf_bits_count[k] = 1+rctx->bf_high_bit[k]-low_bit[k];
+
+		if(rctx->bf_bits_count[k]>8) {
+			// We could support larger bit counts with a little effort, but such BMP
+			// files are, as far as I know, nonexistent.
+			iw_set_errorf(rctx->ctx,"BMP bits per channel >8 (%d) not supported",
+				rctx->bf_bits_count[k]);
+			return 0;
+		}
+	}
+
 	return 1;
+}
+
+static void iwbmp_set_default_bitfields(struct iwbmpreadcontext *rctx)
+{
+	if(rctx->bitcount==16) {
+		rctx->bf_mask[0]=0x007c00; rctx->bf_bits_count[0]=5; rctx->bf_high_bit[0]=14;
+		rctx->bf_mask[1]=0x0003e0; rctx->bf_bits_count[1]=5; rctx->bf_high_bit[1]=9;
+		rctx->bf_mask[2]=0x00001f; rctx->bf_bits_count[2]=5; rctx->bf_high_bit[2]=4;
+	}
+	else if(rctx->bitcount==32) {
+		rctx->bf_mask[0]=0xff0000; rctx->bf_bits_count[0]=8; rctx->bf_high_bit[0]=23;
+		rctx->bf_mask[1]=0x00ff00; rctx->bf_bits_count[1]=8; rctx->bf_high_bit[1]=15;
+		rctx->bf_mask[2]=0x0000ff; rctx->bf_bits_count[2]=8; rctx->bf_high_bit[2]=7;
+	}
 }
 
 static int iwbmp_read_palette(struct iwbmpreadcontext *rctx)
@@ -217,6 +290,31 @@ static int iwbmp_read_palette(struct iwbmpreadcontext *rctx)
 		rctx->palette.entry[i].a = 255;
 	}
 	return 1;
+}
+
+static void bmpr_convert_row_32_16(struct iwbmpreadcontext *rctx, const iw_byte *src, size_t row)
+{
+	int i,k;
+	unsigned int v,x;
+
+	for(i=0;i<rctx->width;i++) {
+		if(rctx->bitcount==32) {
+			x = ((unsigned int)src[i*4+0]) | ((unsigned int)src[i*4+1])<<8 |
+				((unsigned int)src[i*4+2])<<16 | ((unsigned int)src[i*4+3])<<24;
+		}
+		else { // 16
+			x = ((unsigned int)src[i*2+0]) | ((unsigned int)src[i*2+1])<<8;
+		}
+		v = 0;
+		for(k=0;k<3;k++) { // For red, green, blue:
+			v = x & rctx->bf_mask[k];
+			if(rctx->bf_high_bit[k]>7)
+				v >>= (rctx->bf_high_bit[k]-7);
+			else if(rctx->bf_high_bit[k]<7)
+				v <<= (7-rctx->bf_high_bit[k]);
+			rctx->img->pixels[row*rctx->img->bpr + i*3 + k] = (iw_byte)v;
+		}
+	}
 }
 
 static void bmpr_convert_row_24(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
@@ -292,6 +390,10 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 			goto done;
 		}
 		switch(rctx->bitcount) {
+		case 32:
+		case 16:
+			bmpr_convert_row_32_16(rctx,rowbuf,targetrow);
+			break;
 		case 24:
 			bmpr_convert_row_24(rctx,rowbuf,targetrow);
 			break;
@@ -496,13 +598,6 @@ static int iwbmp_read_bits(struct iwbmpreadcontext *rctx)
 	rctx->img->width = rctx->width;
 	rctx->img->height = rctx->height;
 
-	if(rctx->bitcount!=24 && rctx->bitcount!=8 && rctx->bitcount!=4 &&
-		rctx->bitcount!=1)
-	{
-		iw_set_errorf(rctx->ctx,"BMP bit count %d not supported",(int)rctx->bitcount);
-		goto done;
-	}
-
 	// If applicable, use the fileheader's "bits offset" field to locate the
 	// bitmap bits.
 	if(rctx->fileheader_size>0) {
@@ -541,11 +636,29 @@ done:
 	return retval;
 }
 
+static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmpreadcontext *rctx)
+{
+	struct iw_csdescr csdescr;
+
+	// Tell IW the colorspace.
+	iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
+	iw_set_input_colorspace(ctx,&csdescr);
+
+	// Tell IW the significant bits.
+	if(rctx->bitcount==16 || rctx->bitcount==32) {
+		if(rctx->bf_bits_count[0]!=8)
+			iw_set_input_sbit(ctx,IW_CHANNELTYPE_RED  ,rctx->bf_bits_count[0]);
+		if(rctx->bf_bits_count[1]!=8)
+			iw_set_input_sbit(ctx,IW_CHANNELTYPE_GREEN,rctx->bf_bits_count[1]);
+		if(rctx->bf_bits_count[2]!=8)
+			iw_set_input_sbit(ctx,IW_CHANNELTYPE_BLUE ,rctx->bf_bits_count[2]);
+	}
+}
+
 IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iwbmpreadcontext rctx;
 	struct iw_image img;
-	struct iw_csdescr csdescr;
 	int retval = 0;
 
 	iw_zeromem(&rctx,sizeof(struct iwbmpreadcontext));
@@ -557,9 +670,12 @@ IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 	if(!iwbmp_read_file_header(&rctx)) goto done;
 	if(!iwbmp_read_info_header(&rctx)) goto done;
+
+	iwbmp_set_default_bitfields(&rctx);
 	if(rctx.bitfields_nbytes>0) {
 		if(!iwbmp_read_bitfields(&rctx)) goto done;
 	}
+
 	if(rctx.palette_entries>0) {
 		if(!iwbmp_read_palette(&rctx)) goto done;
 	}
@@ -567,8 +683,7 @@ IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 	iw_set_input_image(ctx, &img);
 
-	iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
-	iw_set_input_colorspace(ctx,&csdescr);
+	iwbmpr_misc_config(ctx, &rctx);
 
 	retval = 1;
 done:

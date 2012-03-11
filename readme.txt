@@ -97,8 +97,8 @@ relatively slow. Among the things it (hopefully) does right:
  - All the image scaling algorithms that it implements.
 
 Other information:
- - The command-line utility fully supports PNG, JPEG, and WebP files, and has
-   partial support for GIF, BMP, TIFF, and MIFF.
+ - The command-line utility fully supports PNG, JPEG, BMP, and WebP files, and
+   has partial support for GIF, TIFF, and MIFF.
  - The library is (more or less) not specific to a particular file format.
  - Full support for high color depth (16 bits per sample).
  - Some options can be set differently for the different dimensions

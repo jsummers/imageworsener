@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for reading 16- and 32-bit BMP images.
  - Support for RLE-compressed BMP images with transparency.
  - Support for reading BMP files.
  - Support for writing BMP files with RLE4 compression.

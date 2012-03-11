@@ -390,8 +390,8 @@ If a PNG image contains the rarely-used sBIT chunk, IW will ignore any bits
 that the sBIT chunk indicates are not significant.
 
 Suppose you have an 8-bit grayscale image with an sBIT chunk that says 3 bits
-are significant. If the app that wrote the file was not defective, there will
-probably be only 8 colors in the image. The image might contain these colors:
+are significant. This means there will probably be only 8 distinct colors in
+the image, similar to these:
 
 00000000 =   0/255 = 0.00000000
 00100100 =  36/255 = 0.14117647
@@ -416,6 +416,10 @@ like this:
 
 So, the interpretation is slightly different (e.g. 0.14285714 instead of
 0.14117647).
+
+A similar thing happens with BMP images with 16 bits/pixel, in which a color
+channel usually has 5 or 6 bits. A value of 7/31, for example, is not converted
+to 58/255, but is interpreted as exactly 7/31.
 
 BMP transparency
 ----------------
