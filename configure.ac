@@ -117,6 +117,21 @@ if test "$with_webp" != 'no'; then
  AC_CHECK_LIB(webp,WebPGetDecoderVersion)
 fi
 
+dnl ---------- with-sample-depth ----------
+
+dnl The autoconf manual says that --with is for optional packages, and
+dnl --enable is for optional features, and neither is for tunable parameters.
+dnl I don't know how you're supposed to make tunable parameters, but the other
+dnl software I've looked at (ab)uses --with, so I guess that's what I'll do.
+
+AC_ARG_WITH([sample-depth],
+ [AC_HELP_STRING([--with-sample-depth=DEPTH],
+   [bits per sample used internally (default 64)])],
+ [with_sample_depth=$withval],
+ [with_sample_depth=64])
+
+AC_DEFINE_UNQUOTED(IW_AC_SAMPLE_DEPTH,$with_sample_depth,[Sample depth])
+
 dnl ---------------------------
 
 AC_OUTPUT
