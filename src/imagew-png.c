@@ -27,7 +27,11 @@ struct errstruct {
 	int write_flag; // So we can tell if we're reading, or writing.
 };
 
+#if PNG_LIBPNG_VER < 10400
+static png_voidp my_png_malloc_fn(png_structp png_ptr, png_size_t n)
+#else
 static png_voidp my_png_malloc_fn(png_structp png_ptr, png_alloc_size_t n)
+#endif
 {
 	struct iw_context *ctx = (struct iw_context*)png_get_mem_ptr(png_ptr);
 	return iw_malloc(ctx,(size_t)n);
