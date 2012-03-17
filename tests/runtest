@@ -239,6 +239,10 @@ $IW srcimg/ani1.gif actual/gif2.png $CMPR -page 2
 # - the -noincludescreen option
 $IW srcimg/ani1.gif actual/gif3.png $CMPR -page 4 -noincludescreen
 
+# Tests for reading BMP files.
+$IW srcimg/bmp16-555.bmp actual/bmp16-1.png $CMPR $SCALE -density keep
+$IW srcimg/bmp16-565.bmp actual/bmp16-2.png $CMPR $SCALE -density adjust
+
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
 
