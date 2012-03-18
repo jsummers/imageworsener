@@ -234,8 +234,7 @@ static void iw_read_ancillary_data1(struct iw_pngrctx *pngrctx)
 	iwpng_read_sbit(pngrctx);
 }
 
-static void iw_read_ancillary_data(struct iw_pngrctx *pngrctx,
-   struct iw_image *img)
+static void iw_read_ancillary_data(struct iw_pngrctx *pngrctx)
 {
 	iwpng_read_colorspace(pngrctx);
 	iwpng_read_density(pngrctx);
@@ -364,7 +363,7 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 		goto done;
 	}
 
-	iw_read_ancillary_data(&pngrctx, &img);
+	iw_read_ancillary_data(&pngrctx);
 
 	if(pngrctx.sbit_flag) {
 		// See comment in iwpng_read_sbit().
@@ -410,48 +409,48 @@ done:
 struct iw_pngwctx {
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
+	png_structp png_ptr;
+	png_infop info_ptr;
+	struct iw_image *img;
 };
 
-static void iwpng_set_phys(struct iw_context *ctx,
-	png_structp png_ptr, png_infop info_ptr, const struct iw_image *img)
+static void iwpng_set_phys(struct iw_pngwctx *pngwctx)
 {
 	png_uint_32 pngres_x, pngres_y;
 
-	if(img->density_code==IW_DENSITY_UNITS_UNKNOWN) {
-		pngres_x = (png_uint_32)(0.5+img->density_x);
-		pngres_y = (png_uint_32)(0.5+img->density_y);
-		png_set_pHYs(png_ptr, info_ptr, pngres_x, pngres_y, PNG_RESOLUTION_UNKNOWN);
+	if(pngwctx->img->density_code==IW_DENSITY_UNITS_UNKNOWN) {
+		pngres_x = (png_uint_32)(0.5+pngwctx->img->density_x);
+		pngres_y = (png_uint_32)(0.5+pngwctx->img->density_y);
+		png_set_pHYs(pngwctx->png_ptr, pngwctx->info_ptr, pngres_x, pngres_y, PNG_RESOLUTION_UNKNOWN);
 	}
-	else if(img->density_code==IW_DENSITY_UNITS_PER_METER) {
-		pngres_x = (png_uint_32)(0.5+img->density_x);
-		pngres_y = (png_uint_32)(0.5+img->density_y);
-		png_set_pHYs(png_ptr, info_ptr, pngres_x, pngres_y, PNG_RESOLUTION_METER);
+	else if(pngwctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
+		pngres_x = (png_uint_32)(0.5+pngwctx->img->density_x);
+		pngres_y = (png_uint_32)(0.5+pngwctx->img->density_y);
+		png_set_pHYs(pngwctx->png_ptr, pngwctx->info_ptr, pngres_x, pngres_y, PNG_RESOLUTION_METER);
 	}
 }
 
-static void iwpng_set_binary_trns(struct iw_context *ctx,
-	png_structp png_ptr, png_infop info_ptr, const struct iw_image *img, int lpng_color_type)
+static void iwpng_set_binary_trns(struct iw_pngwctx *pngwctx, int lpng_color_type)
 {
 	png_color_16 newtrns;
 
 	iw_zeromem(&newtrns,sizeof(png_color_16));
 
-	if(img->has_colorkey_trns) {
+	if(pngwctx->img->has_colorkey_trns) {
 		if(lpng_color_type==PNG_COLOR_TYPE_GRAY) {
-			newtrns.gray = (png_uint_16)img->colorkey_r;
-			png_set_tRNS(png_ptr, info_ptr, NULL, 1, &newtrns);
+			newtrns.gray = (png_uint_16)pngwctx->img->colorkey_r;
+			png_set_tRNS(pngwctx->png_ptr, pngwctx->info_ptr, NULL, 1, &newtrns);
 		}
 		else if(lpng_color_type==PNG_COLOR_TYPE_RGB) {
-			newtrns.red   = (png_uint_16)img->colorkey_r;
-			newtrns.green = (png_uint_16)img->colorkey_g;
-			newtrns.blue  = (png_uint_16)img->colorkey_b;
-			png_set_tRNS(png_ptr, info_ptr, NULL, 1, &newtrns);
+			newtrns.red   = (png_uint_16)pngwctx->img->colorkey_r;
+			newtrns.green = (png_uint_16)pngwctx->img->colorkey_g;
+			newtrns.blue  = (png_uint_16)pngwctx->img->colorkey_b;
+			png_set_tRNS(pngwctx->png_ptr, pngwctx->info_ptr, NULL, 1, &newtrns);
 		}
 	}
 }
 
-static void iwpng_set_palette(struct iw_context *ctx,
-	png_structp png_ptr, png_infop info_ptr,
+static void iwpng_set_palette(struct iw_pngwctx *pngwctx,
 	const struct iw_palette *iwpal)
 {
 	int i;
@@ -470,13 +469,12 @@ static void iwpng_set_palette(struct iw_context *ctx,
 		if(iwpal->entry[i].a<255) num_trans = i+1;
 	}
 
-	png_set_PLTE(png_ptr, info_ptr, pngpal, iwpal->num_entries);
+	png_set_PLTE(pngwctx->png_ptr, pngwctx->info_ptr, pngpal, iwpal->num_entries);
 
 	if(num_trans>0) {
-		png_set_tRNS(png_ptr, info_ptr, pngtrans, num_trans, 0);
+		png_set_tRNS(pngwctx->png_ptr, pngwctx->info_ptr, pngtrans, num_trans, 0);
 	}
 }
-
 
 static void my_png_write_fn(png_structp png_ptr, png_bytep data, png_size_t length)
 {
@@ -539,6 +537,9 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	pngwctx.ctx = ctx;
 	pngwctx.iodescr = iodescr;
+	pngwctx.png_ptr = png_ptr;
+	pngwctx.info_ptr = info_ptr;
+	pngwctx.img = &img;
 	png_set_write_fn(png_ptr, (void*)&pngwctx, my_png_write_fn, my_png_flush_fn);
 
 	lpng_color_type = -1;
@@ -596,13 +597,13 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		png_set_sRGB(png_ptr, info_ptr, csdescr.srgb_intent);
 	}
 
-	iwpng_set_phys(ctx, png_ptr, info_ptr, &img);
+	iwpng_set_phys(&pngwctx);
 
 	if(lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
-		iwpng_set_palette(ctx, png_ptr, info_ptr, iwpal);
+		iwpng_set_palette(&pngwctx, iwpal);
 	}
 
-	iwpng_set_binary_trns(ctx, png_ptr, info_ptr, &img, lpng_color_type);
+	iwpng_set_binary_trns(&pngwctx, lpng_color_type);
 
 	png_write_info(png_ptr, info_ptr);
 
