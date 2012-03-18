@@ -19,6 +19,11 @@
 struct iw_pngrctx {
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
+	png_structp png_ptr;
+	png_infop info_ptr;
+	struct iw_image *img;
+	int bit_depth;
+	int color_type;
 	int sbit_flag;
 	png_color_8 sbit;
 };
@@ -106,17 +111,16 @@ static double fixup_png_gamma(double g)
 	return ((double)((int)(0.5+100000.0*g)))/100000.0;
 }
 
-static void iwpng_read_colorspace(struct iw_context *ctx,
-	png_structp png_ptr, png_infop info_ptr)
+static void iwpng_read_colorspace(struct iw_pngrctx *pngrctx)
 {
 	int tmp;
 	double file_gamma;
 	struct iw_csdescr csdescr;
 
-	if(png_get_sRGB(png_ptr, info_ptr, &tmp)) {
+	if(png_get_sRGB(pngrctx->png_ptr, pngrctx->info_ptr, &tmp)) {
 		iw_make_srgb_csdescr(&csdescr,tmp);
 	}
-	else if(png_get_gAMA(png_ptr, info_ptr, &file_gamma)) {
+	else if(png_get_gAMA(pngrctx->png_ptr, pngrctx->info_ptr, &file_gamma)) {
 		file_gamma = fixup_png_gamma(file_gamma);
 		iw_make_gamma_csdescr(&csdescr,1.0/file_gamma);
 	}
@@ -125,17 +129,16 @@ static void iwpng_read_colorspace(struct iw_context *ctx,
 		iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
 	}
 
-	iw_set_input_colorspace(ctx,&csdescr);
+	iw_set_input_colorspace(pngrctx->ctx,&csdescr);
 }
 
-static void iwpng_read_density(struct iw_context *ctx,
-   struct iw_image *img, png_structp png_ptr, png_infop info_ptr)
+static void iwpng_read_density(struct iw_pngrctx *pngrctx)
 {
 	png_uint_32 pngdensity_x,pngdensity_y;
 	int pngdensity_units;
 	int density_code;
 
-	if(!png_get_pHYs(png_ptr,info_ptr,&pngdensity_x,&pngdensity_y,&pngdensity_units)) {
+	if(!png_get_pHYs(pngrctx->png_ptr,pngrctx->info_ptr,&pngdensity_x,&pngdensity_y,&pngdensity_units)) {
 		return;
 	}
 	if(pngdensity_units==PNG_RESOLUTION_UNKNOWN) {
@@ -148,25 +151,24 @@ static void iwpng_read_density(struct iw_context *ctx,
 		return;
 	}
 
-	img->density_x = (double)pngdensity_x;
-	img->density_y = (double)pngdensity_y;
-	if(!iw_is_valid_density(img->density_x,img->density_y,density_code)) return;
-	img->density_code = density_code;
+	pngrctx->img->density_x = (double)pngdensity_x;
+	pngrctx->img->density_y = (double)pngdensity_y;
+	if(!iw_is_valid_density(pngrctx->img->density_x,pngrctx->img->density_y,density_code)) return;
+	pngrctx->img->density_code = density_code;
 }
 
-static void iwpng_read_sbit(struct iw_pngrctx *pngrctx,
-	png_structp png_ptr, png_infop info_ptr, int color_type)
+static void iwpng_read_sbit(struct iw_pngrctx *pngrctx)
 {
 	png_uint_32 ret;
 	png_color_8p sbit;
 	struct iw_context *ctx = pngrctx->ctx;
 
-	ret = png_get_sBIT(png_ptr, info_ptr, &sbit);
+	ret = png_get_sBIT(pngrctx->png_ptr, pngrctx->info_ptr, &sbit);
 	if(!ret) return;
 
 	// Tell libpng to reduce the image to the depth(s) specified by
 	// the sBIT chunk.
-	if(color_type==PNG_COLOR_TYPE_PALETTE) {
+	if(pngrctx->color_type==PNG_COLOR_TYPE_PALETTE) {
 		// We'd like to call png_set_shift now, since we know that our sbit
 		// struct is in the right format.
 		// However, there seems to be a bug in libpng that prevents it from
@@ -181,47 +183,45 @@ static void iwpng_read_sbit(struct iw_pngrctx *pngrctx,
 		pngrctx->sbit.alpha = 8;
 	}
 	else {
-		png_set_shift(png_ptr, sbit);
+		png_set_shift(pngrctx->png_ptr, sbit);
 	}
 
 	// Tell IW the true depth(s) of the input image.
-	if(color_type & PNG_COLOR_MASK_COLOR) {
+	if(pngrctx->color_type & PNG_COLOR_MASK_COLOR) {
 		iw_set_input_max_color_code(ctx,0, (1<<sbit->red  )-1 );
 		iw_set_input_max_color_code(ctx,1, (1<<sbit->green)-1 );
 		iw_set_input_max_color_code(ctx,2, (1<<sbit->blue )-1 );
-		if(color_type & PNG_COLOR_MASK_ALPHA) {
+		if(pngrctx->color_type & PNG_COLOR_MASK_ALPHA) {
 			iw_set_input_max_color_code(ctx,3, (1<<sbit->alpha)-1 );
 		}
 	}
 	else {
 		iw_set_input_max_color_code(ctx,0, (1<<sbit->gray )-1 );
-		if(color_type & PNG_COLOR_MASK_ALPHA) {
+		if(pngrctx->color_type & PNG_COLOR_MASK_ALPHA) {
 			iw_set_input_max_color_code(ctx,1, (1<<sbit->alpha)-1 );
 		}
 	}
 }
 
-static void iwpng_read_bkgd(struct iw_context *ctx,
-   png_structp png_ptr, png_infop info_ptr, int color_type,
-   int bit_depth)
+static void iwpng_read_bkgd(struct iw_pngrctx *pngrctx)
 {
 	png_color_16p bg_colorp;
 	double maxcolor;
 
-	if(!png_get_bKGD(png_ptr, info_ptr, &bg_colorp)) return;
+	if(!png_get_bKGD(pngrctx->png_ptr, pngrctx->info_ptr, &bg_colorp)) return;
 
-	maxcolor = (double)((1<<bit_depth)-1);
-	switch(color_type) {
+	maxcolor = (double)((1<<pngrctx->bit_depth)-1);
+	switch(pngrctx->color_type) {
 	case PNG_COLOR_TYPE_GRAY:
 	case PNG_COLOR_TYPE_GRAY_ALPHA:
-		iw_set_input_bkgd_label(ctx,
+		iw_set_input_bkgd_label(pngrctx->ctx,
 			((double)bg_colorp->gray)/maxcolor,
 			((double)bg_colorp->gray)/maxcolor,
 			((double)bg_colorp->gray)/maxcolor);
 		break;
 	case PNG_COLOR_TYPE_RGB:
 	case PNG_COLOR_TYPE_RGB_ALPHA:
-		iw_set_input_bkgd_label(ctx,
+		iw_set_input_bkgd_label(pngrctx->ctx,
 			((double)bg_colorp->red)/maxcolor,
 			((double)bg_colorp->green)/maxcolor,
 			((double)bg_colorp->blue)/maxcolor);
@@ -229,26 +229,23 @@ static void iwpng_read_bkgd(struct iw_context *ctx,
 	}
 }
 
-static void iw_read_ancillary_data1(struct iw_pngrctx *pngrctx,
-   struct iw_image *img, png_structp png_ptr, png_infop info_ptr,
-   int color_type)
+static void iw_read_ancillary_data1(struct iw_pngrctx *pngrctx)
 {
-	iwpng_read_sbit(pngrctx,png_ptr,info_ptr,color_type);
+	iwpng_read_sbit(pngrctx);
 }
 
-static void iw_read_ancillary_data(struct iw_context *ctx,
-   struct iw_image *img, png_structp png_ptr, png_infop info_ptr,
-   int color_type, int bit_depth)
+static void iw_read_ancillary_data(struct iw_pngrctx *pngrctx,
+   struct iw_image *img)
 {
-	iwpng_read_colorspace(ctx,png_ptr,info_ptr);
-	iwpng_read_density(ctx,img,png_ptr,info_ptr);
-	iwpng_read_bkgd(ctx,png_ptr,info_ptr,color_type,bit_depth);
+	iwpng_read_colorspace(pngrctx);
+	iwpng_read_density(pngrctx);
+	iwpng_read_bkgd(pngrctx);
 }
 
 IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	png_uint_32 width, height;
-	int bit_depth, color_type, interlace_type;
+	int interlace_type;
 	iw_byte **row_pointers = NULL;
 	int i;
 	jmp_buf jbuf;
@@ -284,11 +281,14 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 	pngrctx.ctx = ctx;
 	pngrctx.iodescr = iodescr;
+	pngrctx.png_ptr = png_ptr;
+	pngrctx.info_ptr = info_ptr;
+	pngrctx.img = &img;
 	png_set_read_fn(png_ptr, (void*)&pngrctx, my_png_read_fn);
 
 	png_read_info(png_ptr, info_ptr);
 
-	png_get_IHDR(png_ptr, info_ptr, &width, &height, &bit_depth, &color_type,
+	png_get_IHDR(png_ptr, info_ptr, &width, &height, &pngrctx.bit_depth, &pngrctx.color_type,
 		&interlace_type, NULL, NULL);
 
 	if(!iw_check_image_dimensions(ctx,width,height)) {
@@ -297,9 +297,9 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 	// I'm not sure I know everything that png_read_update_info() does,
 	// so to be safe, read some things before calling it.
-	iw_read_ancillary_data1(&pngrctx, &img, png_ptr, info_ptr, color_type);
+	iw_read_ancillary_data1(&pngrctx);
 
-	if(!(color_type&PNG_COLOR_MASK_COLOR)) {
+	if(!(pngrctx.color_type&PNG_COLOR_MASK_COLOR)) {
 		// Remember whether the image was originally encoded as grayscale.
 		img.native_grayscale = 1;
 	}
@@ -311,12 +311,12 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	has_trns=png_get_valid(png_ptr,info_ptr,PNG_INFO_tRNS);
 	need_update_info=0;
 
-	if(color_type==PNG_COLOR_TYPE_PALETTE) {
+	if(pngrctx.color_type==PNG_COLOR_TYPE_PALETTE) {
 		// Expand all palette images to full RGB or RGBA.
 		png_set_palette_to_rgb(png_ptr);
 		need_update_info=1;
 	}
-	else if(has_trns && !(color_type&PNG_COLOR_MASK_ALPHA)) {
+	else if(has_trns && !(pngrctx.color_type&PNG_COLOR_MASK_ALPHA)) {
 		// Expand binary transparency to a full alpha channel.
 		// For (grayscale) images with <8bpp, this will also
 		// expand them to 8bpp.
@@ -327,15 +327,15 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	if(need_update_info) {
 		// Update things to reflect any transformations done above.
 		png_read_update_info(png_ptr, info_ptr);
-		color_type = png_get_color_type(png_ptr, info_ptr);
-		bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+		pngrctx.color_type = png_get_color_type(png_ptr, info_ptr);
+		pngrctx.bit_depth = png_get_bit_depth(png_ptr, info_ptr);
 	}
 
-	img.bit_depth = bit_depth;
+	img.bit_depth = pngrctx.bit_depth;
 
 	is_supported=0;
 
-	switch(color_type) {
+	switch(pngrctx.color_type) {
 	case PNG_COLOR_TYPE_GRAY:
 		img.imgtype = IW_IMGTYPE_GRAY;
 		numchannels = 1;
@@ -359,11 +359,12 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	}
 
 	if(!is_supported) {
-		iw_set_errorf(ctx,"This PNG image type (color type=%d, bit depth=%d) is not supported",(int)color_type,(int)bit_depth);
+		iw_set_errorf(ctx,"This PNG image type (color type=%d, bit depth=%d) is not supported",
+			(int)pngrctx.color_type,(int)pngrctx.bit_depth);
 		goto done;
 	}
 
-	iw_read_ancillary_data(ctx, &img, png_ptr, info_ptr, color_type, bit_depth);
+	iw_read_ancillary_data(&pngrctx, &img);
 
 	if(pngrctx.sbit_flag) {
 		// See comment in iwpng_read_sbit().
