@@ -214,6 +214,7 @@ $IW srcimg/p8t.png actual/crop-1.png $DCMPR -width 20 -crop 3,12,18,9
 
 # Test input sBIT support, and -zipcmprlevel
 $IW srcimg/rgb8a-sbit.png actual/sbit1.png -zipcmprlevel 9
+$IW srcimg/p8-sbit.png actual/sbit2.png $CMPR
 
 # Test -noopt
 $IW srcimg/g8a.png actual/noopt-g.png $CMPR -width 15 -noopt grayscale -filter mix
