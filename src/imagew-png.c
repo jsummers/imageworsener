@@ -19,6 +19,8 @@
 struct iw_pngrctx {
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
+	int sbit_flag;
+	png_color_8 sbit;
 };
 
 struct errstruct {
@@ -152,18 +154,35 @@ static void iwpng_read_density(struct iw_context *ctx,
 	img->density_code = density_code;
 }
 
-static void iwpng_read_sbit(struct iw_context *ctx,
+static void iwpng_read_sbit(struct iw_pngrctx *pngrctx,
 	png_structp png_ptr, png_infop info_ptr, int color_type)
 {
 	png_uint_32 ret;
 	png_color_8p sbit;
+	struct iw_context *ctx = pngrctx->ctx;
 
 	ret = png_get_sBIT(png_ptr, info_ptr, &sbit);
 	if(!ret) return;
 
 	// Tell libpng to reduce the image to the depth(s) specified by
 	// the sBIT chunk.
-	png_set_shift(png_ptr, sbit);
+	if(color_type==PNG_COLOR_TYPE_PALETTE) {
+		// We'd like to call png_set_shift now, since we know that our sbit
+		// struct is in the right format.
+		// However, there seems to be a bug in libpng that prevents it from
+		// working with paletted images in some cases -- if we call
+		// png_set_shift now, it may get shifted multiple times.
+		// So, for palette images, call png_set_shift as late as possible
+		// (after png_set_palette_to_rgb and png_read_update_info).
+		pngrctx->sbit_flag = 1;
+		pngrctx->sbit = *sbit;
+		// Apparently, it's not possible for a PNG file to label the significant
+		// bits of the alpha values of a palette image.
+		pngrctx->sbit.alpha = 8;
+	}
+	else {
+		png_set_shift(png_ptr, sbit);
+	}
 
 	// Tell IW the true depth(s) of the input image.
 	if(color_type & PNG_COLOR_MASK_COLOR) {
@@ -171,8 +190,6 @@ static void iwpng_read_sbit(struct iw_context *ctx,
 		iw_set_input_max_color_code(ctx,1, (1<<sbit->green)-1 );
 		iw_set_input_max_color_code(ctx,2, (1<<sbit->blue )-1 );
 		if(color_type & PNG_COLOR_MASK_ALPHA) {
-			// Apparently, it's not possible for a PNG file to indicate
-			// the significant bits of the alpha values of a palette image.
 			iw_set_input_max_color_code(ctx,3, (1<<sbit->alpha)-1 );
 		}
 	}
@@ -212,11 +229,11 @@ static void iwpng_read_bkgd(struct iw_context *ctx,
 	}
 }
 
-static void iw_read_ancillary_data1(struct iw_context *ctx,
+static void iw_read_ancillary_data1(struct iw_pngrctx *pngrctx,
    struct iw_image *img, png_structp png_ptr, png_infop info_ptr,
    int color_type)
 {
-	iwpng_read_sbit(ctx,png_ptr,info_ptr,color_type);
+	iwpng_read_sbit(pngrctx,png_ptr,info_ptr,color_type);
 }
 
 static void iw_read_ancillary_data(struct iw_context *ctx,
@@ -280,7 +297,7 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 	// I'm not sure I know everything that png_read_update_info() does,
 	// so to be safe, read some things before calling it.
-	iw_read_ancillary_data1(ctx, &img, png_ptr, info_ptr, color_type);
+	iw_read_ancillary_data1(&pngrctx, &img, png_ptr, info_ptr, color_type);
 
 	if(!(color_type&PNG_COLOR_MASK_COLOR)) {
 		// Remember whether the image was originally encoded as grayscale.
@@ -347,6 +364,11 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	}
 
 	iw_read_ancillary_data(ctx, &img, png_ptr, info_ptr, color_type, bit_depth);
+
+	if(pngrctx.sbit_flag) {
+		// See comment in iwpng_read_sbit().
+		png_set_shift(png_ptr, &pngrctx.sbit);
+	}
 
 	img.width = width;
 	img.height = height;

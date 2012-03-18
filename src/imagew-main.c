@@ -1791,7 +1791,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->input_maxcolorcode = (double)ctx->input_maxcolorcode_int;
 
 		for(i=0;i<4;i++) {
-			if(ctx->img1_ci[i].maxcolorcode_int==0) {
+			if(ctx->img1_ci[i].maxcolorcode_int<=0) {
 				ctx->img1_ci[i].maxcolorcode_int = ctx->input_maxcolorcode_int;
 			}
 			ctx->img1_ci[i].maxcolorcode_dbl = (double)ctx->img1_ci[i].maxcolorcode_int;
