@@ -57,6 +57,8 @@ struct iw_resize_settings {
 struct iw_channelinfo_in {
 	int channeltype;
 	int disable_fast_get_sample;
+	double maxcolorcode_dbl;
+	int maxcolorcode_int;
 };
 
 struct iw_channelinfo_intermed {
@@ -193,12 +195,10 @@ struct iw_context {
 	int output_depth; // TODO: This is the same as img2.bit_depth. We could remove one of them.
 	double output_maxcolorcode;
 
+	int input_maxcolorcode_int;  // Based on the source image's full bitdepth
 	double input_maxcolorcode;
 
-	int support_reduced_input_bitdepths; // Set this to use the next 3 fields.
-	int significant_bits[5];     // 0 means default. Indexed by IW_CHANNELTYPE_[Red..Gray]
-	int insignificant_bits[5];   // How much we have to shift the samples.
-	double input_maxcolorcode_ext[5];
+	int support_reduced_input_bitdepths;
 
 	// Max number of rows for error-diffusion dithering, including current row.
 #define IW_DITHER_MAXROWS 3

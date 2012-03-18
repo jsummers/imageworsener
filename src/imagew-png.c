@@ -161,19 +161,26 @@ static void iwpng_read_sbit(struct iw_context *ctx,
 	ret = png_get_sBIT(png_ptr, info_ptr, &sbit);
 	if(!ret) return;
 
+	// Tell libpng to reduce the image to the depth(s) specified by
+	// the sBIT chunk.
+	png_set_shift(png_ptr, sbit);
+
+	// Tell IW the true depth(s) of the input image.
 	if(color_type & PNG_COLOR_MASK_COLOR) {
-		iw_set_input_sbit(ctx,IW_CHANNELTYPE_RED  ,sbit->red);
-		iw_set_input_sbit(ctx,IW_CHANNELTYPE_GREEN,sbit->green);
-		iw_set_input_sbit(ctx,IW_CHANNELTYPE_BLUE ,sbit->blue);
+		iw_set_input_max_color_code(ctx,0, (1<<sbit->red  )-1 );
+		iw_set_input_max_color_code(ctx,1, (1<<sbit->green)-1 );
+		iw_set_input_max_color_code(ctx,2, (1<<sbit->blue )-1 );
+		if(color_type & PNG_COLOR_MASK_ALPHA) {
+			// Apparently, it's not possible for a PNG file to indicate
+			// the significant bits of the alpha values of a palette image.
+			iw_set_input_max_color_code(ctx,3, (1<<sbit->alpha)-1 );
+		}
 	}
 	else {
-		iw_set_input_sbit(ctx,IW_CHANNELTYPE_GRAY ,sbit->gray);
-	}
-
-	if(color_type & PNG_COLOR_MASK_ALPHA) {
-		iw_set_input_sbit(ctx,IW_CHANNELTYPE_ALPHA,sbit->alpha);
-		// Apparently, it's not possible for a PNG file to indicate
-		// the significant bits of the alpha values of a palette image.
+		iw_set_input_max_color_code(ctx,0, (1<<sbit->gray )-1 );
+		if(color_type & PNG_COLOR_MASK_ALPHA) {
+			iw_set_input_max_color_code(ctx,1, (1<<sbit->alpha)-1 );
+		}
 	}
 }
 

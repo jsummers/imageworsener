@@ -495,9 +495,6 @@ IW_EXPORT(void) iw_set_channel_offset(struct iw_context *ctx, int channeltype, i
 // Also call iw_set_value(...,IW_VAL_GRAYSCALE_FORMULA,...), to set the actual formula.
 IW_EXPORT(void) iw_set_grayscale_weights(struct iw_context *ctx, double r, double g, double b);
 
-// Set the significant bits to something less than is stored in the file.
-IW_EXPORT(void) iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d);
-
 // Color values are on a scale from 0 to 1, in the input colorspace.
 IW_EXPORT(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b);
 
@@ -652,6 +649,10 @@ IW_EXPORT(void) iw_snprintf(char *buf, size_t buflen, const char *fmt, ...)
 IW_EXPORT(int) iw_stricmp(const char *s1, const char *s2);
 
 IW_EXPORT(void) iw_zeromem(void *mem, size_t n);
+
+// Tell IW which color code represents maximum intensity.
+// TODO: Maybe we should use a field in the iw_image struct, instead.
+IW_EXPORT(void) iw_set_input_max_color_code(struct iw_context *ctx, int input_channel, int c);
 
 IW_EXPORT(int) iw_imgtype_num_channels(int t);
 

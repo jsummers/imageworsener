@@ -192,7 +192,6 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	unsigned int v;
-	int chtype;
 
 	if(channel>=ctx->img1_numchannels_physical) {
 		// This is a virtual alpha channel. Return "opaque".
@@ -209,12 +208,7 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	}
 
 	v = get_raw_sample_int(ctx,x,y,channel);
-	if(!ctx->support_reduced_input_bitdepths)
-		return ((double)v) / ctx->input_maxcolorcode;
-
-	chtype = ctx->img1_ci[channel].channeltype;
-	v >>= ctx->insignificant_bits[chtype];
-	return ((double)v) / ctx->input_maxcolorcode_ext[chtype];
+	return ((double)v) / ctx->img1_ci[channel].maxcolorcode_dbl;
 }
 
 static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
@@ -247,6 +241,7 @@ static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
 }
 
 // Based on color depth of the input image.
+// Assumes this channel's maxcolorcode == ctx->input_maxcolorcode
 static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 	unsigned int v, const struct iw_csdescr *csdescr)
 {
@@ -1790,18 +1785,21 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 
+	// Make sure maxcolorcodes are set.
 	if(ctx->img1.sampletype!=IW_SAMPLETYPE_FLOATINGPOINT) {
-		ctx->input_maxcolorcode = (double)((1 << ctx->img1.bit_depth)-1);
+		ctx->input_maxcolorcode_int = (1 << ctx->img1.bit_depth)-1;
+		ctx->input_maxcolorcode = (double)ctx->input_maxcolorcode_int;
 
-		for(i=0;i<5;i++) {
-			if(ctx->significant_bits[i]>0 && ctx->significant_bits[i]<ctx->img1.bit_depth) {
-				ctx->support_reduced_input_bitdepths = 1; // Set this flag for later.
-				ctx->insignificant_bits[i] = ctx->img1.bit_depth - ctx->significant_bits[i];
-				ctx->input_maxcolorcode_ext[i] = (double)((1 << ctx->significant_bits[i])-1);
+		for(i=0;i<4;i++) {
+			if(ctx->img1_ci[i].maxcolorcode_int==0) {
+				ctx->img1_ci[i].maxcolorcode_int = ctx->input_maxcolorcode_int;
 			}
-			else {
-				ctx->insignificant_bits[i] = 0;
-				ctx->input_maxcolorcode_ext[i] = ctx->input_maxcolorcode;
+			ctx->img1_ci[i].maxcolorcode_dbl = (double)ctx->img1_ci[i].maxcolorcode_int;
+
+			if(ctx->img1_ci[i].maxcolorcode_int != ctx->input_maxcolorcode_int) {
+				// This is overzealous: We could enable it per-channel.
+				// But it's probably not worth the trouble.
+				ctx->support_reduced_input_bitdepths = 1;
 			}
 		}
 	}
@@ -1863,7 +1861,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		   ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY &&
 		   ctx->resize_settings[i].edge_policy==IW_EDGE_POLICY_TRANSPARENT))
 		{
-			// If a channel offset is used, we have to disable caching, because each the
+			// If a channel offset is used, we have to disable caching, because the
 			// offset is stored in the cache, and it won't be the same for all channels.
 			// If transparent virtual pixels will be converted to the background color
 			// during the resize, we have to disable caching, because the background

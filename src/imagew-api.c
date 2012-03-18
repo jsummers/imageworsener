@@ -391,10 +391,11 @@ IW_IMPL(void) iw_set_channel_offset(struct iw_context *ctx, int channeltype, int
 	ctx->resize_settings[dimension].channel_offset[channeltype] = offs;
 }
 
-IW_IMPL(void) iw_set_input_sbit(struct iw_context *ctx, int channeltype, int d)
+IW_IMPL(void) iw_set_input_max_color_code(struct iw_context *ctx, int input_channel, int c)
 {
-	if(channeltype<0 || channeltype>4) return;
-	ctx->significant_bits[channeltype] = d;
+	if(input_channel>=0 && input_channel<=4) {
+		ctx->img1_ci[input_channel].maxcolorcode_int = c;
+	}
 }
 
 IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b)
