@@ -238,12 +238,10 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 
 	if(params && params->mallocfn) {
 		ctx->mallocfn = params->mallocfn;
-		ctx->reallocfn = params->reallocfn;
 		ctx->freefn = params->freefn;
 	}
 	else {
 		ctx->mallocfn = iwpvt_default_malloc;
-		ctx->reallocfn = iwpvt_default_realloc;
 		ctx->freefn = iwpvt_default_free;
 	}
 

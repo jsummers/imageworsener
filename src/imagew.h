@@ -382,19 +382,7 @@ struct iw_iodescr {
 // iw_set_max_malloc().
 typedef void* (*iw_mallocfn_type)(void *userdata, unsigned int flags, size_t n);
 
-// Semantics for custom realloc functions:
-// Return a pointer to an allocated memory block of size newmem_size,
-// containing as many bytes as possible (MIN(oldmem_size,newmem_size))
-// copied from oldmem.
-// oldmem may be NULL, in which case no data is copied.
-// oldmem must be freed (unless it is NULL, or equal to newmem), even on
-// failure. Note that this is different from how the the C library realloc
-// function works.
-// The 'flags' parameter is reserved, and should be ignored.
-typedef void* (*iw_reallocfn_type)(void *userdata, unsigned int flags, void *oldmem,
-	size_t oldmem_size, size_t newmem_size);
-
-// Free memory allocated with the appropriate malloc or realloc function.
+// Free memory allocated with the appropriate malloc function.
 // IW will not call this function with mem set to NULL.
 typedef void (*iw_freefn_type)(void *userdata, void *mem);
 
@@ -406,15 +394,10 @@ struct iw_init_params {
 	int api_version; // See IW_VAL_API_VERSION.
 	void *userdata;
 
-	// The mallocfn, freefn, and reallocfn functions are optional. They can all
-	// be set to NULL, but they can't be set inconsistently. E.g. you must not
-	// define a custom mallocfn without a custom freefn.
-	// reallocfn is always optional, and can be set to NULL even if mallocfn is
-	// not NULL.
-	// For details, see the definition of iw_mallocfn_type, iw_reallocfn_type,
-	// and iw_freefn_type.
+	// The mallocfn and freefn functions are optional, and can be set to NULL.
+	// If one set, they must both be set.
+	// For details, see the definition of iw_mallocfn_type and and iw_freefn_type.
 	iw_mallocfn_type mallocfn;
-	iw_reallocfn_type reallocfn;
 	iw_freefn_type freefn;
 };
 

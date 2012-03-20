@@ -124,7 +124,6 @@ struct iw_context {
 	unsigned int output_profile;
 
 	iw_mallocfn_type mallocfn;
-	iw_reallocfn_type reallocfn;
 	iw_freefn_type freefn;
 
 	int num_in_pix;
@@ -265,8 +264,6 @@ void iwpvt_prng_set_random_seed(struct iw_prng *prng, int s);
 iw_uint32 iwpvt_prng_rand(struct iw_prng *prng); // Returns a pseudorandom number.
 int iwpvt_util_randomize(struct iw_prng *prng); // Returns the random seed that was used.
 void* iwpvt_default_malloc(void *userdata, unsigned int flags, size_t n);
-void* iwpvt_default_realloc(void *userdata, unsigned int flags,
-	void *oldmem, size_t oldmem_size, size_t newmem_size);
 void iwpvt_default_free(void *userdata, void *mem);
 
 // Defined in imagew-resize.c

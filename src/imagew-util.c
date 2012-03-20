@@ -30,17 +30,6 @@ void* iwpvt_default_malloc(void *userdata, unsigned int flags, size_t n)
 	return malloc(n);
 }
 
-void* iwpvt_default_realloc(void *userdata, unsigned int flags, void *oldmem,
-	size_t oldmem_size, size_t newmem_size)
-{
-	void *newmem;
-	newmem = realloc(oldmem,newmem_size);
-	if(!newmem) {
-		free(oldmem);
-	}
-	return newmem;
-}
-
 void iwpvt_default_free(void *userdata, void *mem)
 {
 	free(mem);
@@ -113,18 +102,17 @@ IW_IMPL(void*) iw_realloc_ex(struct iw_context *ctx, unsigned int flags,
 {
 	void *mem;
 
+	if(!oldmem) {
+		return iw_malloc_ex(ctx,flags,newmem_size);
+	}
+
 	if(newmem_size>ctx->max_malloc) {
 		if(!(flags&IW_MALLOCFLAG_NOERRORS))
 			iw_set_error(ctx,"Out of memory");
 		return NULL;
 	}
 
-	if(ctx->reallocfn) {
-		mem = (*ctx->reallocfn)(ctx->userdata,flags,oldmem,oldmem_size,newmem_size);
-	}
-	else {
-		mem = emulated_realloc(ctx,flags,oldmem,oldmem_size,newmem_size);
-	}
+	mem = emulated_realloc(ctx,flags,oldmem,oldmem_size,newmem_size);
 
 	if(!mem) {
 		if(!(flags&IW_MALLOCFLAG_NOERRORS))
