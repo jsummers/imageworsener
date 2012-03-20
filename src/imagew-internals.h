@@ -34,6 +34,9 @@
 #define IW_BKGD_STRATEGY_EARLY 1 // Apply background before resizing
 #define IW_BKGD_STRATEGY_LATE  2 // Apply background after resizing
 
+#define IW_NUM_CHANNELTYPES 5 // 5, for R,G,B, Alpha, Gray
+#define IW_CI_COUNT 4 // Number of channelinfo structs (=4, for R, G, B, A)
+
 struct iw_rgb_color {
 	IW_SAMPLE c[3]; // Indexed by IW_CHANNELTYPE[Red..Blue]
 };
@@ -138,7 +141,7 @@ struct iw_context {
 	int caller_set_output_csdescr;
 	int warn_invalid_output_csdescr;
 
-	struct iw_channelinfo_in img1_ci[4];
+	struct iw_channelinfo_in img1_ci[IW_CI_COUNT];
 
 	struct iw_image img1;
 	struct iw_csdescr img1cs;
@@ -153,7 +156,7 @@ struct iw_context {
 	struct iw_rgb_color img1_bkgd_label; // img1.bkgd_color_* (source colorspace, then converted to linear)
 	int use_bkgd_label; // Prefer the bkgd color from the input file.
 
-	struct iw_channelinfo_intermed intermed_ci[4];
+	struct iw_channelinfo_intermed intermed_ci[IW_CI_COUNT];
 	int intermed_imgtype;
 	int intermed_numchannels;
 	int intermed_alpha_channel_index;
@@ -161,11 +164,11 @@ struct iw_context {
 
 	struct iw_image img2;
 	struct iw_csdescr img2cs;
-	struct iw_channelinfo_out img2_ci[4];
+	struct iw_channelinfo_out img2_ci[IW_CI_COUNT];
 	int img2_numchannels;
 
-	int ditherfamily_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
-	int dithersubtype_by_channeltype[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
+	int ditherfamily_by_channeltype[IW_NUM_CHANNELTYPES]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
+	int dithersubtype_by_channeltype[IW_NUM_CHANNELTYPES]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 	int uses_errdiffdither;
 	struct iw_prng *prng; // Pseudorandom number generator state
 
@@ -175,7 +178,7 @@ struct iw_context {
 	int to_grayscale;
 
 	// For color counts, 0 = "not set"
-	int color_count[5]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
+	int color_count[IW_NUM_CHANNELTYPES]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 
 	int apply_bkgd;
 	int apply_bkgd_strategy; // IW_BKGD_STRATEGY_*

@@ -340,7 +340,7 @@ IW_IMPL(void) iw_set_output_depth(struct iw_context *ctx, int bps)
 
 IW_IMPL(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)
 {
-	if(channeltype>=0 && channeltype<=4) {
+	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
 		ctx->ditherfamily_by_channeltype[channeltype] = f;
 		ctx->dithersubtype_by_channeltype[channeltype] = s;
 	}
@@ -365,7 +365,7 @@ IW_IMPL(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int f,
 
 IW_IMPL(void) iw_set_color_count(struct iw_context *ctx, int channeltype, int c)
 {
-	if(channeltype>=0 && channeltype<=4) {
+	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
 		ctx->color_count[channeltype] = c;
 	}
 
@@ -391,7 +391,7 @@ IW_IMPL(void) iw_set_channel_offset(struct iw_context *ctx, int channeltype, int
 
 IW_IMPL(void) iw_set_input_max_color_code(struct iw_context *ctx, int input_channel, int c)
 {
-	if(input_channel>=0 && input_channel<=4) {
+	if(input_channel>=0 && input_channel<IW_CI_COUNT) {
 		ctx->img1_ci[input_channel].maxcolorcode_int = c;
 	}
 }

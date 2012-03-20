@@ -1790,7 +1790,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->input_maxcolorcode_int = (1 << ctx->img1.bit_depth)-1;
 		ctx->input_maxcolorcode = (double)ctx->input_maxcolorcode_int;
 
-		for(i=0;i<4;i++) {
+		for(i=0;i<IW_CI_COUNT;i++) {
 			if(ctx->img1_ci[i].maxcolorcode_int<=0) {
 				ctx->img1_ci[i].maxcolorcode_int = ctx->input_maxcolorcode_int;
 			}
@@ -1816,7 +1816,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		flag=0;
-		for(i=0;i<5;i++) {
+		for(i=0;i<IW_NUM_CHANNELTYPES;i++) {
 			if(ctx->color_count[i]) flag=1;
 		}
 		if(flag) {
@@ -1827,7 +1827,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		output_maxcolorcode_int = (1 << ctx->output_depth)-1;
 		ctx->output_maxcolorcode = (double)output_maxcolorcode_int;
 
-		for(i=0;i<5;i++) {
+		for(i=0;i<IW_NUM_CHANNELTYPES;i++) {
 			if(ctx->color_count[i]) iw_restrict_to_range(2,output_maxcolorcode_int+1,&ctx->color_count[i]);
 			if(ctx->color_count[i]==output_maxcolorcode_int+1) ctx->color_count[i]=0;
 		}
