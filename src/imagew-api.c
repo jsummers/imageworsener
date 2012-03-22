@@ -335,7 +335,7 @@ IW_IMPL(void) iw_set_output_profile(struct iw_context *ctx, unsigned int n)
 
 IW_IMPL(void) iw_set_output_depth(struct iw_context *ctx, int bps)
 {
-	ctx->output_depth = bps;
+	ctx->output_depth_req = bps;
 }
 
 IW_IMPL(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)

@@ -196,8 +196,7 @@ struct iw_context {
 	iw_translatefn_type translate_fn;
 	iw_warningfn_type warning_fn;
 
-	// The nominal bits/sample of img2_pixels.
-	int output_depth; // TODO: This is the same as img2.bit_depth. We could remove one of them.
+	int output_depth_req; // Bits/sample requested by the caller.
 
 	int input_maxcolorcode_int;  // Based on the source image's full bitdepth
 	double input_maxcolorcode;

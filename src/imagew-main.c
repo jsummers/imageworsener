@@ -345,7 +345,7 @@ static IW_INLINE void put_raw_sample_8(struct iw_context *ctx, double s,
 static void put_raw_sample(struct iw_context *ctx, double s,
 	   int x, int y, int channel)
 {
-	switch(ctx->output_depth) {
+	switch(ctx->img2.bit_depth) {
 	case 8:  put_raw_sample_8(ctx,s,x,y,channel); break;
 	case 16: put_raw_sample_16(ctx,s,x,y,channel); break;
 	}
@@ -396,7 +396,7 @@ static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
 static void put_raw_sample_flt(struct iw_context *ctx, double s,
 	   int x, int y, int channel)
 {
-	switch(ctx->output_depth) {
+	switch(ctx->img2.bit_depth) {
 	case 32: put_raw_sample_flt32(ctx,s,x,y,channel); break;
 	case 64: put_raw_sample_flt64(ctx,s,x,y,channel); break;
 	}
@@ -1127,7 +1127,7 @@ static void iw_make_nearest_color_table(struct iw_context *ctx, double **ptable,
 	if(ctx->no_gamma) return;
 	if(csdescr->cstype==IW_CSTYPE_LINEAR) return;
 	if(img->sampletype==IW_SAMPLETYPE_FLOATINGPOINT) return;
-	if(img->bit_depth != ctx->output_depth) return;
+	if(img->bit_depth != ctx->img2.bit_depth) return;
 
 	ncolors = (1 << img->bit_depth);
 	if(ncolors>256) return;
@@ -1172,14 +1172,12 @@ static int iw_process_internal(struct iw_context *ctx)
 
 	iw_make_linear_csdescr(&csdescr_linear);
 
-	ctx->img2.bpr = iw_calc_bytesperrow(ctx->img2.width,ctx->output_depth*ctx->img2_numchannels);
+	ctx->img2.bpr = iw_calc_bytesperrow(ctx->img2.width,ctx->img2.bit_depth*ctx->img2_numchannels);
 
 	ctx->img2.pixels = iw_malloc_large(ctx, ctx->img2.bpr, ctx->img2.height);
 	if(!ctx->img2.pixels) {
 		goto done;
 	}
-
-	ctx->img2.bit_depth = ctx->output_depth;
 
 	ctx->intermediate = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
 	if(!ctx->intermediate) {
@@ -1292,7 +1290,8 @@ static void iw_set_out_channeltypes(struct iw_context *ctx)
 	}
 }
 
-// decide the sample type and bit depth
+// Set img2.bit_depth based on output_depth_req, etc.
+// Set img2.sampletype.
 static void decide_output_bit_depth(struct iw_context *ctx)
 {
 	if(ctx->output_profile&IW_PROFILE_HDRI) {
@@ -1304,36 +1303,26 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		// Floating point output.
-		if(ctx->output_depth<=0)
-			ctx->output_depth=64; // Caller did not set depth. Use 64.
-
-		// Caller set depth. Sanitize it.
-		if(ctx->output_depth<=32)
-			ctx->output_depth=32;
+		// An output_depth_req of 0 means the caller did not set it.
+		if(ctx->output_depth_req>=1 && ctx->output_depth_req<=32)
+			ctx->img2.bit_depth=32;
 		else
-			ctx->output_depth=64;
+			ctx->img2.bit_depth=64;
 		return;
 	}
 
 	// Below this point, sample type is UINT.
 
-	if(!(ctx->output_profile&IW_PROFILE_16BPS) && ctx->output_depth>8) {
-		// Caller set depth to more than this format can handle. Warn, and fix it.
-		iw_warning(ctx,"Reducing depth to 8; required by the output format.");
-		ctx->output_depth=8;
+	if(ctx->output_depth_req>8 && (ctx->output_profile&IW_PROFILE_16BPS)) {
+		ctx->img2.bit_depth=16;
 	}
-
-	if(ctx->output_depth>0) {
-		// Caller set the output depth. Sanitize it.
-		if(ctx->output_depth>8 && (ctx->output_profile&IW_PROFILE_16BPS))
-			ctx->output_depth=16;
-		else
-			ctx->output_depth=8;
-		return;
+	else {
+		if(ctx->output_depth_req>8) {
+			// Caller requested a depth higher than this format can handle.
+			iw_warning(ctx,"Reducing depth to 8; required by the output format.");
+		}
+		ctx->img2.bit_depth=8;
 	}
-
-	// Caller did not set output depth. Always use 8.
-	ctx->output_depth=8;
 }
 
 // Make a final decision about what to use for the background color.
@@ -1828,7 +1817,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 	else {
-		output_maxcolorcode_int = (1 << ctx->output_depth)-1;
+		output_maxcolorcode_int = (1 << ctx->img2.bit_depth)-1;
 
 		for(i=0;i<IW_CI_COUNT;i++) {
 			ctx->img2_ci[i].maxcolorcode_int = output_maxcolorcode_int;
