@@ -264,18 +264,18 @@ static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 
 // Based on color depth of the output image.
 static IW_SAMPLE cvt_int_sample_to_linear_output(struct iw_context *ctx,
-	unsigned int v, const struct iw_csdescr *csdescr)
+	unsigned int v, const struct iw_csdescr *csdescr, double overall_maxcolorcode)
 {
 	IW_SAMPLE s;
 
 	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
-		return ((double)v) / ctx->output_maxcolorcode;
+		return ((double)v) / overall_maxcolorcode;
 	}
 	else if(ctx->output_rev_color_corr_table) {
 		return ctx->output_rev_color_corr_table[v];
 	}
 
-	s = ((double)v) / ctx->output_maxcolorcode;
+	s = ((double)v) / overall_maxcolorcode;
 	return x_to_linear_sample(s,csdescr);
 }
 
@@ -553,6 +553,7 @@ static void iw_errdiff_dither(struct iw_context *ctx,int dithersubtype,
 	}
 }
 
+// 'channel' is the output channel.
 static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 		int channel, const struct iw_csdescr *csdescr,
 		double *s_lin_floor_1, double *s_lin_ceil_1,
@@ -560,15 +561,18 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 {
 	IW_SAMPLE samp_cvt;
 	double samp_cvt_expanded;
+	double overall_maxcolorcode;
 	unsigned int floor_int, ceil_int;
+
+	overall_maxcolorcode = ctx->img2_ci[channel].maxcolorcode_dbl;
 
 	// A prelimary conversion to the target color space.
 	samp_cvt = linear_to_x_sample(samp_lin,csdescr);
 
 	if(ctx->img2_ci[channel].color_count==0) {
 		// The normal case: we want to use this channel's full available depth.
-		samp_cvt_expanded = samp_cvt * ctx->output_maxcolorcode;
-		if(samp_cvt_expanded>ctx->output_maxcolorcode) samp_cvt_expanded=ctx->output_maxcolorcode;
+		samp_cvt_expanded = samp_cvt * overall_maxcolorcode;
+		if(samp_cvt_expanded>overall_maxcolorcode) samp_cvt_expanded=overall_maxcolorcode;
 		if(samp_cvt_expanded<0.0) samp_cvt_expanded=0.0;
 
 		// Find the next-smallest and next-largest valid values that
@@ -580,15 +584,15 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 	}
 	else {
 		// We're "posterizing": restricting to a certain number of color shades.
-		double maxcolorcode;
+		double posterized_maxcolorcode;
 		// Example: color_count = 4, bit_depth = 8;
 		// Colors are from 0.0 to 3.0, mapped to 0.0 to 255.0.
 		// Reduction factor is 255.0/3.0 = 85.0
 
-		maxcolorcode = (double)(ctx->img2_ci[channel].color_count-1);
+		posterized_maxcolorcode = (double)(ctx->img2_ci[channel].color_count-1);
 
-		samp_cvt_expanded = samp_cvt * maxcolorcode;
-		if(samp_cvt_expanded>maxcolorcode) samp_cvt_expanded=maxcolorcode;
+		samp_cvt_expanded = samp_cvt * posterized_maxcolorcode;
+		if(samp_cvt_expanded>posterized_maxcolorcode) samp_cvt_expanded=posterized_maxcolorcode;
 		if(samp_cvt_expanded<0.0) samp_cvt_expanded=0.0;
 
 		// If the number of shades is not 2, 4, 6, 16, 18, 52, 86, or 256 (assuming 8-bit depth),
@@ -596,8 +600,8 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 		// they will be 0, 128, and 255. It will often be the case that the shade we want is exactly
 		// halfway between the nearest two available shades, and the "0.5000000001" fudge factor is my
 		// attempt to make sure it rounds consistently in the same direction.
-		*s_cvt_floor_full = floor(0.5000000001 + floor(samp_cvt_expanded) * (ctx->output_maxcolorcode/maxcolorcode));
-		*s_cvt_ceil_full  = floor(0.5000000001 + ceil (samp_cvt_expanded) * (ctx->output_maxcolorcode/maxcolorcode));
+		*s_cvt_floor_full = floor(0.5000000001 + floor(samp_cvt_expanded) * (overall_maxcolorcode/posterized_maxcolorcode));
+		*s_cvt_ceil_full  = floor(0.5000000001 + ceil (samp_cvt_expanded) * (overall_maxcolorcode/posterized_maxcolorcode));
 	}
 
 	floor_int = (unsigned int)(*s_cvt_floor_full);
@@ -607,8 +611,8 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 	}
 
 	// Convert the candidates to our linear color space
-	*s_lin_floor_1 = cvt_int_sample_to_linear_output(ctx,floor_int,csdescr);
-	*s_lin_ceil_1 =  cvt_int_sample_to_linear_output(ctx,ceil_int ,csdescr);
+	*s_lin_floor_1 = cvt_int_sample_to_linear_output(ctx,floor_int,csdescr,overall_maxcolorcode);
+	*s_lin_ceil_1 =  cvt_int_sample_to_linear_output(ctx,ceil_int ,csdescr,overall_maxcolorcode);
 
 	return 0;
 }
@@ -1825,7 +1829,14 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 	else {
 		output_maxcolorcode_int = (1 << ctx->output_depth)-1;
-		ctx->output_maxcolorcode = (double)output_maxcolorcode_int;
+
+		for(i=0;i<IW_CI_COUNT;i++) {
+			ctx->img2_ci[i].maxcolorcode_int = output_maxcolorcode_int;
+		}
+
+		for(i=0;i<IW_CI_COUNT;i++) {
+			ctx->img2_ci[i].maxcolorcode_dbl = (double)ctx->img2_ci[i].maxcolorcode_int;
+		}
 
 		for(i=0;i<IW_NUM_CHANNELTYPES;i++) {
 			if(ctx->color_count[i]) iw_restrict_to_range(2,output_maxcolorcode_int+1,&ctx->color_count[i]);

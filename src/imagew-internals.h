@@ -86,6 +86,9 @@ struct iw_channelinfo_out {
 	// spaced (as evenly spaced as possible) in the target color space.
 	int color_count; // 0=default
 
+	double maxcolorcode_dbl;
+	int maxcolorcode_int;
+
 	int use_nearest_color_table;
 
 	IW_SAMPLE bkgd_color_lin; // Used if ctx->apply_bkgd
@@ -195,7 +198,6 @@ struct iw_context {
 
 	// The nominal bits/sample of img2_pixels.
 	int output_depth; // TODO: This is the same as img2.bit_depth. We could remove one of them.
-	double output_maxcolorcode;
 
 	int input_maxcolorcode_int;  // Based on the source image's full bitdepth
 	double input_maxcolorcode;
