@@ -1191,9 +1191,11 @@ static int iw_process_internal(struct iw_context *ctx)
 		}
 	}
 
-	iw_make_x_to_linear_table(ctx,&ctx->output_rev_color_corr_table,&ctx->img2,&ctx->img2cs);
+	if(!ctx->disable_output_lookup_tables) {
+		iw_make_x_to_linear_table(ctx,&ctx->output_rev_color_corr_table,&ctx->img2,&ctx->img2cs);
 
-	iw_make_nearest_color_table(ctx,&ctx->nearest_color_table,&ctx->img2,&ctx->img2cs);
+		iw_make_nearest_color_table(ctx,&ctx->nearest_color_table,&ctx->img2,&ctx->img2cs);
+	}
 
 	// If an alpha channel is present, we have to process it first.
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {
@@ -1805,34 +1807,6 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 
-	decide_output_bit_depth(ctx);
-
-	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
-		flag=0;
-		for(i=0;i<IW_NUM_CHANNELTYPES;i++) {
-			if(ctx->color_count[i]) flag=1;
-		}
-		if(flag) {
-			iw_warning(ctx,"Posterization is not supported with floating point output.");
-		}
-	}
-	else {
-		output_maxcolorcode_int = (1 << ctx->img2.bit_depth)-1;
-
-		for(i=0;i<IW_CI_COUNT;i++) {
-			ctx->img2_ci[i].maxcolorcode_int = output_maxcolorcode_int;
-		}
-
-		for(i=0;i<IW_CI_COUNT;i++) {
-			ctx->img2_ci[i].maxcolorcode_dbl = (double)ctx->img2_ci[i].maxcolorcode_int;
-		}
-
-		for(i=0;i<IW_NUM_CHANNELTYPES;i++) {
-			if(ctx->color_count[i]) iw_restrict_to_range(2,output_maxcolorcode_int+1,&ctx->color_count[i]);
-			if(ctx->color_count[i]==output_maxcolorcode_int+1) ctx->color_count[i]=0;
-		}
-	}
-
 	// Set the .use_offset flags, based on whether the caller set any
 	// .channel_offset[]s.
 	for(i=0;i<2;i++) { // horizontal, vertical
@@ -1966,8 +1940,55 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 	}
 
+
+	decide_output_bit_depth(ctx);
+
+	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+		flag=0;
+		for(i=0;i<IW_NUM_CHANNELTYPES;i++) {
+			if(ctx->color_count_req[i]) flag=1;
+		}
+		if(flag) {
+			iw_warning(ctx,"Posterization is not supported with floating point output.");
+		}
+	}
+	else {
+		output_maxcolorcode_int = (1 << ctx->img2.bit_depth)-1;
+
+		// Set the default maxcolorcodes
+		for(i=0;i<ctx->img2_numchannels;i++) {
+			ctx->img2_ci[i].maxcolorcode_int = output_maxcolorcode_int;
+		}
+
+		// Check for special "reduced" colorcodes.
+		if((ctx->output_profile&IW_PROFILE_REDUCEDBITDEPTHS) && ctx->img2.imgtype==IW_IMGTYPE_RGB) {
+			for(i=0;i<ctx->img2_numchannels;i++) {
+				int mccr;
+				mccr = ctx->output_maxcolorcode_req[ctx->img2_ci[i].channeltype];
+				if(mccr>0)
+					ctx->img2_ci[i].maxcolorcode_int = mccr;
+			}
+		}
+
+		// Set some flags, and set the floating-point versions of the maxcolorcodes.
+		for(i=0;i<ctx->img2_numchannels;i++) {
+			if(ctx->img2_ci[i].maxcolorcode_int != output_maxcolorcode_int) {
+				ctx->reduced_output_maxcolor_flag = 1;
+				ctx->disable_output_lookup_tables = 1;
+			}
+
+			ctx->img2_ci[i].maxcolorcode_dbl = (double)ctx->img2_ci[i].maxcolorcode_int;
+		}
+	}
+
 	for(i=0;i<ctx->img2_numchannels;i++) {
-		ctx->img2_ci[i].color_count = ctx->color_count[ctx->img2_ci[i].channeltype];
+		ctx->img2_ci[i].color_count = ctx->color_count_req[ctx->img2_ci[i].channeltype];
+		if(ctx->img2_ci[i].color_count) {
+			iw_restrict_to_range(2,ctx->img2_ci[i].maxcolorcode_int,&ctx->img2_ci[i].color_count);
+		}
+		if(ctx->img2_ci[i].color_count==1+ctx->img2_ci[i].maxcolorcode_int) {
+			ctx->img2_ci[i].color_count = 0;
+		}
 
 		ctx->img2_ci[i].ditherfamily = ctx->ditherfamily_by_channeltype[ctx->img2_ci[i].channeltype];
 		ctx->img2_ci[i].dithersubtype = ctx->dithersubtype_by_channeltype[ctx->img2_ci[i].channeltype];

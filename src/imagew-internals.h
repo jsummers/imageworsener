@@ -180,8 +180,8 @@ struct iw_context {
 
 	int to_grayscale;
 
-	// For color counts, 0 = "not set"
-	int color_count[IW_NUM_CHANNELTYPES]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
+	// Requested color counts; 0 = "not set"
+	int color_count_req[IW_NUM_CHANNELTYPES]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 
 	int apply_bkgd;
 	int apply_bkgd_strategy; // IW_BKGD_STRATEGY_*
@@ -197,11 +197,15 @@ struct iw_context {
 	iw_warningfn_type warning_fn;
 
 	int output_depth_req; // Bits/sample requested by the caller.
+	int output_maxcolorcode_req[IW_NUM_CHANNELTYPES];
 
 	int input_maxcolorcode_int;  // Based on the source image's full bitdepth
 	double input_maxcolorcode;
 
 	int support_reduced_input_bitdepths;
+
+	int disable_output_lookup_tables;
+	int reduced_output_maxcolor_flag;  // Are there any reduced output maxcolorcodes?
 
 	// Max number of rows for error-diffusion dithering, including current row.
 #define IW_DITHER_MAXROWS 3

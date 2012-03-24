@@ -157,6 +157,7 @@ extern "C" {
 
 #define IW_PROFILE_ALWAYSLINEAR  0x2000
 #define IW_PROFILE_HDRI          0x4000 // Supports floating-point samples
+#define IW_PROFILE_REDUCEDBITDEPTHS 0x8000 // Supports non-default maxcolorcodes.
 
 #define IW_RESIZETYPE_AUTO       0x01
 #define IW_RESIZETYPE_NULL       0x02
@@ -318,6 +319,8 @@ struct iw_image {
 	double density_x, density_y;
 	int has_colorkey_trns;
 	unsigned int colorkey_r, colorkey_g, colorkey_b;
+	int reduced_maxcolors;
+	unsigned int maxcolor_r, maxcolor_g, maxcolor_b;
 };
 
 struct iw_rgba8color {
@@ -457,6 +460,10 @@ IW_EXPORT(void) iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, i
 IW_EXPORT(void) iw_set_output_profile(struct iw_context *ctx, unsigned int n);
 
 IW_EXPORT(void) iw_set_output_depth(struct iw_context *ctx, int bps);
+
+// Set the number of bits for a specific channel. For example, for 6 bits,
+// set n=63. This only works if the output format can support it.
+IW_EXPORT(void) iw_set_output_maxcolorcode(struct iw_context *ctx, int channeltype, int n);
 
 IW_EXPORT(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int family, int subtype);
 

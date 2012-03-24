@@ -175,10 +175,16 @@ Options:
 
  -depth <n>
    The general number of bits of precision used per color channel in the
-   output image. Currently, the only depths supported are 8 and 16 (32 and 64
-   for MIFF format). The default is 8. Within this overall depth, you can
-   reduce the number of colors that will actually be used, by using the "-cc"
-   options.
+   output image. Valid values for <n>:
+    "8" is the default for most formats.
+    "16" is supported for PNG and TIFF formats.
+    "32" and "64" are used with MIFF format (floating point).
+    "5,5,5" and "5,6,5" are special depths that can be used with BMP files, to
+      write images with 16 bits/pixel. If you use these depths, -grayscale is
+      not supported, and we suggest using -dither.
+
+   Within the overall depth, you can reduce the number of colors that will
+   actually be used, by using the "-cc" options.
    Note that this doesn't necessarily determine the depth used in the output
    file. If the image can be encoded at a smaller depth with no loss of
    information, IW may choose to do that.

@@ -557,7 +557,21 @@ static int run(struct params_struct *p)
 	iw_set_output_profile(ctx, profile);
 
 	if(p->depth != -1) {
-		iw_set_output_depth(ctx,p->depth);
+		if(p->depth == -565) {
+			iw_set_output_depth(ctx,8);
+			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_RED  ,31);
+			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GREEN,63);
+			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_BLUE ,31);
+		}
+		else if(p->depth == -555) {
+			iw_set_output_depth(ctx,8);
+			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_RED  ,31);
+			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GREEN,31);
+			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_BLUE ,31);
+		}
+		else {
+			iw_set_output_depth(ctx,p->depth);
+		}
 	}
 
 	if(p->cs_in_set) {
@@ -1622,6 +1636,23 @@ static void iwcmd_read_w_or_h(struct params_struct *p, const char *v,
 	}
 }
 
+static int iwcmd_read_depth(struct params_struct *p, const char *v)
+{
+	if(strchr(v,',')) {
+		// This is obviously a hack, but it's good enough for now.
+		if(!strcmp(v,"5,6,5")) p->depth = -565;
+		else if(!strcmp(v,"5,5,5")) p->depth = -555;
+		else {
+			iwcmd_error(p,"Unsupported depth\n");
+			return -1;
+		}
+	}
+	else {
+		p->depth=iwcmd_parse_int(v);
+	}
+	return 1;
+}
+
 static int process_option_arg(struct params_struct *p, struct parsestate_struct *ps, const char *v)
 {
 	int ret;
@@ -1634,7 +1665,8 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		iwcmd_read_w_or_h(p,v,&p->new_height,&p->rel_height_flag,&p->rel_height);
 		break;
 	case PT_DEPTH:
-		p->depth=iwcmd_parse_int(v);
+		ret=iwcmd_read_depth(p,v);
+		if(ret<0) return 0;
 		break;
 	case PT_INPUTCS:
 		ret=iwcmd_string_to_colorspace(p,&p->cs_in,v);

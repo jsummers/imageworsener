@@ -302,6 +302,13 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->colorkey_r = ctx->optctx.colorkey_r;
 	img->colorkey_g = ctx->optctx.colorkey_g;
 	img->colorkey_b = ctx->optctx.colorkey_b;
+	if(ctx->reduced_output_maxcolor_flag) {
+		// We're assuming that img->imgtype==IW_IMGTYPE_RGB
+		img->reduced_maxcolors = 1;
+		img->maxcolor_r = ctx->img2_ci[0].maxcolorcode_int;
+		img->maxcolor_g = ctx->img2_ci[1].maxcolorcode_int;
+		img->maxcolor_b = ctx->img2_ci[2].maxcolorcode_int;
+	}
 }
 
 IW_IMPL(void) iw_get_output_colorspace(struct iw_context *ctx, struct iw_csdescr *csdescr)
@@ -338,6 +345,13 @@ IW_IMPL(void) iw_set_output_depth(struct iw_context *ctx, int bps)
 	ctx->output_depth_req = bps;
 }
 
+IW_IMPL(void) iw_set_output_maxcolorcode(struct iw_context *ctx, int channeltype, int n)
+{
+	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
+		ctx->output_maxcolorcode_req[channeltype] = n;
+	}
+}
+
 IW_IMPL(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int f, int s)
 {
 	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
@@ -366,18 +380,18 @@ IW_IMPL(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int f,
 IW_IMPL(void) iw_set_color_count(struct iw_context *ctx, int channeltype, int c)
 {
 	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
-		ctx->color_count[channeltype] = c;
+		ctx->color_count_req[channeltype] = c;
 	}
 
 	switch(channeltype) {
 	case IW_CHANNELTYPE_ALL:
-		ctx->color_count[IW_CHANNELTYPE_ALPHA] = c;
+		ctx->color_count_req[IW_CHANNELTYPE_ALPHA] = c;
 		// fall thru
 	case IW_CHANNELTYPE_NONALPHA:
-		ctx->color_count[IW_CHANNELTYPE_RED] = c;
-		ctx->color_count[IW_CHANNELTYPE_GREEN] = c;
-		ctx->color_count[IW_CHANNELTYPE_BLUE] = c;
-		ctx->color_count[IW_CHANNELTYPE_GRAY] = c;
+		ctx->color_count_req[IW_CHANNELTYPE_RED] = c;
+		ctx->color_count_req[IW_CHANNELTYPE_GREEN] = c;
+		ctx->color_count_req[IW_CHANNELTYPE_BLUE] = c;
+		ctx->color_count_req[IW_CHANNELTYPE_GRAY] = c;
 		break;
 	}
 }

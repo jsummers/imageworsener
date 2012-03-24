@@ -1131,6 +1131,10 @@ void iwpvt_optimize_image(struct iw_context *ctx)
 		return;
 	}
 
+	if(ctx->reduced_output_maxcolor_flag) {
+		return;
+	}
+
 	make_transparent_pixels_black(ctx,&ctx->img2);
 
 	if(!iw_opt_scanpixels(ctx,optctx)) {

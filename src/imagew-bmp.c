@@ -712,6 +712,7 @@ struct iwbmpwritecontext {
 	int bitcount;
 	int palentries;
 	int compressed;
+	size_t bitfields_size;
 	size_t palsize;
 	size_t unc_dst_bpr;
 	size_t unc_bitssize;
@@ -720,6 +721,7 @@ struct iwbmpwritecontext {
 	struct iw_image *img;
 	const struct iw_palette *pal;
 	size_t total_written;
+	int bf_amt_to_shift[3]; // For 16-bit images
 };
 
 static void iwbmp_write(struct iwbmpwritecontext *wctx, const void *buf, size_t n)
@@ -759,6 +761,21 @@ static void iwbmp_convert_row8(const iw_byte *srcrow, iw_byte *dstrow, int width
 	memcpy(dstrow,srcrow,width);
 }
 
+static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
+	iw_byte *dstrow, int width)
+{
+	int i;
+	unsigned int v;
+
+	for(i=0;i<width;i++) {
+		v = srcrow[i*3+0] << wctx->bf_amt_to_shift[0];
+		v |= srcrow[i*3+1] << wctx->bf_amt_to_shift[1];
+		v |= srcrow[i*3+2] << wctx->bf_amt_to_shift[2];
+		dstrow[i*2+0] = (iw_byte)(v&0xff);
+		dstrow[i*2+1] = (iw_byte)(v>>8);
+	}
+}
+
 static void iwbmp_convert_row24(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
@@ -781,10 +798,10 @@ static void iwbmp_write_file_header(struct iwbmpwritecontext *wctx)
 	fileheader[1] = 77; // 'M'
 
 	// This will be overwritten later, if the bitmap was compressed.
-	iw_set_ui32le(&fileheader[ 2],14+40+(unsigned int)wctx->palsize+
+	iw_set_ui32le(&fileheader[ 2],14+40+(unsigned int)(wctx->bitfields_size+wctx->palsize)+
 		(unsigned int)wctx->unc_bitssize); // bfSize
 
-	iw_set_ui32le(&fileheader[10],14+40+(unsigned int)wctx->palsize); // bfOffBits
+	iw_set_ui32le(&fileheader[10],14+40+(unsigned int)(wctx->bitfields_size+wctx->palsize)); // bfOffBits
 	iwbmp_write(wctx,fileheader,14);
 }
 
@@ -807,6 +824,9 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 		if(wctx->bitcount==8) cmpr = IWBMP_BI_RLE8;
 		else if(wctx->bitcount==4) cmpr = IWBMP_BI_RLE4;
 	}
+	else if(wctx->bitfields_size>0) {
+		cmpr = IWBMP_BI_BITFIELDS;
+	}
 	iw_set_ui32le(&header[16],cmpr); // biCompression
 
 	iw_set_ui32le(&header[20],(unsigned int)wctx->unc_bitssize); // biSizeImage
@@ -824,6 +844,51 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 	iw_set_ui32le(&header[32],wctx->palentries);    // biClrUsed
 	//iw_set_ui32le(&header[36],0);    // biClrImportant
 	iwbmp_write(wctx,header,40);
+}
+
+static int maxcc_to_bitdepth(unsigned int mcc)
+{
+	if(mcc<=1) return 1;
+	if(mcc<=3) return 2;
+	if(mcc<=7) return 3;
+	if(mcc<=15) return 4;
+	if(mcc<=31) return 5;
+	if(mcc<=63) return 6;
+	if(mcc<=127) return 7;
+	return 8;
+}
+
+// Write the BITFIELDS segment, and set the wctx->bf_amt_to_shift[] values.
+static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
+{
+	iw_byte buf[12];
+	iw_uint32 bf_r, bf_g, bf_b;
+	int bits_r, bits_g, bits_b; 
+
+	if(wctx->bitcount != 16) return 0;
+
+	bits_r = maxcc_to_bitdepth(wctx->img->maxcolor_r);
+	bits_g = maxcc_to_bitdepth(wctx->img->maxcolor_g);
+	bits_b = maxcc_to_bitdepth(wctx->img->maxcolor_b);
+
+	if(bits_r + bits_g + bits_b > 16) {
+		iw_set_error(wctx->ctx,"Cannot write a BMP image in this color format");
+		return 0;
+	}
+
+	wctx->bf_amt_to_shift[0] = bits_g + bits_b;
+	wctx->bf_amt_to_shift[1] = bits_b;
+	wctx->bf_amt_to_shift[2] = 0;
+
+	bf_r = wctx->img->maxcolor_r << wctx->bf_amt_to_shift[0];
+	bf_g = wctx->img->maxcolor_g << wctx->bf_amt_to_shift[1];
+	bf_b = wctx->img->maxcolor_b << wctx->bf_amt_to_shift[2];
+
+	iw_set_ui32le(&buf[0],bf_r);
+	iw_set_ui32le(&buf[4],bf_g);
+	iw_set_ui32le(&buf[8],bf_b);
+	iwbmp_write(wctx,buf,12);
+	return 1;
 }
 
 static void iwbmp_write_palette(struct iwbmpwritecontext *wctx)
@@ -1417,7 +1482,7 @@ static int rle_patch_file_size(struct iwbmpwritecontext *wctx,size_t rlesize)
 	if(wctx->include_file_header) {
 		// Patch the file size in the file header
 		(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,2,SEEK_SET);
-		iw_set_ui32le(buf,(unsigned int)(14+40+wctx->palsize+rlesize));
+		iw_set_ui32le(buf,(unsigned int)(14+40+wctx->bitfields_size+wctx->palsize+rlesize));
 		iwbmp_write(wctx,buf,4);
 		fileheader_size = 14;
 	}
@@ -1486,6 +1551,7 @@ static void iwbmp_write_pixels_uncompressed(struct iwbmpwritecontext *wctx,
 		srcrow = &img->pixels[j*img->bpr];
 		switch(wctx->bitcount) {
 		case 24: iwbmp_convert_row24(srcrow,dstrow,img->width); break;
+		case 16: bmpw_convert_row_16(wctx,srcrow,dstrow,img->width); break;
 		case 8: iwbmp_convert_row8(srcrow,dstrow,img->width); break;
 		case 4: iwbmp_convert_row4(srcrow,dstrow,img->width); break;
 		case 1: iwbmp_convert_row1(srcrow,dstrow,img->width); break;
@@ -1531,7 +1597,22 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 		cmpr_req = IW_COMPRESSION_RLE;
 
 	if(img->imgtype==IW_IMGTYPE_RGB) {
-		wctx->bitcount=24;
+		if(img->reduced_maxcolors) {
+			wctx->bitcount=16;
+			if(img->maxcolor_r==31 && img->maxcolor_g==31 && img->maxcolor_b==31) {
+				// For the default 5-5-5, we don't write a BITFIELDS segment.
+				wctx->bf_amt_to_shift[0]=10;
+				wctx->bf_amt_to_shift[1]=5;
+				wctx->bf_amt_to_shift[2]=0;
+				wctx->bitfields_size = 0;
+			}
+			else {
+				wctx->bitfields_size = 12;
+			}
+		}
+		else {
+			wctx->bitcount=24;
+		}
 	}
 	else if(img->imgtype==IW_IMGTYPE_PALETTE) {
 		if(!wctx->pal) goto done;
@@ -1586,6 +1667,10 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	// Bitmap header ("BITMAPINFOHEADER")
 	iwbmp_write_bmp_header(wctx);
+
+	if(wctx->bitfields_size>0) {
+		if(!iwbmp_write_bitfields(wctx)) goto done;
+	}
 
 	// Palette
 	iwbmp_write_palette(wctx);
