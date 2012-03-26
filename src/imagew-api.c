@@ -254,7 +254,6 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	iw_make_srgb_csdescr(&ctx->img2cs,IW_SRGB_INTENT_PERCEPTUAL);
 	ctx->to_grayscale=0;
 	ctx->grayscale_formula = IW_GSF_STANDARD;
-	ctx->density_policy = IW_DENSITY_POLICY_AUTO;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
@@ -418,7 +417,7 @@ IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g
 	ctx->img1_bkgd_label_set = 1;
 }
 
-IW_IMPL(int) iw_get_input_image_density(struct iw_context *ctx,
+IW_IMPL(int) iw_get_input_density(struct iw_context *ctx,
    double *px, double *py, int *pcode)
 {
 	*px = 1.0;
@@ -430,6 +429,14 @@ IW_IMPL(int) iw_get_input_image_density(struct iw_context *ctx,
 		return 1;
 	}
 	return 0;
+}
+
+IW_IMPL(void) iw_set_output_density(struct iw_context *ctx,
+   double x, double y, int code)
+{
+	ctx->img2.density_code = code;
+	ctx->img2.density_x = x;
+	ctx->img2.density_y = y;
 }
 
 // Detect a "gamma" colorspace that is actually linear.
@@ -642,9 +649,6 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_EDGE_POLICY_Y:
 		ctx->resize_settings[IW_DIMENSION_V].edge_policy = n;
 		break;
-	case IW_VAL_DENSITY_POLICY:
-		ctx->density_policy = n;
-		break;
 	case IW_VAL_PREF_UNITS:
 		ctx->pref_units = n;
 		break;
@@ -713,9 +717,6 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_EDGE_POLICY_Y:
 		ret = ctx->resize_settings[IW_DIMENSION_V].edge_policy;
 		break;
-	case IW_VAL_DENSITY_POLICY:
-		ret = ctx->density_policy;
-		break;
 	case IW_VAL_PREF_UNITS:
 		ret = ctx->pref_units;
 		break;
@@ -783,12 +784,6 @@ IW_IMPL(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n)
 	case IW_VAL_WEBP_QUALITY:
 		ctx->webp_quality = n;
 		break;
-	case IW_VAL_DENSITY_FORCED_X:
-		ctx->density_forced_x = n;
-		break;
-	case IW_VAL_DENSITY_FORCED_Y:
-		ctx->density_forced_y = n;
-		break;
 	case IW_VAL_TRANSLATE_X:
 		ctx->resize_settings[IW_DIMENSION_H].translate = n;
 		break;
@@ -805,12 +800,6 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 	switch(code) {
 	case IW_VAL_WEBP_QUALITY:
 		ret = ctx->webp_quality;
-		break;
-	case IW_VAL_DENSITY_FORCED_X:
-		ret = ctx->density_forced_x;
-		break;
-	case IW_VAL_DENSITY_FORCED_Y:
-		ret = ctx->density_forced_y;
 		break;
 	case IW_VAL_TRANSLATE_X:
 		ret = ctx->resize_settings[IW_DIMENSION_H].translate;

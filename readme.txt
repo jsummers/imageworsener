@@ -159,6 +159,11 @@ Options:
  -nobestfit
    Disables -bestfit. This is the default, so it has no effect.
 
+ -noresize
+   Ensures that the image will not be resized at all. This is only useful if
+   the source image may have non-square pixels.
+   Incompatible with -width, -height, and -bestfit.
+
  -infmt <fmt>  -outfmt <fmt>
    Specifies the image file format of the input or output file. If not used,
    imagew will try to figure out the format based on the contents of the file,

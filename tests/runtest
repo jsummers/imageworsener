@@ -193,8 +193,8 @@ $IW srcimg/g8.png actual/webp2.webp -width 24 -grayscale -filter mix
 # Extra pixel density tests
 $IW srcimg/rgb8x1.png actual/dens-1.png $DCMPR $SCALE -filter mix
 $IW srcimg/rgb8x2.png actual/dens-2.png $DCMPR $SCALE -filter mix
-$IW srcimg/rgb8x1.png actual/dens-1ns.png $DCMPR
-$IW srcimg/rgb8x2.png actual/dens-2ns.png $DCMPR
+$IW srcimg/rgb8x1.png actual/dens-1ns.png $DCMPR -noresize
+$IW srcimg/rgb8x2.png actual/dens-2ns.png $DCMPR -noresize
 $IW srcimg/p4.png actual/dens-3ns.png $DCMPR
 $IW srcimg/p4.png actual/dens-3ns.jpg
 

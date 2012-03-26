@@ -1621,75 +1621,6 @@ static void init_channel_info(struct iw_context *ctx)
 	}
 }
 
-static void iw_convert_density_info(struct iw_context *ctx)
-{
-	double factor;
-	double newdens_x, newdens_y;
-
-	if(!iw_is_valid_density(ctx->img1.density_x,ctx->img1.density_y,ctx->img1.density_code)) {
-		ctx->img1.density_code=IW_DENSITY_UNKNOWN;
-	}
-
-	if(ctx->density_policy==IW_DENSITY_POLICY_FORCED) {
-		ctx->img2.density_code = IW_DENSITY_UNITS_PER_METER;
-		ctx->img2.density_x = ctx->density_forced_x;
-		ctx->img2.density_y = ctx->density_forced_y;
-		return;
-	}
-
-	if(ctx->density_policy==IW_DENSITY_POLICY_NONE) return;
-
-	if(ctx->img1.density_code==IW_DENSITY_UNKNOWN) return;
-
-	if(ctx->density_policy==IW_DENSITY_POLICY_KEEP) {
-		ctx->img2.density_code = ctx->img1.density_code;
-		ctx->img2.density_x = ctx->img1.density_x;
-		ctx->img2.density_y = ctx->img1.density_y;
-		return;
-	}
-
-	// At this point, the policy is either AUTO or ADJUST.
-
-	if(ctx->input_w==ctx->img2.width || ctx->input_h==ctx->img2.height) {
-		// Image size is not being changed, so just copy the density info.
-		ctx->img2.density_code = ctx->img1.density_code;
-		ctx->img2.density_x = ctx->img1.density_x;
-		ctx->img2.density_y = ctx->img1.density_y;
-		return;
-	}
-
-	if(ctx->density_policy!=IW_DENSITY_POLICY_ADJUST) return;
-
-	// Handle policy==ADJUST:
-
-	ctx->img2.density_code = ctx->img1.density_code;
-
-	factor = ((double)ctx->img2.width)/(double)ctx->input_w;
-	newdens_x = ctx->img1.density_x * factor;
-
-	factor = ((double)ctx->img2.height)/(double)ctx->input_h;
-	newdens_y = ctx->img1.density_y * factor;
-
-	if(fabs(ctx->img1.density_x-ctx->img1.density_y)<0.00001) {
-		// If we don't do anything to prevent it, the "adjust" policy will
-		// tend to create images whose pixels are slightly non-square. While
-		// not *wrong*, this is usually undesirable.
-		// The ideal solution is probably to scale the dimensions by *exactly*
-		// the same factor, but we don't support that yet.
-		// In the meantime, if the source image had square pixels, fudge the
-		// density label so that the target image also has square pixels, even
-		// if that makes the label less accurate.
-		// Maybe a better idea would be to base it on how the user specified the
-		// new dimensions (i.e. if he gave only the new width, base it on the
-		// width), but that information isn't readily available here.
-		newdens_x = (newdens_x+newdens_y)/2.0;
-		newdens_y = newdens_x;
-	}
-
-	ctx->img2.density_x = newdens_x;
-	ctx->img2.density_y = newdens_y;
-}
-
 // Set the weights for the grayscale algorithm, if needed.
 static void prepare_grayscale(struct iw_context *ctx)
 {
@@ -2022,8 +1953,6 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->resize_settings[IW_DIMENSION_V].family==IW_RESIZETYPE_AUTO) {
 		iw_set_auto_resizetype(ctx,ctx->input_h,ctx->img2.height,IW_DIMENSION_V);
 	}
-
-	iw_convert_density_info(ctx);
 
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->img2.imgtype)) {
 		if(!ctx->opt_strip_alpha) {

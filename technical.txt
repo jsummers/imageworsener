@@ -334,14 +334,35 @@ To use ImageMagick to write a MIFF file that IW can read, try:
 $ convert <input-file> -define quantum:format=floating-point -depth 32 \
  -compress Zip <output-file.miff>
 
-Nonsquare pixels
-----------------
+Non-square pixels
+-----------------
 
-If you use one of the scaling options that doesn't change the aspect ratio, IW
-always writes an image with square pixels. Example: Suppose the input image is
-a fax with an X density of 204dpi and a Y density of 96dpi. It will scale the
-Y dimension by a factor that's 204/96 times larger than the X dimension's
-scaling factor.
+Most image formats can contain metadata specifying different "densities" (i.e.
+number of pixels/inch) for the X and Y dimension. In other words, the pixels
+can be thought of as being non-square rectangles.
+
+Non-square pixels are a pain, and make it really messy to figure out the best
+size and density to use for the output image, if (as usually the case) the
+user did not fully specify that information.
+
+IW's rules are as follows:
+
+If the user used the -noresize option, behave as if the user requested a height
+and width that are exactly the size of the source image, and did not use
+-bestfit.
+
+If the user specified both the width and the height (absolute or relative), and
+did not use the -bestfit flag, then IW doesn't have to "fit" the image in any
+way, so there's no real difficulty. If a density is written to the output
+image, it will likely indicate non-square pixels.
+
+Otherwise, for the purposes of sizing, IW pretends that the input image is a
+larger image (as measured by number of pixels) with square pixels. For example,
+if an image is 150x150 pixels with a density of 100x200dpi, it will behave as
+if it were 300x150, with a density of 200x200dpi. Thus, even if you don't tell
+it to resize the image at all, the output image will be a different size in
+pixels. If you use relative sizing (e.g. "-w x2"), it will be relative to the
+adjusted size, not the original size.
 
 "Color" of transparent pixels
 -----------------------------

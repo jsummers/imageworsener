@@ -81,10 +81,7 @@ extern "C" {
 #define IW_VAL_INPUT_IMAGE_TYPE  23
 #define IW_VAL_INPUT_DEPTH       24
 
-#define IW_VAL_DENSITY_POLICY    25
 #define IW_VAL_PREF_UNITS        26
-#define IW_VAL_DENSITY_FORCED_X  27
-#define IW_VAL_DENSITY_FORCED_Y  28
 
 #define IW_VAL_JPEG_QUALITY      30
 #define IW_VAL_JPEG_SAMP_FACTOR_H  31
@@ -244,12 +241,6 @@ extern "C" {
 #define IW_PREF_UNITS_DEFAULT    0
 #define IW_PREF_UNITS_METRIC     1
 #define IW_PREF_UNITS_IMPERIAL   2
-
-#define IW_DENSITY_POLICY_AUTO    0
-#define IW_DENSITY_POLICY_NONE    1 // Don't write a density (if possible)
-#define IW_DENSITY_POLICY_KEEP    2 // Keep density the same
-#define IW_DENSITY_POLICY_ADJUST  3 // Keep physical image size the same
-#define IW_DENSITY_POLICY_FORCED  4 // Use a specific density
 
 // Grayscale formula
 #define IW_GSF_STANDARD      0
@@ -514,8 +505,10 @@ IW_EXPORT(void) iw_make_linear_csdescr(struct iw_csdescr *cs);
 IW_EXPORT(void) iw_make_srgb_csdescr(struct iw_csdescr *cs, int srgb_intent);
 IW_EXPORT(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma);
 
-IW_EXPORT(int) iw_get_input_image_density(struct iw_context *ctx,
+IW_EXPORT(int) iw_get_input_density(struct iw_context *ctx,
    double *px, double *py, int *pcode);
+IW_EXPORT(void) iw_set_output_density(struct iw_context *ctx,
+   double x, double y, int code);
 
 IW_EXPORT(void) iw_set_random_seed(struct iw_context *ctx, int randomize, int rand_seed);
 

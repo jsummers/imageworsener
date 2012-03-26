@@ -1,4 +1,6 @@
 Unreleased changes
+ - Various changes to how non-square pixels are handled. Added -noresize
+   option.
  - Support for writing 16-bit BMP images.
  - Support for reading 16- and 32-bit BMP images.
  - Support for RLE-compressed BMP images with transparency.

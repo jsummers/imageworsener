@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <math.h>
 #include <errno.h>
 
 #ifdef IW_WINDOWS
@@ -64,10 +65,13 @@ struct params_struct {
 	const char *outfn;
 	int nowarn;
 	int noinfo;
-	int new_width;
-	int new_height;
+	int src_width, src_height;
+	int adjusted_src_width, adjusted_src_height;
+	int dst_width_req, dst_height_req;
 	int rel_width_flag, rel_height_flag;
+	int noresize_flag;
 	double rel_width, rel_height;
+	int dst_width, dst_height;
 	struct resize_alg resize_alg_x;
 	struct resize_alg resize_alg_y;
 	struct resize_blur resize_blur_x;
@@ -110,7 +114,14 @@ struct params_struct {
 	int no_gamma;
 	int intclamp;
 	int edge_policy_x,edge_policy_y;
+
+#define IWCMD_DENSITY_POLICY_AUTO    0
+#define IWCMD_DENSITY_POLICY_NONE    1 // Don't write a density (if possible)
+#define IWCMD_DENSITY_POLICY_KEEP    2 // Keep density the same
+#define IWCMD_DENSITY_POLICY_ADJUST  3 // Keep physical image size the same
+#define IWCMD_DENSITY_POLICY_FORCED  4 // Use a specific density
 	int density_policy;
+
 	int pref_units;
 	double density_forced_x, density_forced_y; // in pixels/meter
 	int grayscale_formula;
@@ -124,8 +135,6 @@ struct params_struct {
 	struct iw_csdescr cs_out;
 	int output_encoding;
 	int output_encoding_setmode;
-	int density_code;
-	double xdens, ydens;
 };
 
 #ifdef _UNICODE
@@ -347,33 +356,35 @@ static int detect_fmt_of_file(FILE *fp)
 	return iw_detect_fmt_of_file((const iw_byte*)buf,n);
 }
 
-// Updates p->new_width and p->new_height
-static void do_bestfit(struct params_struct *p, int old_width, int old_height)
+// Updates p->dst_width and p->dst_height.
+// Returns 0 if we fit to width, 1 if we fit to height.
+static int do_bestfit(struct params_struct *p)
 {
 	int x;
 	double exp_factor;
+	int retval = 0;
 
 	// If we fit-width, what would the height be?
-	exp_factor = ((double)p->new_width) / old_width;
-	exp_factor *= (p->xdens/p->ydens);
-	x = (int)(0.5+ ((double)old_height) * exp_factor);
-	if(x<=p->new_height) {
+	exp_factor = ((double)p->dst_width) / p->adjusted_src_width;
+	x = (int)(0.5+ ((double)p->adjusted_src_height) * exp_factor);
+	if(x<=p->dst_height) {
 		// It fits. Use it.
-		p->new_height = x;
+		p->dst_height = x;
 		goto done;
 	}
 
 	// Fit to height instead.
-	exp_factor = ((double)p->new_height) / old_height;
-	exp_factor *= (p->ydens/p->xdens);
-	x = (int)(0.5+ ((double)old_width) * exp_factor);
-	if(x<p->new_width) {
-		p->new_width = x;
+	retval = 1;
+	exp_factor = ((double)p->dst_height) / p->adjusted_src_height;
+	x = (int)(0.5+ ((double)p->adjusted_src_width) * exp_factor);
+	if(x<p->dst_width) {
+		p->dst_width = x;
 	}
 
 done:
-	if(p->new_width<1) p->new_width=1;
-	if(p->new_height<1) p->new_height=1;
+	if(p->dst_width<1) p->dst_width=1;
+	if(p->dst_height<1) p->dst_height=1;
+	return retval;
 }
 
 static void iwcmd_set_resize(struct iw_context *ctx, int dimension,
@@ -442,12 +453,169 @@ static void my_freefn(void *userdata, void *mem)
 	free(mem);
 }
 
+static void figure_out_size_and_density(struct params_struct *p, struct iw_context *ctx)
+{
+	int fit_flag = 0;
+	int fit_dimension = -1; // 0 = We're fitting to a specific width. 1=height. -1=neither.
+	double xdens,ydens; // density read from source image
+	int density_code; // from src image
+	double adjusted_dens_x, adjusted_dens_y;
+	int nonsquare_pixels_flag = 0;
+
+	iw_get_input_density(ctx,&xdens,&ydens,&density_code);
+
+	if(p->noresize_flag) {
+		// Pretend the user requested a target height and width that are exactly
+		// those of the source image.
+		p->dst_width_req = p->src_width;
+		p->dst_height_req = p->src_height;
+
+		// These options shouldn't have been used, but if so, pretend they weren't.
+		p->rel_width_flag = 0;
+		p->rel_height_flag = 0;
+		p->bestfit = 0;
+	}
+
+	if(density_code!=IW_DENSITY_UNKNOWN) {
+		if(fabs(xdens-ydens)>=0.00001) {
+			nonsquare_pixels_flag = 1;
+		}
+	}
+
+	// If the user failed to specify a width, or a height, or used the 'bestfit'
+	// option, then we need to "fit" the image in some way.
+	fit_flag = (p->dst_width_req<1 && !p->rel_width_flag) ||
+		(p->dst_height_req<1 && !p->rel_height_flag) || p->bestfit;
+
+	// Set adjusted_* variables, which will be different from the original ones
+	// of there are nonsquare pixels. For certain operations, we'll pretend that
+	// the adjusted settings are the real setting.
+	p->adjusted_src_width = p->src_width;
+	p->adjusted_src_height = p->src_height;
+	adjusted_dens_x = xdens;
+	adjusted_dens_y = ydens;
+	if(nonsquare_pixels_flag && fit_flag) {
+		if(xdens > ydens) {
+			p->adjusted_src_height = (int)(0.5+ (xdens/ydens) * (double)p->adjusted_src_height);
+			adjusted_dens_y = xdens;
+		}
+		else {
+			p->adjusted_src_width = (int)(0.5+ (ydens/xdens) * (double)p->adjusted_src_width);
+			adjusted_dens_x = ydens;
+		}
+	}
+
+	p->dst_width = p->dst_width_req;
+	p->dst_height = p->dst_height_req;
+
+	if(p->dst_width<0) p->dst_width = -1;
+	if(p->dst_height<0) p->dst_height = -1;
+	if(p->dst_width==0) p->dst_width = 1;
+	if(p->dst_height==0) p->dst_height = 1;
+
+	if(p->rel_width_flag) {
+		p->dst_width = iwcmd_calc_rel_size(p->rel_width, p->adjusted_src_width);
+	}
+	if(p->rel_height_flag) {
+		p->dst_height = iwcmd_calc_rel_size(p->rel_height, p->adjusted_src_height);
+	}
+
+	if(p->dst_width == -1 && p->dst_height == -1) {
+		// Neither -width nor -height specified. Keep image the same size.
+		// (But if the pixels were not square, pretend the image was a different
+		// size, and had square pixels.)
+		p->dst_width=p->adjusted_src_width;
+		p->dst_height=p->adjusted_src_height;
+	}
+	else if(p->dst_height == -1) {
+		// -width given but not -height. Fit to width.
+		p->dst_height=1000000;
+		do_bestfit(p);
+		fit_dimension=0;
+	}
+	else if(p->dst_width == -1) {
+		// -height given but not -width. Fit to height.
+		p->dst_width=1000000;
+		do_bestfit(p);
+		fit_dimension=1;
+	}
+	else if(p->bestfit) {
+		// -width and -height and -bestfit all given. Best-fit into the given dimensions.
+		fit_dimension=do_bestfit(p);
+	}
+	else {
+		// -width and -height given but not -bestfit. Use the exact dimensions given.
+		;
+	}
+
+	if(p->dst_width<1) p->dst_width=1;
+	if(p->dst_height<1) p->dst_height=1;
+
+	// Figure out what policy=AUTO means.
+	if(p->density_policy==IWCMD_DENSITY_POLICY_AUTO) {
+		if(density_code==IW_DENSITY_UNKNOWN) {
+			p->density_policy=IWCMD_DENSITY_POLICY_NONE;
+		}
+		else if(p->dst_width==p->src_width && p->dst_height==p->src_height) {
+			// TODO: If we adjusted the image size (due to nonsquare pixels), but the
+			// user did not request a different size, maybe we should keep the
+			// same density (with one of the dimensions modified).
+			p->density_policy=IWCMD_DENSITY_POLICY_KEEP;
+		}
+		else {
+			p->density_policy=IWCMD_DENSITY_POLICY_NONE;
+		}
+	}
+
+	// Finally, set the new density, based on the POLICY.
+	if(p->density_policy==IWCMD_DENSITY_POLICY_KEEP) {
+		if(density_code!=IW_DENSITY_UNKNOWN) {
+			iw_set_output_density(ctx,adjusted_dens_x,adjusted_dens_y,density_code);
+		}
+	}
+	else if(p->density_policy==IWCMD_DENSITY_POLICY_ADJUST) {
+		if(density_code!=IW_DENSITY_UNKNOWN) {
+			double newdens_x,newdens_y;
+			// If we don't do anything to prevent it, the "adjust" policy will
+			// tend to create images whose pixels are slightly non-square. While
+			// not *wrong*, this is usually undesirable.
+			// The ideal solution is probably to scale the dimensions by *exactly*
+			// the same factor, but we don't support that yet.
+			// In the meantime, if the source image had square pixels, fudge the
+			// density label so that the target image also has square pixels, even
+			// if that makes the label less accurate.
+			// If possible, fix it up by changing the density of the dimension whose
+			// size wasn't set by the user.
+			newdens_x = adjusted_dens_x*(((double)p->dst_width)/p->adjusted_src_width);
+			newdens_y = adjusted_dens_y*(((double)p->dst_height)/p->adjusted_src_height);
+			if(fit_flag) {
+				if(fit_dimension==0) {
+					// X dimension is the important one; tweak the Y density.
+					newdens_y = newdens_x;
+				}
+				else if(fit_dimension==1) {
+					newdens_x = newdens_y;
+				}
+				else {
+					// Don't know which dimension is important; use the average.
+					newdens_x = (newdens_x+newdens_y)/2.0;
+					newdens_y = newdens_x;
+				}
+			}
+			iw_set_output_density(ctx,newdens_x,newdens_y,density_code);
+		}
+	}
+	else if(p->density_policy==IWCMD_DENSITY_POLICY_FORCED) {
+		iw_set_output_density(ctx,p->density_forced_x,p->density_forced_y,
+			IW_DENSITY_UNITS_PER_METER);
+	}
+}
+
 static int run(struct params_struct *p)
 {
 	int retval = 0;
 	struct iw_context *ctx = NULL;
 	int imgtype_read;
-	int old_width,old_height;
 	struct iw_iodescr readdescr;
 	struct iw_iodescr writedescr;
 	char errmsg[200];
@@ -506,12 +674,6 @@ static int run(struct params_struct *p)
 	if(p->noopt_binarytrns) iw_set_allow_opt(ctx,IW_OPT_BINARY_TRNS,0);
 	if(p->edge_policy_x>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY_X,p->edge_policy_x);
 	if(p->edge_policy_y>=0) iw_set_value(ctx,IW_VAL_EDGE_POLICY_Y,p->edge_policy_y);
-	if(p->density_policy>=0) iw_set_value(ctx,IW_VAL_DENSITY_POLICY,p->density_policy);
-	if(p->density_policy==IW_DENSITY_POLICY_FORCED) {
-		iw_set_value(ctx,IW_VAL_PREF_UNITS,p->pref_units);
-		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_X,p->density_forced_x);
-		iw_set_value_dbl(ctx,IW_VAL_DENSITY_FORCED_Y,p->density_forced_y);
-	}
 	if(p->grayscale_formula>=0) {
 		iw_set_value(ctx,IW_VAL_GRAYSCALE_FORMULA,p->grayscale_formula);
 		if(p->grayscale_formula==IW_GSF_WEIGHTED || p->grayscale_formula==IW_GSF_ORDERBYVALUE) {
@@ -645,73 +807,33 @@ static int run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_USE_BKGD_LABEL,1);
 	}
 
-	iw_get_input_image_density(ctx,&p->xdens,&p->ydens,&p->density_code);
+	p->src_width=iw_get_value(ctx,IW_VAL_INPUT_WIDTH);
+	p->src_height=iw_get_value(ctx,IW_VAL_INPUT_HEIGHT);
 
-	old_width=iw_get_value(ctx,IW_VAL_INPUT_WIDTH);
-	old_height=iw_get_value(ctx,IW_VAL_INPUT_HEIGHT);
-
+	// If we're cropping, adjust the src_width and height accordingly.
 	if(p->use_crop) {
-		// If we're cropping, adjust some things so that "bestfit" works.
 		if(p->crop_x<0) p->crop_x=0;
 		if(p->crop_y<0) p->crop_y=0;
-		if(p->crop_x>old_width-1) p->crop_x=old_width-1;
-		if(p->crop_y>old_height-1) p->crop_y=old_height-1;
-		if(p->crop_w<0 || p->crop_w>old_width-p->crop_x) p->crop_w=old_width-p->crop_x;
-		if(p->crop_h<0 || p->crop_h>old_height-p->crop_y) p->crop_h=old_height-p->crop_y;
+		if(p->crop_x>p->src_width-1) p->crop_x=p->src_width-1;
+		if(p->crop_y>p->src_height-1) p->crop_y=p->src_height-1;
+		if(p->crop_w<0 || p->crop_w>p->src_width-p->crop_x) p->crop_w=p->src_width-p->crop_x;
+		if(p->crop_h<0 || p->crop_h>p->src_height-p->crop_y) p->crop_h=p->src_height-p->crop_y;
 		if(p->crop_w<1) p->crop_w=1;
 		if(p->crop_h<1) p->crop_h=1;
 
-		old_width = p->crop_w;
-		old_height = p->crop_h;
+		p->src_width = p->crop_w;
+		p->src_height = p->crop_h;
 	}
 
-	if(p->new_width<0) p->new_width = -1;
-	if(p->new_height<0) p->new_height = -1;
-	if(p->new_width==0) p->new_width = 1;
-	if(p->new_height==0) p->new_height = 1;
-
-	if(p->rel_width_flag) {
-		p->new_width = iwcmd_calc_rel_size(p->rel_width, old_width);
-	}
-	if(p->rel_height_flag) {
-		p->new_height = iwcmd_calc_rel_size(p->rel_height, old_height);
-	}
-
-	if(p->new_width == -1 && p->new_height == -1) {
-		// Neither -width nor -height specified. Keep image the same size.
-		p->new_width=old_width;
-		p->new_height=old_height;
-	}
-	else if(p->new_height == -1) {
-		// -width given but not -height. Fit to width.
-		p->new_height=1000000;
-		do_bestfit(p,old_width,old_height);
-	}
-	else if(p->new_width == -1) {
-		// -height given but not -width. Fit to height.
-		p->new_width=1000000;
-		do_bestfit(p,old_width,old_height);
-	}
-	else if(p->bestfit) {
-		// -width and -height and -bestfit all given. Best-fit into the given dimensions.
-		do_bestfit(p,old_width,old_height);
-	}
-	else {
-		// -width and -height given but not -bestfit. Use the exact dimensions given.
-		;
-	}
-
-	if(p->new_width<1) p->new_width=1;
-	if(p->new_height<1) p->new_height=1;
-
+	figure_out_size_and_density(p,ctx);
 
 	if(p->translate_src_flag) {
 		// Convert from dst pixels to src pixels
 		if(p->translate_x!=0.0) {
-			p->translate_x *= ((double)p->new_width)/old_width;
+			p->translate_x *= ((double)p->dst_width)/p->src_width;
 		}
 		if(p->translate_y!=0.0) {
-			p->translate_y *= ((double)p->new_height)/old_height;
+			p->translate_y *= ((double)p->dst_height)/p->src_height;
 		}
 	}
 	if(p->translate_x!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_X,p->translate_x);
@@ -721,15 +843,15 @@ static int run(struct params_struct *p)
 	// Wait until we know the target image size to set the resize algorithm, so
 	// that we can support our "interpolate" option.
 	if(p->resize_alg_x.family) {
-		if(p->resize_blur_x.interpolate && p->new_width<old_width) {
+		if(p->resize_blur_x.interpolate && p->dst_width<p->src_width) {
 			// If downscaling, "sharpen" the filter to emulate interpolation.
-			p->resize_blur_x.blur *= ((double)p->new_width)/old_width;
+			p->resize_blur_x.blur *= ((double)p->dst_width)/p->src_width;
 		}
 		iwcmd_set_resize(ctx,IW_DIMENSION_H,&p->resize_alg_x,&p->resize_blur_x);
 	}
 	if(p->resize_alg_y.family) {
-		if(p->resize_blur_y.interpolate && p->new_height<old_height) {
-			p->resize_blur_y.blur *= ((double)p->new_height)/old_height;
+		if(p->resize_blur_y.interpolate && p->dst_height<p->src_height) {
+			p->resize_blur_y.blur *= ((double)p->dst_height)/p->src_height;
 		}
 		iwcmd_set_resize(ctx,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
 	}
@@ -744,15 +866,15 @@ static int run(struct params_struct *p)
 	if(p->noinfo) {
 		;
 	}
-	else if(p->new_width==old_width && p->new_height==old_height) {
-		iwcmd_message(p,"Processing: %d\xc3\x97%d\n",p->new_width,p->new_height);
+	else if(p->dst_width==p->src_width && p->dst_height==p->src_height) {
+		iwcmd_message(p,"Processing: %d\xc3\x97%d\n",p->dst_width,p->dst_height);
 	}
 	else {
-		iwcmd_message(p,"Resizing: %d\xc3\x97%d \xe2\x86\x92 %d\xc3\x97%d\n",old_width,old_height,
-			p->new_width,p->new_height);
+		iwcmd_message(p,"Resizing: %d\xc3\x97%d \xe2\x86\x92 %d\xc3\x97%d\n",p->src_width,p->src_height,
+			p->dst_width,p->dst_height);
 	}
 
-	iw_set_output_canvas_size(ctx,p->new_width,p->new_height);
+	iw_set_output_canvas_size(ctx,p->dst_width,p->dst_height);
 	if(p->use_crop) {
 		iw_set_input_crop(ctx,p->crop_x,p->crop_y,p->crop_w,p->crop_h);
 	}
@@ -1278,7 +1400,7 @@ static void iwcmd_process_forced_density(struct params_struct *p, const char *s)
 	iwcmd_parse_number_list(&s[1],2,nums,&count);
 	if(count<1) return;
 
-	p->density_policy = IW_DENSITY_POLICY_FORCED;
+	p->density_policy = IWCMD_DENSITY_POLICY_FORCED;
 
 	p->density_forced_x = nums[0];
 	if(count>=2)
@@ -1313,16 +1435,16 @@ static int iwcmd_process_density(struct params_struct *p, const char *s)
 		iwcmd_process_forced_density(p,s);
 	}
 	else if(!strcmp(s,"auto")) {
-		p->density_policy = IW_DENSITY_POLICY_AUTO;
+		p->density_policy = IWCMD_DENSITY_POLICY_AUTO;
 	}
 	else if(!strcmp(s,"none")) {
-		p->density_policy = IW_DENSITY_POLICY_NONE;
+		p->density_policy = IWCMD_DENSITY_POLICY_NONE;
 	}
 	else if(!strcmp(s,"keep")) {
-		p->density_policy = IW_DENSITY_POLICY_KEEP;
+		p->density_policy = IWCMD_DENSITY_POLICY_KEEP;
 	}
 	else if(!strcmp(s,"adjust")) {
-		p->density_policy = IW_DENSITY_POLICY_ADJUST;
+		p->density_policy = IWCMD_DENSITY_POLICY_ADJUST;
 	}
 	else {
 		iwcmd_error(p,"Invalid density \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
@@ -1438,7 +1560,7 @@ enum iwcmd_param_types {
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
- PT_BESTFIT, PT_NOBESTFIT, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
+ PT_BESTFIT, PT_NOBESTFIT, PT_NORESIZE, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
  PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP, PT_ENCODING
 };
@@ -1519,6 +1641,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"interlace",PT_INTERLACE,0},
 		{"bestfit",PT_BESTFIT,0},
 		{"nobestfit",PT_NOBESTFIT,0},
+		{"noresize",PT_NORESIZE,0},
 		{"grayscale",PT_GRAYSCALE,0},
 		{"condgrayscale",PT_CONDGRAYSCALE,0},
 		{"nogamma",PT_NOGAMMA,0},
@@ -1562,6 +1685,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_NOBESTFIT:
 		p->bestfit=0;
+		break;
+	case PT_NORESIZE:
+		p->noresize_flag=1;
 		break;
 	case PT_GRAYSCALE:
 		p->grayscale=1;
@@ -1659,10 +1785,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 
 	switch(ps->param_type) {
 	case PT_WIDTH:
-		iwcmd_read_w_or_h(p,v,&p->new_width,&p->rel_width_flag,&p->rel_width);
+		iwcmd_read_w_or_h(p,v,&p->dst_width_req,&p->rel_width_flag,&p->rel_width);
 		break;
 	case PT_HEIGHT:
-		iwcmd_read_w_or_h(p,v,&p->new_height,&p->rel_height_flag,&p->rel_height);
+		iwcmd_read_w_or_h(p,v,&p->dst_height_req,&p->rel_height_flag,&p->rel_height);
 		break;
 	case PT_DEPTH:
 		ret=iwcmd_read_depth(p,v);
@@ -2007,12 +2133,12 @@ static int iwcmd_main(int argc, char* argv[])
 	ps.showhelp=0;
 
 	memset(&p,0,sizeof(struct params_struct));
-	p.new_width = -1;
-	p.new_height = -1;
+	p.dst_width_req = -1;
+	p.dst_height_req = -1;
 	p.depth = -1;
 	p.edge_policy_x = -1;
 	p.edge_policy_y = -1;
-	p.density_policy = -1;
+	p.density_policy = IWCMD_DENSITY_POLICY_AUTO;
 	p.bkgd_check_size = 16;
 	p.bestfit = 0;
 	p.offset_r_h=0.0; p.offset_g_h=0.0; p.offset_b_h=0.0;
