@@ -203,6 +203,13 @@ $IW srcimg/g8d.png actual/dens-none.png $CMPR -density none
 $IW srcimg/g8d.png actual/dens-keep.png $CMPR -width 11 -density keep -filter mix
 $IW srcimg/g8d.png actual/dens-adjust.png $CMPR -width 11 -density adjust -filter mix
 
+$IW srcimg/rgb8x2.png actual/dens-4ns.png -h 27
+$IW srcimg/rgb8x2.png actual/dens-5ns.png -h x1.1 -density adjust
+
+$IW srcimg/25x20.png actual/dens-ix.png -w 34 -density adjust
+$IW srcimg/25x20.png actual/dens-iy.png -h 27 -density adjust
+$IW srcimg/25x20.png actual/dens-ixy.png -w 34 -h 27 -density adjust
+
 # Image with just 2 pixels can't have more than 2 colors. Test to see
 # if we optimize to a 1bpp palette (etc.).
 $IW srcimg/rgb8a.png actual/opt-02col.png $DCMPR -width 2 -height 1 -filter mix
