@@ -1,4 +1,7 @@
 Unreleased changes
+ - None
+
+Version 0.9.9 - 29 Mar 2012
  - Various changes to how non-square pixels are handled. Added -noresize
    option.
  - Support for writing 16-bit BMP images.

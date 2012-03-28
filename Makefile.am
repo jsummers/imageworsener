@@ -14,7 +14,7 @@ libimageworsener_la_SOURCES=src/imagew-main.c \
  src/imagew-webp.c \
  src/imagew-util.c
 libimageworsener_la_LIBADD=-lm
-libimageworsener_la_LDFLAGS=-release 0.9.8
+libimageworsener_la_LDFLAGS=-release 0.9.9
 bin_PROGRAMS=imagew
 imagew_SOURCES=src/imagew-cmd.c
 imagew_LDADD=libimageworsener.la
