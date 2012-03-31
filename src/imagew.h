@@ -176,7 +176,6 @@ extern "C" {
 #define IW_IMGTYPE_RGB     0x0010
 #define IW_IMGTYPE_RGBA    0x0110
 #define IW_IMGTYPE_PALETTE 0x1000  // Used only during optimization / output.
-#define IW_IMGTYPE_GRAY1   0x2000  // Used only during optimization / output.
 
 #define IW_IMGTYPE_IS_GRAY(x)   (((x)&0x001)?1:0)
 #define IW_IMGTYPE_HAS_ALPHA(x) (((x)&0x100)?1:0)
@@ -312,6 +311,7 @@ struct iw_image {
 	unsigned int colorkey_r, colorkey_g, colorkey_b;
 	int reduced_maxcolors;
 	unsigned int maxcolor_r, maxcolor_g, maxcolor_b;
+	unsigned int maxcolor_a, maxcolor_k;
 };
 
 struct iw_rgba8color {
@@ -685,6 +685,8 @@ IW_EXPORT(int) iw_get_i32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui16be(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32be(const iw_byte *b);
+
+IW_EXPORT(int) iw_max_color_to_bitdepth(unsigned int mc);
 
 struct iw_zlib_context;
 

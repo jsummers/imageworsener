@@ -416,6 +416,16 @@ IW_IMPL(unsigned int) iw_get_ui32be(const iw_byte *b)
 	return (b[0]<<24) | (b[1]<<16) | (b[2]<<8) | b[3];
 }
 
+IW_IMPL(int) iw_max_color_to_bitdepth(unsigned int mc)
+{
+	unsigned int bd;
+
+	for(bd=1;bd<=15;bd++) {
+		if(mc < (1U<<bd)) return bd;
+	}
+	return 16;
+}
+
 IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 {
 	char *s;
@@ -494,7 +504,7 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 		p = IW_PROFILE_TRANSPARENCY | IW_PROFILE_GRAYSCALE | IW_PROFILE_PALETTETRNS |
 		    IW_PROFILE_GRAY1 | IW_PROFILE_GRAY2 | IW_PROFILE_GRAY4 | IW_PROFILE_16BPS |
 		    IW_PROFILE_BINARYTRNS | IW_PROFILE_PAL1 | IW_PROFILE_PAL2 | IW_PROFILE_PAL4 |
-		    IW_PROFILE_PAL8;
+		    IW_PROFILE_PAL8 | IW_PROFILE_REDUCEDBITDEPTHS;
 		break;
 
 	case IW_FORMAT_BMP:

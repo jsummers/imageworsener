@@ -78,6 +78,7 @@ struct params_struct {
 	struct resize_blur resize_blur_y;
 	int bestfit;
 	int depth;
+	int depth_r, depth_g, depth_b, depth_k, depth_a;
 	int compression;
 	int grayscale, condgrayscale;
 	double offset_r_h, offset_g_h, offset_b_h;
@@ -622,6 +623,7 @@ static int run(struct params_struct *p)
 	struct iw_init_params init_params;
 	const char *s;
 	unsigned int profile;
+	int maxdepth;
 
 	memset(&init_params,0,sizeof(struct iw_init_params));
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
@@ -718,22 +720,23 @@ static int run(struct params_struct *p)
 	}
 	iw_set_output_profile(ctx, profile);
 
-	if(p->depth != -1) {
-		if(p->depth == -565) {
-			iw_set_output_depth(ctx,8);
-			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_RED  ,31);
-			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GREEN,63);
-			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_BLUE ,31);
-		}
-		else if(p->depth == -555) {
-			iw_set_output_depth(ctx,8);
-			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_RED  ,31);
-			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GREEN,31);
-			iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_BLUE ,31);
-		}
-		else {
-			iw_set_output_depth(ctx,p->depth);
-		}
+	// Fixup p->depth, if needed.
+	maxdepth = p->depth_r;
+	if(p->depth_g>maxdepth) maxdepth=p->depth_g;
+	if(p->depth_b>maxdepth) maxdepth=p->depth_b;
+	if(p->depth_k>maxdepth) maxdepth=p->depth_k;
+	if(p->depth_a>maxdepth) maxdepth=p->depth_a;
+	if(p->depth < maxdepth) {
+		p->depth = maxdepth;
+	}
+
+	if(p->depth) {
+		if(p->depth_r) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_RED  ,(1<<p->depth_r)-1);
+		if(p->depth_g) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GREEN,(1<<p->depth_g)-1);
+		if(p->depth_b) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_BLUE ,(1<<p->depth_b)-1);
+		if(p->depth_k) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GRAY ,(1<<p->depth_k)-1);
+		if(p->depth_a) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_ALPHA,(1<<p->depth_a)-1);
+		iw_set_output_depth(ctx,p->depth);
 	}
 
 	if(p->cs_in_set) {
@@ -1548,7 +1551,7 @@ static void do_printversion(struct params_struct *p)
 }
 
 enum iwcmd_param_types {
- PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_DEPTH, PT_INPUTCS, PT_CS,
+ PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS,
  PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
  PT_BLUR_FACTOR, PT_BLUR_FACTOR_X, PT_BLUR_FACTOR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
@@ -1586,6 +1589,8 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"h",PT_HEIGHT,1},
 		{"height",PT_HEIGHT,1},
 		{"depth",PT_DEPTH,1},
+		{"depthgray",PT_DEPTHGRAY,1},
+		{"depthalpha",PT_DEPTHALPHA,1},
 		{"inputcs",PT_INPUTCS,1},
 		{"cs",PT_CS,1},
 		{"filter",PT_RESIZETYPE,1},
@@ -1766,13 +1771,7 @@ static void iwcmd_read_w_or_h(struct params_struct *p, const char *v,
 static int iwcmd_read_depth(struct params_struct *p, const char *v)
 {
 	if(strchr(v,',')) {
-		// This is obviously a hack, but it's good enough for now.
-		if(!strcmp(v,"5,6,5")) p->depth = -565;
-		else if(!strcmp(v,"5,5,5")) p->depth = -555;
-		else {
-			iwcmd_error(p,"Unsupported depth\n");
-			return -1;
-		}
+		iwcmd_parse_int_4(v,&p->depth_r,&p->depth_g,&p->depth_b,&p->depth_a);
 	}
 	else {
 		p->depth=iwcmd_parse_int(v);
@@ -1794,6 +1793,12 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_DEPTH:
 		ret=iwcmd_read_depth(p,v);
 		if(ret<0) return 0;
+		break;
+	case PT_DEPTHGRAY:
+		p->depth_k = iwcmd_parse_int(v);
+		break;
+	case PT_DEPTHALPHA:
+		p->depth_a = iwcmd_parse_int(v);
 		break;
 	case PT_INPUTCS:
 		ret=iwcmd_string_to_colorspace(p,&p->cs_in,v);
@@ -2136,7 +2141,6 @@ static int iwcmd_main(int argc, char* argv[])
 	memset(&p,0,sizeof(struct params_struct));
 	p.dst_width_req = -1;
 	p.dst_height_req = -1;
-	p.depth = -1;
 	p.edge_policy_x = -1;
 	p.edge_policy_y = -1;
 	p.density_policy = IWCMD_DENSITY_POLICY_AUTO;

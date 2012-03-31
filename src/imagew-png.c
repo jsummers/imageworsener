@@ -550,7 +550,6 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	case IW_IMGTYPE_GRAYA: lpng_color_type=PNG_COLOR_TYPE_GRAY_ALPHA; break;
 	case IW_IMGTYPE_GRAY:  lpng_color_type=PNG_COLOR_TYPE_GRAY;       break;
 	case IW_IMGTYPE_PALETTE: lpng_color_type=PNG_COLOR_TYPE_PALETTE;  break;
-	case IW_IMGTYPE_GRAY1: lpng_color_type=PNG_COLOR_TYPE_GRAY;       break;
 	}
 
 	if(lpng_color_type == -1) {
@@ -570,6 +569,13 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		palette_is_gray = iw_get_value(ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE);
 		if(palette_is_gray) {
 			lpng_color_type = PNG_COLOR_TYPE_GRAY;
+		}
+	}
+
+	if(img.reduced_maxcolors) {
+		if(lpng_bit_depth<8 || lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
+			iw_set_error(ctx,"Internal: Can\xe2\x80\x99t support reduced bit depth");
+			goto done;
 		}
 	}
 
@@ -604,6 +610,17 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	}
 
 	iwpng_set_binary_trns(&pngwctx, lpng_color_type);
+
+	if(img.reduced_maxcolors) {
+		png_color_8 sbit;
+		sbit.red   = iw_max_color_to_bitdepth(img.maxcolor_r);
+		sbit.green = iw_max_color_to_bitdepth(img.maxcolor_g);
+		sbit.blue  = iw_max_color_to_bitdepth(img.maxcolor_b);
+		sbit.gray  = iw_max_color_to_bitdepth(img.maxcolor_k);
+		sbit.alpha = iw_max_color_to_bitdepth(img.maxcolor_a);
+		png_set_sBIT(png_ptr,info_ptr,&sbit);
+		png_set_shift(png_ptr,&sbit);
+	}
 
 	png_write_info(png_ptr, info_ptr);
 

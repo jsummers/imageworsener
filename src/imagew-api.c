@@ -302,11 +302,21 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->colorkey_g = ctx->optctx.colorkey_g;
 	img->colorkey_b = ctx->optctx.colorkey_b;
 	if(ctx->reduced_output_maxcolor_flag) {
-		// We're assuming that img->imgtype==IW_IMGTYPE_RGB
 		img->reduced_maxcolors = 1;
-		img->maxcolor_r = ctx->img2_ci[0].maxcolorcode_int;
-		img->maxcolor_g = ctx->img2_ci[1].maxcolorcode_int;
-		img->maxcolor_b = ctx->img2_ci[2].maxcolorcode_int;
+		if(IW_IMGTYPE_IS_GRAY(img->imgtype)) {
+			img->maxcolor_k = ctx->img2_ci[0].maxcolorcode_int;
+			if(IW_IMGTYPE_HAS_ALPHA(img->imgtype)) {
+				img->maxcolor_a = ctx->img2_ci[1].maxcolorcode_int;
+			}
+		}
+		else {
+			img->maxcolor_r = ctx->img2_ci[0].maxcolorcode_int;
+			img->maxcolor_g = ctx->img2_ci[1].maxcolorcode_int;
+			img->maxcolor_b = ctx->img2_ci[2].maxcolorcode_int;
+			if(IW_IMGTYPE_HAS_ALPHA(img->imgtype)) {
+				img->maxcolor_a = ctx->img2_ci[3].maxcolorcode_int;
+			}
+		}
 	}
 }
 

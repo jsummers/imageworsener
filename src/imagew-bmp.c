@@ -846,18 +846,6 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 	iwbmp_write(wctx,header,40);
 }
 
-static int maxcc_to_bitdepth(unsigned int mcc)
-{
-	if(mcc<=1) return 1;
-	if(mcc<=3) return 2;
-	if(mcc<=7) return 3;
-	if(mcc<=15) return 4;
-	if(mcc<=31) return 5;
-	if(mcc<=63) return 6;
-	if(mcc<=127) return 7;
-	return 8;
-}
-
 // Write the BITFIELDS segment, and set the wctx->bf_amt_to_shift[] values.
 static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 {
@@ -867,9 +855,9 @@ static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 
 	if(wctx->bitcount != 16) return 0;
 
-	bits_r = maxcc_to_bitdepth(wctx->img->maxcolor_r);
-	bits_g = maxcc_to_bitdepth(wctx->img->maxcolor_g);
-	bits_b = maxcc_to_bitdepth(wctx->img->maxcolor_b);
+	bits_r = iw_max_color_to_bitdepth(wctx->img->maxcolor_r);
+	bits_g = iw_max_color_to_bitdepth(wctx->img->maxcolor_g);
+	bits_b = iw_max_color_to_bitdepth(wctx->img->maxcolor_b);
 
 	if(bits_r + bits_g + bits_b > 16) {
 		iw_set_error(wctx->ctx,"Cannot write a BMP image in this color format");

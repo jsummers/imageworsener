@@ -1,5 +1,7 @@
 Unreleased changes
- - None
+ - Support for custom bit depths (sBIT chunks) when writing PNG images. Added
+   -depthalpha and -depthgray options.
+ - Support for custom bit depths when writing 16-bit BMP images.
 
 Version 0.9.9 - 29 Mar 2012
  - Various changes to how non-square pixels are handled. Added -noresize

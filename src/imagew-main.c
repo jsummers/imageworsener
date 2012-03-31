@@ -1892,7 +1892,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		}
 
 		// Check for special "reduced" colorcodes.
-		if((ctx->output_profile&IW_PROFILE_REDUCEDBITDEPTHS) && ctx->img2.imgtype==IW_IMGTYPE_RGB) {
+		if((ctx->output_profile&IW_PROFILE_REDUCEDBITDEPTHS)) {
 			for(i=0;i<ctx->img2_numchannels;i++) {
 				int mccr;
 				mccr = ctx->output_maxcolorcode_req[ctx->img2_ci[i].channeltype];

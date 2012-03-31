@@ -179,14 +179,21 @@ Options:
      miff: MIFF (experimental; limited support)
 
  -depth <n>
+ -depth <r>,<g>,<b>[,<a>]  (-depthgray, -depthalpha)
    The general number of bits of precision used per color channel in the
    output image. Valid values for <n>:
     "8" is the default for most formats.
     "16" is supported for PNG and TIFF formats.
     "32" and "64" are used with MIFF format (floating point).
-    "5,5,5" and "5,6,5" are special depths that can be used with BMP files, to
-      write images with 16 bits/pixel. If you use these depths, -grayscale is
-      not supported, and we suggest using -dither.
+   Other depths are supported in some special cases. Use with caution -- this
+    may not do what you expect, and may disable optimizations. Use -cc instead
+    if possible.
+   With BMP format, requesting an unusual depth will cause a 16 bits/pixel
+    image to be written, so the sum total can be no more than 16. Depths
+    "5,6,5" and "5,5,5" are the most common and most portable.
+   PNG format supports arbitrary depths (from 1 to 16), using "sBIT" chunks,
+    but these are ignored by most image viewers.
+   If you use a depth less than 8, consider using -dither.
 
    Within the overall depth, you can reduce the number of colors that will
    actually be used, by using the "-cc" options.

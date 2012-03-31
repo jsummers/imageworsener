@@ -524,8 +524,6 @@ Features I'm considering adding:
 - A runtime option to use 32-bit floating point for intermediate image data.
   (And maybe remove the compile-time IWCONFIG_SAMPLE_FLOAT option.)
 
-- Support writing PNG images with arbitrary bitdepths (using sBIT chunks).
-
 - Faster creation of palette images. (Using a hash table?)
 
 - Better use of colorspace conversion lookup tables. E.g. allow them to be
