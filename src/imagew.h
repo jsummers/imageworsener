@@ -454,7 +454,7 @@ IW_EXPORT(void) iw_set_output_depth(struct iw_context *ctx, int bps);
 
 // Set the number of bits for a specific channel. For example, for 6 bits,
 // set n=63. This only works if the output format can support it.
-IW_EXPORT(void) iw_set_output_maxcolorcode(struct iw_context *ctx, int channeltype, int n);
+IW_EXPORT(void) iw_set_output_max_color_code(struct iw_context *ctx, int channeltype, int n);
 
 IW_EXPORT(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int family, int subtype);
 

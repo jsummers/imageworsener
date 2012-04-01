@@ -354,7 +354,7 @@ IW_IMPL(void) iw_set_output_depth(struct iw_context *ctx, int bps)
 	ctx->output_depth_req = bps;
 }
 
-IW_IMPL(void) iw_set_output_maxcolorcode(struct iw_context *ctx, int channeltype, int n)
+IW_IMPL(void) iw_set_output_max_color_code(struct iw_context *ctx, int channeltype, int n)
 {
 	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
 		ctx->output_maxcolorcode_req[channeltype] = n;

@@ -731,11 +731,11 @@ static int run(struct params_struct *p)
 	}
 
 	if(p->depth) {
-		if(p->depth_r) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_RED  ,(1<<p->depth_r)-1);
-		if(p->depth_g) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GREEN,(1<<p->depth_g)-1);
-		if(p->depth_b) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_BLUE ,(1<<p->depth_b)-1);
-		if(p->depth_k) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_GRAY ,(1<<p->depth_k)-1);
-		if(p->depth_a) iw_set_output_maxcolorcode(ctx,IW_CHANNELTYPE_ALPHA,(1<<p->depth_a)-1);
+		if(p->depth_r) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_RED  ,(1<<p->depth_r)-1);
+		if(p->depth_g) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_GREEN,(1<<p->depth_g)-1);
+		if(p->depth_b) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_BLUE ,(1<<p->depth_b)-1);
+		if(p->depth_k) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_GRAY ,(1<<p->depth_k)-1);
+		if(p->depth_a) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_ALPHA,(1<<p->depth_a)-1);
 		iw_set_output_depth(ctx,p->depth);
 	}
 
