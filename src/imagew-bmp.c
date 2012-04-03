@@ -730,7 +730,7 @@ static void iwbmp_write(struct iwbmpwritecontext *wctx, const void *buf, size_t 
 	wctx->total_written+=n;
 }
 
-static void iwbmp_convert_row1(const iw_byte *srcrow, iw_byte *dstrow, int width)
+static void bmpw_convert_row_1(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 	int m;
@@ -744,7 +744,7 @@ static void iwbmp_convert_row1(const iw_byte *srcrow, iw_byte *dstrow, int width
 	}
 }
 
-static void iwbmp_convert_row4(const iw_byte *srcrow, iw_byte *dstrow, int width)
+static void bmpw_convert_row_4(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 
@@ -756,7 +756,7 @@ static void iwbmp_convert_row4(const iw_byte *srcrow, iw_byte *dstrow, int width
 	}
 }
 
-static void iwbmp_convert_row8(const iw_byte *srcrow, iw_byte *dstrow, int width)
+static void bmpw_convert_row_8(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	memcpy(dstrow,srcrow,width);
 }
@@ -776,7 +776,7 @@ static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *s
 	}
 }
 
-static void iwbmp_convert_row24(const iw_byte *srcrow, iw_byte *dstrow, int width)
+static void bmpw_convert_row_24(const iw_byte *srcrow, iw_byte *dstrow, int width)
 {
 	int i;
 
@@ -1538,11 +1538,11 @@ static void iwbmp_write_pixels_uncompressed(struct iwbmpwritecontext *wctx,
 	for(j=img->height-1;j>=0;j--) {
 		srcrow = &img->pixels[j*img->bpr];
 		switch(wctx->bitcount) {
-		case 24: iwbmp_convert_row24(srcrow,dstrow,img->width); break;
+		case 24: bmpw_convert_row_24(srcrow,dstrow,img->width); break;
 		case 16: bmpw_convert_row_16(wctx,srcrow,dstrow,img->width); break;
-		case 8: iwbmp_convert_row8(srcrow,dstrow,img->width); break;
-		case 4: iwbmp_convert_row4(srcrow,dstrow,img->width); break;
-		case 1: iwbmp_convert_row1(srcrow,dstrow,img->width); break;
+		case 8: bmpw_convert_row_8(srcrow,dstrow,img->width); break;
+		case 4: bmpw_convert_row_4(srcrow,dstrow,img->width); break;
+		case 1: bmpw_convert_row_1(srcrow,dstrow,img->width); break;
 		}
 		iwbmp_write(wctx,dstrow,wctx->unc_dst_bpr);
 	}
