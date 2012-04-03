@@ -310,7 +310,7 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 	}
 }
 
- static void iw_resize_row_std(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
+static void iw_resize_row_std(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	int i;
 	struct iw_weight_struct *w;

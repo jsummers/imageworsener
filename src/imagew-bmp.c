@@ -851,7 +851,7 @@ static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 {
 	iw_byte buf[12];
 	iw_uint32 bf_r, bf_g, bf_b;
-	int bits_r, bits_g, bits_b; 
+	int bits_r, bits_g, bits_b;
 
 	if(wctx->bitcount != 16) return 0;
 
