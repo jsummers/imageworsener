@@ -131,6 +131,10 @@ Synopsis
 Options may appear anywhere on the command line, even after the file names.
 The order of the options usually does not matter.
 
+<input-file> and <output-file> can be prefixed with a "scheme" and a colon, so
+that resources other than regular files can be supported. If your filename may
+contain a colon, prefix it with "file:".
+
 Numbers on the command line may be specified as rational numbers, using a
 slash. For example, instead of "-w x0.666666666", you can use "-w x2/3".
 

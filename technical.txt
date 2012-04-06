@@ -529,8 +529,7 @@ Features I'm considering adding:
 - Better use of colorspace conversion lookup tables. E.g. allow them to be
   used with 16-bit BMP images.
 
-- Support reading and writing images from/to the Windows clipboard. (Pretty
-  easy, but I'm not sure what the command line should look like.)
+- Support reading and writing images from/to the Windows clipboard.
 
 - More configurable options when writing WebP files.
 
@@ -542,11 +541,15 @@ Features I'm considering adding:
 
 - Support writing deflate-compressed TIFF images.
 
-- Hilbert curve dithering.
+- Hilbert curve dithering. (Will require significant changes.)
+
+- Support for post-processing the image with an "unsharp" filter. (Will require
+  significant changes.)
 
 - Support for reading ICC color profiles.
 
-- Support for writing an image with an arbitrary ICC color profile.
+- Support for writing an image with an arbitrary ICC color profile. (Will
+  require significant changes.)
 
 Contributing
 ------------

@@ -60,9 +60,17 @@ struct resize_blur {
 	int interpolate; // If set, muliply 'blur' by the scaling factor (if downscaling)
 };
 
+struct uri_struct {
+#define IWCMD_SCHEME_FILE       1
+#define IWCMD_SCHEME_CLIPBOARD  2
+	int scheme;
+	const char *uri;
+	const char *filename; // Points to a position in id. Meaningful if scheme==FILE.
+};
+
 struct params_struct {
-	const char *infn;
-	const char *outfn;
+	struct uri_struct input_uri;
+	struct uri_struct output_uri;
 	int nowarn;
 	int noinfo;
 	int src_width, src_height;
@@ -630,7 +638,7 @@ static int run(struct params_struct *p)
 	memset(&writedescr,0,sizeof(struct iw_iodescr));
 
 	if(!p->noinfo) {
-		iwcmd_message(p,"%s \xe2\x86\x92 %s\n",p->infn,p->outfn);
+		iwcmd_message(p,"%s \xe2\x86\x92 %s\n",p->input_uri.filename,p->output_uri.filename);
 	}
 
 	init_params.api_version = IW_VERSION_INT;
@@ -649,7 +657,7 @@ static int run(struct params_struct *p)
 	// Decide on the output format as early as possible, so we can give up
 	// quickly if it's not supported.
 	if(p->outfmt==IW_FORMAT_UNKNOWN)
-		p->outfmt=iw_detect_fmt_from_filename(p->outfn);
+		p->outfmt=iw_detect_fmt_from_filename(p->output_uri.filename);
 
 	if(p->outfmt==IW_FORMAT_UNKNOWN) {
 		iw_set_error(ctx,"Unknown output format; use -outfmt.");
@@ -687,7 +695,7 @@ static int run(struct params_struct *p)
 
 	readdescr.read_fn = my_readfn;
 	readdescr.getfilesize_fn = my_getfilesizefn;
-	readdescr.fp = (void*)iwcmd_fopen(p->infn,"rb");
+	readdescr.fp = (void*)iwcmd_fopen(p->input_uri.filename,"rb");
 	if(!readdescr.fp) {
 		iw_set_errorf(ctx,"Failed to open for reading (error code=%d)",(int)errno);
 		goto done;
@@ -893,7 +901,7 @@ static int run(struct params_struct *p)
 
 	writedescr.write_fn = my_writefn;
 	writedescr.seek_fn = my_seekfn;
-	writedescr.fp = (void*)iwcmd_fopen(p->outfn,"wb");
+	writedescr.fp = (void*)iwcmd_fopen(p->output_uri.filename,"wb");
 	if(!writedescr.fp) {
 		iw_set_errorf(ctx,"Failed to open for writing (error code=%d)",(int)errno);
 		goto done;
@@ -2018,10 +2026,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		// This is presumably the input or output filename.
 
 		if(ps->untagged_param_count==0) {
-			p->infn = v;
+			p->input_uri.uri = v;
 		}
 		else if(ps->untagged_param_count==1) {
-			p->outfn = v;
+			p->output_uri.uri = v;
 		}
 		ps->untagged_param_count++;
 		break;
@@ -2124,6 +2132,47 @@ static void handle_encoding(struct params_struct *p, int argc, char* argv[])
 #endif
 }
 
+// Our "schemes" consist of 1-32 lowercase letters, digits, and {+,-,.}.
+static int uri_has_scheme(const char *s)
+{
+	int i;
+	for(i=0;s[i];i++) {
+		if(s[i]==':' && i>0) return 1;
+		if(i>=32) return 0;
+		if( (s[i]>='a' && s[i]<='z') || (s[i]>='0' && s[i]<='9') ||
+			s[i]=='+' || s[i]=='-' || s[i]=='.')
+		{
+			;
+		}
+		else {
+			return 0;
+		}
+	}
+	return 0;
+}
+
+// Sets the other fields in u, based on u->uri.
+static int parse_uri(struct params_struct *p, struct uri_struct *u)
+{
+	if(uri_has_scheme(u->uri)) {
+		if(!strncmp("file:",u->uri,5)) {
+			u->scheme = IWCMD_SCHEME_FILE;
+			u->filename = &u->uri[5];
+		}
+		else {
+			iwcmd_error(p,"Don\xe2\x80\x99t understand \xe2\x80\x9c%s\xe2\x80\x9d; try \xe2\x80\x9c"
+				"file:%s\xe2\x80\x9d.\n",u->uri,u->uri);
+			return 0;
+		}
+	}
+	else {
+		// No scheme. Default to "file".
+		u->scheme = IWCMD_SCHEME_FILE;
+		u->filename = u->uri;
+	}
+	return 1;
+}
+
 static int iwcmd_main(int argc, char* argv[])
 {
 	struct params_struct p;
@@ -2197,6 +2246,13 @@ static int iwcmd_main(int argc, char* argv[])
 
 	if(ps.untagged_param_count!=2 || ps.param_type!=PT_NONE) {
 		usage_message(&p);
+		return 1;
+	}
+
+	if(!parse_uri(&p,&p.input_uri)) {
+		return 1;
+	}
+	if(!parse_uri(&p,&p.output_uri)) {
 		return 1;
 	}
 
