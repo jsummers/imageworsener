@@ -112,6 +112,10 @@ extern "C" {
 #define IW_VAL_TRANSLATE_X       42
 #define IW_VAL_TRANSLATE_Y       43
 
+// 1 = the BMP file being read lacks a FILEHEADER.
+// (Files are always *written* with a fileheader.)
+#define IW_VAL_BMP_NO_FILEHEADER 44
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1

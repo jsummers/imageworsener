@@ -30,6 +30,7 @@ struct iwbmpreadcontext {
 	int bmpversion;
 	int width, height;
 	int topdown;
+	int has_fileheader;
 	unsigned int bitcount; // bits per pixel
 	unsigned int compression; // IWBMP_BI_*
 	unsigned int palette_entries;
@@ -682,7 +683,10 @@ IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	rctx.img = &img;
 	rctx.iodescr = iodescr;
 
-	if(!iwbmp_read_file_header(&rctx)) goto done;
+	rctx.has_fileheader = !iw_get_value(ctx,IW_VAL_BMP_NO_FILEHEADER);
+	if(rctx.has_fileheader) {
+		if(!iwbmp_read_file_header(&rctx)) goto done;
+	}
 	if(!iwbmp_read_info_header(&rctx)) goto done;
 
 	iwbmp_set_default_bitfields(&rctx);

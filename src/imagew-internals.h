@@ -249,6 +249,7 @@ struct iw_context {
 	int pngcmprlevel;
 	int deflatecmprlevel;
 	int interlaced;
+	int bmp_no_fileheader;
 	double webp_quality;
 
 	// Color correction tables, to improve performance.

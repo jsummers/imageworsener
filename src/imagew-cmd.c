@@ -144,6 +144,13 @@ struct params_struct {
 	struct iw_csdescr cs_out;
 	int output_encoding;
 	int output_encoding_setmode;
+#ifdef IW_WINDOWS
+	int clipboard_is_open;
+	HANDLE clipboard_data_handle;
+	SIZE_T clipboard_data_size;
+	SIZE_T clipboard_data_pos;
+	iw_byte *clipboard_data;
+#endif
 };
 
 #ifdef _UNICODE
@@ -438,6 +445,76 @@ static int my_writefn(struct iw_context *ctx, struct iw_iodescr *iodescr, const 
 	return 1;
 }
 
+////////////////// clipboard ////////////////////
+#ifdef IW_WINDOWS
+
+static void iwcmd_close_clipboard(struct params_struct *p, struct iw_context *ctx)
+{
+	if(p->clipboard_is_open) {
+		if(p->clipboard_data) {
+			GlobalUnlock(p->clipboard_data_handle);
+			p->clipboard_data = NULL;
+		}
+		p->clipboard_data_handle = NULL;
+		CloseClipboard();
+		p->clipboard_is_open=0;
+	}
+}
+
+static int iwcmd_open_clipboard_for_read(struct params_struct *p, struct iw_context *ctx)
+{
+	BOOL b;
+	HANDLE hClip = NULL;
+
+	b=OpenClipboard(NULL);
+	if(!b) {
+		iw_set_error(ctx,"Failed to open the clipboard");
+		return 0;
+	}
+
+	p->clipboard_is_open = 1;
+
+	p->clipboard_data_handle = GetClipboardData(CF_DIB);
+	if(!p->clipboard_data_handle) {
+		iw_set_error(ctx,"Can\xe2\x80\x99t find an image on the clipboard");
+		iwcmd_close_clipboard(p,ctx);
+		return 0;
+	}
+
+	p->clipboard_data_size = GlobalSize(p->clipboard_data_handle);
+	p->clipboard_data = (iw_byte*)GlobalLock(p->clipboard_data_handle);
+	p->clipboard_data_pos = 0;
+	return 1;
+}
+
+static int my_clipboard_readfn(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes,
+   size_t *pbytesread)
+{
+	struct params_struct *p;
+	size_t nbytes_to_return;
+
+	p = (struct params_struct *)iw_get_userdata(ctx);
+	if(!p->clipboard_data) return 0;
+	nbytes_to_return = nbytes;
+	if(nbytes_to_return > p->clipboard_data_size-p->clipboard_data_pos)
+		nbytes_to_return = p->clipboard_data_size-p->clipboard_data_pos;
+	memcpy(buf,&p->clipboard_data[p->clipboard_data_pos],nbytes_to_return);
+	*pbytesread = nbytes_to_return;
+	p->clipboard_data_pos += nbytes_to_return;
+	return 1;
+}
+
+static int my_clipboard_getfilesizefn(struct iw_context *ctx, struct iw_iodescr *iodescr, iw_int64 *pfilesize)
+{
+	struct params_struct *p;
+	p = (struct params_struct *)iw_get_userdata(ctx);
+	*pfilesize = (iw_int64)p->clipboard_data_size;
+	return 1;
+}
+
+#endif
+
+/////////////////////////////////////////////////
 static int iwcmd_calc_rel_size(double rel, int d)
 {
 	int n;
@@ -693,26 +770,57 @@ static int run(struct params_struct *p)
 	if(p->page_to_read>0) iw_set_value(ctx,IW_VAL_PAGE_TO_READ,p->page_to_read);
 	if(p->include_screen>=0) iw_set_value(ctx,IW_VAL_INCLUDE_SCREEN,p->include_screen);
 
-	readdescr.read_fn = my_readfn;
-	readdescr.getfilesize_fn = my_getfilesizefn;
-	readdescr.fp = (void*)iwcmd_fopen(p->input_uri.filename,"rb");
-	if(!readdescr.fp) {
-		iw_set_errorf(ctx,"Failed to open for reading (error code=%d)",(int)errno);
+	if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
+		readdescr.read_fn = my_readfn;
+		readdescr.getfilesize_fn = my_getfilesizefn;
+		readdescr.fp = (void*)iwcmd_fopen(p->input_uri.filename,"rb");
+		if(!readdescr.fp) {
+			iw_set_errorf(ctx,"Failed to open for reading (error code=%d)",(int)errno);
+			goto done;
+		}
+	}
+#ifdef IW_WINDOWS
+	else if(p->input_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
+		if(!iwcmd_open_clipboard_for_read(p,ctx)) goto done;
+		readdescr.read_fn = my_clipboard_readfn;
+		readdescr.getfilesize_fn = my_clipboard_getfilesizefn;
+		readdescr.fp = NULL;
+	}
+#endif
+	else {
+		iw_set_error(ctx,"Unsupported input scheme");
 		goto done;
 	}
 
 	// Decide on the input format.
-	if(p->infmt==IW_FORMAT_UNKNOWN)
-		p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
+	if(p->infmt==IW_FORMAT_UNKNOWN) {
+		if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
+			p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
+		}
+		else if(p->input_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
+			p->infmt=IW_FORMAT_BMP;
+		}
+	}
 
 	if(p->infmt==IW_FORMAT_UNKNOWN) {
 		iw_set_error(ctx,"Unknown input file format.");
 		goto done;
 	}
 
+	if(p->input_uri.scheme==IWCMD_SCHEME_CLIPBOARD && p->infmt==IW_FORMAT_BMP) {
+		iw_set_value(ctx,IW_VAL_BMP_NO_FILEHEADER,1);
+	}
+
 	if(!iw_read_file_by_fmt(ctx,&readdescr,p->infmt)) goto done;
 
-	fclose((FILE*)readdescr.fp);
+#ifdef IW_WINDOWS
+	if(p->clipboard_is_open) {
+		iwcmd_close_clipboard(p,ctx);
+	}
+#endif
+	if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
+		fclose((FILE*)readdescr.fp);
+	}
 	readdescr.fp=NULL;
 
 	imgtype_read = iw_get_value(ctx,IW_VAL_INPUT_IMAGE_TYPE);
@@ -931,6 +1039,11 @@ static int run(struct params_struct *p)
 	retval = 1;
 
 done:
+#ifdef IW_WINDOWS
+	if(p->clipboard_is_open) {
+		iwcmd_close_clipboard(p,ctx);
+	}
+#endif
 	if(readdescr.fp) fclose((FILE*)readdescr.fp);
 	if(writedescr.fp) fclose((FILE*)writedescr.fp);
 
@@ -2154,10 +2267,15 @@ static int uri_has_scheme(const char *s)
 // Sets the other fields in u, based on u->uri.
 static int parse_uri(struct params_struct *p, struct uri_struct *u)
 {
+	u->filename = u->uri; // By default, point filename to the start of uri.
+
 	if(uri_has_scheme(u->uri)) {
 		if(!strncmp("file:",u->uri,5)) {
 			u->scheme = IWCMD_SCHEME_FILE;
 			u->filename = &u->uri[5];
+		}
+		else if(!strncmp("clip:",u->uri,5)) {
+			u->scheme = IWCMD_SCHEME_CLIPBOARD;
 		}
 		else {
 			iwcmd_error(p,"Don\xe2\x80\x99t understand \xe2\x80\x9c%s\xe2\x80\x9d; try \xe2\x80\x9c"
@@ -2168,7 +2286,6 @@ static int parse_uri(struct params_struct *p, struct uri_struct *u)
 	else {
 		// No scheme. Default to "file".
 		u->scheme = IWCMD_SCHEME_FILE;
-		u->filename = u->uri;
 	}
 	return 1;
 }
