@@ -1522,7 +1522,7 @@ static int iwbmp_write_pixels_compressed(struct iwbmpwritecontext *wctx,
 	}
 
 	// Back-patch the 'file size' and 'bits size' fields
-	rle_patch_file_size(wctx,rlectx.total_bytes_written);
+	if(!rle_patch_file_size(wctx,rlectx.total_bytes_written)) goto done;
 
 	retval = 1;
 done:

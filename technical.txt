@@ -529,8 +529,6 @@ Features I'm considering adding:
 - Better use of colorspace conversion lookup tables. E.g. allow them to be
   used with 16-bit BMP images.
 
-- Support reading and writing images from/to the Windows clipboard.
-
 - More configurable options when writing WebP files.
 
 - A callback to allow making a progress meter. (May be difficult to integrate

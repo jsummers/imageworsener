@@ -65,7 +65,11 @@ struct uri_struct {
 #define IWCMD_SCHEME_CLIPBOARD  2
 	int scheme;
 	const char *uri;
-	const char *filename; // Points to a position in id. Meaningful if scheme==FILE.
+
+	// May point to a position in ->uri, or to a static string.
+	// If scheme==FILE, this is the actual filename.
+	// Otherwise, this is a display name.
+	const char *filename;
 };
 
 struct params_struct {
@@ -145,17 +149,18 @@ struct params_struct {
 	int output_encoding;
 	int output_encoding_setmode;
 #ifdef IW_WINDOWS
-	int clipboard_is_open;
-	HANDLE clipboard_data_handle;
-	SIZE_T clipboard_data_size;
-	SIZE_T clipboard_data_pos;
-	iw_byte *clipboard_data;
-
-	iw_byte tmp_fileheader[14];
-	HANDLE clipboard_data_handle_w;
-	SIZE_T clipboard_data_size_w;
-	SIZE_T clipboard_data_pos_w;
-	iw_byte *clipboard_data_w;
+	// Used when pasting (reading) from clipboard:
+	int cb_r_clipboard_is_open;
+	HANDLE cb_r_data_handle;
+	iw_byte *cb_r_data;
+	SIZE_T cb_r_data_size;
+	SIZE_T cb_r_data_pos;
+	// Used when copying (writing) to clipboard:
+	iw_byte cb_w_fileheader[14];
+	HANDLE cb_w_data_handle;
+	iw_byte *cb_w_data;
+	SIZE_T cb_w_data_size;
+	SIZE_T cb_w_stream_pos; // Position in the BMP file, including the fileheader
 #endif
 };
 
@@ -451,31 +456,31 @@ static int my_writefn(struct iw_context *ctx, struct iw_iodescr *iodescr, const 
 	return 1;
 }
 
-////////////////// clipboard ////////////////////
+////////////////// Windows clipboard I/O //////////////////
 #ifdef IW_WINDOWS
 
 static void iwcmd_close_clipboard_r(struct params_struct *p, struct iw_context *ctx)
 {
-	if(p->clipboard_is_open) {
-		if(p->clipboard_data) {
-			GlobalUnlock(p->clipboard_data_handle);
-			p->clipboard_data = NULL;
+	if(p->cb_r_clipboard_is_open) {
+		if(p->cb_r_data) {
+			GlobalUnlock(p->cb_r_data_handle);
+			p->cb_r_data = NULL;
 		}
-		p->clipboard_data_handle = NULL;
+		p->cb_r_data_handle = NULL;
 		CloseClipboard();
-		p->clipboard_is_open=0;
+		p->cb_r_clipboard_is_open=0;
 	}
 }
 
 static void iwcmd_close_clipboard_w(struct params_struct *p, struct iw_context *ctx)
 {
-	if(p->clipboard_data_handle_w) {
-		if(p->clipboard_data_w) {
-			GlobalUnlock(p->clipboard_data_handle_w);
-			p->clipboard_data_w = NULL;
+	if(p->cb_w_data_handle) {
+		if(p->cb_w_data) {
+			GlobalUnlock(p->cb_w_data_handle);
+			p->cb_w_data = NULL;
 		}
-		GlobalFree(p->clipboard_data_handle_w);
-		p->clipboard_data_handle_w = NULL;
+		GlobalFree(p->cb_w_data_handle);
+		p->cb_w_data_handle = NULL;
 	}
 }
 
@@ -490,18 +495,18 @@ static int iwcmd_open_clipboard_for_read(struct params_struct *p, struct iw_cont
 		return 0;
 	}
 
-	p->clipboard_is_open = 1;
+	p->cb_r_clipboard_is_open = 1;
 
-	p->clipboard_data_handle = GetClipboardData(CF_DIB);
-	if(!p->clipboard_data_handle) {
+	p->cb_r_data_handle = GetClipboardData(CF_DIB);
+	if(!p->cb_r_data_handle) {
 		iw_set_error(ctx,"Can\xe2\x80\x99t find an image on the clipboard");
 		iwcmd_close_clipboard_r(p,ctx);
 		return 0;
 	}
 
-	p->clipboard_data_size = GlobalSize(p->clipboard_data_handle);
-	p->clipboard_data = (iw_byte*)GlobalLock(p->clipboard_data_handle);
-	p->clipboard_data_pos = 0;
+	p->cb_r_data_size = GlobalSize(p->cb_r_data_handle);
+	p->cb_r_data = (iw_byte*)GlobalLock(p->cb_r_data_handle);
+	p->cb_r_data_pos = 0;
 	return 1;
 }
 
@@ -512,13 +517,13 @@ static int my_clipboard_readfn(struct iw_context *ctx, struct iw_iodescr *iodesc
 	size_t nbytes_to_return;
 
 	p = (struct params_struct *)iw_get_userdata(ctx);
-	if(!p->clipboard_data) return 0;
+	if(!p->cb_r_data) return 0;
 	nbytes_to_return = nbytes;
-	if(nbytes_to_return > p->clipboard_data_size-p->clipboard_data_pos)
-		nbytes_to_return = p->clipboard_data_size-p->clipboard_data_pos;
-	memcpy(buf,&p->clipboard_data[p->clipboard_data_pos],nbytes_to_return);
+	if(nbytes_to_return > p->cb_r_data_size-p->cb_r_data_pos)
+		nbytes_to_return = p->cb_r_data_size-p->cb_r_data_pos;
+	memcpy(buf,&p->cb_r_data[p->cb_r_data_pos],nbytes_to_return);
 	*pbytesread = nbytes_to_return;
-	p->clipboard_data_pos += nbytes_to_return;
+	p->cb_r_data_pos += nbytes_to_return;
 	return 1;
 }
 
@@ -526,7 +531,7 @@ static int my_clipboard_getfilesizefn(struct iw_context *ctx, struct iw_iodescr 
 {
 	struct params_struct *p;
 	p = (struct params_struct *)iw_get_userdata(ctx);
-	*pfilesize = (iw_int64)p->clipboard_data_size;
+	*pfilesize = (iw_int64)p->cb_r_data_size;
 	return 1;
 }
 
@@ -536,49 +541,57 @@ static int my_clipboard_writefn(struct iw_context *ctx, struct iw_iodescr *iodes
 	size_t bytes_consumed = 0;
 	size_t bytes_remaining;
 	iw_uint32 filesize;
+	size_t data_pos;
 
 	p = (struct params_struct *)iw_get_userdata(ctx);
 
 	// Store the first 14 bytes in p->tmp_fileheader
-	if(p->clipboard_data_pos_w < 14) {
-		bytes_consumed = 14 - p->clipboard_data_pos_w;
+	if(p->cb_w_stream_pos < 14) {
+		bytes_consumed = 14 - p->cb_w_stream_pos;
 		if(bytes_consumed > nbytes) bytes_consumed = nbytes;
-		memcpy(&p->tmp_fileheader[p->clipboard_data_pos_w],buf,bytes_consumed);
-		p->clipboard_data_pos_w += bytes_consumed;
+		memcpy(&p->cb_w_fileheader[p->cb_w_stream_pos],buf,bytes_consumed);
+		p->cb_w_stream_pos += bytes_consumed;
 
 		// If we've read the whole fileheader, look at it to figure out the file size
-		if(p->clipboard_data_pos_w >= 14) {
-			filesize = p->tmp_fileheader[2] | (p->tmp_fileheader[3]<<8) |
-				p->tmp_fileheader[4]<<16 | (p->tmp_fileheader[5]<<24);
+		if(p->cb_w_stream_pos >= 14) {
+			filesize = p->cb_w_fileheader[2] | (p->cb_w_fileheader[3]<<8) |
+				p->cb_w_fileheader[4]<<16 | (p->cb_w_fileheader[5]<<24);
 
 			if(filesize<14 || filesize>500000000) { // Sanity check
 				return 0;
 			}
 
 			// Create a memory block to eventually place on the clipboard.
-
-			p->clipboard_data_size_w = filesize-14;
-			p->clipboard_data_handle_w = GlobalAlloc(GMEM_ZEROINIT|GMEM_MOVEABLE,p->clipboard_data_size_w);
-			if(!p->clipboard_data_handle_w) return 0;
-			p->clipboard_data_w = GlobalLock(p->clipboard_data_handle_w);
-			if(!p->clipboard_data_w) return 0;
+			p->cb_w_data_size = filesize-14;
+			p->cb_w_data_handle = GlobalAlloc(GMEM_ZEROINIT|GMEM_MOVEABLE,p->cb_w_data_size);
+			if(!p->cb_w_data_handle) return 0;
+			p->cb_w_data = GlobalLock(p->cb_w_data_handle);
+			if(!p->cb_w_data) return 0;
 		}
 	}
 
 	bytes_remaining = nbytes-bytes_consumed;
-	if(bytes_remaining>0 && p->clipboard_data_pos_w>=14 && p->clipboard_data_w) {
-		memcpy(&p->clipboard_data_w[p->clipboard_data_pos_w-14],buf,bytes_remaining);
-		p->clipboard_data_pos_w += bytes_remaining;
+
+	if(bytes_remaining>0 && p->cb_w_stream_pos>=14 && p->cb_w_data) {
+		data_pos = p->cb_w_stream_pos-14;
+		if(data_pos+bytes_remaining > p->cb_w_data_size) {
+			// Received more data than expected.
+			return 0;
+		}
+		memcpy(&p->cb_w_data[data_pos],buf,bytes_remaining);
+		p->cb_w_stream_pos += bytes_remaining;
 	}
 
 	return 1;
 }
 
+// Call after writing the image to a memory block, to put the
+// image onto the clipboard.
 static int finish_clipboard_write(struct params_struct *p, struct iw_context *ctx)
 {
 	int retval = 0;
 
-	if(!p->clipboard_data_handle_w) return 0;
+	if(!p->cb_w_data_handle) return 0;
 
 	// Prevent the clipboard from being changed by other apps.
 	if(!OpenClipboard(GetConsoleWindow())) {
@@ -591,16 +604,16 @@ static int finish_clipboard_write(struct params_struct *p, struct iw_context *ct
 	}
 
 	// Release our lock on the data we'll put on the clipboard.
-	GlobalUnlock(p->clipboard_data_handle_w);
-	p->clipboard_data_w = NULL;
+	GlobalUnlock(p->cb_w_data_handle);
+	p->cb_w_data = NULL;
 
-	if(!SetClipboardData(CF_DIB,p->clipboard_data_handle_w)) {
+	if(!SetClipboardData(CF_DIB,p->cb_w_data_handle)) {
 		goto done;
 	}
 
 	// SetClipboardData succeeded, so the clipboard now owns the data.
 	// Clear our copy of the handle.
-	p->clipboard_data_handle_w = NULL;
+	p->cb_w_data_handle = NULL;
 
 	retval = 1;
 done:
@@ -611,9 +624,9 @@ done:
 	return retval;
 }
 
-#endif
-
+#endif // IW_WINDOWS
 /////////////////////////////////////////////////
+
 static int iwcmd_calc_rel_size(double rel, int d)
 {
 	int n;
@@ -855,6 +868,20 @@ static int run(struct params_struct *p)
 		if(!s) s="(unknown)";
 		iw_set_errorf(ctx,"Writing %s files is not supported.",s);
 		goto done;
+	}
+
+	if(p->output_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
+		if(p->outfmt!=IW_FORMAT_BMP) {
+			iw_set_error(ctx,"Only BMP images can be copied to the clipboard");
+			goto done;
+		}
+		if(p->compression>0 && p->compression!=IW_COMPRESSION_NONE) {
+			// We don't currently support putting RLE-compressed image on the
+			// clipboard, just because not knowing the file size in advance
+			// makes it more difficult.
+			iw_set_error(ctx,"Copying compressed images to the clipboard is not supported");
+			goto done;
+		}
 	}
 
 	if(p->random_seed!=0 || p->randomize) {
@@ -2401,6 +2428,7 @@ static int parse_uri(struct params_struct *p, struct uri_struct *u)
 		}
 		else if(!strncmp("clip:",u->uri,5)) {
 			u->scheme = IWCMD_SCHEME_CLIPBOARD;
+			u->filename = "[clipboard]";
 		}
 		else {
 			iwcmd_error(p,"Don\xe2\x80\x99t understand \xe2\x80\x9c%s\xe2\x80\x9d; try \xe2\x80\x9c"
