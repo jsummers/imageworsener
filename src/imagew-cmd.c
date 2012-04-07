@@ -547,6 +547,7 @@ static void figure_out_size_and_density(struct params_struct *p, struct iw_conte
 	int density_code; // from src image
 	double adjusted_dens_x, adjusted_dens_y;
 	int nonsquare_pixels_flag = 0;
+	int width_specified, height_specified;
 
 	iw_get_input_density(ctx,&xdens,&ydens,&density_code);
 
@@ -568,10 +569,11 @@ static void figure_out_size_and_density(struct params_struct *p, struct iw_conte
 		}
 	}
 
+	width_specified = p->dst_width_req>0 || p->rel_width_flag;
+	height_specified = p->dst_height_req>0 || p->rel_height_flag;
 	// If the user failed to specify a width, or a height, or used the 'bestfit'
 	// option, then we need to "fit" the image in some way.
-	fit_flag = (p->dst_width_req<1 && !p->rel_width_flag) ||
-		(p->dst_height_req<1 && !p->rel_height_flag) || p->bestfit;
+	fit_flag = !width_specified || !height_specified || p->bestfit;
 
 	// Set adjusted_* variables, which will be different from the original ones
 	// of there are nonsquare pixels. For certain operations, we'll pretend that
@@ -643,10 +645,13 @@ static void figure_out_size_and_density(struct params_struct *p, struct iw_conte
 			p->density_policy=IWCMD_DENSITY_POLICY_NONE;
 		}
 		else if(p->dst_width==p->src_width && p->dst_height==p->src_height) {
-			// TODO: If we adjusted the image size (due to nonsquare pixels), but the
-			// user did not request a different size, maybe we should keep the
-			// same density (with one of the dimensions modified).
 			p->density_policy=IWCMD_DENSITY_POLICY_KEEP;
+		}
+		else if(!width_specified && !height_specified) {
+			// If the user did not request the size to be changed, but we're
+			// changing it anyway (presumably due to nonsquare pixels), keep
+			// the image the same physical size.
+			p->density_policy=IWCMD_DENSITY_POLICY_ADJUST;
 		}
 		else {
 			p->density_policy=IWCMD_DENSITY_POLICY_NONE;
