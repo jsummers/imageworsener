@@ -150,6 +150,12 @@ struct params_struct {
 	SIZE_T clipboard_data_size;
 	SIZE_T clipboard_data_pos;
 	iw_byte *clipboard_data;
+
+	iw_byte tmp_fileheader[14];
+	HANDLE clipboard_data_handle_w;
+	SIZE_T clipboard_data_size_w;
+	SIZE_T clipboard_data_pos_w;
+	iw_byte *clipboard_data_w;
 #endif
 };
 
@@ -448,7 +454,7 @@ static int my_writefn(struct iw_context *ctx, struct iw_iodescr *iodescr, const 
 ////////////////// clipboard ////////////////////
 #ifdef IW_WINDOWS
 
-static void iwcmd_close_clipboard(struct params_struct *p, struct iw_context *ctx)
+static void iwcmd_close_clipboard_r(struct params_struct *p, struct iw_context *ctx)
 {
 	if(p->clipboard_is_open) {
 		if(p->clipboard_data) {
@@ -461,12 +467,24 @@ static void iwcmd_close_clipboard(struct params_struct *p, struct iw_context *ct
 	}
 }
 
+static void iwcmd_close_clipboard_w(struct params_struct *p, struct iw_context *ctx)
+{
+	if(p->clipboard_data_handle_w) {
+		if(p->clipboard_data_w) {
+			GlobalUnlock(p->clipboard_data_handle_w);
+			p->clipboard_data_w = NULL;
+		}
+		GlobalFree(p->clipboard_data_handle_w);
+		p->clipboard_data_handle_w = NULL;
+	}
+}
+
 static int iwcmd_open_clipboard_for_read(struct params_struct *p, struct iw_context *ctx)
 {
 	BOOL b;
 	HANDLE hClip = NULL;
 
-	b=OpenClipboard(NULL);
+	b=OpenClipboard(GetConsoleWindow());
 	if(!b) {
 		iw_set_error(ctx,"Failed to open the clipboard");
 		return 0;
@@ -477,7 +495,7 @@ static int iwcmd_open_clipboard_for_read(struct params_struct *p, struct iw_cont
 	p->clipboard_data_handle = GetClipboardData(CF_DIB);
 	if(!p->clipboard_data_handle) {
 		iw_set_error(ctx,"Can\xe2\x80\x99t find an image on the clipboard");
-		iwcmd_close_clipboard(p,ctx);
+		iwcmd_close_clipboard_r(p,ctx);
 		return 0;
 	}
 
@@ -510,6 +528,87 @@ static int my_clipboard_getfilesizefn(struct iw_context *ctx, struct iw_iodescr 
 	p = (struct params_struct *)iw_get_userdata(ctx);
 	*pfilesize = (iw_int64)p->clipboard_data_size;
 	return 1;
+}
+
+static int my_clipboard_writefn(struct iw_context *ctx, struct iw_iodescr *iodescr, const void *buf, size_t nbytes)
+{
+	struct params_struct *p;
+	size_t bytes_consumed = 0;
+	size_t bytes_remaining;
+	iw_uint32 filesize;
+
+	p = (struct params_struct *)iw_get_userdata(ctx);
+
+	// Store the first 14 bytes in p->tmp_fileheader
+	if(p->clipboard_data_pos_w < 14) {
+		bytes_consumed = 14 - p->clipboard_data_pos_w;
+		if(bytes_consumed > nbytes) bytes_consumed = nbytes;
+		memcpy(&p->tmp_fileheader[p->clipboard_data_pos_w],buf,bytes_consumed);
+		p->clipboard_data_pos_w += bytes_consumed;
+
+		// If we've read the whole fileheader, look at it to figure out the file size
+		if(p->clipboard_data_pos_w >= 14) {
+			filesize = p->tmp_fileheader[2] | (p->tmp_fileheader[3]<<8) |
+				p->tmp_fileheader[4]<<16 | (p->tmp_fileheader[5]<<24);
+
+			if(filesize<14 || filesize>500000000) { // Sanity check
+				return 0;
+			}
+
+			// Create a memory block to eventually place on the clipboard.
+
+			p->clipboard_data_size_w = filesize-14;
+			p->clipboard_data_handle_w = GlobalAlloc(GMEM_ZEROINIT|GMEM_MOVEABLE,p->clipboard_data_size_w);
+			if(!p->clipboard_data_handle_w) return 0;
+			p->clipboard_data_w = GlobalLock(p->clipboard_data_handle_w);
+			if(!p->clipboard_data_w) return 0;
+		}
+	}
+
+	bytes_remaining = nbytes-bytes_consumed;
+	if(bytes_remaining>0 && p->clipboard_data_pos_w>=14 && p->clipboard_data_w) {
+		memcpy(&p->clipboard_data_w[p->clipboard_data_pos_w-14],buf,bytes_remaining);
+		p->clipboard_data_pos_w += bytes_remaining;
+	}
+
+	return 1;
+}
+
+static int finish_clipboard_write(struct params_struct *p, struct iw_context *ctx)
+{
+	int retval = 0;
+
+	if(!p->clipboard_data_handle_w) return 0;
+
+	// Prevent the clipboard from being changed by other apps.
+	if(!OpenClipboard(GetConsoleWindow())) {
+		return 0;
+	}
+
+	// Claim ownership of the clipboard
+	if(!EmptyClipboard()) {
+		goto done;
+	}
+
+	// Release our lock on the data we'll put on the clipboard.
+	GlobalUnlock(p->clipboard_data_handle_w);
+	p->clipboard_data_w = NULL;
+
+	if(!SetClipboardData(CF_DIB,p->clipboard_data_handle_w)) {
+		goto done;
+	}
+
+	// SetClipboardData succeeded, so the clipboard now owns the data.
+	// Clear our copy of the handle.
+	p->clipboard_data_handle_w = NULL;
+
+	retval = 1;
+done:
+	if(!retval) {
+		iw_set_error(ctx,"Failed to set clipboard data");
+	}
+	CloseClipboard();
+	return retval;
 }
 
 #endif
@@ -738,8 +837,14 @@ static int run(struct params_struct *p)
 
 	// Decide on the output format as early as possible, so we can give up
 	// quickly if it's not supported.
-	if(p->outfmt==IW_FORMAT_UNKNOWN)
-		p->outfmt=iw_detect_fmt_from_filename(p->output_uri.filename);
+	if(p->outfmt==IW_FORMAT_UNKNOWN) {
+		if(p->output_uri.scheme==IWCMD_SCHEME_FILE) {
+			p->outfmt=iw_detect_fmt_from_filename(p->output_uri.filename);
+		}
+		else if(p->output_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
+			p->outfmt=IW_FORMAT_BMP;
+		}
+	}
 
 	if(p->outfmt==IW_FORMAT_UNKNOWN) {
 		iw_set_error(ctx,"Unknown output format; use -outfmt.");
@@ -819,9 +924,7 @@ static int run(struct params_struct *p)
 	if(!iw_read_file_by_fmt(ctx,&readdescr,p->infmt)) goto done;
 
 #ifdef IW_WINDOWS
-	if(p->clipboard_is_open) {
-		iwcmd_close_clipboard(p,ctx);
-	}
+	iwcmd_close_clipboard_w(p,ctx);
 #endif
 	if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
 		fclose((FILE*)readdescr.fp);
@@ -1012,11 +1115,22 @@ static int run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
 	}
 
-	writedescr.write_fn = my_writefn;
-	writedescr.seek_fn = my_seekfn;
-	writedescr.fp = (void*)iwcmd_fopen(p->output_uri.filename,"wb");
-	if(!writedescr.fp) {
-		iw_set_errorf(ctx,"Failed to open for writing (error code=%d)",(int)errno);
+	if(p->output_uri.scheme==IWCMD_SCHEME_FILE) {
+		writedescr.write_fn = my_writefn;
+		writedescr.seek_fn = my_seekfn;
+		writedescr.fp = (void*)iwcmd_fopen(p->output_uri.filename,"wb");
+		if(!writedescr.fp) {
+			iw_set_errorf(ctx,"Failed to open for writing (error code=%d)",(int)errno);
+			goto done;
+		}
+	}
+#ifdef IW_WINDOWS
+	else if(p->output_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
+		writedescr.write_fn = my_clipboard_writefn;
+	}
+#endif
+	else {
+		iw_set_error(ctx,"Unsupported output scheme");
 		goto done;
 	}
 
@@ -1038,16 +1152,22 @@ static int run(struct params_struct *p)
 
 	if(!iw_write_file_by_fmt(ctx,&writedescr,p->outfmt)) goto done;
 
-	fclose((FILE*)writedescr.fp);
+	if(p->output_uri.scheme==IWCMD_SCHEME_FILE) {
+		fclose((FILE*)writedescr.fp);
+	}
+#ifdef IW_WINDOWS
+	else if(p->output_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
+		finish_clipboard_write(p,ctx);
+	}
+#endif
 	writedescr.fp=NULL;
 
 	retval = 1;
 
 done:
 #ifdef IW_WINDOWS
-	if(p->clipboard_is_open) {
-		iwcmd_close_clipboard(p,ctx);
-	}
+	iwcmd_close_clipboard_r(p,ctx);
+	iwcmd_close_clipboard_w(p,ctx);
 #endif
 	if(readdescr.fp) fclose((FILE*)readdescr.fp);
 	if(writedescr.fp) fclose((FILE*)writedescr.fp);
