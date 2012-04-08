@@ -116,6 +116,11 @@ extern "C" {
 // (Files are always *written* with a fileheader.)
 #define IW_VAL_BMP_NO_FILEHEADER 44
 
+// Maximum size (before cropping) of an input image that is considered to be
+// valid.
+#define IW_VAL_MAX_WIDTH         45
+#define IW_VAL_MAX_HEIGHT        46
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1

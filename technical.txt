@@ -204,6 +204,27 @@ Other files:
  imagew.h (Public header file, Core, Aux., Command-line)
  imagew-config.h (Core, Aux., Command-line)
 
+Security
+--------
+
+IW is intended to be safe to use with untrusted image files. However, despite
+my best efforts, it's a near certainty that security vulnerabilities do exist
+in it. Use at your own risk. Note that IW uses third-party libraries that may
+have their own vulnerabilities, especially if out of date versions are used.
+
+It's even more likely the "denial of service"-type vulnerabilities exist, in
+which reading an image file will cause it to use an inordinate amount of memory
+and/or time. If you're using the library, this may be partially mitigated by
+calling iw_set_max_malloc(), iw_set_value(IW_VAL_MAX_WIDTH), and
+iw_set_value(IW_VAL_MAX_HEIGHT).
+
+The command-line utility is *not* intended to be safe to use if any part of the
+command line is untrusted.
+
+If you write a script that uses the imagew utility, it's good practice to
+prefix all filenames with "file:". Otherwise, you can run into problems with
+pathological filenames like "clip:.jpg".
+
 Double-precision floating point?
 --------------------------------
 
@@ -464,7 +485,7 @@ IW is not really a good application to use to create images that are restricted
 to a certain number of colors, because it does not support generating optimized
 palettes. If your image has too many colors, the best you can do is to
 posterize it. For example:
-  imagew in.png out.bmp -bmptrns -cc 6 -ccgreen 7 -ccalpha 2 -dither f
+  imagew in.png out.bmp -bmptrns -cc 6,7,6,2 -dither f
 
 Ordered dithering + transparency
 --------------------------------

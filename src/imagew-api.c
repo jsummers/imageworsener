@@ -182,7 +182,7 @@ IW_IMPL(size_t) iw_calc_bytesperrow(int num_pixels, int bits_per_pixel)
 
 IW_IMPL(int) iw_check_image_dimensions(struct iw_context *ctx, int w, int h)
 {
-	if(w>IW_MAX_DIMENSION || h>IW_MAX_DIMENSION) {
+	if(w>ctx->max_width || h>ctx->max_height) {
 		iw_set_errorf(ctx,"Image dimensions too large (%d\xc3\x97%d)",w,h);
 		return 0;
 	}
@@ -246,6 +246,7 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	}
 
 	ctx->max_malloc = IW_DEFAULT_MAX_MALLOC;
+	ctx->max_width = ctx->max_height = IW_DEFAULT_MAX_DIMENSION;
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_H]);
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
 	ctx->input_w = -1;
@@ -701,6 +702,12 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_BMP_NO_FILEHEADER:
 		ctx->bmp_no_fileheader = n;
 		break;
+	case IW_VAL_MAX_WIDTH:
+		ctx->max_width = n;
+		break;
+	case IW_VAL_MAX_HEIGHT:
+		ctx->max_height = n;
+		break;
 	}
 }
 
@@ -788,6 +795,12 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_BMP_NO_FILEHEADER:
 		ret = ctx->bmp_no_fileheader;
+		break;
+	case IW_VAL_MAX_WIDTH:
+		ret = ctx->max_width;
+		break;
+	case IW_VAL_MAX_HEIGHT:
+		ret = ctx->max_height;
 		break;
 	}
 

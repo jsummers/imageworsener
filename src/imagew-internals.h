@@ -24,10 +24,10 @@
 #endif
 
 #ifdef IW_64BIT
-#define IW_MAX_DIMENSION 1000000
+#define IW_DEFAULT_MAX_DIMENSION 1000000
 #define IW_DEFAULT_MAX_MALLOC 2000000000000
 #else
-#define IW_MAX_DIMENSION 40000 // Must be less than sqrt(2^31).
+#define IW_DEFAULT_MAX_DIMENSION 40000 // Must be less than sqrt(2^31).
 #define IW_DEFAULT_MAX_MALLOC 2000000000
 #endif
 
@@ -216,6 +216,7 @@ struct iw_context {
 	int random_seed;
 
 	size_t max_malloc;
+	int max_width, max_height;
 
 	int error_flag;
 	char *error_msg;
