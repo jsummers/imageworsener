@@ -1896,8 +1896,10 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			for(i=0;i<ctx->img2_numchannels;i++) {
 				int mccr;
 				mccr = ctx->output_maxcolorcode_req[ctx->img2_ci[i].channeltype];
-				if(mccr>0)
+				if(mccr>0) {
+					if(mccr>output_maxcolorcode_int) mccr=output_maxcolorcode_int;
 					ctx->img2_ci[i].maxcolorcode_int = mccr;
+				}
 			}
 		}
 

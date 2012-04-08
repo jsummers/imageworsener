@@ -89,8 +89,8 @@ struct params_struct {
 	struct resize_blur resize_blur_x;
 	struct resize_blur resize_blur_y;
 	int bestfit;
-	int depth;
-	int depth_r, depth_g, depth_b, depth_k, depth_a;
+	int depth; // Overall depth
+	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
 	int compression;
 	int grayscale, condgrayscale;
 	double offset_r_h, offset_g_h, offset_b_h;
@@ -814,6 +814,57 @@ static void figure_out_size_and_density(struct params_struct *p, struct iw_conte
 	}
 }
 
+static void iwcmd_set_bitdepth(struct params_struct *p, struct iw_context *ctx)
+{
+	int k;
+	int overall_depth;
+
+	// Make a copy of p->depth, so we can mess with it.
+	overall_depth = p->depth;
+
+	// Make sure overall_depth is at least the max depth of any channel
+	for(k=0;k<5;k++) {
+		if(overall_depth < p->channel_depth[k]) {
+			overall_depth = p->channel_depth[k];
+		}
+	}
+
+	if(!overall_depth) {
+		// User made no requests; use the defaults for everything.
+		return;
+	}
+
+	// Sanitize the overall depth setting.
+	// HACK: We shouldn't have to hardcode this information here.
+	if(p->outfmt==IW_FORMAT_MIFF) {
+		if(overall_depth<=32) overall_depth=32;
+		else overall_depth=64;
+	}
+	else {
+		if(overall_depth<=8) overall_depth=8;
+		else overall_depth=16;
+	}
+
+	iw_set_output_depth(ctx,overall_depth);
+
+	// Set the requested depth for all unset channels to the requested depth.
+	if(p->depth) {
+		for(k=0;k<5;k++) {
+			if(!p->channel_depth[k]) {
+				p->channel_depth[k] = p->depth;
+			}
+		}
+	}
+
+	for(k=0;k<5;k++) {
+		// Tell the library the requested channel-specific depths
+		// (if the depth is known, and less than the overall depth).
+		if(p->channel_depth[k]>0 && p->channel_depth[k]<overall_depth) {
+			iw_set_output_max_color_code(ctx,k,(1<<p->channel_depth[k])-1);
+		}
+	}
+}
+
 static int run(struct params_struct *p)
 {
 	int retval = 0;
@@ -825,7 +876,7 @@ static int run(struct params_struct *p)
 	struct iw_init_params init_params;
 	const char *s;
 	unsigned int profile;
-	int maxdepth;
+	int k;
 
 	memset(&init_params,0,sizeof(struct iw_init_params));
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
@@ -971,24 +1022,7 @@ static int run(struct params_struct *p)
 	}
 	iw_set_output_profile(ctx, profile);
 
-	// Fixup p->depth, if needed.
-	maxdepth = p->depth_r;
-	if(p->depth_g>maxdepth) maxdepth=p->depth_g;
-	if(p->depth_b>maxdepth) maxdepth=p->depth_b;
-	if(p->depth_k>maxdepth) maxdepth=p->depth_k;
-	if(p->depth_a>maxdepth) maxdepth=p->depth_a;
-	if(p->depth < maxdepth) {
-		p->depth = maxdepth;
-	}
-
-	if(p->depth) {
-		if(p->depth_r) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_RED  ,(1<<p->depth_r)-1);
-		if(p->depth_g) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_GREEN,(1<<p->depth_g)-1);
-		if(p->depth_b) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_BLUE ,(1<<p->depth_b)-1);
-		if(p->depth_k) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_GRAY ,(1<<p->depth_k)-1);
-		if(p->depth_a) iw_set_output_max_color_code(ctx,IW_CHANNELTYPE_ALPHA,(1<<p->depth_a)-1);
-		iw_set_output_depth(ctx,p->depth);
-	}
+	iwcmd_set_bitdepth(p,ctx);
 
 	if(p->cs_in_set) {
 		iw_set_input_colorspace(ctx,&p->cs_in);
@@ -2044,7 +2078,11 @@ static void iwcmd_read_w_or_h(struct params_struct *p, const char *v,
 static int iwcmd_read_depth(struct params_struct *p, const char *v)
 {
 	if(strchr(v,',')) {
-		iwcmd_parse_int_4(v,&p->depth_r,&p->depth_g,&p->depth_b,&p->depth_a);
+		iwcmd_parse_int_4(v,
+			&p->channel_depth[IW_CHANNELTYPE_RED],
+			&p->channel_depth[IW_CHANNELTYPE_GREEN],
+			&p->channel_depth[IW_CHANNELTYPE_BLUE],
+			&p->channel_depth[IW_CHANNELTYPE_ALPHA]);
 	}
 	else {
 		p->depth=iwcmd_parse_int(v);
@@ -2068,10 +2106,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(ret<0) return 0;
 		break;
 	case PT_DEPTHGRAY:
-		p->depth_k = iwcmd_parse_int(v);
+		p->channel_depth[IW_CHANNELTYPE_GRAY] = iwcmd_parse_int(v);
 		break;
 	case PT_DEPTHALPHA:
-		p->depth_a = iwcmd_parse_int(v);
+		p->channel_depth[IW_CHANNELTYPE_ALPHA] = iwcmd_parse_int(v);
 		break;
 	case PT_INPUTCS:
 		ret=iwcmd_string_to_colorspace(p,&p->cs_in,v);
