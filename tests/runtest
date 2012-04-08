@@ -116,7 +116,7 @@ $IW srcimg/4x4.png actual/ds-nearest.png $CMPR -w 2 -h 2 -filter nearest -transl
 
 $IW srcimg/4x4.png actual/cc-2.png $DCMPR $SCALE -filter catrom -cc 2
 $IW srcimg/4x4.png actual/cc-6.png $DCMPR $SCALE -filter catrom -cc 6
-$IW srcimg/4x4.png actual/cc-mixed.png $DCMPR $SCALE -filter catrom -ccred 3 -ccgreen 10 -ccblue 5
+$IW srcimg/4x4.png actual/cc-mixed.png $DCMPR $SCALE -filter catrom -cc 3,10,5
 $IW srcimg/4x4.png actual/depth-16.png $DCMPR $SCALE -filter catrom -depth 16
 
 #test upscaling

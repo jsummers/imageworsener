@@ -101,8 +101,8 @@ struct params_struct {
 	int dither_family_red, dither_family_green, dither_family_blue, dither_family_gray;
 	int dither_subtype_all, dither_subtype_nonalpha, dither_subtype_alpha;
 	int dither_subtype_red, dither_subtype_green, dither_subtype_blue, dither_subtype_gray;
-	int color_count_all, color_count_nonalpha, color_count_alpha;
-	int color_count_red, color_count_green, color_count_blue, color_count_gray;
+	int color_count[5]; // Per-channeltype color count, indexed by IW_CHANNELTYPE.
+	int color_count_all, color_count_nonalpha;
 	int apply_bkgd;
 	int bkgd_checkerboard;
 	int bkgd_check_size;
@@ -1041,11 +1041,9 @@ static int run(struct params_struct *p)
 
 	if(p->color_count_all) iw_set_color_count  (ctx,IW_CHANNELTYPE_ALL  ,p->color_count_all);
 	if(p->color_count_nonalpha) iw_set_color_count(ctx,IW_CHANNELTYPE_NONALPHA,p->color_count_nonalpha);
-	if(p->color_count_red)   iw_set_color_count(ctx,IW_CHANNELTYPE_RED  ,p->color_count_red);
-	if(p->color_count_green) iw_set_color_count(ctx,IW_CHANNELTYPE_GREEN,p->color_count_green);
-	if(p->color_count_blue)  iw_set_color_count(ctx,IW_CHANNELTYPE_BLUE ,p->color_count_blue);
-	if(p->color_count_gray)  iw_set_color_count(ctx,IW_CHANNELTYPE_GRAY ,p->color_count_gray);
-	if(p->color_count_alpha) iw_set_color_count(ctx,IW_CHANNELTYPE_ALPHA,p->color_count_alpha);
+	for(k=0;k<5;k++) {
+		if(p->color_count[k])   iw_set_color_count(ctx,k,p->color_count[k]);
+	}
 
 	if(p->condgrayscale) {
 		if(iw_get_value(ctx,IW_VAL_INPUT_NATIVE_GRAYSCALE)) {
@@ -2090,6 +2088,21 @@ static int iwcmd_read_depth(struct params_struct *p, const char *v)
 	return 1;
 }
 
+static int iwcmd_read_cc(struct params_struct *p, const char *v)
+{
+	if(strchr(v,',')) {
+		iwcmd_parse_int_4(v,
+			&p->color_count[IW_CHANNELTYPE_RED],
+			&p->color_count[IW_CHANNELTYPE_GREEN],
+			&p->color_count[IW_CHANNELTYPE_BLUE],
+			&p->color_count[IW_CHANNELTYPE_ALPHA]);
+	}
+	else {
+		p->color_count_all=iwcmd_parse_int(v);
+	}
+	return 1;
+}
+
 static int process_option_arg(struct params_struct *p, struct parsestate_struct *ps, const char *v)
 {
 	int ret;
@@ -2176,13 +2189,25 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(p->dither_family_gray<0) return 0;
 		break;
 	case PT_CC:
-		p->color_count_all=iwcmd_parse_int(v);
+		iwcmd_read_cc(p,v);
 		break;
 	case PT_CCCOLOR:
 		p->color_count_nonalpha=iwcmd_parse_int(v);
 		break;
+	case PT_CCRED:
+		p->color_count[IW_CHANNELTYPE_RED]=iwcmd_parse_int(v);
+		break;
+	case PT_CCGREEN:
+		p->color_count[IW_CHANNELTYPE_GREEN]=iwcmd_parse_int(v);
+		break;
+	case PT_CCBLUE:
+		p->color_count[IW_CHANNELTYPE_BLUE]=iwcmd_parse_int(v);
+		break;
+	case PT_CCGRAY:
+		p->color_count[IW_CHANNELTYPE_GRAY]=iwcmd_parse_int(v);
+		break;
 	case PT_CCALPHA:
-		p->color_count_alpha=iwcmd_parse_int(v);
+		p->color_count[IW_CHANNELTYPE_ALPHA]=iwcmd_parse_int(v);
 		break;
 	case PT_BKGD:
 		p->apply_bkgd=1;
@@ -2199,18 +2224,6 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->crop_w = p->crop_h = -1;
 		iwcmd_parse_int_4(v,&p->crop_x,&p->crop_y,&p->crop_w,&p->crop_h);
 		p->use_crop=1;
-		break;
-	case PT_CCRED:
-		p->color_count_red=iwcmd_parse_int(v);
-		break;
-	case PT_CCGREEN:
-		p->color_count_green=iwcmd_parse_int(v);
-		break;
-	case PT_CCBLUE:
-		p->color_count_blue=iwcmd_parse_int(v);
-		break;
-	case PT_CCGRAY:
-		p->color_count_gray=iwcmd_parse_int(v);
 		break;
 	case PT_OFFSET_R_H:
 		p->offset_r_h=iwcmd_parse_dbl(v);

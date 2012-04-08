@@ -183,8 +183,8 @@ Options:
      tiff, tif: TIFF (-outfmt only)
      miff: MIFF (experimental; limited support)
 
- -depth <n>
- -depth <r>,<g>,<b>[,<a>]  (-depthgray, -depthalpha)
+ -depth <n>  (-depthgray, -depthalpha)
+ -depth <r>,<g>,<b>[,<a>]
    The general number of bits of precision used per color channel in the
    output image. Valid values for <n>:
     "8" is the default for most formats.
@@ -422,6 +422,7 @@ Options:
    input file.
 
  -cc <n>  (-cccolor -ccalpha -ccred -ccgreen -ccblue -ccgray)
+ -cc <r>,<g>,<b>[,<a>]
    Posterization. "cc" stands for "color count".
    The maximum number of different values (brightness levels, opacity levels)
    to use in each channel, including the alpha channel if present.
@@ -437,9 +438,6 @@ Options:
    -ccalpha affects only the alpha channel. Use "-ccalpha 2" for binary
      transparency.
    -ccgray applies only if you force grayscale output, using "-grayscale".
-
-   For example, for 16-bits-per-pixel color, use "-ccred 32 -ccgreen 64
-   -ccblue 32".
 
  -dither <dithertype> (-dithercolor -ditheralpha -ditherred -dithergreen
                        -ditherblue -dithergray)
