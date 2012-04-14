@@ -788,14 +788,24 @@ static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *s
 	}
 }
 
-static void bmpw_convert_row_24(const iw_byte *srcrow, iw_byte *dstrow, int width)
+static void bmpw_convert_row_24(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
+	iw_byte *dstrow, int width)
 {
 	int i;
 
-	for(i=0;i<width;i++) {
-		dstrow[i*3+0] = srcrow[i*3+2];
-		dstrow[i*3+1] = srcrow[i*3+1];
-		dstrow[i*3+2] = srcrow[i*3+0];
+	if(wctx->img->imgtype==IW_IMGTYPE_GRAY) {
+		for(i=0;i<width;i++) {
+			dstrow[i*3+0] = srcrow[i];
+			dstrow[i*3+1] = srcrow[i];
+			dstrow[i*3+2] = srcrow[i];
+		}
+	}
+	else { // RGB
+		for(i=0;i<width;i++) {
+			dstrow[i*3+0] = srcrow[i*3+2];
+			dstrow[i*3+1] = srcrow[i*3+1];
+			dstrow[i*3+2] = srcrow[i*3+0];
+		}
 	}
 }
 
@@ -1551,7 +1561,7 @@ static void iwbmp_write_pixels_uncompressed(struct iwbmpwritecontext *wctx,
 	for(j=img->height-1;j>=0;j--) {
 		srcrow = &img->pixels[j*img->bpr];
 		switch(wctx->bitcount) {
-		case 24: bmpw_convert_row_24(srcrow,dstrow,img->width); break;
+		case 24: bmpw_convert_row_24(wctx,srcrow,dstrow,img->width); break;
 		case 16: bmpw_convert_row_16(wctx,srcrow,dstrow,img->width); break;
 		case 8: bmpw_convert_row_8(srcrow,dstrow,img->width); break;
 		case 4: bmpw_convert_row_4(srcrow,dstrow,img->width); break;
@@ -1657,12 +1667,20 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 		goto done;
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAY) {
-		if(img->reduced_maxcolors && img->maxcolor_k<=31) {
-			setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k);
+		if(img->reduced_maxcolors) {
+			if(img->maxcolor_k<=31) {
+				setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k);
+			}
+			else {
+				iw_set_error(wctx->ctx,"Cannot write grayscale BMP at this bit depth");
+				goto done;
+			}
 		}
 		else {
-			iw_set_error(wctx->ctx,"Cannot write grayscale BMP at this bit depth");
-			goto done;
+			// We normally won't get here, because a grayscale image should have
+			// been optimized and converted to a palette image.
+			// But maybe that optimization was disabled.
+			wctx->bitcount=24;
 		}
 	}
 	else {
