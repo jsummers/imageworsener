@@ -49,6 +49,7 @@ fi
 
 
 SCALE="-width 35 -height 35"
+SCALE2="-width 24 -height 24"
 SMALL="-width 15 -height 15"
 CMPR="-zipcmprlevel 9"
 DCMPR="-zipcmprlevel -1"
@@ -178,6 +179,8 @@ $IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace -nowarn
 $IW srcimg/g2.png actual/bmp1.bmp -width 11 -filter mix
 $IW srcimg/rgb8.png actual/bmp2.bmp $SCALE -cc 6 -dither f -compress rle
 $IW srcimg/rgb8.png actual/bmp3.bmp $SCALE -cc 2 -ccgreen 4 -dither o -compress rle
+$IW srcimg/rgb16.png actual/bmp4.bmp $SMALL -depth 3,4,6 -dither o
+$IW srcimg/rgb16.png actual/bmp5.bmp $SMALL -depth 5 -grayscale
 
 # Test writing TIFF
 $IW srcimg/g4.png actual/tiff1.tif -width 11 -cc 16 -grayscale -filter mix
@@ -205,6 +208,7 @@ $IW srcimg/g8d.png actual/dens-adjust.png $CMPR -width 11 -density adjust -filte
 
 $IW srcimg/rgb8x2.png actual/dens-4ns.png -h 27
 $IW srcimg/rgb8x2.png actual/dens-5ns.png -h x1.1 -density adjust
+$IW srcimg/rgb8x2.png actual/dens-6ns.png
 
 $IW srcimg/25x20.png actual/dens-ix.png -w 34 -density adjust
 $IW srcimg/25x20.png actual/dens-iy.png -h 27 -density adjust
@@ -220,8 +224,11 @@ $IW srcimg/rgb8a.png actual/opt-20col.png $DCMPR -width 5 -height 4 -filter mix
 $IW srcimg/p8t.png actual/crop-1.png $DCMPR -width 20 -crop 3,12,18,9
 
 # Test input sBIT support, and -zipcmprlevel
-$IW srcimg/rgb8a-sbit.png actual/sbit1.png -zipcmprlevel 9
+$IW srcimg/rgb8a-sbit.png actual/sbit1.png -zipcmprlevel 3
 $IW srcimg/p8-sbit.png actual/sbit2.png $CMPR
+
+# Test sBIT writing
+$IW srcimg/rgb8a.png actual/sbitw.png $SCALE2 -depth 6,8,5,7 
 
 # Test -noopt
 $IW srcimg/g8a.png actual/noopt-g.png $CMPR -width 15 -noopt grayscale -filter mix
@@ -231,8 +238,8 @@ $IW srcimg/g8a.png actual/noopt-bt.png $CMPR -ccalpha 2 -dither f -width 15 -noo
 $IW srcimg/g8.png actual/noopt-r8.png $CMPR -depth 16 -crop 17,18,-1 -noopt reduceto8
 
 # Test background color reading
-$IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2 -zipcmprlevel 9
-$IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebkgdlabel -zipcmprlevel 9
+$IW srcimg/p8tbg.png actual/rbkgd1.png $CMPR -bkgd 080,008 -checkersize 2
+$IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebkgdlabel
 $IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR -nowarn
 $IW srcimg/p5t.gif actual/gif1.png $CMPR
 
@@ -259,22 +266,10 @@ $IW srcimg/bmp16-565.bmp actual/bmp16-2.png $CMPR $SCALE -density adjust
 
 echo "Checking images..."
 
-FAIL=0
-for ff in expected/*.png expected/*.jpg expected/*.bmp expected/*.tif \
- expected/*.miff expected/*.webp
-do
-	f=${ff#expected/}
-	#echo $f
-	cmp actual/$f expected/$f
-	RET="$?"
-	if [ "$RET" -ne 0 ]
-	then
-		echo "Test failed: $f"
-		FAIL=1
-	fi
-done
+diff -r --brief expected actual
+RET="$?"
 
-if [ $FAIL -eq 0 ]
+if [ $RET -eq 0 ]
 then
 	echo "All tests passed."
 fi
