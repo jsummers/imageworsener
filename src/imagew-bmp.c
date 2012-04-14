@@ -726,6 +726,7 @@ struct iwbmpwritecontext {
 	const struct iw_palette *pal;
 	size_t total_written;
 	int bf_amt_to_shift[3]; // For 16-bit images
+	unsigned int maxcolor[3]; // R, G, B -- For 16-bit images.
 };
 
 static void iwbmp_write(struct iwbmpwritecontext *wctx, const void *buf, size_t n)
@@ -772,9 +773,16 @@ static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *s
 	unsigned int v;
 
 	for(i=0;i<width;i++) {
-		v = srcrow[i*3+0] << wctx->bf_amt_to_shift[0];
-		v |= srcrow[i*3+1] << wctx->bf_amt_to_shift[1];
-		v |= srcrow[i*3+2] << wctx->bf_amt_to_shift[2];
+		if(wctx->img->imgtype==IW_IMGTYPE_GRAY) {
+			v = srcrow[i] << wctx->bf_amt_to_shift[0];
+			v |= srcrow[i] << wctx->bf_amt_to_shift[1];
+			v |= srcrow[i] << wctx->bf_amt_to_shift[2];
+		}
+		else {
+			v = srcrow[i*3+0] << wctx->bf_amt_to_shift[0];
+			v |= srcrow[i*3+1] << wctx->bf_amt_to_shift[1];
+			v |= srcrow[i*3+2] << wctx->bf_amt_to_shift[2];
+		}
 		dstrow[i*2+0] = (iw_byte)(v&0xff);
 		dstrow[i*2+1] = (iw_byte)(v>>8);
 	}
@@ -854,31 +862,32 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 {
 	iw_byte buf[12];
-	iw_uint32 bf_r, bf_g, bf_b;
-	int bits_r, bits_g, bits_b;
+	iw_uint32 bf[3]; // R, G, B
+	int bits[3]; // R, G, B
+	int k;
 
 	if(wctx->bitcount != 16) return 0;
 
-	bits_r = iw_max_color_to_bitdepth(wctx->img->maxcolor_r);
-	bits_g = iw_max_color_to_bitdepth(wctx->img->maxcolor_g);
-	bits_b = iw_max_color_to_bitdepth(wctx->img->maxcolor_b);
+	for(k=0;k<3;k++) {
+		bits[k] = iw_max_color_to_bitdepth(wctx->maxcolor[k]);
+	}
 
-	if(bits_r + bits_g + bits_b > 16) {
+	if(bits[0] + bits[1] + bits[2] > 16) {
 		iw_set_error(wctx->ctx,"Cannot write a BMP image in this color format");
 		return 0;
 	}
 
-	wctx->bf_amt_to_shift[0] = bits_g + bits_b;
-	wctx->bf_amt_to_shift[1] = bits_b;
+	wctx->bf_amt_to_shift[0] = bits[1] + bits[2];
+	wctx->bf_amt_to_shift[1] = bits[2];
 	wctx->bf_amt_to_shift[2] = 0;
 
-	bf_r = wctx->img->maxcolor_r << wctx->bf_amt_to_shift[0];
-	bf_g = wctx->img->maxcolor_g << wctx->bf_amt_to_shift[1];
-	bf_b = wctx->img->maxcolor_b << wctx->bf_amt_to_shift[2];
+	for(k=0;k<3;k++) {
+		bf[k] = wctx->maxcolor[k] << wctx->bf_amt_to_shift[k];
+	}
 
-	iw_set_ui32le(&buf[0],bf_r);
-	iw_set_ui32le(&buf[4],bf_g);
-	iw_set_ui32le(&buf[8],bf_b);
+	for(k=0;k<3;k++) {
+		iw_set_ui32le(&buf[4*k],bf[k]);
+	}
 	iwbmp_write(wctx,buf,12);
 	return 1;
 }
@@ -1571,6 +1580,30 @@ static int check_palette_transparency(const struct iw_palette *p)
 	return retval;
 }
 
+// Do some preparations needed to write a 16-bit BMP.
+static void setup_16bit(struct iwbmpwritecontext *wctx,
+	int mcc_r, int mcc_g, int mcc_b)
+{
+	wctx->bitcount=16;
+
+	// Make our own copy of the max color codes, so that we don't have to
+	// do "if(grayscale)" so much.
+	wctx->maxcolor[0] = mcc_r;
+	wctx->maxcolor[1] = mcc_g;
+	wctx->maxcolor[2] = mcc_b;
+
+	if(mcc_r==31 && mcc_g==31 && mcc_b==31) {
+		// For the default 5-5-5, we don't write a BITFIELDS segment.
+		wctx->bf_amt_to_shift[0]=10;
+		wctx->bf_amt_to_shift[1]=5;
+		wctx->bf_amt_to_shift[2]=0;
+		wctx->bitfields_size = 0;
+	}
+	else {
+		wctx->bitfields_size = 12;
+	}
+}
+
 static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 {
 	struct iw_image *img;
@@ -1590,17 +1623,8 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	if(img->imgtype==IW_IMGTYPE_RGB) {
 		if(img->reduced_maxcolors) {
-			wctx->bitcount=16;
-			if(img->maxcolor_r==31 && img->maxcolor_g==31 && img->maxcolor_b==31) {
-				// For the default 5-5-5, we don't write a BITFIELDS segment.
-				wctx->bf_amt_to_shift[0]=10;
-				wctx->bf_amt_to_shift[1]=5;
-				wctx->bf_amt_to_shift[2]=0;
-				wctx->bitfields_size = 0;
-			}
-			else {
-				wctx->bitfields_size = 12;
-			}
+			// TODO: We should probably store the true maxcolors in wctx.
+			setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b);
 		}
 		else {
 			wctx->bitcount=24;
@@ -1631,6 +1655,15 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 		// It should only be possible to get here if the user enabled the transparent-BMP hack.
 		iw_set_error(wctx->ctx,"Cannot save this image as a transparent BMP: Too many colors");
 		goto done;
+	}
+	else if(img->imgtype==IW_IMGTYPE_GRAY) {
+		if(img->reduced_maxcolors && img->maxcolor_k<=31) {
+			setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k);
+		}
+		else {
+			iw_set_error(wctx->ctx,"Cannot write grayscale BMP at this bit depth");
+			goto done;
+		}
 	}
 	else {
 		iw_set_error(wctx->ctx,"Internal: Bad image type for BMP");
