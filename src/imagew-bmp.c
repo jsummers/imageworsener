@@ -142,6 +142,7 @@ static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
 		biYPelsPerMeter = iw_get_i32le(&buf[28]);
 
 		biClrUsed = iw_get_ui32le(&buf[32]);
+		if(biClrUsed>100000) goto done;
 		// The documentation of the biClrUsed field is not very clear.
 		// I'm going to assume that if biClrUsed is 0 and bitcount<=8, then
 		// the number of palette colors is the maximum that would be useful
@@ -290,21 +291,30 @@ static void iwbmp_set_default_bitfields(struct iwbmpreadcontext *rctx)
 static int iwbmp_read_palette(struct iwbmpreadcontext *rctx)
 {
 	size_t i;
-	iw_byte buf[1024];
+	iw_byte buf[4*256];
 	size_t b;
-
-	// TODO: Maybe we should allow palettes with >256 colors.
-	if(rctx->palette_entries>256) return 0;
+	unsigned int valid_palette_entries;
+	size_t valid_palette_nbytes;
 
 	b = (rctx->bmpversion==2) ? 3 : 4; // bytes per palette entry
 
-	if(!iwbmp_read(rctx,buf,rctx->palette_nbytes)) return 0;
-	rctx->palette.num_entries = rctx->palette_entries;
-	for(i=0;i<rctx->palette_entries;i++) {
+	// If the palette has >256 colors, only use the first 256.
+	valid_palette_entries = (rctx->palette_entries<=256) ? rctx->palette_entries : 256;
+	valid_palette_nbytes = valid_palette_entries * b;
+
+
+	if(!iwbmp_read(rctx,buf,valid_palette_nbytes)) return 0;
+	rctx->palette.num_entries = valid_palette_entries;
+	for(i=0;i<valid_palette_entries;i++) {
 		rctx->palette.entry[i].b = buf[i*b+0];
 		rctx->palette.entry[i].g = buf[i*b+1];
 		rctx->palette.entry[i].r = buf[i*b+2];
 		rctx->palette.entry[i].a = 255;
+	}
+
+	// If the palette is oversized, skip over the unused part of it.
+	if(rctx->palette_nbytes > valid_palette_nbytes) {
+		iwbmp_skip_bytes(rctx, rctx->palette_nbytes - valid_palette_nbytes);
 	}
 	return 1;
 }
@@ -1633,7 +1643,6 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	if(img->imgtype==IW_IMGTYPE_RGB) {
 		if(img->reduced_maxcolors) {
-			// TODO: We should probably store the true maxcolors in wctx.
 			setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b);
 		}
 		else {
