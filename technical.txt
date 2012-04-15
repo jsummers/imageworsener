@@ -402,7 +402,8 @@ right on the boundary between two target pixels. There seem to be several
 options:
 1. "Clone" the source pixel, and put it into both "boxes" (target pixels).
 2. "Split" the source pixel, and put it into both boxes, but with half the
-   usual weight.
+   usual weight. This is the most logical solution, but it violates the idea
+   of a box filter being a constant-value filter.
 3. Arbitrarily select one of the two boxes (which could be the left box, the
    right box, or some other strategy like selecting the box nearest to the
    center of the image).
@@ -410,10 +411,17 @@ options:
    due to the intricacies of floating point rounding. It may sometimes clone,
    sometimes round, and sometimes skip over a pixel completely.
 
-IW arbitrarily selects the left (or top) box. To make it select the right (or
-bottom) box instead, you could translate the image by a very small amount;
-e.g. "-translate 0.000001,0.000001". To use the "clone" strategy, use a very
-small blur; e.g. "-blur 1.000001".
+IW's "box" filter arbitrarily selects the left (or top) box. To make it select
+the right (or bottom) box instead, you could translate the image by a very
+small amount; e.g. "-translate 0.000001,0.000001". To use the "clone" strategy,
+use a very small blur; e.g. "-blur 1.000001".
+
+IW's "boxmv" filter implements the "split" strategy. The name comes from the
+idea of a "mean value": instead of using the filter's value box(x) directly, it
+uses ( box(x-epsilon) + box(x+epsilon) ) / 2. In effect, this means it uses a
+box filter variant which has isolated points at (-0.5, 0.5) and (0.5, 0.5). The
+difference between "box" and "boxmv" can be seen by, for example, reducing an
+image dimension by exactly 1/3 (e.g. from 300 to 200 pixels).
 
 Nearest neighbor
 ----------------

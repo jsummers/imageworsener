@@ -238,6 +238,10 @@ Options:
     box
      Box filter.
 
+    boxmv
+     A slightly modified box filter, which is more well-behaved and symmetric,
+     but less standard. Refer to technical.txt for more information.
+
     triangle, linear
      Triangle filter. When upscaling, this is the same as (bi)linear
      interpolation. When downscaling, the term "linear interpolation" is

@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added an alternate box filter, "boxmv".
  - Better support for -grayscale when writing BMP images.
  - Support "-cc <r>,<g>,<b>" syntax.
  - [Windows only] Support for reading images from, and writing images to, the
