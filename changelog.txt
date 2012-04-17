@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added "-precision 32" option.
  - Added an alternate box filter, "boxmv".
  - Better support for -grayscale when writing BMP images.
  - Support "-cc <r>,<g>,<b>" syntax.

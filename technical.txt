@@ -228,6 +228,9 @@ pathological filenames like "clip:.jpg".
 Double-precision floating point?
 --------------------------------
 
+[This section has not yet been updated to account for the new "-precision 32"
+option.]
+
 IW can be compiled to use any available floating point type for its internal
 representation of samples. (Unfortunately, it's impractical to make this a
 run-time option.) Its default is currently set to be "double", which is
@@ -550,8 +553,8 @@ Features I'm considering adding:
 
 - Ability to maintain PNG and GIF background colors.
 
-- A runtime option to use 32-bit floating point for intermediate image data.
-  (And maybe remove the compile-time IWCONFIG_SAMPLE_FLOAT option.)
+- Consider removing the compile-time IWCONFIG_SAMPLE_FLOAT option, and/or the
+  --with-sample-depth autoconf option.
 
 - Faster creation of palette images. (Using a hash table?)
 

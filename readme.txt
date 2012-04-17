@@ -645,6 +645,18 @@ Options:
    WebP-style quality setting to use if a WebP file is written. This is on a
    scale from 0 to 100. Default is 80.
 
+ -precision <n>
+   The minimum size, in bits, of a floating point number used to represent a
+   sample. Default is 64. Setting this to 32 will save memory, with minimal
+   reduction in accuracy. The effect on performance is not clear.
+
+   This option has no useful effect if IW was compiled to use 32-bit floating
+   point for its internal calculations.
+
+   Assuming IW was compiled to use 64-bit floating point, it will use that for
+   all its calculations, regardless of the "precision" setting. It will only
+   use 32-bit for storing large amounts of data in memory.
+
  -encoding <encoding>
    Set the encoding used for text output (informational and error messages).
    This is usually unnecessary, because IW can usually figure out what

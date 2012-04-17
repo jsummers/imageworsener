@@ -829,10 +829,16 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// The intermediate pixels are in ctx->out_pix. Copy them to the intermediate array.
 		for(j=0;j<ctx->intermed_height;j++) {
 			if(is_alpha_channel) {
-				ctx->intermediate_alpha[((size_t)j)*ctx->intermed_width + i] = ctx->out_pix[j];
+				if(ctx->precision==64)
+					ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_width + i] = ctx->out_pix[j];
+				else
+					ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_width + i] = (iw_float32)ctx->out_pix[j];
 			}
 			else {
-				ctx->intermediate[((size_t)j)*ctx->intermed_width + i] = ctx->out_pix[j];
+				if(ctx->precision==64)
+					ctx->intermediate64[((size_t)j)*ctx->intermed_width + i] = ctx->out_pix[j];
+				else
+					ctx->intermediate32[((size_t)j)*ctx->intermed_width + i] = (iw_float32)ctx->out_pix[j];
 			}
 		}
 	}
@@ -864,7 +870,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int retval=0;
 	IW_SAMPLE tmpsamp;
 	IW_SAMPLE alphasamp = 0.0;
-	IW_SAMPLE *outpix = NULL;
+	IW_SAMPLE *inpix = NULL; // Used if we need a separate temp buffer for input samples
+	IW_SAMPLE *outpix = NULL; // Used if we need a separate temp buffer for output samples
 	// Do any of the output channels use error-diffusion dithering?
 	int using_errdiffdither = 0;
 	int output_channel;
@@ -887,9 +894,14 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	out_ci = &ctx->img2_ci[output_channel];
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 
-	if(!is_alpha_channel) {
-		// For non-alpha channels, allocate a buffer to hold the output samples.
-		// (For alpha samples, we'll use ctx->final_alpha directly.)
+	if(ctx->precision!=64) {
+		inpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_in_pix * sizeof(IW_SAMPLE));
+		ctx->in_pix = inpix;
+	}
+
+	if(!is_alpha_channel || ctx->precision!=64) {
+		// We need an output buffer, except if this is a 64-bit alpha channel.
+		// (For 64-bit alpha samples, we'll use ctx->final_alpha directly.)
 		outpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_out_pix * sizeof(IW_SAMPLE));
 		if(!outpix) goto done;
 		ctx->out_pix = outpix;
@@ -966,20 +978,50 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	}
 
 	for(j=0;j<ctx->intermed_height;j++) {
+
+		// As needed, either copy the input pixels to a temp buffer (inpix, which
+		// ctx->in_pix already points to), or point ctx->in_pix directly to the
+		// intermediate data.
 		if(is_alpha_channel) {
-			ctx->in_pix = &ctx->intermediate_alpha[((size_t)j)*ctx->intermed_width];
-			ctx->out_pix = &ctx->final_alpha[((size_t)j)*ctx->img2.width];
+			if(inpix) {
+				// This will only happen if the precision is 32
+				for(i=0;i<ctx->num_in_pix;i++) {
+					inpix[i] = ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_width+i];
+				}
+			}
+			else {
+				ctx->in_pix = &ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_width];
+			}
 		}
 		else {
-			ctx->in_pix = &ctx->intermediate[((size_t)j)*ctx->intermed_width];
+			if(inpix) {
+				for(i=0;i<ctx->num_in_pix;i++) {
+					inpix[i] = ctx->intermediate32[((size_t)j)*ctx->intermed_width+i];
+				}
+			}
+			else {
+				ctx->in_pix = &ctx->intermediate64[((size_t)j)*ctx->intermed_width];
+			}
 		}
 
-		// Resize it to out_pix
+		// If needed, point ctx->out_pix to the right place in the output data.
+		// (Otherwise, it's already pointing the temporary "outpix" buffer.)
+		if(!outpix) {
+			ctx->out_pix = &ctx->final_alpha64[((size_t)j)*ctx->img2.width];
+		}
 
+		// Resize ctx->in_pix to ctx->out_pix.
 		iwpvt_resize_row_main(ctx,rs->rrctx);
 
 		if(clamp_after_resize)
 			clamp_output_samples(ctx);
+
+		// If necessary, copy the resized samples to the final_alpha image
+		if(is_alpha_channel && outpix && ctx->final_alpha32) {
+			for(i=0;i<ctx->num_out_pix;i++) {
+				ctx->final_alpha32[((size_t)j)*ctx->img2.width+i] = (iw_float32)outpix[i];
+			}
+		}
 
 		// Now convert the out_pix and put them in the final image.
 
@@ -1002,7 +1044,10 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 			if(int_ci->need_unassoc_alph_processing) {
 				// Special processing for (partially) transparent pixels.
-				alphasamp = ctx->final_alpha[((size_t)j)*ctx->img2.width + i];
+				if(ctx->precision==64)
+					alphasamp = ctx->final_alpha64[((size_t)j)*ctx->img2.width + i];
+				else
+					alphasamp = ctx->final_alpha32[((size_t)j)*ctx->img2.width + i];
 				if(alphasamp!=0.0) {
 					tmpsamp /= alphasamp;
 				}
@@ -1069,6 +1114,7 @@ done:
 	}
 	ctx->in_pix=NULL;
 	ctx->out_pix=NULL;
+	if(inpix) iw_free(ctx,inpix);
 	if(outpix) iw_free(ctx,outpix);
 
 	return retval;
@@ -1164,9 +1210,12 @@ static int iw_process_internal(struct iw_context *ctx)
 	// A linear color-correction descriptor to use with alpha channels.
 	struct iw_csdescr csdescr_linear;
 
-	ctx->intermediate=NULL;
-	ctx->intermediate_alpha=NULL;
-	ctx->final_alpha=NULL;
+	ctx->intermediate64=NULL;
+	ctx->intermediate_alpha64=NULL;
+	ctx->final_alpha64=NULL;
+	ctx->intermediate32=NULL;
+	ctx->intermediate_alpha32=NULL;
+	ctx->final_alpha32=NULL;
 	ctx->intermed_width = ctx->input_w;
 	ctx->intermed_height = ctx->img2.height;
 
@@ -1179,9 +1228,17 @@ static int iw_process_internal(struct iw_context *ctx)
 		goto done;
 	}
 
-	ctx->intermediate = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
-	if(!ctx->intermediate) {
-		goto done;
+	if(ctx->precision==64) {
+		ctx->intermediate64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
+		if(!ctx->intermediate64) {
+			goto done;
+		}
+	}
+	else {
+		ctx->intermediate32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(iw_float32));
+		if(!ctx->intermediate32) {
+			goto done;
+		}
 	}
 
 	if(ctx->uses_errdiffdither) {
@@ -1199,13 +1256,25 @@ static int iw_process_internal(struct iw_context *ctx)
 
 	// If an alpha channel is present, we have to process it first.
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {
-		ctx->intermediate_alpha = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
-		if(!ctx->intermediate_alpha) {
-			goto done;
+		if(ctx->precision==64) {
+			ctx->intermediate_alpha64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
+			if(!ctx->intermediate_alpha64) {
+				goto done;
+			}
+			ctx->final_alpha64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->img2.width * ctx->img2.height, sizeof(IW_SAMPLE));
+			if(!ctx->final_alpha64) {
+				goto done;
+			}
 		}
-		ctx->final_alpha = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->img2.width * ctx->img2.height, sizeof(IW_SAMPLE));
-		if(!ctx->final_alpha) {
-			goto done;
+		else {
+			ctx->intermediate_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(iw_float32));
+			if(!ctx->intermediate_alpha32) {
+				goto done;
+			}
+			ctx->final_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->img2.width * ctx->img2.height, sizeof(iw_float32));
+			if(!ctx->final_alpha32) {
+				goto done;
+			}
 		}
 
 		if(!iw_process_one_channel(ctx,ctx->intermed_alpha_channel_index,&csdescr_linear,&csdescr_linear)) goto done;
@@ -1226,9 +1295,12 @@ static int iw_process_internal(struct iw_context *ctx)
 	retval=1;
 
 done:
-	if(ctx->intermediate) { iw_free(ctx,ctx->intermediate); ctx->intermediate=NULL; }
-	if(ctx->intermediate_alpha) { iw_free(ctx,ctx->intermediate_alpha); ctx->intermediate_alpha=NULL; }
-	if(ctx->final_alpha) { iw_free(ctx,ctx->final_alpha); ctx->final_alpha=NULL; }
+	if(ctx->intermediate64) { iw_free(ctx,ctx->intermediate64); ctx->intermediate64=NULL; }
+	if(ctx->intermediate_alpha64) { iw_free(ctx,ctx->intermediate_alpha64); ctx->intermediate_alpha64=NULL; }
+	if(ctx->final_alpha64) { iw_free(ctx,ctx->final_alpha64); ctx->final_alpha64=NULL; }
+	if(ctx->intermediate32) { iw_free(ctx,ctx->intermediate32); ctx->intermediate32=NULL; }
+	if(ctx->intermediate_alpha32) { iw_free(ctx,ctx->intermediate_alpha32); ctx->intermediate_alpha32=NULL; }
+	if(ctx->final_alpha32) { iw_free(ctx,ctx->final_alpha32); ctx->final_alpha32=NULL; }
 	for(k=0;k<IW_DITHER_MAXROWS;k++) {
 		if(ctx->dither_errors[k]) { iw_free(ctx,ctx->dither_errors[k]); ctx->dither_errors[k]=NULL; }
 	}

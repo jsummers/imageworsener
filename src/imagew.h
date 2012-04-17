@@ -47,6 +47,8 @@ extern "C" {
 // This value can also be set via the iw_create_context() function.
 #define IW_VAL_API_VERSION       1
 
+#define IW_VAL_PRECISION         10
+
 // If ==1, convert to grayscale.
 #define IW_VAL_CVT_TO_GRAYSCALE  11
 

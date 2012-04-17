@@ -129,6 +129,9 @@ struct iw_context {
 	int use_count;
 	unsigned int output_profile;
 
+	// Precision of intermediate samples, 32 (=32) or 64 (=whatever IW_SAMPLE is)
+	int precision;
+
 	iw_mallocfn_type mallocfn;
 	iw_freefn_type freefn;
 
@@ -137,9 +140,14 @@ struct iw_context {
 	IW_SAMPLE *in_pix; // A single row of source samples to resample.
 	IW_SAMPLE *out_pix; // The resulting resampled row.
 
-	IW_SAMPLE *intermediate;
-	IW_SAMPLE *intermediate_alpha;
-	IW_SAMPLE *final_alpha;
+	// The "64" data is only actually only 64-bit if IW_SAMPLE is 64-bit.
+	IW_SAMPLE *intermediate64;
+	IW_SAMPLE *intermediate_alpha64;
+	IW_SAMPLE *final_alpha64;
+
+	iw_float32 *intermediate32;
+	iw_float32 *intermediate_alpha32;
+	iw_float32 *final_alpha32;
 
 	int caller_set_output_csdescr;
 	int warn_invalid_output_csdescr;

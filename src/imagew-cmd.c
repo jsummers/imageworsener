@@ -89,6 +89,7 @@ struct params_struct {
 	struct resize_blur resize_blur_x;
 	struct resize_blur resize_blur_y;
 	int bestfit;
+	int precision;
 	int depth; // Overall depth
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
 	int compression;
@@ -939,6 +940,7 @@ static int run(struct params_struct *p)
 		iw_set_random_seed(ctx,p->randomize, p->random_seed);
 	}
 
+	if(p->precision) iw_set_value(ctx,IW_VAL_PRECISION,p->precision);
 	if(p->no_gamma) iw_set_value(ctx,IW_VAL_DISABLE_GAMMA,1);
 	if(p->intclamp) iw_set_value(ctx,IW_VAL_INT_CLAMP,1);
 	if(p->no_cslabel) iw_set_value(ctx,IW_VAL_NO_CSLABEL,1);
@@ -1858,7 +1860,7 @@ static void do_printversion(struct params_struct *p)
 
 enum iwcmd_param_types {
  PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS,
- PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
+ PT_PRECISION, PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
  PT_BLUR_FACTOR, PT_BLUR_FACTOR_X, PT_BLUR_FACTOR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
  PT_CC, PT_CCCOLOR, PT_CCALPHA, PT_CCRED, PT_CCGREEN, PT_CCBLUE, PT_CCGRAY,
@@ -1894,6 +1896,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"width",PT_WIDTH,1},
 		{"h",PT_HEIGHT,1},
 		{"height",PT_HEIGHT,1},
+		{"precision",PT_PRECISION,1},
 		{"depth",PT_DEPTH,1},
 		{"depthgray",PT_DEPTHGRAY,1},
 		{"depthalpha",PT_DEPTHALPHA,1},
@@ -2114,6 +2117,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_HEIGHT:
 		iwcmd_read_w_or_h(p,v,&p->dst_height_req,&p->rel_height_flag,&p->rel_height);
+		break;
+	case PT_PRECISION:
+		p->precision = iwcmd_parse_int(v);
 		break;
 	case PT_DEPTH:
 		ret=iwcmd_read_depth(p,v);
