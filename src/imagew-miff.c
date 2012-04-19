@@ -27,6 +27,8 @@ struct iwmiffreadcontext {
 	int density_units; // 0=unknown, 1=cm
 	int density_known;
 	int compression;
+	int miff_bitdepth;
+	int precision;
 	double density_x, density_y;
 	struct iw_csdescr csdescr;
 
@@ -189,10 +191,16 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 		}
 	}
 	else if(!strcmp(name,"depth")) {
-		rctx->img->bit_depth = atoi(val);
-		if(rctx->img->bit_depth!=32 && rctx->img->bit_depth!=64) {
-			iw_set_error(rctx->ctx,"MIFF: Unsupported bit depth");
+		rctx->miff_bitdepth = atoi(val);
+		if(rctx->miff_bitdepth!=32 && rctx->miff_bitdepth!=64) {
+			iw_set_errorf(rctx->ctx,"MIFF: Unsupported bit depth (%d)",rctx->miff_bitdepth);
 			rctx->error_flag=1;
+		}
+		rctx->img->bit_depth = rctx->miff_bitdepth;
+		if(rctx->precision==32 || iw_get_sample_size()<=4) {
+			// A bitdepth larger than 32 wouldn't be very useful, so
+			// we'll convert it to 32 as we read the image.
+			rctx->img->bit_depth = 32;
 		}
 	}
 	else if(!strcmp(name,"compression")) {
@@ -370,6 +378,46 @@ static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
 	}
 }
 
+static void iwmiffr_convert_row64_32(struct iwmiffreadcontext *rctx,
+  const iw_byte *src, iw_byte *dst, int nsamples)
+{
+	int i;
+	int k;
+	// !!! Portability warning: Using a union in this way may be nonportable,
+	// and/or may violate strict-aliasing rules.
+	union su_union64 {
+		iw_byte c[8];
+		iw_float64 f;
+	} volatile su64;
+
+	union su_union32 {
+		iw_byte c[4];
+		iw_float32 f;
+	} volatile su32;
+
+	for(i=0;i<nsamples;i++) {
+		// Read 64-bit float.
+		if(rctx->host_little_endian) {
+			for(k=0;k<8;k++) {
+				su64.c[k] = src[i*8+7-k];
+			}
+		}
+		else {
+			for(k=0;k<8;k++) {
+				su64.c[k] = src[i*8+k];
+			}
+		}
+
+		// Convert 64-bit float to 32-bit float.
+		su32.f = (iw_float32)su64.f;
+
+		// Write 32-bit float.
+		for(k=0;k<4;k++) {
+			dst[i*4+k] = su32.c[k];
+		}
+	}
+}
+
 static int iwmiff_skip_bytes(struct iwmiffreadcontext *rctx, size_t n)
 {
 	iw_byte buf[2048];
@@ -406,7 +454,7 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 	samples_per_pixel = iw_imgtype_num_channels(img->imgtype);
 	samples_per_row = samples_per_pixel * img->width;
 
-	tmprowsize = (img->bit_depth/8)*samples_per_row;
+	tmprowsize = (rctx->miff_bitdepth/8)*samples_per_row;
 	tmprow = iw_mallocz(rctx->ctx,tmprowsize);
 	if(!tmprow) goto done;
 
@@ -419,8 +467,15 @@ static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
 		if(!iwmiff_read_and_uncompress_row(rctx,tmprow,tmprowsize))
 			goto done;
 
+		// There are three possibilities for {miff_bitdepth, img->bit_depth}:
+		//  32->32, 64->32, and 64->64.
 		if(img->bit_depth==32) {
-			iwmiffr_convert_row32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
+			if(rctx->miff_bitdepth==64) {
+				iwmiffr_convert_row64_32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
+			}
+			else {
+				iwmiffr_convert_row32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
+			}
 		}
 		else if(img->bit_depth==64) {
 			iwmiffr_convert_row64(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
@@ -457,6 +512,7 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	rctx.img = &img;
 	rctx.compression = IW_COMPRESSION_NONE;
 	rctx.zmod = iw_get_zlib_module(ctx);
+	rctx.precision = iw_get_value(ctx,IW_VAL_PRECISION);
 
 	// Assume unlabeled images are sRGB
 	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
