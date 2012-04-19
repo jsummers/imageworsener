@@ -1377,11 +1377,18 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		// Floating point output.
-		// An output_depth_req of 0 means the caller did not set it.
-		if(ctx->output_depth_req>=1 && ctx->output_depth_req<=32)
+		if(ctx->output_depth_req<=0) {
+			// An output_depth_req of 0 means the caller did not set it.
+			// The default is to use the maximum useful depth, which is the
+			// minimum of ctx->precision and the number of bits in IW_SAMPLE.
+			ctx->img2.bit_depth = (iw_get_sample_size()<=4) ? 32 : ctx->precision;
+		}
+		else if(ctx->output_depth_req>=1 && ctx->output_depth_req<=32) {
 			ctx->img2.bit_depth=32;
-		else
+		}
+		else {
 			ctx->img2.bit_depth=64;
+		}
 		return;
 	}
 
