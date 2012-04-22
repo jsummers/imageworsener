@@ -310,12 +310,22 @@ struct iw_image {
 	int imgtype;  // IW_IMGTYPE_*
 	int bit_depth;
 	int sampletype; // IW_SAMPLETYPE_*
+
+	// This is the logical width and height.
+	// The layout of ->pixels is indicated by ->orientation.
 	int width, height;
+
 	// Caution: Multi-byte samples with an integer data type use big-endian
 	// byte order, while floating-point samples use the native byte order of
 	// the host system (usually little-endian).
 	iw_byte *pixels;
 	size_t bpr; // bytes per row
+
+	// Describes orientation transformations that need to be made to the
+	// pixels.
+	// Used with input images only.
+	unsigned int orient_transform;
+
 	int native_grayscale; // For input images: Was the image encoded as grayscale?
 	int density_code; // IW_DENSITY_*
 	double density_x, density_y;
@@ -416,6 +426,18 @@ IW_EXPORT(struct iw_context*) iw_create_context(struct iw_init_params *params);
 IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
 
 IW_EXPORT(int) iw_process_image(struct iw_context *ctx);
+
+// Rotate and/or mirror the image.
+// Must be called after the input image has been read (and presumably before
+// its height, width, and density are queried.)
+// Note that this function performs an immediate action. It is not a setting.
+// First, if x&0x04, the image's coordinates will be transposed (the image
+// will be flipped over the "\" diagonal).
+// Then, if x&0x01, it will be mirrored horizontally,
+// and if x&0x02, it will be mirrored vertically.
+// I.e. 0=no change  1=mirror-x   2=mirror-y    3=rotate-180
+//      4=transpose  5=rotate-90  6=rotate-270  7=transverse
+IW_EXPORT(void) iw_reorient_image(struct iw_context *ctx, unsigned int x);
 
 // Set the translation hook function. Strings such as error messages will be
 //  passed to this function.

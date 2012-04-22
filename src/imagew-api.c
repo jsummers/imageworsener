@@ -573,6 +573,46 @@ IW_IMPL(void) iw_set_resize_alg(struct iw_context *ctx, int dimension, int famil
 	rs->param2 = param2;
 }
 
+IW_IMPL(void) iw_reorient_image(struct iw_context *ctx, unsigned int x)
+{
+	int tmpi;
+	double tmpd;
+
+	x = x & 0x07;
+
+	// 'orientation' may already be set to something.
+	// We need to 'compose' the previous operation with this one,
+	// instead of replacing it.
+	if(x<4 || ctx->img1.orient_transform==0) {
+		// If the new operation doesn't transpose the image, or there was no
+		// previous operation, then it's easy.
+		ctx->img1.orient_transform ^= x;
+	}
+	else if(ctx->img1.orient_transform==4) {
+		ctx->img1.orient_transform = x-4;
+	}
+	else if(ctx->img1.orient_transform==5) {
+		ctx->img1.orient_transform = (x+2)%4;
+	}
+	else if(ctx->img1.orient_transform==6) {
+		ctx->img1.orient_transform = (9-x)%4;
+	}
+	else if(ctx->img1.orient_transform==7) {
+		ctx->img1.orient_transform = 7-x;
+	}
+
+	if(x&0x04) {
+		// We're swapping height and width.
+		tmpi = ctx->img1.width;
+		ctx->img1.width = ctx->img1.height;
+		ctx->img1.height = tmpi;
+
+		tmpd = ctx->img1.density_x;
+		ctx->img1.density_x = ctx->img1.density_y;
+		ctx->img1.density_y = tmpd;
+	}
+}
+
 IW_IMPL(int) iw_get_sample_size(void)
 {
 	return (int)sizeof(IW_SAMPLE);

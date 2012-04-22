@@ -110,6 +110,7 @@ struct params_struct {
 	int bkgd_check_origin_x, bkgd_check_origin_y;
 	int use_bkgd_label;
 	int use_crop, crop_x, crop_y, crop_w, crop_h;
+	unsigned int orientation;
 	struct rgb_color bkgd;
 	struct rgb_color bkgd2;
 	int page_to_read;
@@ -1011,6 +1012,10 @@ static int run(struct params_struct *p)
 	}
 	readdescr.fp=NULL;
 
+	if(p->orientation) {
+		iw_reorient_image(ctx,p->orientation);
+	}
+
 	imgtype_read = iw_get_value(ctx,IW_VAL_INPUT_IMAGE_TYPE);
 
 	// We have to tell the library the output format, so it can know what
@@ -1864,7 +1869,7 @@ enum iwcmd_param_types {
  PT_BLUR_FACTOR, PT_BLUR_FACTOR_X, PT_BLUR_FACTOR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
  PT_CC, PT_CCCOLOR, PT_CCALPHA, PT_CCRED, PT_CCGREEN, PT_CCBLUE, PT_CCGRAY,
- PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP,
+ PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP, PT_REORIENT,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE,
  PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH, PT_BMPTRNS,
@@ -1926,6 +1931,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"checkersize",PT_CHECKERSIZE,1},
 		{"checkerorigin",PT_CHECKERORG,1},
 		{"crop",PT_CROP,1},
+		{"reorient",PT_REORIENT,1},
 		{"offsetred",PT_OFFSET_R_H,1},
 		{"offsetgreen",PT_OFFSET_G_H,1},
 		{"offsetblue",PT_OFFSET_B_H,1},
@@ -2231,6 +2237,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->crop_w = p->crop_h = -1;
 		iwcmd_parse_int_4(v,&p->crop_x,&p->crop_y,&p->crop_w,&p->crop_h);
 		p->use_crop=1;
+		break;
+	case PT_REORIENT:
+		p->orientation = (unsigned int)iwcmd_parse_int(v);
 		break;
 	case PT_OFFSET_R_H:
 		p->offset_r_h=iwcmd_parse_dbl(v);

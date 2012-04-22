@@ -163,8 +163,48 @@ static IW_INLINE unsigned int get_raw_sample_1(struct iw_context *ctx,
 static IW_INLINE void translate_coords(struct iw_context *ctx,
 	int x, int y, int *prx, int *pry)
 {
-	*prx = ctx->input_start_x+x;
-	*pry = ctx->input_start_y+y;
+	if(ctx->img1.orient_transform==0) {
+		// The fast path
+		*prx = ctx->input_start_x+x;
+		*pry = ctx->input_start_y+y;
+		return;
+	}
+
+	switch(ctx->img1.orient_transform) {
+	case 1: // mirror-x
+		*prx = ctx->img1.width - 1 - (ctx->input_start_x+x);
+		*pry = ctx->input_start_y+y;
+		break;
+	case 2: // mirror-y
+		*prx = ctx->input_start_x+x;
+		*pry = ctx->img1.height - 1 - (ctx->input_start_y+y);
+		break;
+	case 3: // mirror-x, mirror-y
+		*prx = ctx->img1.width - 1 - (ctx->input_start_x+x);
+		*pry = ctx->img1.height - 1 - (ctx->input_start_y+y);
+		break;
+	case 4:
+		// transpose
+		*prx = ctx->input_start_y+y;
+		*pry = ctx->input_start_x+x;
+		break;
+	case 5:
+		*prx = ctx->input_start_y+y;
+		*pry = ctx->img1.width - 1 - (ctx->input_start_x+x);
+		break;
+	case 6:
+		*prx = ctx->img1.height - 1 - (ctx->input_start_y+y);
+		*pry = ctx->input_start_x+x;
+		break;
+	case 7:
+		*prx = ctx->img1.height - 1 - (ctx->input_start_y+y);
+		*pry = ctx->img1.width - 1 - (ctx->input_start_x+x);
+		break;
+	default:
+		*prx = 0;
+		*pry = 0;
+		break;
+	}
 }
 
 // Returns a value from 0 to 2^(ctx->img1.bit_depth)-1.
