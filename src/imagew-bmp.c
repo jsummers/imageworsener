@@ -393,7 +393,6 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 	iw_byte *rowbuf = NULL;
 	size_t bmp_bpr;
 	int j;
-	size_t targetrow;
 	int retval = 0;
 
 	rctx->img->imgtype = IW_IMGTYPE_RGB;
@@ -408,8 +407,6 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 	rowbuf = iw_malloc(rctx->ctx,bmp_bpr);
 
 	for(j=0;j<rctx->img->height;j++) {
-		targetrow = rctx->topdown ? j : rctx->img->height-1-j;
-
 		// Read a row of the BMP file.
 		if(!iwbmp_read(rctx,rowbuf,bmp_bpr)) {
 			goto done;
@@ -417,19 +414,19 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 		switch(rctx->bitcount) {
 		case 32:
 		case 16:
-			bmpr_convert_row_32_16(rctx,rowbuf,targetrow);
+			bmpr_convert_row_32_16(rctx,rowbuf,j);
 			break;
 		case 24:
-			bmpr_convert_row_24(rctx,rowbuf,targetrow);
+			bmpr_convert_row_24(rctx,rowbuf,j);
 			break;
 		case 8:
-			bmpr_convert_row_8(rctx,rowbuf,targetrow);
+			bmpr_convert_row_8(rctx,rowbuf,j);
 			break;
 		case 4:
-			bmpr_convert_row_4(rctx,rowbuf,targetrow);
+			bmpr_convert_row_4(rctx,rowbuf,j);
 			break;
 		case 1:
-			bmpr_convert_row_1(rctx,rowbuf,targetrow);
+			bmpr_convert_row_1(rctx,rowbuf,j);
 			break;
 		}
 	}
@@ -455,7 +452,7 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 	// The position of the next pixel to set.
 	// pos_y is in IW coordinates (top=0), not BMP coordinates (bottom=0).
 	pos_x = 0;
-	pos_y = rctx->img->height-1;
+	pos_y = 0;
 
 	// Initially make all pixels transparent, so that any any pixels we
 	// don't modify will be transparent.
@@ -463,14 +460,14 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 
 	while(1) {
 		// If we've reached the end of the bitmap, stop.
-		if(pos_y<0) break;
-		if(pos_y==0 && pos_x>=rctx->img->width) break;
+		if(pos_y>rctx->img->height-1) break;
+		if(pos_y==rctx->img->height-1 && pos_x>=rctx->img->width) break;
 
 		if(!iwbmp_read(rctx,buf,2)) goto done;
 		if(buf[0]==0) {
 			if(buf[1]==0) {
 				// End of Line
-				pos_y--;
+				pos_y++;
 				pos_x=0;
 			}
 			else if(buf[1]==1) {
@@ -486,7 +483,7 @@ static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
 				if(!iwbmp_read(rctx,buf,2)) goto done;
 
 				if(pos_x<rctx->img->width) pos_x += buf[0];
-				pos_y -= buf[1];
+				pos_y += buf[1];
 			}
 			else {
 				// A uncompressed segment
@@ -664,6 +661,11 @@ done:
 static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmpreadcontext *rctx)
 {
 	struct iw_csdescr csdescr;
+
+	// Have IW flip the image, if necessary.
+	if(!rctx->topdown) {
+		iw_reorient_image(ctx,0x02);
+	}
 
 	// Tell IW the colorspace.
 	iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
