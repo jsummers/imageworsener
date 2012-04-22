@@ -311,8 +311,9 @@ struct iw_image {
 	int bit_depth;
 	int sampletype; // IW_SAMPLETYPE_*
 
-	// This is the logical width and height.
-	// The layout of ->pixels is indicated by ->orientation.
+	// This is the logical width and height, which does not necessarily
+	// indicate the order of the pixels in ->pixels.
+	// (The order is indicated by ->orient_transform.)
 	int width, height;
 
 	// Caution: Multi-byte samples with an integer data type use big-endian
@@ -719,6 +720,8 @@ IW_EXPORT(int) iw_get_i32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui16be(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32be(const iw_byte *b);
+IW_EXPORT(unsigned int) iw_get_ui16_e(const iw_byte *b, int is_le);
+IW_EXPORT(unsigned int) iw_get_ui32_e(const iw_byte *b, int is_le);
 
 IW_EXPORT(int) iw_max_color_to_bitdepth(unsigned int mc);
 

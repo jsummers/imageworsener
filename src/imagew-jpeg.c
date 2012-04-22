@@ -45,7 +45,118 @@ struct iw_jpegrctx {
 	struct iw_iodescr *iodescr;
 	JOCTET *buffer;
 	size_t buffer_len;
+	unsigned int exif_orientation;
+	int is_jfif;
 };
+
+struct iw_exif_state {
+	int is_le; // Flag for little endianness
+	const iw_byte *d;
+	size_t d_len;
+};
+
+// Try to read an Exif tag into an integer.
+// Returns zero on failure.
+static int get_exif_tag_int_value(struct iw_exif_state *e, unsigned int tag_pos,
+	unsigned int *pv)
+{
+	unsigned int field_type;
+	unsigned int value_count;
+
+	field_type = iw_get_ui16_e(&e->d[tag_pos+2],e->is_le);
+	value_count = iw_get_ui32_e(&e->d[tag_pos+4],e->is_le);
+
+	if(value_count!=1) return 0;
+
+	if(field_type==3) { // SHORT (uint16)
+		*pv = iw_get_ui16_e(&e->d[tag_pos+8],e->is_le);
+		return 1;
+	}
+	else if(field_type==4) { // LONG (uint32)
+		*pv = iw_get_ui32_e(&e->d[tag_pos+8],e->is_le);
+		return 1;
+	}
+
+	return 0;
+}
+
+static void iwjpeg_scan_exif_ifd(struct iw_jpegrctx *rctx,
+	struct iw_exif_state *e, iw_uint32 ifd)
+{
+	unsigned int tag_count;
+	unsigned int i;
+	unsigned int tag_pos;
+	unsigned int tag_id;
+	unsigned int v;
+
+	if(ifd<8 || ifd>e->d_len-18) return;
+
+	tag_count = iw_get_ui16_e(&e->d[ifd],e->is_le);
+	if(tag_count>1000) return; // Sanity check.
+
+	for(i=0;i<tag_count;i++) {
+		tag_pos = ifd+2+i*12;
+		if(tag_pos+12 > e->d_len) return; // Avoid overruns.
+		tag_id = iw_get_ui16_e(&e->d[tag_pos],e->is_le);
+
+		switch(tag_id) {
+		case 274: // 274 = Orientation
+			if(get_exif_tag_int_value(e,tag_pos,&v)) {
+				rctx->exif_orientation = v;
+			}
+			break;
+
+			// TODO: Read Exif density information.
+		}
+	}
+}
+
+static void iwjpeg_scan_exif(struct iw_jpegrctx *rctx,
+		const iw_byte *d, size_t d_len)
+{
+	struct iw_exif_state e;
+	iw_uint32 ifd;
+
+	if(d_len<8) return;
+
+	iw_zeromem(&e,sizeof(struct iw_exif_state));
+	e.d = d;
+	e.d_len = d_len;
+
+	e.is_le = (d[0]=='I');
+
+	ifd = iw_get_ui32_e(&d[4],e.is_le);
+
+	iwjpeg_scan_exif_ifd(rctx,&e,ifd);
+}
+
+// Look at the saved JPEG markers.
+// The only one we care about is Exif.
+static void iwjpeg_read_saved_markers(struct iw_jpegrctx *rctx,
+	struct jpeg_decompress_struct *cinfo)
+{
+	struct jpeg_marker_struct *mk;
+	const iw_byte *d;
+
+	mk = cinfo->marker_list;
+
+	// Walk the list of saved markers.
+	while(mk) {
+		d = (const iw_byte*)mk->data;
+
+		if(mk->marker==0xe1) {
+			if(mk->data_length>=6 && d[0]=='E' && d[1]=='x' &&
+				d[2]=='i' && d[3]=='f' && d[4]==0)
+			{
+				// I don't know what the d[5] byte is for, but Exif
+				// data always starts with d[6].
+				iwjpeg_scan_exif(rctx, &d[6], mk->data_length-6);
+			}
+		}
+
+		mk = mk->next;
+	}
+}
 
 static void iwjpeg_read_density(struct iw_context *ctx, struct iw_image *img,
 				struct jpeg_decompress_struct *cinfo)
@@ -206,9 +317,19 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	if(!jpegrctx.buffer) goto done;
 	cinfo.src = (struct jpeg_source_mgr*)&jpegrctx;
 
+	// The lazy way. It would be more efficient to use
+	// jpeg_set_marker_processor(), instead of saving everything to memory.
+	// But libjpeg's marker processing functions have fairly complex
+	// requirements.
+	jpeg_save_markers(&cinfo, 0xe1, 65535);
+
 	jpeg_read_header(&cinfo, TRUE);
 
+	jpegrctx.is_jfif = cinfo.saw_JFIF_marker;
+
 	iwjpeg_read_density(ctx,&img,&cinfo);
+
+	iwjpeg_read_saved_markers(&jpegrctx,&cinfo);
 
 	jpeg_start_decompress(&cinfo);
 
@@ -217,7 +338,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	// libjpeg will automatically convert YCbCr images to RGB, and YCCK images
 	// to CMYK. That leaves GRAYSCALE, RGB, and CMYK for us to handle.
-	// cinfo.jpeg_color_space is the colorspace before conversion, and
+	// Note: cinfo.jpeg_color_space is the colorspace before conversion, and
 	// cinfo.out_color_space is the colorspace after conversion.
 
 	if(colorspace==JCS_GRAYSCALE && numchannels==1) {
@@ -275,6 +396,24 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	jpeg_finish_decompress(&cinfo);
 
 	iw_set_input_image(ctx, &img);
+
+	if(jpegrctx.exif_orientation>=2 && jpegrctx.exif_orientation<=8) {
+		static const unsigned int exif_orient_to_transform[9] =
+		   { 0,0, 1,3,2,4,5,7,6 };
+
+		// An Exif marker indicated an unusual image orientation.
+
+		if(jpegrctx.is_jfif) {
+			// The presence of a JFIF marker implies a particular orientation.
+			// If there's also an Exif marker that says something different,
+			// I'm not sure what we're supposed to do.
+			iw_warning(ctx,"JPEG image has an ambiguous orientation");
+		}
+		else {
+			iw_reorient_image(ctx,exif_orient_to_transform[jpegrctx.exif_orientation]);
+		}
+	}
+
 	retval=1;
 
 done:

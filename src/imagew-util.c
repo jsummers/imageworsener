@@ -416,6 +416,21 @@ IW_IMPL(unsigned int) iw_get_ui32be(const iw_byte *b)
 	return (b[0]<<24) | (b[1]<<16) | (b[2]<<8) | b[3];
 }
 
+// Accepts a flag indicating the endianness.
+IW_IMPL(unsigned int) iw_get_ui16_e(const iw_byte *b, int is_le)
+{
+	if(is_le)
+		return iw_get_ui16le(b);
+	return iw_get_ui16be(b);
+}
+
+IW_IMPL(unsigned int) iw_get_ui32_e(const iw_byte *b, int is_le)
+{
+	if(is_le)
+		return iw_get_ui32le(b);
+	return iw_get_ui32be(b);
+}
+
 IW_IMPL(int) iw_max_color_to_bitdepth(unsigned int mc)
 {
 	unsigned int bd;

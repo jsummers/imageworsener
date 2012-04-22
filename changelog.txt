@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for reading Orientation tags from JPEG/Exif files.
  - Ability to rotate and mirror images.
  - Added "-precision 32" option.
  - Added an alternate box filter, "boxmv".
