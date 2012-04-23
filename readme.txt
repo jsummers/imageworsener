@@ -348,6 +348,23 @@ Options:
    unless you use -intclamp, in which case both the intermediate and final
    samples are clamped.
 
+ -reorient <operation>
+   Rotate or mirror the image.
+
+   Available operations:
+    "5" or "rotate90": Rotate 90 degrees clockwise.
+    "3" or "rotate180": Rotate 180 degrees.
+    "6" or "rotate270": Rotate 270 degrees clockwise.
+    "1" or "fliph": Flip horizontally (across a vertical axis).
+    "2" or "flipv": Flip vertically (across a horizontal axis).
+    "4" or "transpose": Flip across upper-left-to-lower-right axis.
+    "7" or "transverse": Flip across upper-right-to-lower-left axis.
+    "0": No change.
+
+   Rotating/mirroring causes the source image to be interpreted as if it had a
+   different orientation. So, all other options (-width, -crop, etc.) are based
+   on the new orientation, not the original.
+   
  -crop <x>,<y>,<width>,<height>
    Crop the source image before processing it. Pixels outside the specified
    area will be ignored.

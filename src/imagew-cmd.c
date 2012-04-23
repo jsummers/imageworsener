@@ -110,7 +110,7 @@ struct params_struct {
 	int bkgd_check_origin_x, bkgd_check_origin_y;
 	int use_bkgd_label;
 	int use_crop, crop_x, crop_y, crop_w, crop_h;
-	unsigned int orientation;
+	unsigned int reorient;
 	struct rgb_color bkgd;
 	struct rgb_color bkgd2;
 	int page_to_read;
@@ -1012,8 +1012,8 @@ static int run(struct params_struct *p)
 	}
 	readdescr.fp=NULL;
 
-	if(p->orientation) {
-		iw_reorient_image(ctx,p->orientation);
+	if(p->reorient) {
+		iw_reorient_image(ctx,p->reorient);
 	}
 
 	imgtype_read = iw_get_value(ctx,IW_VAL_INPUT_IMAGE_TYPE);
@@ -1810,6 +1810,27 @@ static int iwcmd_process_gsf(struct params_struct *p, const char *s)
 	return 1;
 }
 
+static int iwcmd_process_reorient(struct params_struct *p, const char *s)
+{
+	if(s[0]>='0' && s[0]<='9') {
+		p->reorient = (unsigned int)iwcmd_parse_int(s);
+		return 1;
+	}
+
+	if(!strcmp(s,"fliph")) p->reorient = IW_REORIENT_FLIP_H;
+	else if(!strcmp(s,"flipv")) p->reorient = IW_REORIENT_FLIP_V;
+	else if(!strcmp(s,"rotate90")) p->reorient = IW_REORIENT_ROTATE_90;
+	else if(!strcmp(s,"rotate180")) p->reorient = IW_REORIENT_ROTATE_180;
+	else if(!strcmp(s,"rotate270")) p->reorient = IW_REORIENT_ROTATE_270;
+	else if(!strcmp(s,"transpose")) p->reorient = IW_REORIENT_TRANSPOSE;
+	else if(!strcmp(s,"transverse")) p->reorient = IW_REORIENT_TRANSVERSE;
+	else {
+		iwcmd_error(p,"Unknown orientation transform \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
+		return -1;
+	}
+	return 1;
+}
+
 static int get_compression_from_name(struct params_struct *p, const char *s)
 {
 	if(!strcmp(s,"none")) return IW_COMPRESSION_NONE;
@@ -2239,7 +2260,8 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->use_crop=1;
 		break;
 	case PT_REORIENT:
-		p->orientation = (unsigned int)iwcmd_parse_int(v);
+		if(iwcmd_process_reorient(p,v) < 0)
+			return 0;
 		break;
 	case PT_OFFSET_R_H:
 		p->offset_r_h=iwcmd_parse_dbl(v);

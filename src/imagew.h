@@ -263,6 +263,19 @@ extern "C" {
 #define IW_EDGE_POLICY_STANDARD   2  // Use available samples if any are within radius; otherwise replicate.
 #define IW_EDGE_POLICY_TRANSPARENT 3
 
+// Reorientation codes, for use with iw_reorient_image().
+// Note that these do not represent an orientation; they represent a *change*
+// in orientation.
+// These definitions must not be changed.
+#define IW_REORIENT_NOCHANGE    0
+#define IW_REORIENT_FLIP_H      1
+#define IW_REORIENT_FLIP_V      2
+#define IW_REORIENT_ROTATE_180  3
+#define IW_REORIENT_TRANSPOSE   4
+#define IW_REORIENT_ROTATE_90   5
+#define IW_REORIENT_ROTATE_270  6
+#define IW_REORIENT_TRANSVERSE  7
+
 // Optimizations that IW is allowed to do:
 #define IW_OPT_GRAYSCALE    1   // optimize color to grayscale
 #define IW_OPT_PALETTE      2   // optimize to paletted images
@@ -428,16 +441,10 @@ IW_EXPORT(void) iw_destroy_context(struct iw_context *ctx);
 
 IW_EXPORT(int) iw_process_image(struct iw_context *ctx);
 
-// Rotate and/or mirror the image.
-// Must be called after the input image has been read (and presumably before
-// its height, width, and density are queried.)
+// Rotate and/or mirror the image. 'x' is an IW_REORIENT_ code.
+// Must be called after the input image has been read (and you probably want
+// to call it before its height, width, and density are queried).
 // Note that this function performs an immediate action. It is not a setting.
-// First, if x&0x04, the image's coordinates will be transposed (the image
-// will be flipped over the "\" diagonal).
-// Then, if x&0x01, it will be mirrored horizontally,
-// and if x&0x02, it will be mirrored vertically.
-// I.e. 0=no change  1=mirror-x   2=mirror-y    3=rotate-180
-//      4=transpose  5=rotate-90  6=rotate-270  7=transverse
 IW_EXPORT(void) iw_reorient_image(struct iw_context *ctx, unsigned int x);
 
 // Set the translation hook function. Strings such as error messages will be

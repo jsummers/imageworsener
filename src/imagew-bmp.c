@@ -664,7 +664,7 @@ static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmpreadcontext *
 
 	// Have IW flip the image, if necessary.
 	if(!rctx->topdown) {
-		iw_reorient_image(ctx,0x02);
+		iw_reorient_image(ctx,IW_REORIENT_FLIP_V);
 	}
 
 	// Tell IW the colorspace.
