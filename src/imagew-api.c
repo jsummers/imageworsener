@@ -575,34 +575,17 @@ IW_IMPL(void) iw_set_resize_alg(struct iw_context *ctx, int dimension, int famil
 
 IW_IMPL(void) iw_reorient_image(struct iw_context *ctx, unsigned int x)
 {
+	static const unsigned int transpose_tbl[8] = { 4,6,5,7,0,2,1,3 };
 	int tmpi;
 	double tmpd;
 
 	x = x & 0x07;
 
-	// 'orientation' may already be set to something.
-	// We need to 'compose' the previous operation with this one,
-	// instead of replacing it.
-	if(x<4 || ctx->img1.orient_transform==0) {
-		// If the new operation doesn't transpose the image, or there was no
-		// previous operation, then it's easy.
-		ctx->img1.orient_transform ^= x;
-	}
-	else if(ctx->img1.orient_transform==4) {
-		ctx->img1.orient_transform = x-4;
-	}
-	else if(ctx->img1.orient_transform==5) {
-		ctx->img1.orient_transform = (x+2)%4;
-	}
-	else if(ctx->img1.orient_transform==6) {
-		ctx->img1.orient_transform = (9-x)%4;
-	}
-	else if(ctx->img1.orient_transform==7) {
-		ctx->img1.orient_transform = 7-x;
-	}
-
+	// If needed, perform a 'transpose' of the current transform.
 	if(x&0x04) {
-		// We're swapping height and width.
+		ctx->img1.orient_transform = transpose_tbl[ctx->img1.orient_transform];
+
+		// We swapped the width and height, so we need to fix up some things.
 		tmpi = ctx->img1.width;
 		ctx->img1.width = ctx->img1.height;
 		ctx->img1.height = tmpi;
@@ -611,6 +594,9 @@ IW_IMPL(void) iw_reorient_image(struct iw_context *ctx, unsigned int x)
 		ctx->img1.density_x = ctx->img1.density_y;
 		ctx->img1.density_y = tmpd;
 	}
+
+	// Do horizontal and vertical mirroring.
+	ctx->img1.orient_transform ^= (x&0x03);
 }
 
 IW_IMPL(int) iw_get_sample_size(void)
