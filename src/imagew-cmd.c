@@ -60,6 +60,11 @@ struct resize_blur {
 	int interpolate; // If set, muliply 'blur' by the scaling factor (if downscaling)
 };
 
+struct dither_setting {
+	int family;
+	int subtype;
+};
+
 struct uri_struct {
 #define IWCMD_SCHEME_FILE       1
 #define IWCMD_SCHEME_CLIPBOARD  2
@@ -98,10 +103,13 @@ struct params_struct {
 	double offset_r_v, offset_g_v, offset_b_v;
 	double translate_x, translate_y;
 	int translate_src_flag; // If 1, translate_[xy] is in source pixels.
-	int dither_family_all, dither_family_nonalpha, dither_family_alpha;
-	int dither_family_red, dither_family_green, dither_family_blue, dither_family_gray;
-	int dither_subtype_all, dither_subtype_nonalpha, dither_subtype_alpha;
-	int dither_subtype_red, dither_subtype_green, dither_subtype_blue, dither_subtype_gray;
+	struct dither_setting dither_all;
+	struct dither_setting dither_nonalpha;
+	struct dither_setting dither_alpha;
+	struct dither_setting dither_red;
+	struct dither_setting dither_green;
+	struct dither_setting dither_blue;
+	struct dither_setting dither_gray;
 	int color_count[5]; // Per-channeltype color count, indexed by IW_CHANNELTYPE.
 	int color_count_all, color_count_nonalpha;
 	int apply_bkgd;
@@ -867,7 +875,7 @@ static void iwcmd_set_bitdepth(struct params_struct *p, struct iw_context *ctx)
 	}
 }
 
-static int run(struct params_struct *p)
+static int iwcmd_run(struct params_struct *p)
 {
 	int retval = 0;
 	struct iw_context *ctx = NULL;
@@ -1038,13 +1046,13 @@ static int run(struct params_struct *p)
 		iw_set_output_colorspace(ctx,&p->cs_out);
 	}
 
-	if(p->dither_family_all>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_family_all  ,p->dither_subtype_all);
-	if(p->dither_family_nonalpha>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_family_nonalpha,p->dither_subtype_nonalpha);
-	if(p->dither_family_red>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_family_red  ,p->dither_subtype_red);
-	if(p->dither_family_green>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_GREEN,p->dither_family_green,p->dither_subtype_green);
-	if(p->dither_family_blue>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_BLUE ,p->dither_family_blue ,p->dither_subtype_blue);
-	if(p->dither_family_gray>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_GRAY ,p->dither_family_gray ,p->dither_subtype_gray);
-	if(p->dither_family_alpha>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_ALPHA,p->dither_family_alpha,p->dither_subtype_alpha);
+	if(p->dither_all.family>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_all.family  ,p->dither_all.subtype);
+	if(p->dither_nonalpha.family>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_nonalpha.family,p->dither_nonalpha.subtype);
+	if(p->dither_red.family>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_red.family  ,p->dither_red.subtype);
+	if(p->dither_green.family>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_GREEN,p->dither_green.family,p->dither_green.subtype);
+	if(p->dither_blue.family>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_BLUE ,p->dither_blue.family ,p->dither_blue.subtype);
+	if(p->dither_gray.family>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_GRAY ,p->dither_gray.family ,p->dither_gray.subtype);
+	if(p->dither_alpha.family>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_ALPHA,p->dither_alpha.family,p->dither_alpha.subtype);
 
 	if(p->color_count_all) iw_set_color_count  (ctx,IW_CHANNELTYPE_ALL  ,p->color_count_all);
 	if(p->color_count_nonalpha) iw_set_color_count(ctx,IW_CHANNELTYPE_NONALPHA,p->color_count_nonalpha);
@@ -1437,7 +1445,7 @@ static void parse_bkgd_color(struct rgb_color *c, const char *s, size_t s_len)
 }
 
 // 's' is either a single color, or two colors separated with a comma.
-static void parse_bkgd(struct params_struct *p, const char *s)
+static void iwcmd_option_bkgd(struct params_struct *p, const char *s)
 {
 	char *cpos;
 	cpos = strchr(s,',');
@@ -1465,7 +1473,10 @@ static int iwcmd_get_name_len(const char *s)
 	return i;
 }
 
-static int iwcmd_string_to_resizetype(struct params_struct *p,
+// Decode a resize algorithm.
+// Puts the result in 'alg' (supplied by caller).
+// Returns -1 on failure (for consistency with other decode_ functions.
+static int iwcmd_decode_resizetype(struct params_struct *p,
 	const char *s, struct resize_alg *alg)
 {
 	int i;
@@ -1580,7 +1591,8 @@ done:
 	return -1;
 }
 
-static int iwcmd_string_to_blurtype(struct params_struct *p,
+// If this ever failed, it would return -1.
+static int iwcmd_decode_blur_option(struct params_struct *p,
 	const char *s, struct resize_blur *rblur)
 {
 	int namelen;
@@ -1601,7 +1613,9 @@ static int iwcmd_string_to_blurtype(struct params_struct *p,
 	return 1;
 }
 
-static int iwcmd_string_to_dithertype(struct params_struct *p,const char *s,int *psubtype)
+// Populates 'di' (supplied by caller).
+// Returns -1 on failure.
+static int iwcmd_decode_dithertype(struct params_struct *p,const char *s,struct dither_setting *di)
 {
 	int i;
 	struct dithertable_struct {
@@ -1630,13 +1644,13 @@ static int iwcmd_string_to_dithertype(struct params_struct *p,const char *s,int 
 
 	for(i=0; dithertable[i].name; i++) {
 		if(!strcmp(s,dithertable[i].name)) {
-			*psubtype = dithertable[i].dithersubtype;
-			return dithertable[i].ditherfamily;
+			di->family  = dithertable[i].ditherfamily;
+			di->subtype = dithertable[i].dithersubtype;
+			return 1;
 		}
 	}
 
 	iwcmd_message(p,"Unknown dither type \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
-	*psubtype = IW_DITHERSUBTYPE_DEFAULT;
 	return -1;
 }
 
@@ -1676,7 +1690,7 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 	return 1;
 }
 
-static int iwcmd_process_noopt(struct params_struct *p, const char *s)
+static int iwcmd_parse_noopt(struct params_struct *p, const char *s)
 {
 	if(!strcmp(s,"all")) {
 		p->noopt_grayscale=1;
@@ -1708,7 +1722,7 @@ static int iwcmd_process_noopt(struct params_struct *p, const char *s)
 	return 1;
 }
 
-static void iwcmd_process_forced_density(struct params_struct *p, const char *s)
+static void iwcmd_option_forced_density(struct params_struct *p, const char *s)
 {
 	double nums[2];
 	int count;
@@ -1738,17 +1752,14 @@ static void iwcmd_process_forced_density(struct params_struct *p, const char *s)
 	}
 }
 
-static int iwcmd_process_density(struct params_struct *p, const char *s)
+static int iwcmd_option_density(struct params_struct *p, const char *s)
 {
 	int namelen;
 
 	namelen=iwcmd_get_name_len(s);
 
-	if(namelen==1 && !strncmp(s,"i",namelen)) {
-		iwcmd_process_forced_density(p,s);
-	}
-	else if(namelen==1 && !strncmp(s,"c",namelen)) {
-		iwcmd_process_forced_density(p,s);
+	if(namelen==1 && (s[0]=='i' || s[0]=='c')) {
+		iwcmd_option_forced_density(p,s);
 	}
 	else if(!strcmp(s,"auto")) {
 		p->density_policy = IWCMD_DENSITY_POLICY_AUTO;
@@ -1769,7 +1780,7 @@ static int iwcmd_process_density(struct params_struct *p, const char *s)
 	return 1;
 }
 
-static int process_edge_policy(struct params_struct *p, const char *s)
+static int iwcmd_decode_edge_policy(struct params_struct *p, const char *s)
 {
 	if(s[0]=='s') return IW_EDGE_POLICY_STANDARD;
 	else if(s[0]=='r') return IW_EDGE_POLICY_REPLICATE;
@@ -1778,7 +1789,7 @@ static int process_edge_policy(struct params_struct *p, const char *s)
 	return -1;
 }
 
-static int iwcmd_process_gsf(struct params_struct *p, const char *s)
+static int iwcmd_option_gsf(struct params_struct *p, const char *s)
 {
 	int namelen;
 	int count;
@@ -1810,7 +1821,7 @@ static int iwcmd_process_gsf(struct params_struct *p, const char *s)
 	return 1;
 }
 
-static int iwcmd_process_reorient(struct params_struct *p, const char *s)
+static int iwcmd_option_reorient(struct params_struct *p, const char *s)
 {
 	if(s[0]>='0' && s[0]<='9') {
 		p->reorient = (unsigned int)iwcmd_parse_int(s);
@@ -1831,7 +1842,7 @@ static int iwcmd_process_reorient(struct params_struct *p, const char *s)
 	return 1;
 }
 
-static int get_compression_from_name(struct params_struct *p, const char *s)
+static int iwcmd_decode_compression_name(struct params_struct *p, const char *s)
 {
 	if(!strcmp(s,"none")) return IW_COMPRESSION_NONE;
 	else if(!strcmp(s,"zip")) return IW_COMPRESSION_ZIP;
@@ -1853,7 +1864,7 @@ static void usage_message(struct params_struct *p)
 	);
 }
 
-static void do_printversion(struct params_struct *p)
+static void iwcmd_printversion(struct params_struct *p)
 {
 	char buf[200];
 	int buflen;
@@ -1887,7 +1898,7 @@ static void do_printversion(struct params_struct *p)
 enum iwcmd_param_types {
  PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS,
  PT_PRECISION, PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
- PT_BLUR_FACTOR, PT_BLUR_FACTOR_X, PT_BLUR_FACTOR_Y,
+ PT_BLUR, PT_BLUR_X, PT_BLUR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
  PT_CC, PT_CCCOLOR, PT_CCALPHA, PT_CCRED, PT_CCGREEN, PT_CCBLUE, PT_CCGRAY,
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP, PT_REORIENT,
@@ -1931,9 +1942,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"filter",PT_RESIZETYPE,1},
 		{"filterx",PT_RESIZETYPE_X,1},
 		{"filtery",PT_RESIZETYPE_Y,1},
-		{"blur",PT_BLUR_FACTOR,1},
-		{"blurx",PT_BLUR_FACTOR_X,1},
-		{"blury",PT_BLUR_FACTOR_Y,1},
+		{"blur",PT_BLUR,1},
+		{"blurx",PT_BLUR_X,1},
+		{"blury",PT_BLUR_Y,1},
 		{"dither",PT_DITHER,1},
 		{"dithercolor",PT_DITHERCOLOR,1},
 		{"ditheralpha",PT_DITHERALPHA,1},
@@ -2169,58 +2180,58 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->cs_out_set=1;
 		break;
 	case PT_RESIZETYPE:
-		ret=iwcmd_string_to_resizetype(p,v,&p->resize_alg_x);
+		ret=iwcmd_decode_resizetype(p,v,&p->resize_alg_x);
 		if(ret<0) return 0;
 		p->resize_alg_y=p->resize_alg_x;
 		break;
 	case PT_RESIZETYPE_X:
-		ret=iwcmd_string_to_resizetype(p,v,&p->resize_alg_x);
+		ret=iwcmd_decode_resizetype(p,v,&p->resize_alg_x);
 		if(ret<0) return 0;
 		break;
 	case PT_RESIZETYPE_Y:
-		ret=iwcmd_string_to_resizetype(p,v,&p->resize_alg_y);
+		ret=iwcmd_decode_resizetype(p,v,&p->resize_alg_y);
 		if(ret<0) return 0;
 		break;
-	case PT_BLUR_FACTOR:
-		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_x);
+	case PT_BLUR:
+		ret=iwcmd_decode_blur_option(p,v,&p->resize_blur_x);
 		if(ret<0) return 0;
 		p->resize_blur_y=p->resize_blur_x;
 		break;
-	case PT_BLUR_FACTOR_X:
-		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_x);
+	case PT_BLUR_X:
+		ret=iwcmd_decode_blur_option(p,v,&p->resize_blur_x);
 		if(ret<0) return 0;
 		break;
-	case PT_BLUR_FACTOR_Y:
-		ret=iwcmd_string_to_blurtype(p,v,&p->resize_blur_y);
+	case PT_BLUR_Y:
+		ret=iwcmd_decode_blur_option(p,v,&p->resize_blur_y);
 		if(ret<0) return 0;
 		break;
 	case PT_DITHER:
-		p->dither_family_all=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_all);
-		if(p->dither_family_all<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither_all);
+		if(ret<0) return 0;
 		break;
 	case PT_DITHERCOLOR:
-		p->dither_family_nonalpha=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_nonalpha);
-		if(p->dither_family_nonalpha<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither_nonalpha);
+		if(ret<0) return 0;
 		break;
 	case PT_DITHERALPHA:
-		p->dither_family_alpha=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_alpha);
-		if(p->dither_family_alpha<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither_alpha);
+		if(p->dither_alpha.family<0) return 0;
 		break;
 	case PT_DITHERRED:
-		p->dither_family_red=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_red);
-		if(p->dither_family_red<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither_red);
+		if(p->dither_red.family<0) return 0;
 		break;
 	case PT_DITHERGREEN:
-		p->dither_family_green=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_green);
-		if(p->dither_family_green<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither_green);
+		if(ret<0) return 0;
 		break;
 	case PT_DITHERBLUE:
-		p->dither_family_blue=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_blue);
-		if(p->dither_family_blue<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither_blue);
+		if(ret<0) return 0;
 		break;
 	case PT_DITHERGRAY:
-		p->dither_family_gray=iwcmd_string_to_dithertype(p,v,&p->dither_subtype_gray);
-		if(p->dither_family_gray<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither_gray);
+		if(ret<0) return 0;
 		break;
 	case PT_CC:
 		iwcmd_read_cc(p,v);
@@ -2245,7 +2256,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_BKGD:
 		p->apply_bkgd=1;
-		parse_bkgd(p,v);
+		iwcmd_option_bkgd(p,v);
 		break;
 	case PT_CHECKERSIZE:
 		p->bkgd_check_size=iwcmd_parse_int(v);
@@ -2260,7 +2271,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->use_crop=1;
 		break;
 	case PT_REORIENT:
-		if(iwcmd_process_reorient(p,v) < 0)
+		if(iwcmd_option_reorient(p,v) < 0)
 			return 0;
 		break;
 	case PT_OFFSET_R_H:
@@ -2301,7 +2312,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		}
 		break;
 	case PT_COMPRESS:
-		p->compression=get_compression_from_name(p,v);
+		p->compression=iwcmd_decode_compression_name(p,v);
 		if(p->compression<0) return 0;
 		break;
 	case PT_PAGETOREAD:
@@ -2345,31 +2356,31 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		}
 		break;
 	case PT_EDGE_POLICY:
-		p->edge_policy_x = process_edge_policy(p,v);
+		p->edge_policy_x = iwcmd_decode_edge_policy(p,v);
 		if(p->edge_policy_x<0) return 0;
 		p->edge_policy_y = p->edge_policy_x;
 		break;
 	case PT_EDGE_POLICY_X:
-		p->edge_policy_x = process_edge_policy(p,v);
+		p->edge_policy_x = iwcmd_decode_edge_policy(p,v);
 		if(p->edge_policy_x<0) return 0;
 		break;
 	case PT_EDGE_POLICY_Y:
-		p->edge_policy_y = process_edge_policy(p,v);
+		p->edge_policy_y = iwcmd_decode_edge_policy(p,v);
 		if(p->edge_policy_y<0) return 0;
 		break;
 	case PT_DENSITY_POLICY:
-		if(!iwcmd_process_density(p,v)) {
+		if(!iwcmd_option_density(p,v)) {
 			return 0;
 		}
 		break;
 	case PT_GRAYSCALEFORMULA:
-		if(!iwcmd_process_gsf(p,v)) {
+		if(!iwcmd_option_gsf(p,v)) {
 			return 0;
 		}
 		p->grayscale=1;
 		break;
 	case PT_NOOPT:
-		if(!iwcmd_process_noopt(p,v))
+		if(!iwcmd_parse_noopt(p,v))
 			return 0;
 		break;
 	case PT_ENCODING:
@@ -2532,11 +2543,16 @@ static int parse_uri(struct params_struct *p, struct uri_struct *u)
 	return 1;
 }
 
-static int iwcmd_main(int argc, char* argv[])
+#define IWCMD_ACTION_EXIT_FAIL      0
+#define IWCMD_ACTION_RUN            1
+#define IWCMD_ACTION_USAGE_SUCCESS  2
+#define IWCMD_ACTION_USAGE_FAIL     3
+#define IWCMD_ACTION_SHOWVERSION    4
+
+// Returns an IWCMD_ACTION code.
+static int iwcmd_read_commandline(struct params_struct *p, int argc, char* argv[])
 {
-	struct params_struct p;
 	struct parsestate_struct ps;
-	int ret;
 	int i;
 	const char *optname;
 
@@ -2546,31 +2562,7 @@ static int iwcmd_main(int argc, char* argv[])
 	ps.printversion=0;
 	ps.showhelp=0;
 
-	memset(&p,0,sizeof(struct params_struct));
-	p.dst_width_req = -1;
-	p.dst_height_req = -1;
-	p.edge_policy_x = -1;
-	p.edge_policy_y = -1;
-	p.density_policy = IWCMD_DENSITY_POLICY_AUTO;
-	p.bkgd_check_size = 16;
-	p.bestfit = 0;
-	p.offset_r_h=0.0; p.offset_g_h=0.0; p.offset_b_h=0.0;
-	p.offset_r_v=0.0; p.offset_g_v=0.0; p.offset_b_v=0.0;
-	p.translate_x=0.0; p.translate_y=0.0;
-	p.infmt=IW_FORMAT_UNKNOWN;
-	p.outfmt=IW_FORMAT_UNKNOWN;
-	p.output_encoding=IWCMD_ENCODING_AUTO;
-	p.output_encoding_setmode=IWCMD_ENCODING_AUTO;
-	p.resize_blur_x.blur = 1.0;
-	p.resize_blur_y.blur = 1.0;
-	p.webp_quality = -1.0;
-	p.include_screen = -1;
-	p.dither_family_all = p.dither_family_nonalpha = p.dither_family_alpha = -1;
-	p.dither_family_red = p.dither_family_green = p.dither_family_blue = -1;
-	p.dither_family_gray = -1;
-	p.grayscale_formula = -1;
-
-	handle_encoding(&p,argc,argv);
+	handle_encoding(p,argc,argv);
 
 	for(i=1;i<argc;i++) {
 		if(argv[i][0]=='-' && ps.param_type==PT_NONE) {
@@ -2578,15 +2570,15 @@ static int iwcmd_main(int argc, char* argv[])
 			// If the second char is also a '-', ignore it.
 			if(argv[i][1]=='-')
 				optname = &argv[i][2];
-			if(!process_option_name(&p, &ps, optname)) {
-				return 1;
+			if(!process_option_name(p, &ps, optname)) {
+				return IWCMD_ACTION_EXIT_FAIL;
 			}
 		}
 		else {
 			// Process a parameter of the previous option.
 
-			if(!process_option_arg(&p, &ps, argv[i])) {
-				return 1;
+			if(!process_option_arg(p, &ps, argv[i])) {
+				return IWCMD_ACTION_EXIT_FAIL;
 			}
 
 			ps.param_type = PT_NONE;
@@ -2594,29 +2586,81 @@ static int iwcmd_main(int argc, char* argv[])
 	}
 
 	if(ps.showhelp) {
-		usage_message(&p);
-		return 0;
+		return IWCMD_ACTION_USAGE_SUCCESS;
 	}
 
 	if(ps.printversion) {
-		do_printversion(&p);
-		return 0;
+		return IWCMD_ACTION_SHOWVERSION;
 	}
 
 	if(ps.untagged_param_count!=2 || ps.param_type!=PT_NONE) {
+		return IWCMD_ACTION_USAGE_FAIL;
+	}
+
+	if(!parse_uri(p,&p->input_uri)) {
+		return IWCMD_ACTION_EXIT_FAIL;
+	}
+	if(!parse_uri(p,&p->output_uri)) {
+		return IWCMD_ACTION_EXIT_FAIL;
+	}
+
+	return IWCMD_ACTION_RUN;
+}
+
+static void init_params(struct params_struct *p)
+{
+	memset(p,0,sizeof(struct params_struct));
+	p->dst_width_req = -1;
+	p->dst_height_req = -1;
+	p->edge_policy_x = -1;
+	p->edge_policy_y = -1;
+	p->density_policy = IWCMD_DENSITY_POLICY_AUTO;
+	p->bkgd_check_size = 16;
+	p->bestfit = 0;
+	p->offset_r_h=0.0; p->offset_g_h=0.0; p->offset_b_h=0.0;
+	p->offset_r_v=0.0; p->offset_g_v=0.0; p->offset_b_v=0.0;
+	p->translate_x=0.0; p->translate_y=0.0;
+	p->infmt=IW_FORMAT_UNKNOWN;
+	p->outfmt=IW_FORMAT_UNKNOWN;
+	p->output_encoding=IWCMD_ENCODING_AUTO;
+	p->output_encoding_setmode=IWCMD_ENCODING_AUTO;
+	p->resize_blur_x.blur = 1.0;
+	p->resize_blur_y.blur = 1.0;
+	p->webp_quality = -1.0;
+	p->include_screen = -1;
+	p->dither_all.family = p->dither_nonalpha.family = p->dither_alpha.family = -1;
+	p->dither_red.family = p->dither_green.family = p->dither_blue.family = -1;
+	p->dither_gray.family = -1;
+	p->grayscale_formula = -1;
+}
+
+static int iwcmd_main(int argc, char* argv[])
+{
+	struct params_struct p;
+	int ret;
+
+	init_params(&p);
+
+	ret = iwcmd_read_commandline(&p,argc,argv);
+
+	if(ret==IWCMD_ACTION_RUN) {
+		ret=iwcmd_run(&p);
+		return ret?0:1;
+	}
+	else if(ret==IWCMD_ACTION_USAGE_SUCCESS) {
+		usage_message(&p);
+		return 0;
+	}
+	else if(ret==IWCMD_ACTION_USAGE_FAIL) {
 		usage_message(&p);
 		return 1;
 	}
-
-	if(!parse_uri(&p,&p.input_uri)) {
-		return 1;
-	}
-	if(!parse_uri(&p,&p.output_uri)) {
-		return 1;
+	else if(ret==IWCMD_ACTION_SHOWVERSION) {
+		iwcmd_printversion(&p);
+		return 0;
 	}
 
-	ret=run(&p);
-	return ret?0:1;
+	return 1;
 }
 
 #ifdef _UNICODE
