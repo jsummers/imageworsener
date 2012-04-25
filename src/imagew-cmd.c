@@ -2486,12 +2486,12 @@ static void handle_encoding(struct params_struct *p, int argc, char* argv[])
 #endif
 }
 
-// Our "schemes" consist of 1-32 lowercase letters, digits, and {+,-,.}.
+// Our "schemes" consist of 2-32 lowercase letters, digits, and {+,-,.}.
 static int uri_has_scheme(const char *s)
 {
 	int i;
 	for(i=0;s[i];i++) {
-		if(s[i]==':' && i>0) return 1;
+		if(s[i]==':' && i>1) return 1;
 		if(i>=32) return 0;
 		if( (s[i]>='a' && s[i]<='z') || (s[i]>='0' && s[i]<='9') ||
 			s[i]=='+' || s[i]=='-' || s[i]=='.')
