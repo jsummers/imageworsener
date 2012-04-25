@@ -215,6 +215,7 @@ $IW srcimg/rgb8x2.png actual/dens-6ns.png
 $IW srcimg/25x20.png actual/dens-ix.png -w 34 -density adjust
 $IW srcimg/25x20.png actual/dens-iy.png -h 27 -density adjust
 $IW srcimg/25x20.png actual/dens-ixy.png -w 34 -h 27 -density adjust
+$IW srcimg/25x20.png actual/orient1.png -reorient transverse
 
 # Image with just 2 pixels can't have more than 2 colors. Test to see
 # if we optimize to a 1bpp palette (etc.).
@@ -260,8 +261,8 @@ $IW srcimg/ani1.gif actual/gif3.png $CMPR -page 4 -noincludescreen
 $IW srcimg/bmp24.bmp actual/bmp24.png $CMPR $SMALL
 $IW srcimg/bmpp4.bmp actual/bmpp4.png $CMPR $SMALL
 $IW srcimg/bmprle8t.bmp actual/bmprle8t.png $CMPR $SMALL
-$IW srcimg/bmp16-555.bmp actual/bmp16-1.png $CMPR $SCALE -density keep
-$IW srcimg/bmp16-565.bmp actual/bmp16-2.png $CMPR $SCALE -density adjust
+$IW srcimg/bmp16-555.bmp actual/bmp16-1.png $CMPR $SCALE -density keep -reorient rotate90
+$IW srcimg/bmp16-565.bmp actual/bmp16-2.png $CMPR $SCALE -density adjust -reorient flipv
 
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
