@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include <setjmp.h>
 
 #include <jpeglib.h>
@@ -45,8 +46,10 @@ struct iw_jpegrctx {
 	struct iw_iodescr *iodescr;
 	JOCTET *buffer;
 	size_t buffer_len;
-	unsigned int exif_orientation;
 	int is_jfif;
+	unsigned int exif_orientation; // 0 means not set
+	double exif_density_x, exif_density_y; // -1.0 means not set.
+	unsigned int exif_density_unit; // 0 means not set
 };
 
 struct iw_exif_state {
@@ -80,6 +83,38 @@ static int get_exif_tag_int_value(struct iw_exif_state *e, unsigned int tag_pos,
 	return 0;
 }
 
+// Read an Exif tag into a double.
+// This only supports the case where the tag contains exactly one Rational value.
+static int get_exif_tag_dbl_value(struct iw_exif_state *e, unsigned int tag_pos,
+	double *pv)
+{
+	unsigned int field_type;
+	unsigned int value_count;
+	unsigned int value_pos;
+	unsigned int numer, denom;
+
+	field_type = iw_get_ui16_e(&e->d[tag_pos+2],e->is_le);
+	value_count = iw_get_ui32_e(&e->d[tag_pos+4],e->is_le);
+
+	if(value_count!=1) return 0;
+
+	if(field_type!=5) return 0; // 5=Rational (two uint32's)
+
+	// A rational is 8 bytes. Since 8>4, it is stored indirectly. First, read
+	// the location where it is stored.
+
+	value_pos = iw_get_ui32_e(&e->d[tag_pos+8],e->is_le);
+	if(value_pos > e->d_len-8) return 0;
+
+	// Read the actual value.
+	numer = iw_get_ui32_e(&e->d[value_pos  ],e->is_le);
+	denom = iw_get_ui32_e(&e->d[value_pos+4],e->is_le);
+	if(denom==0) return 0;
+
+	*pv = ((double)numer)/denom;
+	return 1;
+}
+
 static void iwjpeg_scan_exif_ifd(struct iw_jpegrctx *rctx,
 	struct iw_exif_state *e, iw_uint32 ifd)
 {
@@ -88,6 +123,7 @@ static void iwjpeg_scan_exif_ifd(struct iw_jpegrctx *rctx,
 	unsigned int tag_pos;
 	unsigned int tag_id;
 	unsigned int v;
+	double v_dbl;
 
 	if(ifd<8 || ifd>e->d_len-18) return;
 
@@ -106,7 +142,23 @@ static void iwjpeg_scan_exif_ifd(struct iw_jpegrctx *rctx,
 			}
 			break;
 
-			// TODO: Read Exif density information.
+		case 296: // 296 = ResolutionUnit
+			if(get_exif_tag_int_value(e,tag_pos,&v)) {
+				rctx->exif_density_unit = v;
+			}
+			break;
+
+		case 282: // 282 = XResolution
+			if(get_exif_tag_dbl_value(e,tag_pos,&v_dbl)) {
+				rctx->exif_density_x = v_dbl;
+			}
+			break;
+
+		case 283: // 283 = YResolution
+			if(get_exif_tag_dbl_value(e,tag_pos,&v_dbl)) {
+				rctx->exif_density_y = v_dbl;
+			}
+			break;
 		}
 	}
 }
@@ -159,7 +211,7 @@ static void iwjpeg_read_saved_markers(struct iw_jpegrctx *rctx,
 }
 
 static void iwjpeg_read_density(struct iw_context *ctx, struct iw_image *img,
-				struct jpeg_decompress_struct *cinfo)
+	struct jpeg_decompress_struct *cinfo)
 {
 	switch(cinfo->density_unit) {
 	case 1: // pixels/inch
@@ -173,9 +225,53 @@ static void iwjpeg_read_density(struct iw_context *ctx, struct iw_image *img,
 		img->density_code = IW_DENSITY_UNITS_PER_METER;
 		break;
 	default: // unknown units
-		img->density_x = (double)cinfo->X_density;
-		img->density_y = (double)cinfo->Y_density;
+		// If we have square pixels with unknown units, we might be looking at
+		// libjpeg's default (i.e. no JFIF segment), or the density might have
+		// been read from the file. In either case, leave the density set to
+		// "unknown", which allows it to be overridden later by Exif data.
+		if(cinfo->X_density!=cinfo->Y_density) {
+			img->density_x = (double)cinfo->X_density;
+			img->density_y = (double)cinfo->Y_density;
+			img->density_code = IW_DENSITY_UNITS_UNKNOWN;
+		}
+	}
+}
+
+// Look at the Exif density setting that we may have recorded, and copy
+// it to the image, if appropriate.
+static void handle_exif_density(struct iw_jpegrctx *rctx, struct iw_image *img)
+{
+	if(img->density_code!=IW_DENSITY_UNKNOWN) {
+		// We already have a density, presumably from the JFIF segment.
+		// TODO: In principle, Exif should not be allowed to overrule JFIF.
+		// But Exif density can be more precise than JFIF density, so it might
+		// be better to respect Exif.
+		// (On the other other hand, files with Exif data are usually from
+		// digital cameras, which means the density information is unlikely
+		// to be meaningful anyway.)
+		return;
+	}
+
+	if(rctx->exif_density_x<=0.0 || rctx->exif_density_y<=0.0) return;
+
+	switch(rctx->exif_density_unit) {
+	case 1: // No units
+		if(fabs(rctx->exif_density_x-rctx->exif_density_y)<0.00001)
+			return; // Square, unitless pixels = no meaningful information.
+		img->density_x = rctx->exif_density_x;
+		img->density_y = rctx->exif_density_y;
 		img->density_code = IW_DENSITY_UNITS_UNKNOWN;
+		break;
+	case 2: // Inches
+		img->density_x = rctx->exif_density_x/0.0254;
+		img->density_y = rctx->exif_density_y/0.0254;
+		img->density_code = IW_DENSITY_UNITS_PER_METER;
+		break;
+	case 3: // Centimeters
+		img->density_x = rctx->exif_density_x*100.0;
+		img->density_y = rctx->exif_density_y*100.0;
+		img->density_code = IW_DENSITY_UNITS_PER_METER;
+		break;
 	}
 }
 
@@ -315,6 +411,8 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	jpegrctx.buffer_len = 32768;
 	jpegrctx.buffer = iw_malloc(ctx, jpegrctx.buffer_len);
 	if(!jpegrctx.buffer) goto done;
+	jpegrctx.exif_density_x = -1.0;
+	jpegrctx.exif_density_y = -1.0;
 	cinfo.src = (struct jpeg_source_mgr*)&jpegrctx;
 
 	// The lazy way. It would be more efficient to use
@@ -394,6 +492,8 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		}
 	}
 	jpeg_finish_decompress(&cinfo);
+
+	handle_exif_density(&jpegrctx, &img);
 
 	iw_set_input_image(ctx, &img);
 
