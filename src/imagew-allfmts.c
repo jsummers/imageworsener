@@ -21,6 +21,13 @@ IW_IMPL(int) iw_read_file_by_fmt(struct iw_context *ctx,
 	int retval=0;
 	int supported=0;
 
+#if IW_SUPPORT_ZLIB
+	// If any function in this file is used, there's no benefit to making
+	// the caller explicitly call iw_enable_zlib(). So we'll just do it
+	// automatically.
+	iw_enable_zlib(ctx);
+#endif
+
 	switch(fmt) {
 
 	case IW_FORMAT_PNG:
@@ -83,6 +90,10 @@ IW_IMPL(int) iw_write_file_by_fmt(struct iw_context *ctx,
 {
 	int retval=0;
 	int supported=0;
+
+#if IW_SUPPORT_ZLIB
+	iw_enable_zlib(ctx);
+#endif
 
 	switch(fmt) {
 

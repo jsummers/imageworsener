@@ -648,6 +648,8 @@ IW_EXPORT(int) iw_write_file_by_fmt(struct iw_context *ctx,
 
 // iw_enable_zlib() must be called to enable zlib compression in modules for
 // which it is optional.
+// Note: iw_read_file_by_fmt and iw_write_file_by_fmt call iw_enable_zlib
+// automatically.
 IW_EXPORT(void) iw_enable_zlib(struct iw_context *ctx);
 
 #ifdef IW_INCLUDE_UTIL_FUNCTIONS

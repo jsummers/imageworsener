@@ -905,9 +905,6 @@ static int iwcmd_run(struct params_struct *p)
 	if(!ctx) goto done;
 
 	iw_set_warning_fn(ctx,my_warning_handler);
-#if IW_SUPPORT_ZLIB == 1
-	iw_enable_zlib(ctx);
-#endif
 
 	// Decide on the output format as early as possible, so we can give up
 	// quickly if it's not supported.
