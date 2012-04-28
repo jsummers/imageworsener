@@ -125,6 +125,7 @@ struct params_struct {
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	int jpeg_arith_coding;
+	int bmp_version;
 	int bmp_trns;
 	double webp_quality;
 	int zipcmprlevel;
@@ -1220,6 +1221,10 @@ static int iwcmd_run(struct params_struct *p)
 	else if(p->outfmt==IW_FORMAT_WEBP) {
 		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
 	}
+	else if(p->outfmt==IW_FORMAT_BMP) {
+		if(p->bmp_version>0)
+			iw_set_value(ctx,IW_VAL_BMP_VERSION,p->bmp_version);
+	}
 
 	if(!iw_write_file_by_fmt(ctx,&writedescr,p->outfmt)) goto done;
 
@@ -1901,7 +1906,7 @@ enum iwcmd_param_types {
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP, PT_REORIENT,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE,
- PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH, PT_BMPTRNS,
+ PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH, PT_BMPTRNS, PT_BMPVERSION,
  PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
@@ -1977,6 +1982,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"webpquality",PT_WEBPQUALITY,1},
 		{"zipcmprlevel",PT_ZIPCMPRLEVEL,1},
 		{"pngcmprlevel",PT_ZIPCMPRLEVEL,1},
+		{"bmpversion",PT_BMPVERSION,1},
 		{"randseed",PT_RANDSEED,1},
 		{"infmt",PT_INFMT,1},
 		{"outfmt",PT_OUTFMT,1},
@@ -2329,6 +2335,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_ZIPCMPRLEVEL:
 		p->zipcmprlevel=iwcmd_parse_int(v);
 		p->zipcmprlevel_set=1;
+		break;
+	case PT_BMPVERSION:
+		p->bmp_version=iwcmd_parse_int(v);
 		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {

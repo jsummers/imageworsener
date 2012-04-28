@@ -259,6 +259,7 @@ struct iw_context {
 	int deflatecmprlevel;
 	int interlaced;
 	int bmp_no_fileheader;
+	int bmp_version; // requested BMP file version to write
 	double webp_quality;
 
 	// Color correction tables, to improve performance.

@@ -123,6 +123,9 @@ extern "C" {
 #define IW_VAL_MAX_WIDTH         45
 #define IW_VAL_MAX_HEIGHT        46
 
+// Requested BMP version to write.
+#define IW_VAL_BMP_VERSION       47
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1

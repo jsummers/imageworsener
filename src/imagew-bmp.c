@@ -724,6 +724,7 @@ done:
 }
 
 struct iwbmpwritecontext {
+	int bmpversion;
 	int include_file_header;
 	int bitcount;
 	int palentries;
@@ -1634,6 +1635,13 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 	int x;
 
 	img = wctx->img;
+
+	wctx->bmpversion = iw_get_value(wctx->ctx,IW_VAL_BMP_VERSION);
+	if(wctx->bmpversion==0) wctx->bmpversion=3;
+	if(wctx->bmpversion!=3) {
+		iw_set_errorf(wctx->ctx,"Unsupported BMP version: %d",wctx->bmpversion);
+		goto done;
+	}
 
 	cmpr_req = iw_get_value(wctx->ctx,IW_VAL_COMPRESSION);
 

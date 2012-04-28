@@ -729,6 +729,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_BMP_NO_FILEHEADER:
 		ctx->bmp_no_fileheader = n;
 		break;
+	case IW_VAL_BMP_VERSION:
+		ctx->bmp_version = n;
+		break;
 	case IW_VAL_MAX_WIDTH:
 		ctx->max_width = n;
 		break;
@@ -825,6 +828,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_BMP_NO_FILEHEADER:
 		ret = ctx->bmp_no_fileheader;
+		break;
+	case IW_VAL_BMP_VERSION:
+		ret = ctx->bmp_version;
 		break;
 	case IW_VAL_MAX_WIDTH:
 		ret = ctx->max_width;
