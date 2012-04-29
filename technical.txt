@@ -474,8 +474,8 @@ A similar thing happens with BMP images with 16 bits/pixel, in which a color
 channel usually has 5 or 6 bits. A value of 7/31, for example, is not converted
 to 58/255, but is interpreted as exactly 7/31.
 
-BMP transparency
-----------------
+BMP RLE transparency
+--------------------
 
 Windows BMP images that use RLE compression can leave the color of some pixels
 undefined, by using "delta" codes, or premature end-of-line codes. Many
@@ -568,6 +568,9 @@ Features I'm considering adding:
 
 - Improve speed by using multiple threads. (May be difficult to integrate with
   third-party libraries.)
+
+- Support reading and writing BMPv4 and v5 images, especially if that will
+  allow transparency to be used with the Windows clipboard.
 
 - Support writing deflate-compressed TIFF images.
 

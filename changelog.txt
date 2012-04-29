@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for writing OS/2-style BMP files.
  - Added -reorient option.
  - Support for reading Orientation tags from JPEG/Exif files.
  - Ability to rotate and mirror images.
@@ -8,8 +9,8 @@ Unreleased changes
  - Support "-cc <r>,<g>,<b>" syntax.
  - [Windows only] Support for reading images from, and writing images to, the
    clipboard.
- - Changes to allow of data streams other than regular files. Filenames that
-   may contain a colon now need to be prefixed with "file:".
+ - Changes to allow data streams other than regular files. Filenames that may
+   contain a colon now need to be prefixed with "file:".
  - Support for custom bit depths (sBIT chunks) when writing PNG images. Added
    -depthalpha and -depthgray options.
  - Support for custom bit depths when writing 16-bit BMP images.

@@ -729,6 +729,7 @@ struct iwbmpwritecontext {
 	int bitcount;
 	int palentries;
 	int compressed;
+	size_t header_size;
 	size_t bitfields_size;
 	size_t palsize;
 	size_t unc_dst_bpr;
@@ -833,14 +834,34 @@ static void iwbmp_write_file_header(struct iwbmpwritecontext *wctx)
 	fileheader[1] = 77; // 'M'
 
 	// This will be overwritten later, if the bitmap was compressed.
-	iw_set_ui32le(&fileheader[ 2],14+40+(unsigned int)(wctx->bitfields_size+wctx->palsize)+
-		(unsigned int)wctx->unc_bitssize); // bfSize
-
-	iw_set_ui32le(&fileheader[10],14+40+(unsigned int)(wctx->bitfields_size+wctx->palsize)); // bfOffBits
+	iw_set_ui32le(&fileheader[ 2], (unsigned int)(14+wctx->header_size+
+		wctx->bitfields_size+wctx->palsize+wctx->unc_bitssize)); // bfSize
+	iw_set_ui32le(&fileheader[10],(unsigned int)(14+wctx->header_size+
+		wctx->bitfields_size+wctx->palsize)); // bfOffBits
 	iwbmp_write(wctx,fileheader,14);
 }
 
-static void iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
+static int iwbmp_write_bmp_v2header(struct iwbmpwritecontext *wctx)
+{
+	iw_byte header[12];
+
+	if(wctx->img->width>65535 || wctx->img->height>65535) {
+		iw_set_error(wctx->ctx,"Output image is too large for this BMP version");
+		return 0;
+	}
+
+	iw_zeromem(header,sizeof(header));
+	iw_set_ui32le(&header[ 0],12);                // bcSize
+	iw_set_ui16le(&header[ 4],wctx->img->width);  // bcWidth
+	iw_set_ui16le(&header[ 6],wctx->img->height); // bcHeight
+	iw_set_ui16le(&header[ 8],1);                 // bcPlanes
+	iw_set_ui16le(&header[10],wctx->bitcount);    // bcBitCount
+
+	iwbmp_write(wctx,header,12);
+	return 1;
+}
+
+static int iwbmp_write_bmp_v3header(struct iwbmpwritecontext *wctx)
 {
 	unsigned int dens_x, dens_y;
 	unsigned int cmpr;
@@ -879,6 +900,15 @@ static void iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 	iw_set_ui32le(&header[32],wctx->palentries);    // biClrUsed
 	//iw_set_ui32le(&header[36],0);    // biClrImportant
 	iwbmp_write(wctx,header,40);
+	return 1;
+}
+
+static int iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
+{
+	if(wctx->bmpversion==2) {
+		return iwbmp_write_bmp_v2header(wctx);
+	}
+	return iwbmp_write_bmp_v3header(wctx);
 }
 
 // Write the BITFIELDS segment, and set the wctx->bf_amt_to_shift[] values.
@@ -948,7 +978,10 @@ static void iwbmp_write_palette(struct iwbmpwritecontext *wctx)
 		else {
 			buf[0] = buf[1] = buf[2] = 0;
 		}
-		iwbmp_write(wctx,buf,4);
+		if(wctx->bmpversion==2)
+			iwbmp_write(wctx,buf,3); // v2 BMPs don't have the 'reserved' field.
+		else
+			iwbmp_write(wctx,buf,4);
 	}
 }
 
@@ -1604,9 +1637,15 @@ static int check_palette_transparency(const struct iw_palette *p)
 }
 
 // Do some preparations needed to write a 16-bit BMP.
-static void setup_16bit(struct iwbmpwritecontext *wctx,
+static int setup_16bit(struct iwbmpwritecontext *wctx,
 	int mcc_r, int mcc_g, int mcc_b)
 {
+	if(wctx->bmpversion<3) {
+		iw_set_errorf(wctx->ctx,"Bit depth incompatible with BMP version %d",
+			wctx->bmpversion);
+		return 0;
+	}
+
 	wctx->bitcount=16;
 
 	// Make our own copy of the max color codes, so that we don't have to
@@ -1625,6 +1664,7 @@ static void setup_16bit(struct iwbmpwritecontext *wctx,
 	else {
 		wctx->bitfields_size = 12;
 	}
+	return 1;
 }
 
 static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
@@ -1638,12 +1678,20 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	wctx->bmpversion = iw_get_value(wctx->ctx,IW_VAL_BMP_VERSION);
 	if(wctx->bmpversion==0) wctx->bmpversion=3;
-	if(wctx->bmpversion!=3) {
+	if(wctx->bmpversion<2 || wctx->bmpversion>3) {
 		iw_set_errorf(wctx->ctx,"Unsupported BMP version: %d",wctx->bmpversion);
 		goto done;
 	}
 
-	cmpr_req = iw_get_value(wctx->ctx,IW_VAL_COMPRESSION);
+	if(wctx->bmpversion>=3)
+		cmpr_req = iw_get_value(wctx->ctx,IW_VAL_COMPRESSION);
+	else
+		cmpr_req = IW_COMPRESSION_NONE;
+
+	if(wctx->bmpversion==2)
+		wctx->header_size = 12;
+	else
+		wctx->header_size = 40;
 
 	// If any kind of compression was requested, use RLE if possible.
 	if(cmpr_req==IW_COMPRESSION_AUTO || cmpr_req==IW_COMPRESSION_NONE)
@@ -1653,7 +1701,9 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	if(img->imgtype==IW_IMGTYPE_RGB) {
 		if(img->reduced_maxcolors) {
-			setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b);
+			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b)) {
+				goto done;
+			}
 		}
 		else {
 			wctx->bitcount=24;
@@ -1664,7 +1714,11 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 		x = check_palette_transparency(wctx->pal);
 
-		if(x==2) {
+		if(x!=0 && wctx->bmpversion<3) {
+			iw_set_error(wctx->ctx,"Cannot save as a transparent BMP: Incompatible BMP version");
+			goto done;
+		}
+		else if(x==2) {
 			iw_set_error(wctx->ctx,"Cannot save this image as a transparent BMP: Has partial transparency");
 			goto done;
 		}
@@ -1688,7 +1742,9 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 	else if(img->imgtype==IW_IMGTYPE_GRAY) {
 		if(img->reduced_maxcolors) {
 			if(img->maxcolor_k<=31) {
-				setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k);
+				if(!setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k)) {
+					goto done;
+				}
 			}
 			else {
 				iw_set_error(wctx->ctx,"Cannot write grayscale BMP at this bit depth");
@@ -1714,21 +1770,32 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 	wctx->unc_dst_bpr = iwbmp_calc_bpr(wctx->bitcount,img->width);
 	wctx->unc_bitssize = wctx->unc_dst_bpr * img->height;
 	wctx->palentries = 0;
+
 	if(wctx->pal) {
-		wctx->palentries = wctx->pal->num_entries;
-		if(wctx->bitcount==1) {
-			// The documentation says that if the bitdepth is 1, the palette
-			// must contain exactly two entries.
-			wctx->palentries=2;
+		if(wctx->bmpversion==2) {
+			wctx->palentries = 1<<wctx->bitcount;
+			wctx->palsize = wctx->palentries*3;
+		}
+		else {
+			if(wctx->bitcount==1) {
+				// The documentation says that if the bitdepth is 1, the palette
+				// contains exactly two entries.
+				wctx->palentries=2;
+			}
+			else {
+				wctx->palentries = wctx->pal->num_entries;
+			}
+			wctx->palsize = wctx->palentries*4;
 		}
 	}
-	wctx->palsize = wctx->palentries*4;
 
 	// File header
 	iwbmp_write_file_header(wctx);
 
 	// Bitmap header ("BITMAPINFOHEADER")
-	iwbmp_write_bmp_header(wctx);
+	if(!iwbmp_write_bmp_header(wctx)) {
+		goto done;
+	}
 
 	if(wctx->bitfields_size>0) {
 		if(!iwbmp_write_bitfields(wctx)) goto done;
