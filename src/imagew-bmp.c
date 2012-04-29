@@ -34,6 +34,8 @@ struct iwbmpreadcontext {
 	unsigned int bitcount; // bits per pixel
 	unsigned int compression; // IWBMP_BI_*
 	int uses_bitfields; // 'compression' is BI_BITFIELDS
+	int has_alpha_channel;
+	int bitfields_set;
 	unsigned int palette_entries;
 	size_t fileheader_size;
 	size_t infoheader_size;
@@ -43,10 +45,12 @@ struct iwbmpreadcontext {
 	struct iw_palette palette;
 
 	// For 16- & 32-bit images:
-	unsigned int bf_mask[3];
-	int bf_high_bit[3];
-	int bf_low_bit[3];
-	int bf_bits_count[3]; // number of bits in each channel
+	unsigned int bf_mask[4];
+	int bf_high_bit[4];
+	int bf_low_bit[4];
+	int bf_bits_count[4]; // number of bits in each channel
+
+	struct iw_csdescr csdescr;
 };
 
 static int iwbmp_read(struct iwbmpreadcontext *rctx,
@@ -141,15 +145,26 @@ static int decode_v3_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 	}
 	rctx->compression = iw_get_ui32le(&buf[16]);
 	if(rctx->compression==IWBMP_BI_BITFIELDS) {
+		if(rctx->bitcount!=16 && rctx->bitcount!=32) {
+			return 0;
+		}
+
 		// The compression field is overloaded: BITFIELDS is not a type of
 		// compression. Un-overload it.
 		rctx->uses_bitfields = 1;
+
+		// The v4/v5 documentation for the "BitCount" field says that the
+		// BITFIELDS data comes after the header, the same as with v3.
+		// The v4/v5 documentation for the "Compression" field says that the
+		// BITFIELDS data is stored in the "Mask" fields of the header.
+		// Am I supposed to conclude that it is redundantly stored in both
+		// places?
+		// Evidence and common sense suggests the "BitCount" documentation is
+		// incorrect, and v4/v5 BMPs never have a separate "bitfields" segment.
 		if(rctx->bmpversion==3) {
-			// BMP v4 and v5 may use bitfields, but it is part of the header,
-			// not a separate segment. In that case, leave bitfields_nbytes
-			// set to 0.
 			rctx->bitfields_nbytes = 12;
 		}
+
 		rctx->compression=IWBMP_BI_RGB;
 	}
 
@@ -181,16 +196,102 @@ static int decode_v3_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 	return 1;
 }
 
+static void process_bf_mask(struct iwbmpreadcontext *rctx, int k);
+
+// Decode the fields that are in v4 and not in v3.
 static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
 {
-	iw_set_errorf(rctx->ctx,"Version %d BMP images are not supported",rctx->bmpversion);
-	return 0;
+	int k;
+	unsigned int cstype;
+
+	if(rctx->uses_bitfields) {
+		// Set the bitfields masks here, instead of in iwbmp_read_bitfields().
+		for(k=0;k<4;k++) {
+			rctx->bf_mask[k] = iw_get_ui32le(&buf[40+k*4]);
+			process_bf_mask(rctx,k);
+		}
+		rctx->bitfields_set=1; // Remember not to overwrite the bf_* fields.
+
+		if(rctx->bf_mask[3]!=0) {
+			// The documentation says this is the mask that "specifies the
+			// alpha component of each pixel."
+			// It doesn't say whther it's associated, or unassociated alpha.
+			// It doesn't say whether 0=transparent, or 0=opaque.
+			// It doesn't say how to tell whether an image has an alpha
+			// channel.
+			// These are the answers I'm going with:
+			// - Unassociated alpha
+			// - 0=transparent
+			// - 16- and 32-bit images have an alpha channel if 'compression'
+			// is set to BI_BITFIELDS, and this alpha mask is nonzero.
+			rctx->has_alpha_channel = 1;
+		}
+	}
+
+	cstype = iw_get_ui32le(&buf[56]);
+	switch(cstype) {
+	case 0x00000000U: // LCS_CALIBRATED_RGB
+		//  "indicates that endpoints and gamma values are given in the
+		//    appropriate fields."  (TODO)
+		break;
+
+	case 0x00000001U: // Unconfirmed: LCS_DEVICE_RGB (= screen colorspace)
+		break;
+	//case 0x00000002U: // Unconfirmed: LCS_DEVICE_CMYK (= printer colorspace)
+
+	case 0x73524742U: // LCS_sRGB ("sRGB")
+	case 0x57696e20U: // LCS_WINDOWS_COLOR_SPACE (= sRGB) ("Win ")
+		break;
+
+	case 0x4c494e4bU: // PROFILE_LINKED ("LINK")
+	case 0x4d424544U: // PROFILE_EMBEDDED ("MBED")
+		if(rctx->bmpversion<5) {
+			iw_warning(rctx->ctx,"Invalid colorspace type for BMPv4");
+		}
+		break;
+
+	default:
+		iw_warningf(rctx->ctx,"Unrecognized or unsupported colorspace type (0x%x)",cstype);
+	}
+
+	return 1;
 }
 
+// Decode the fields that are in v5 and not in v4.
 static int decode_v5_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
 {
-	iw_set_errorf(rctx->ctx,"Version %d BMP images are not supported",rctx->bmpversion);
-	return 0;
+	unsigned int cstype;
+	unsigned int profile_offset;
+	unsigned int profile_size;
+	unsigned int intent_bmp_style;
+	int intent_iw_style;
+
+	cstype = iw_get_ui32le(&buf[56]);
+
+	// The 'intent' field is apparently always valid, but we
+	// only have a use for it if our output colorspace is sRGB.
+	if(rctx->csdescr.cstype==IW_CSTYPE_SRGB) {
+		intent_bmp_style = iw_get_ui32le(&buf[108]);
+		intent_iw_style = IW_SRGB_INTENT_PERCEPTUAL; // default
+		switch(intent_bmp_style) {
+			case 1: intent_iw_style = IW_SRGB_INTENT_SATURATION; break; // LCS_GM_BUSINESS
+			case 2: intent_iw_style = IW_SRGB_INTENT_RELATIVE; break; // LCS_GM_GRAPHICS
+			case 4: intent_iw_style = IW_SRGB_INTENT_PERCEPTUAL; break; // LCS_GM_IMAGES
+			case 8: intent_iw_style = IW_SRGB_INTENT_ABSOLUTE; break; // LCS_GM_ABS_COLORIMETRIC
+		}
+		iw_make_srgb_csdescr(&rctx->csdescr,intent_iw_style);
+	}
+
+	if(cstype==0x4c494e4bU || cstype==0x4d424544U) {
+		profile_offset = iw_get_ui32le(&buf[112]); // bV5ProfileData;
+		profile_size = iw_get_ui32le(&buf[116]); // bV5ProfileSize;
+		if(profile_size!=0) {
+			iw_set_error(rctx->ctx,"BMP images with embedded color profiles are not supported");
+			// TODO: Figure out how to skip over embedded profiles.
+			return 0;
+		}
+	}
+	return 1;
 }
 
 static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
@@ -305,6 +406,8 @@ static void iwbmp_set_default_bitfields(struct iwbmpreadcontext *rctx)
 {
 	int k;
 
+	if(rctx->bitfields_set) return;
+
 	if(rctx->bitcount==16) {
 		// Default is 5 bits for each channel.
 		rctx->bf_mask[0]=0x7c00; // 01111100 00000000 (red)
@@ -360,6 +463,9 @@ static void bmpr_convert_row_32_16(struct iwbmpreadcontext *rctx, const iw_byte 
 {
 	int i,k;
 	unsigned int v,x;
+	int bytesperpix;
+
+	bytesperpix = rctx->has_alpha_channel ? 4 : 3;
 
 	for(i=0;i<rctx->width;i++) {
 		if(rctx->bitcount==32) {
@@ -370,11 +476,11 @@ static void bmpr_convert_row_32_16(struct iwbmpreadcontext *rctx, const iw_byte 
 			x = ((unsigned int)src[i*2+0]) | ((unsigned int)src[i*2+1])<<8;
 		}
 		v = 0;
-		for(k=0;k<3;k++) { // For red, green, blue:
+		for(k=0;k<bytesperpix;k++) { // For red, green, blue:
 			v = x & rctx->bf_mask[k];
 			if(rctx->bf_low_bit[k]>0)
 				v >>= rctx->bf_low_bit[k];
-			rctx->img->pixels[row*rctx->img->bpr + i*3 + k] = (iw_byte)v;
+			rctx->img->pixels[row*rctx->img->bpr + i*bytesperpix + k] = (iw_byte)v;
 		}
 	}
 }
@@ -432,9 +538,16 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 	int j;
 	int retval = 0;
 
-	rctx->img->imgtype = IW_IMGTYPE_RGB;
-	rctx->img->bit_depth = 8;
-	rctx->img->bpr = iw_calc_bytesperrow(rctx->width,24);
+	if(rctx->has_alpha_channel) {
+		rctx->img->imgtype = IW_IMGTYPE_RGBA;
+		rctx->img->bit_depth = 8;
+		rctx->img->bpr = iw_calc_bytesperrow(rctx->width,32);
+	}
+	else {
+		rctx->img->imgtype = IW_IMGTYPE_RGB;
+		rctx->img->bit_depth = 8;
+		rctx->img->bpr = iw_calc_bytesperrow(rctx->width,24);
+	}
 
 	bmp_bpr = iwbmp_calc_bpr(rctx->bitcount,rctx->width);
 
@@ -697,16 +810,13 @@ done:
 
 static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmpreadcontext *rctx)
 {
-	struct iw_csdescr csdescr;
-
 	// Have IW flip the image, if necessary.
 	if(!rctx->topdown) {
 		iw_reorient_image(ctx,IW_REORIENT_FLIP_V);
 	}
 
 	// Tell IW the colorspace.
-	iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
-	iw_set_input_colorspace(ctx,&csdescr);
+	iw_set_input_colorspace(ctx,&rctx->csdescr);
 
 	// Tell IW the significant bits.
 	if(rctx->bitcount==16 || rctx->bitcount==32) {
@@ -731,6 +841,9 @@ IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	rctx.ctx = ctx;
 	rctx.img = &img;
 	rctx.iodescr = iodescr;
+
+	// Start with a default sRGB colorspace. This may be overridden later.
+	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
 
 	rctx.has_fileheader = !iw_get_value(ctx,IW_VAL_BMP_NO_FILEHEADER);
 	if(rctx.has_fileheader) {

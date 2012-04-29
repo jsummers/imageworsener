@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for reading some v4 and v5 BMP files.
  - Support for writing OS/2-style BMP files.
  - Added -reorient option.
  - Support for reading Orientation tags from JPEG/Exif files.
