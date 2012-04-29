@@ -33,10 +33,11 @@ struct iwbmpreadcontext {
 	int has_fileheader;
 	unsigned int bitcount; // bits per pixel
 	unsigned int compression; // IWBMP_BI_*
+	int uses_bitfields; // 'compression' is BI_BITFIELDS
 	unsigned int palette_entries;
 	size_t fileheader_size;
 	size_t infoheader_size;
-	size_t bitfields_nbytes;
+	size_t bitfields_nbytes; // Bytes consumed by BITFIELDs, if not part of the header.
 	size_t palette_nbytes;
 	size_t bfOffBits;
 	struct iw_palette palette;
@@ -95,83 +96,138 @@ static int iwbmp_read_file_header(struct iwbmpreadcontext *rctx)
 	return 1;
 }
 
-static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
+static int decode_v2_header(struct iwbmpreadcontext *rctx, const iw_byte *buf)
 {
-	iw_byte buf[40];
-	int retval = 0;
 	unsigned int nplanes;
-	unsigned int biSizeImage;
+
+	rctx->width = iw_get_ui16le(&buf[4]);
+	rctx->height = iw_get_ui16le(&buf[6]);
+	nplanes = iw_get_ui16le(&buf[8]);
+	rctx->bitcount = iw_get_ui16le(&buf[10]);
+	if(rctx->bitcount!=1 && rctx->bitcount!=4 &&
+		rctx->bitcount!=8 && rctx->bitcount!=24)
+	{
+		return 0;
+	}
+	if(rctx->bitcount<=8) {
+		rctx->palette_entries = 1<<rctx->bitcount;
+		rctx->palette_nbytes = 3*rctx->palette_entries;
+	}
+	return 1;
+}
+
+static int decode_v3_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
+{
+	unsigned int nplanes;
 	int biXPelsPerMeter, biYPelsPerMeter;
 	unsigned int biClrUsed;
+	unsigned int biSizeImage;
+
+	rctx->width = iw_get_i32le(&buf[4]);
+	rctx->height = iw_get_i32le(&buf[8]);
+	if(rctx->height<0) {
+		rctx->height = -rctx->height;
+		rctx->topdown = 1;
+	}
+
+	nplanes = iw_get_ui16le(&buf[12]);
+	if(nplanes!=1) return 0;
+
+	rctx->bitcount = iw_get_ui16le(&buf[14]);
+	if(rctx->bitcount!=1 && rctx->bitcount!=4 && rctx->bitcount!=8 &&
+		rctx->bitcount!=16 && rctx->bitcount!=24 && rctx->bitcount!=32)
+	{
+		return 0;
+	}
+	rctx->compression = iw_get_ui32le(&buf[16]);
+	if(rctx->compression==IWBMP_BI_BITFIELDS) {
+		// The compression field is overloaded: BITFIELDS is not a type of
+		// compression. Un-overload it.
+		rctx->uses_bitfields = 1;
+		if(rctx->bmpversion==3) {
+			// BMP v4 and v5 may use bitfields, but it is part of the header,
+			// not a separate segment. In that case, leave bitfields_nbytes
+			// set to 0.
+			rctx->bitfields_nbytes = 12;
+		}
+		rctx->compression=IWBMP_BI_RGB;
+	}
+
+	biSizeImage = iw_get_ui32le(&buf[20]);
+	biXPelsPerMeter = iw_get_i32le(&buf[24]);
+	biYPelsPerMeter = iw_get_i32le(&buf[28]);
+
+	rctx->img->density_code = IW_DENSITY_UNITS_PER_METER;
+	rctx->img->density_x = (double)biXPelsPerMeter;
+	rctx->img->density_y = (double)biYPelsPerMeter;
+	if(!iw_is_valid_density(rctx->img->density_x,rctx->img->density_y,rctx->img->density_code)) {
+		rctx->img->density_code=IW_DENSITY_UNKNOWN;
+	}
+
+	biClrUsed = iw_get_ui32le(&buf[32]);
+	if(biClrUsed>100000) return 0;
+	// The documentation of the biClrUsed field is not very clear.
+	// I'm going to assume that if biClrUsed is 0 and bitcount<=8, then
+	// the number of palette colors is the maximum that would be useful
+	// for that bitcount. In all other cases, the number of palette colors
+	// equals biClrUsed.
+	if(biClrUsed==0 && rctx->bitcount<=8) {
+		rctx->palette_entries = 1<<rctx->bitcount;
+	}
+	else {
+		rctx->palette_entries = biClrUsed;
+	}
+	rctx->palette_nbytes = 4*rctx->palette_entries;
+	return 1;
+}
+
+static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
+{
+	iw_set_errorf(rctx->ctx,"Version %d BMP images are not supported",rctx->bmpversion);
+	return 0;
+}
+
+static int decode_v5_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
+{
+	iw_set_errorf(rctx->ctx,"Version %d BMP images are not supported",rctx->bmpversion);
+	return 0;
+}
+
+static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
+{
+	iw_byte buf[124];
+	int retval = 0;
+	size_t n;
 
 	// First, read just the "size" field. It tells the size of the header
 	// structure, and identifies the BMP version.
 	if(!iwbmp_read(rctx,buf,4)) goto done;
 	rctx->infoheader_size = iw_get_ui32le(&buf[0]);
 
-	if(rctx->infoheader_size==40) {
-		rctx->bmpversion=3;
+	// Read the rest of the header.
+	n = rctx->infoheader_size;
+	if(n>sizeof(buf)) n=sizeof(buf);
+	if(!iwbmp_read(rctx,&buf[4],n-4)) goto done;
 
-		// Read the rest of the header.
-		if(!iwbmp_read(rctx,&buf[4],rctx->infoheader_size-4)) goto done;
-		rctx->width = iw_get_i32le(&buf[4]);
-		rctx->height = iw_get_i32le(&buf[8]);
-		if(rctx->height<0) {
-			rctx->height = -rctx->height;
-			rctx->topdown = 1;
-		}
-
-		nplanes = iw_get_ui16le(&buf[12]);
-
-		rctx->bitcount = iw_get_ui16le(&buf[14]);
-		if(rctx->bitcount!=1 && rctx->bitcount!=4 && rctx->bitcount!=8 &&
-			rctx->bitcount!=16 && rctx->bitcount!=24 && rctx->bitcount!=32)
-		{
-			goto done;
-		}
-		rctx->compression = iw_get_ui32le(&buf[16]);
-		if(rctx->compression==IWBMP_BI_BITFIELDS) {
-			// The compression field is overloaded: BITFIELDS is not a type of
-			// compression. Un-overload it.
-			rctx->bitfields_nbytes=12;
-			rctx->compression=IWBMP_BI_RGB;
-		}
-
-		biSizeImage = iw_get_ui32le(&buf[20]);
-		biXPelsPerMeter = iw_get_i32le(&buf[24]);
-		biYPelsPerMeter = iw_get_i32le(&buf[28]);
-
-		biClrUsed = iw_get_ui32le(&buf[32]);
-		if(biClrUsed>100000) goto done;
-		// The documentation of the biClrUsed field is not very clear.
-		// I'm going to assume that if biClrUsed is 0 and bitcount<=8, then
-		// the number of palette colors is the maximum that would be useful
-		// for that bitcount. In all other cases, the number of palette colors
-		// equals biClrUsed.
-		if(biClrUsed==0 && rctx->bitcount<=8) {
-			rctx->palette_entries = 1<<rctx->bitcount;
-		}
-		else {
-			rctx->palette_entries = biClrUsed;
-		}
-	}
-	else if(rctx->infoheader_size==12) {
+	if(rctx->infoheader_size==12) {
 		// This is a rare old-style "OS/2" bitmap.
 		rctx->bmpversion=2;
-		if(!iwbmp_read(rctx,&buf[4],rctx->infoheader_size-4)) goto done;
-
-		rctx->width = iw_get_ui16le(&buf[4]);
-		rctx->height = iw_get_ui16le(&buf[6]);
-		nplanes = iw_get_ui16le(&buf[8]);
-		rctx->bitcount = iw_get_ui16le(&buf[10]);
-		if(rctx->bitcount!=1 && rctx->bitcount!=4 &&
-			rctx->bitcount!=8 && rctx->bitcount!=24)
-		{
-			goto done;
-		}
-		if(rctx->bitcount<=8) {
-			rctx->palette_entries = 1<<rctx->bitcount;
-		}
+		if(!decode_v2_header(rctx,buf)) goto done;
+	}
+	else if(rctx->infoheader_size==40) {
+		rctx->bmpversion=3;
+		if(!decode_v3_header_fields(rctx,buf)) goto done;
+	}
+	else if(rctx->infoheader_size==108) {
+		rctx->bmpversion=4;
+		if(!decode_v3_header_fields(rctx,buf)) goto done;
+		if(!decode_v4_header_fields(rctx,buf)) goto done;
+	}
+	else if(rctx->infoheader_size==124) {
+		rctx->bmpversion=5;
+		if(!decode_v3_header_fields(rctx,buf)) goto done;
+		if(!decode_v4_header_fields(rctx,buf)) goto done;
+		if(!decode_v5_header_fields(rctx,buf)) goto done;
 	}
 	else {
 		iw_set_error(rctx->ctx,"Unsupported BMP version");
@@ -180,25 +236,6 @@ static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
 
 	if(!iw_check_image_dimensions(rctx->ctx,rctx->width,rctx->height)) {
 		goto done;
-	}
-
-	if(nplanes!=1) {
-		iw_set_error(rctx->ctx,"Unsupported type of BMP image");
-		goto done;
-	}
-
-	if(rctx->bmpversion==2) {
-		rctx->palette_nbytes = 3*rctx->palette_entries;
-	}
-	else {
-		rctx->palette_nbytes = 4*rctx->palette_entries;
-
-		rctx->img->density_code = IW_DENSITY_UNITS_PER_METER;
-		rctx->img->density_x = (double)biXPelsPerMeter;
-		rctx->img->density_y = (double)biYPelsPerMeter;
-		if(!iw_is_valid_density(rctx->img->density_x,rctx->img->density_y,rctx->img->density_code)) {
-			rctx->img->density_code=IW_DENSITY_UNKNOWN;
-		}
 	}
 
 	retval = 1;
