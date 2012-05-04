@@ -254,6 +254,24 @@ static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 		iw_warningf(rctx->ctx,"Unrecognized or unsupported colorspace type (0x%x)",cstype);
 	}
 
+	// Read Gamma fields
+	if(cstype==0) {
+		unsigned int intpart,fracpart;
+		double gamma[3];
+		double avggamma;
+
+		for(k=0;k<3;k++) {
+			fracpart = iw_get_ui16le(&buf[96+k*4]);
+			intpart  = iw_get_ui16le(&buf[98+k*4]);
+			gamma[k] = (double)intpart + ((double)fracpart)/65536.0;
+		}
+		avggamma = (gamma[0] + gamma[1] + gamma[2])/3.0;
+
+		if(avggamma>=0.1 && avggamma<=10.0) {
+			iw_make_gamma_csdescr(&rctx->csdescr,1.0/avggamma);
+		}
+	}
+
 	return 1;
 }
 
@@ -879,6 +897,7 @@ struct iwbmpwritecontext {
 	int bitcount;
 	int palentries;
 	int compressed;
+	int uses_bitfields;
 	size_t header_size;
 	size_t bitfields_size;
 	size_t palsize;
@@ -891,6 +910,7 @@ struct iwbmpwritecontext {
 	size_t total_written;
 	int bf_amt_to_shift[3]; // For 16-bit images
 	unsigned int maxcolor[3]; // R, G, B -- For 16-bit images.
+	struct iw_csdescr csdescr;
 };
 
 static void iwbmp_write(struct iwbmpwritecontext *wctx, const void *buf, size_t n)
@@ -1019,7 +1039,7 @@ static int iwbmp_write_bmp_v3header(struct iwbmpwritecontext *wctx)
 
 	iw_zeromem(header,sizeof(header));
 
-	iw_set_ui32le(&header[ 0],40);      // biSize
+	iw_set_ui32le(&header[ 0],wctx->header_size); // biSize
 	iw_set_ui32le(&header[ 4],wctx->img->width);  // biWidth
 	iw_set_ui32le(&header[ 8],wctx->img->height); // biHeight
 	iw_set_ui16le(&header[12],1);    // biPlanes
@@ -1030,7 +1050,7 @@ static int iwbmp_write_bmp_v3header(struct iwbmpwritecontext *wctx)
 		if(wctx->bitcount==8) cmpr = IWBMP_BI_RLE8;
 		else if(wctx->bitcount==4) cmpr = IWBMP_BI_RLE4;
 	}
-	else if(wctx->bitfields_size>0) {
+	else if(wctx->uses_bitfields) {
 		cmpr = IWBMP_BI_BITFIELDS;
 	}
 	iw_set_ui32le(&header[16],cmpr); // biCompression
@@ -1053,10 +1073,45 @@ static int iwbmp_write_bmp_v3header(struct iwbmpwritecontext *wctx)
 	return 1;
 }
 
+static int iwbmp_write_bmp_v45header_fields(struct iwbmpwritecontext *wctx)
+{
+	iw_byte header[124];
+	unsigned int intent_bmp_style;
+
+	iw_zeromem(header,sizeof(header));
+
+	if(wctx->uses_bitfields) {
+		iw_set_error(wctx->ctx,"Not implemented"); // FIXME
+		return 0;
+	}
+
+	// Colorspace Type
+	iw_set_ui32le(&header[56],0x73524742U); // sRGB
+
+	// Intent
+	intent_bmp_style = 4; // Perceptual
+	if(wctx->csdescr.cstype==IW_CSTYPE_SRGB) {
+		switch(wctx->csdescr.srgb_intent) {
+		case IW_SRGB_INTENT_PERCEPTUAL: intent_bmp_style = 4; break;
+		case IW_SRGB_INTENT_RELATIVE:   intent_bmp_style = 2; break;
+		case IW_SRGB_INTENT_SATURATION: intent_bmp_style = 1; break;
+		case IW_SRGB_INTENT_ABSOLUTE:   intent_bmp_style = 8; break;
+		}
+	}
+	iw_set_ui32le(&header[108],intent_bmp_style);
+
+	iwbmp_write(wctx,&header[40],124-40);
+	return 1;
+}
+
 static int iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 {
 	if(wctx->bmpversion==2) {
 		return iwbmp_write_bmp_v2header(wctx);
+	}
+	else if(wctx->bmpversion==5) {
+		if(!iwbmp_write_bmp_v3header(wctx)) return 0;
+		return iwbmp_write_bmp_v45header_fields(wctx);
 	}
 	return iwbmp_write_bmp_v3header(wctx);
 }
@@ -1689,7 +1744,7 @@ static int rle_patch_file_size(struct iwbmpwritecontext *wctx,size_t rlesize)
 	if(wctx->include_file_header) {
 		// Patch the file size in the file header
 		(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,2,SEEK_SET);
-		iw_set_ui32le(buf,(unsigned int)(14+40+wctx->bitfields_size+wctx->palsize+rlesize));
+		iw_set_ui32le(buf,(unsigned int)(14+wctx->header_size+wctx->bitfields_size+wctx->palsize+rlesize));
 		iwbmp_write(wctx,buf,4);
 		fileheader_size = 14;
 	}
@@ -1812,7 +1867,8 @@ static int setup_16bit(struct iwbmpwritecontext *wctx,
 		wctx->bitfields_size = 0;
 	}
 	else {
-		wctx->bitfields_size = 12;
+		wctx->uses_bitfields = 1;
+		wctx->bitfields_size = (wctx->bmpversion==3) ? 12 : 0;
 	}
 	return 1;
 }
@@ -1828,7 +1884,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	wctx->bmpversion = iw_get_value(wctx->ctx,IW_VAL_BMP_VERSION);
 	if(wctx->bmpversion==0) wctx->bmpversion=3;
-	if(wctx->bmpversion<2 || wctx->bmpversion>3) {
+	if(wctx->bmpversion!=2 && wctx->bmpversion!=3 && wctx->bmpversion!=5) {
 		iw_set_errorf(wctx->ctx,"Unsupported BMP version: %d",wctx->bmpversion);
 		goto done;
 	}
@@ -1840,6 +1896,8 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	if(wctx->bmpversion==2)
 		wctx->header_size = 12;
+	else if(wctx->bmpversion==5)
+		wctx->header_size = 124;
 	else
 		wctx->header_size = 40;
 
@@ -1989,6 +2047,8 @@ IW_IMPL(int) iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		wctx.pal = iw_get_output_palette(ctx);
 		if(!wctx.pal) goto done;
 	}
+
+	iw_get_output_colorspace(ctx,&wctx.csdescr);
 
 	iwbmp_write_main(&wctx);
 
