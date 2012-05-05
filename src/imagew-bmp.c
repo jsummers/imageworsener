@@ -909,6 +909,7 @@ struct iwbmpwritecontext {
 	const struct iw_palette *pal;
 	size_t total_written;
 	int bf_amt_to_shift[3]; // For 16-bit images
+	unsigned int bf_mask[4];
 	unsigned int maxcolor[3]; // R, G, B -- For 16-bit images.
 	struct iw_csdescr csdescr;
 };
@@ -962,6 +963,14 @@ static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *s
 			v |= srcrow[i] << wctx->bf_amt_to_shift[1];
 			v |= srcrow[i] << wctx->bf_amt_to_shift[2];
 		}
+#if 0
+		else if(wctx->img->imgtype==IW_IMGTYPE_RGBA) {
+			v = srcrow[i*4+0] << wctx->bf_amt_to_shift[0];
+			v |= srcrow[i*4+1] << wctx->bf_amt_to_shift[1];
+			v |= srcrow[i*4+2] << wctx->bf_amt_to_shift[2];
+			v |= srcrow[i*4+3] << wctx->bf_amt_to_shift[3];
+		}
+#endif
 		else {
 			v = srcrow[i*3+0] << wctx->bf_amt_to_shift[0];
 			v |= srcrow[i*3+1] << wctx->bf_amt_to_shift[1];
@@ -1081,8 +1090,10 @@ static int iwbmp_write_bmp_v45header_fields(struct iwbmpwritecontext *wctx)
 	iw_zeromem(header,sizeof(header));
 
 	if(wctx->uses_bitfields) {
-		iw_set_error(wctx->ctx,"Not implemented"); // FIXME
-		return 0;
+		iw_set_ui32le(&header[40],wctx->bf_mask[0]);
+		iw_set_ui32le(&header[44],wctx->bf_mask[1]);
+		iw_set_ui32le(&header[48],wctx->bf_mask[2]);
+		iw_set_ui32le(&header[52],wctx->bf_mask[3]);
 	}
 
 	// Colorspace Type
@@ -1116,21 +1127,21 @@ static int iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 	return iwbmp_write_bmp_v3header(wctx);
 }
 
-// Write the BITFIELDS segment, and set the wctx->bf_amt_to_shift[] values.
-static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
+// Given wctx->maxcolor[*], sets -> bf_mask[*] and bf_amt_to_shift[*].
+static int iwbmp_calc_bitfields_masks(struct iwbmpwritecontext *wctx)
 {
-	iw_byte buf[12];
-	iw_uint32 bf[3]; // R, G, B
-	int bits[3]; // R, G, B
 	int k;
+	int bits[3]; // R, G, B
+	int tot_bits = 0;
 
 	if(wctx->bitcount != 16) return 0;
 
 	for(k=0;k<3;k++) {
 		bits[k] = iw_max_color_to_bitdepth(wctx->maxcolor[k]);
+		tot_bits += bits[k];
 	}
 
-	if(bits[0] + bits[1] + bits[2] > 16) {
+	if(tot_bits > 16) {
 		iw_set_error(wctx->ctx,"Cannot write a BMP image in this color format");
 		return 0;
 	}
@@ -1140,11 +1151,24 @@ static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 	wctx->bf_amt_to_shift[2] = 0;
 
 	for(k=0;k<3;k++) {
-		bf[k] = wctx->maxcolor[k] << wctx->bf_amt_to_shift[k];
+		wctx->bf_mask[k] = wctx->maxcolor[k] << wctx->bf_amt_to_shift[k];
 	}
 
+	return 1;
+}
+
+// Write the BITFIELDS segment, and set the wctx->bf_amt_to_shift[] values.
+static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
+{
+	iw_byte buf[12];
+	int k;
+
+	if(wctx->bitcount != 16) return 0;
+
+	if(!iwbmp_calc_bitfields_masks(wctx)) return 0;
+
 	for(k=0;k<3;k++) {
-		iw_set_ui32le(&buf[4*k],bf[k]);
+		iw_set_ui32le(&buf[4*k],wctx->bf_mask[k]);
 	}
 	iwbmp_write(wctx,buf,12);
 	return 1;
@@ -1859,11 +1883,12 @@ static int setup_16bit(struct iwbmpwritecontext *wctx,
 	wctx->maxcolor[1] = mcc_g;
 	wctx->maxcolor[2] = mcc_b;
 
+	if(!iwbmp_calc_bitfields_masks(wctx)) return 0;
+
 	if(mcc_r==31 && mcc_g==31 && mcc_b==31) {
-		// For the default 5-5-5, we don't write a BITFIELDS segment.
-		wctx->bf_amt_to_shift[0]=10;
-		wctx->bf_amt_to_shift[1]=5;
-		wctx->bf_amt_to_shift[2]=0;
+		// For the default 5-5-5, set the 'compression' to BI_RGB
+		// instead of BITFIELDS, and don't write a BITFIELDS segment
+		// (or for v5 BMP, don't set the Mask fields).
 		wctx->bitfields_size = 0;
 	}
 	else {
