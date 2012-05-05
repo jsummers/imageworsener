@@ -657,7 +657,7 @@ Options:
  -bmpversion <n>
    The BMP file version to write. Currently supports "2" (OS/2-style), and "3"
    (the default; the standard version that's compatible with almost everthing),
-   and "5".
+   and "5" (supports transparency).
 
  -bmptrns
    Attempt to write a BMP image with transparency. Refer to technical.txt for

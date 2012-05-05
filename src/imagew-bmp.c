@@ -981,6 +981,29 @@ static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *s
 	}
 }
 
+static void bmpw_convert_row_32(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
+	iw_byte *dstrow, int width)
+{
+	int i;
+
+	if(wctx->img->imgtype==IW_IMGTYPE_RGBA) {
+		for(i=0;i<width;i++) {
+			dstrow[i*4+0] = srcrow[i*4+2]; // B
+			dstrow[i*4+1] = srcrow[i*4+1]; // G
+			dstrow[i*4+2] = srcrow[i*4+0]; // R
+			dstrow[i*4+3] = srcrow[i*4+3]; // A
+		}
+	}
+	else if(wctx->img->imgtype==IW_IMGTYPE_GRAYA) {
+		for(i=0;i<width;i++) {
+			dstrow[i*4+0] = srcrow[i*2];
+			dstrow[i*4+1] = srcrow[i*2];
+			dstrow[i*4+2] = srcrow[i*2];
+			dstrow[i*4+3] = srcrow[i*2+1];
+		}
+	}
+}
+
 static void bmpw_convert_row_24(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
 	iw_byte *dstrow, int width)
 {
@@ -1836,6 +1859,7 @@ static void iwbmp_write_pixels_uncompressed(struct iwbmpwritecontext *wctx,
 	for(j=img->height-1;j>=0;j--) {
 		srcrow = &img->pixels[j*img->bpr];
 		switch(wctx->bitcount) {
+		case 32: bmpw_convert_row_32(wctx,srcrow,dstrow,img->width); break;
 		case 24: bmpw_convert_row_24(wctx,srcrow,dstrow,img->width); break;
 		case 16: bmpw_convert_row_16(wctx,srcrow,dstrow,img->width); break;
 		case 8: bmpw_convert_row_8(srcrow,dstrow,img->width); break;
@@ -1898,6 +1922,28 @@ static int setup_16bit(struct iwbmpwritecontext *wctx,
 	return 1;
 }
 
+static int setup_32bit(struct iwbmpwritecontext *wctx)
+{
+	if(wctx->bmpversion<5) {
+		// It should only be possible to get here if the user enabled the transparent-BMP hack.
+		iw_set_errorf(wctx->ctx,"Cannot save this image as a transparent v%d BMP: Too many colors",
+			wctx->bmpversion);
+		return 0;
+	}
+
+	// The only format we allow for this is 32-bit 8,8,8,8 ARGB.
+	wctx->uses_bitfields = 1;
+	wctx->bitfields_size = 0;
+
+	wctx->bf_mask[0] = 0x00ff0000; // R
+	wctx->bf_mask[1] = 0x0000ff00; // G
+	wctx->bf_mask[2] = 0x000000ff; // B
+	wctx->bf_mask[3] = 0xff000000; // A
+
+	wctx->bitcount=32;
+	return 1;
+}
+
 static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 {
 	struct iw_image *img;
@@ -1909,6 +1955,10 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	wctx->bmpversion = iw_get_value(wctx->ctx,IW_VAL_BMP_VERSION);
 	if(wctx->bmpversion==0) wctx->bmpversion=3;
+	if(wctx->bmpversion==4) {
+		iw_warning(wctx->ctx,"Writing BMP v4 is not supported; using v3 instead");
+		wctx->bmpversion=3;
+	}
 	if(wctx->bmpversion!=2 && wctx->bmpversion!=3 && wctx->bmpversion!=5) {
 		iw_set_errorf(wctx->ctx,"Unsupported BMP version: %d",wctx->bmpversion);
 		goto done;
@@ -1968,9 +2018,14 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 			wctx->bitcount=8;
 	}
 	else if(img->imgtype==IW_IMGTYPE_RGBA) {
-		// It should only be possible to get here if the user enabled the transparent-BMP hack.
-		iw_set_error(wctx->ctx,"Cannot save this image as a transparent BMP: Too many colors");
-		goto done;
+		if(!setup_32bit(wctx)) {
+			goto done;
+		}
+	}
+	else if(img->imgtype==IW_IMGTYPE_GRAYA) {
+		if(!setup_32bit(wctx)) {
+			goto done;
+		}
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAY) {
 		if(img->reduced_maxcolors) {

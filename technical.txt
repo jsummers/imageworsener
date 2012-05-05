@@ -569,9 +569,6 @@ Features I'm considering adding:
 - Improve speed by using multiple threads. (May be difficult to integrate with
   third-party libraries.)
 
-- Support reading and writing BMPv4 and v5 images, especially if that will
-  allow transparency to be used with the Windows clipboard.
-
 - Support writing deflate-compressed TIFF images.
 
 - Hilbert curve dithering. (Will require significant changes.)

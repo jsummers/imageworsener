@@ -1033,6 +1033,9 @@ static int iwcmd_run(struct params_struct *p)
 		// colors, instead of the full 256 that ought to be supported.
 		profile |= IW_PROFILE_PALETTETRNS|IW_PROFILE_TRANSPARENCY;
 	}
+	if(p->outfmt==IW_FORMAT_BMP && p->bmp_version>=5) {
+		profile |= IW_PROFILE_TRANSPARENCY;
+	}
 	iw_set_output_profile(ctx, profile);
 
 	iwcmd_set_bitdepth(p,ctx);
