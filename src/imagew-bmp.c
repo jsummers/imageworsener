@@ -18,6 +18,14 @@
 #define IWBMP_BI_JPEG      4
 #define IWBMP_BI_PNG       5
 
+#define IWBMPCS_CALIBRATED_RGB    0
+#define IWBMPCS_DEVICE_RGB        1 // (Unconfirmed)
+#define IWBMPCS_DEVICE_CMYK       2 // (Unconfirmed)
+#define IWBMPCS_SRGB              0x73524742
+#define IWBMPCS_WINDOWS           0x57696e20
+#define IWBMPCS_PROFILE_LINKED    0x4c494e4b
+#define IWBMPCS_PROFILE_EMBEDDED  0x4d424544
+
 static size_t iwbmp_calc_bpr(int bpp, size_t width)
 {
 	return ((bpp*width+31)/32)*4;
@@ -230,21 +238,18 @@ static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 
 	cstype = iw_get_ui32le(&buf[56]);
 	switch(cstype) {
-	case 0x00000000U: // LCS_CALIBRATED_RGB
+	case IWBMPCS_CALIBRATED_RGB:
 		//  "indicates that endpoints and gamma values are given in the
 		//    appropriate fields."  (TODO)
 		break;
 
-	case 0x00000001U: // Unconfirmed: LCS_DEVICE_RGB (= screen colorspace)
-		break;
-	//case 0x00000002U: // Unconfirmed: LCS_DEVICE_CMYK (= printer colorspace)
-
-	case 0x73524742U: // LCS_sRGB ("sRGB")
-	case 0x57696e20U: // LCS_WINDOWS_COLOR_SPACE (= sRGB) ("Win ")
+	case IWBMPCS_DEVICE_RGB:
+	case IWBMPCS_SRGB:
+	case IWBMPCS_WINDOWS:
 		break;
 
-	case 0x4c494e4bU: // PROFILE_LINKED ("LINK")
-	case 0x4d424544U: // PROFILE_EMBEDDED ("MBED")
+	case IWBMPCS_PROFILE_LINKED:
+	case IWBMPCS_PROFILE_EMBEDDED:
 		if(rctx->bmpversion<5) {
 			iw_warning(rctx->ctx,"Invalid colorspace type for BMPv4");
 		}
@@ -255,15 +260,14 @@ static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 	}
 
 	// Read Gamma fields
-	if(cstype==0) {
-		unsigned int intpart,fracpart;
+	if(cstype==IWBMPCS_CALIBRATED_RGB) {
+		unsigned int bmpgamma;
 		double gamma[3];
 		double avggamma;
 
 		for(k=0;k<3;k++) {
-			fracpart = iw_get_ui16le(&buf[96+k*4]);
-			intpart  = iw_get_ui16le(&buf[98+k*4]);
-			gamma[k] = (double)intpart + ((double)fracpart)/65536.0;
+			bmpgamma = iw_get_ui32le(&buf[96+k*4]);
+			gamma[k] = ((double)bmpgamma)/65536.0;
 		}
 		avggamma = (gamma[0] + gamma[1] + gamma[2])/3.0;
 
@@ -279,8 +283,6 @@ static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 static int decode_v5_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
 {
 	unsigned int cstype;
-	unsigned int profile_offset;
-	unsigned int profile_size;
 	unsigned int intent_bmp_style;
 	int intent_iw_style;
 
@@ -300,15 +302,13 @@ static int decode_v5_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 		iw_make_srgb_csdescr(&rctx->csdescr,intent_iw_style);
 	}
 
-	if(cstype==0x4c494e4bU || cstype==0x4d424544U) {
-		profile_offset = iw_get_ui32le(&buf[112]); // bV5ProfileData;
-		profile_size = iw_get_ui32le(&buf[116]); // bV5ProfileSize;
-		if(profile_size!=0) {
-			iw_set_error(rctx->ctx,"BMP images with embedded color profiles are not supported");
-			// TODO: Figure out how to skip over embedded profiles.
-			return 0;
-		}
-	}
+	// The profile may either be after the color table, or after the bitmap bits.
+	// I'm assuming that we will never need to use the profile size in order to
+	// find the bitmap bits; i.e. that if the bfOffBits field in the file header
+	// is not available, the profile must be after the bits.
+	//profile_offset = iw_get_ui32le(&buf[112]); // bV5ProfileData;
+	//profile_size = iw_get_ui32le(&buf[116]); // bV5ProfileSize;
+
 	return 1;
 }
 
@@ -1039,7 +1039,7 @@ static int iwbmp_write_bmp_v3header(struct iwbmpwritecontext *wctx)
 
 	iw_zeromem(header,sizeof(header));
 
-	iw_set_ui32le(&header[ 0],wctx->header_size); // biSize
+	iw_set_ui32le(&header[ 0],(unsigned int)wctx->header_size); // biSize
 	iw_set_ui32le(&header[ 4],wctx->img->width);  // biWidth
 	iw_set_ui32le(&header[ 8],wctx->img->height); // biHeight
 	iw_set_ui16le(&header[12],1);    // biPlanes
@@ -1086,7 +1086,7 @@ static int iwbmp_write_bmp_v45header_fields(struct iwbmpwritecontext *wctx)
 	}
 
 	// Colorspace Type
-	iw_set_ui32le(&header[56],0x73524742U); // sRGB
+	iw_set_ui32le(&header[56],IWBMPCS_SRGB);
 
 	// Intent
 	intent_bmp_style = 4; // Perceptual
