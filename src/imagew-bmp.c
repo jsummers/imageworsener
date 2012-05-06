@@ -844,6 +844,9 @@ static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmpreadcontext *
 			iw_set_input_max_color_code(ctx,1, (1 << rctx->bf_bits_count[1])-1 );
 		if(rctx->bf_bits_count[2]!=8)
 			iw_set_input_max_color_code(ctx,2, (1 << rctx->bf_bits_count[2])-1 );
+		if(IW_IMGTYPE_HAS_ALPHA(rctx->img->imgtype) && rctx->bf_bits_count[2]!=8) {
+			iw_set_input_max_color_code(ctx,3, (1 << rctx->bf_bits_count[3])-1 );
+		}
 	}
 }
 
@@ -908,9 +911,9 @@ struct iwbmpwritecontext {
 	struct iw_image *img;
 	const struct iw_palette *pal;
 	size_t total_written;
-	int bf_amt_to_shift[3]; // For 16-bit images
+	int bf_amt_to_shift[4]; // For 16-bit images
 	unsigned int bf_mask[4];
-	unsigned int maxcolor[3]; // R, G, B -- For 16-bit images.
+	unsigned int maxcolor[4]; // R, G, B -- For 16-bit images.
 	struct iw_csdescr csdescr;
 };
 
@@ -963,14 +966,12 @@ static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *s
 			v |= srcrow[i] << wctx->bf_amt_to_shift[1];
 			v |= srcrow[i] << wctx->bf_amt_to_shift[2];
 		}
-#if 0
 		else if(wctx->img->imgtype==IW_IMGTYPE_RGBA) {
 			v = srcrow[i*4+0] << wctx->bf_amt_to_shift[0];
 			v |= srcrow[i*4+1] << wctx->bf_amt_to_shift[1];
 			v |= srcrow[i*4+2] << wctx->bf_amt_to_shift[2];
 			v |= srcrow[i*4+3] << wctx->bf_amt_to_shift[3];
 		}
-#endif
 		else {
 			v = srcrow[i*3+0] << wctx->bf_amt_to_shift[0];
 			v |= srcrow[i*3+1] << wctx->bf_amt_to_shift[1];
@@ -1151,15 +1152,15 @@ static int iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 }
 
 // Given wctx->maxcolor[*], sets -> bf_mask[*] and bf_amt_to_shift[*].
-static int iwbmp_calc_bitfields_masks(struct iwbmpwritecontext *wctx)
+static int iwbmp_calc_bitfields_masks(struct iwbmpwritecontext *wctx, int num_masks)
 {
 	int k;
-	int bits[3]; // R, G, B
+	int bits[4]; // R, G, B, A
 	int tot_bits = 0;
 
 	if(wctx->bitcount != 16) return 0;
 
-	for(k=0;k<3;k++) {
+	for(k=0;k<num_masks;k++) {
 		bits[k] = iw_max_color_to_bitdepth(wctx->maxcolor[k]);
 		tot_bits += bits[k];
 	}
@@ -1172,8 +1173,9 @@ static int iwbmp_calc_bitfields_masks(struct iwbmpwritecontext *wctx)
 	wctx->bf_amt_to_shift[0] = bits[1] + bits[2];
 	wctx->bf_amt_to_shift[1] = bits[2];
 	wctx->bf_amt_to_shift[2] = 0;
+	if(num_masks>3) wctx->bf_amt_to_shift[3] =  bits[0] + bits[1] + bits[2];
 
-	for(k=0;k<3;k++) {
+	for(k=0;k<num_masks;k++) {
 		wctx->bf_mask[k] = wctx->maxcolor[k] << wctx->bf_amt_to_shift[k];
 	}
 
@@ -1188,7 +1190,7 @@ static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 
 	if(wctx->bitcount != 16) return 0;
 
-	if(!iwbmp_calc_bitfields_masks(wctx)) return 0;
+	//if(!iwbmp_calc_bitfields_masks(wctx,3)) return 0;
 
 	for(k=0;k<3;k++) {
 		iw_set_ui32le(&buf[4*k],wctx->bf_mask[k]);
@@ -1891,11 +1893,20 @@ static int check_palette_transparency(const struct iw_palette *p)
 
 // Do some preparations needed to write a 16-bit BMP.
 static int setup_16bit(struct iwbmpwritecontext *wctx,
-	int mcc_r, int mcc_g, int mcc_b)
+	int mcc_r, int mcc_g, int mcc_b, int mcc_a)
 {
+	int has_alpha;
+
+	has_alpha = IW_IMGTYPE_HAS_ALPHA(wctx->img->imgtype);
+
 	if(wctx->bmpversion<3) {
 		iw_set_errorf(wctx->ctx,"Bit depth incompatible with BMP version %d",
 			wctx->bmpversion);
+		return 0;
+	}
+
+	if(has_alpha && wctx->bmpversion<5) {
+		iw_set_error(wctx->ctx,"Internal: Attempt to write v3 16-bit image with transparency");
 		return 0;
 	}
 
@@ -1906,10 +1917,11 @@ static int setup_16bit(struct iwbmpwritecontext *wctx,
 	wctx->maxcolor[0] = mcc_r;
 	wctx->maxcolor[1] = mcc_g;
 	wctx->maxcolor[2] = mcc_b;
+	if(has_alpha) wctx->maxcolor[3] = mcc_a;
 
-	if(!iwbmp_calc_bitfields_masks(wctx)) return 0;
+	if(!iwbmp_calc_bitfields_masks(wctx,has_alpha?4:3)) return 0;
 
-	if(mcc_r==31 && mcc_g==31 && mcc_b==31) {
+	if(mcc_r==31 && mcc_g==31 && mcc_b==31 && !has_alpha) {
 		// For the default 5-5-5, set the 'compression' to BI_RGB
 		// instead of BITFIELDS, and don't write a BITFIELDS segment
 		// (or for v5 BMP, don't set the Mask fields).
@@ -1984,7 +1996,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	if(img->imgtype==IW_IMGTYPE_RGB) {
 		if(img->reduced_maxcolors) {
-			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b)) {
+			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,0)) {
 				goto done;
 			}
 		}
@@ -2018,19 +2030,33 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 			wctx->bitcount=8;
 	}
 	else if(img->imgtype==IW_IMGTYPE_RGBA) {
-		if(!setup_32bit(wctx)) {
-			goto done;
+		if(img->reduced_maxcolors) {
+			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,img->maxcolor_a)) {
+				goto done;
+			}
+		}
+		else {
+			if(!setup_32bit(wctx)) {
+				goto done;
+			}
 		}
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAYA) {
-		if(!setup_32bit(wctx)) {
-			goto done;
+		if(img->reduced_maxcolors) {
+			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,img->maxcolor_a)) {
+				goto done;
+			}
+		}
+		else {
+			if(!setup_32bit(wctx)) {
+				goto done;
+			}
 		}
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAY) {
 		if(img->reduced_maxcolors) {
 			if(img->maxcolor_k<=31) {
-				if(!setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k)) {
+				if(!setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k,0)) {
 					goto done;
 				}
 			}
@@ -2130,7 +2156,10 @@ IW_IMPL(int) iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	iw_get_output_colorspace(ctx,&wctx.csdescr);
 
-	iwbmp_write_main(&wctx);
+	if(!iwbmp_write_main(&wctx)) {
+		iw_set_error(ctx,"BMP write failed");
+		goto done;
+	}
 
 	retval=1;
 
