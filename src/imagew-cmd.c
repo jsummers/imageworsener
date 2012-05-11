@@ -47,7 +47,7 @@
 #define IWCMD_ENCODING_UTF16  3
 
 struct rgb_color {
-	double r,g,b;
+	double s[3]; // R,G,B
 };
 
 struct resize_alg {
@@ -99,17 +99,13 @@ struct params_struct {
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
 	int compression;
 	int grayscale, condgrayscale;
-	double offset_r_h, offset_g_h, offset_b_h;
-	double offset_r_v, offset_g_v, offset_b_v;
+	double offset_h[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
+	double offset_v[3];
 	double translate_x, translate_y;
 	int translate_src_flag; // If 1, translate_[xy] is in source pixels.
+	struct dither_setting dither[5]; // Indexed by IW_CHANNELTYPE_[RED..GRAY]
 	struct dither_setting dither_all;
 	struct dither_setting dither_nonalpha;
-	struct dither_setting dither_alpha;
-	struct dither_setting dither_red;
-	struct dither_setting dither_green;
-	struct dither_setting dither_blue;
-	struct dither_setting dither_gray;
 	int color_count[5]; // Per-channeltype color count, indexed by IW_CHANNELTYPE.
 	int color_count_all, color_count_nonalpha;
 	int apply_bkgd;
@@ -1090,13 +1086,11 @@ static int iwcmd_run(struct params_struct *p)
 		iw_set_output_colorspace(ctx,&p->cs_out);
 	}
 
-	if(p->dither_all.family>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL  ,p->dither_all.family  ,p->dither_all.subtype);
+	if(p->dither_all.family>=0)      iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL     ,p->dither_all.family     ,p->dither_all.subtype);
 	if(p->dither_nonalpha.family>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_nonalpha.family,p->dither_nonalpha.subtype);
-	if(p->dither_red.family>=0)   iw_set_dither_type(ctx,IW_CHANNELTYPE_RED  ,p->dither_red.family  ,p->dither_red.subtype);
-	if(p->dither_green.family>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_GREEN,p->dither_green.family,p->dither_green.subtype);
-	if(p->dither_blue.family>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_BLUE ,p->dither_blue.family ,p->dither_blue.subtype);
-	if(p->dither_gray.family>=0)  iw_set_dither_type(ctx,IW_CHANNELTYPE_GRAY ,p->dither_gray.family ,p->dither_gray.subtype);
-	if(p->dither_alpha.family>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_ALPHA,p->dither_alpha.family,p->dither_alpha.subtype);
+	for(k=0;k<5;k++) {
+		if(p->dither[k].family>=0) iw_set_dither_type(ctx,k,p->dither[k].family,p->dither[k].subtype);
+	}
 
 	if(p->color_count_all) iw_set_color_count  (ctx,IW_CHANNELTYPE_ALL  ,p->color_count_all);
 	if(p->color_count_nonalpha) iw_set_color_count(ctx,IW_CHANNELTYPE_NONALPHA,p->color_count_nonalpha);
@@ -1113,12 +1107,10 @@ static int iwcmd_run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_CVT_TO_GRAYSCALE,1);
 	}
 
-	if(p->offset_r_h!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_RED,  IW_DIMENSION_H,p->offset_r_h);
-	if(p->offset_g_h!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_GREEN,IW_DIMENSION_H,p->offset_g_h);
-	if(p->offset_b_h!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_BLUE, IW_DIMENSION_H,p->offset_b_h);
-	if(p->offset_r_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_RED,  IW_DIMENSION_V,p->offset_r_v);
-	if(p->offset_g_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_GREEN,IW_DIMENSION_V,p->offset_g_v);
-	if(p->offset_b_v!=0.0) iw_set_channel_offset(ctx,IW_CHANNELTYPE_BLUE, IW_DIMENSION_V,p->offset_b_v);
+	for(k=0;k<3;k++) {
+		if(p->offset_h[k]!=0.0) iw_set_channel_offset(ctx,k,IW_DIMENSION_H,p->offset_h[k]);
+		if(p->offset_v[k]!=0.0) iw_set_channel_offset(ctx,k,IW_DIMENSION_V,p->offset_v[k]);
+	}
 
 	if(p->apply_bkgd) {
 
@@ -1130,20 +1122,17 @@ static int iwcmd_run(struct params_struct *p)
 			// Make an sRGB descriptor to use with iw_convert_sample_to_linear.
 			iw_make_srgb_csdescr(&cs_srgb,IW_SRGB_INTENT_PERCEPTUAL);
 
-			p->bkgd.r = iw_convert_sample_to_linear(p->bkgd.r,&cs_srgb);
-			p->bkgd.g = iw_convert_sample_to_linear(p->bkgd.g,&cs_srgb);
-			p->bkgd.b = iw_convert_sample_to_linear(p->bkgd.b,&cs_srgb);
-
-			if(p->bkgd_checkerboard) {
-				p->bkgd2.r = iw_convert_sample_to_linear(p->bkgd2.r,&cs_srgb);
-				p->bkgd2.g = iw_convert_sample_to_linear(p->bkgd2.g,&cs_srgb);
-				p->bkgd2.b = iw_convert_sample_to_linear(p->bkgd2.b,&cs_srgb);
+			for(k=0;k<3;k++) {
+				p->bkgd.s[k] = iw_convert_sample_to_linear(p->bkgd.s[k],&cs_srgb);
+				if(p->bkgd_checkerboard) {
+					p->bkgd2.s[k] = iw_convert_sample_to_linear(p->bkgd2.s[k],&cs_srgb);
+				}
 			}
 		}
 
-		iw_set_apply_bkgd(ctx,p->bkgd.r,p->bkgd.g,p->bkgd.b);
+		iw_set_apply_bkgd(ctx,p->bkgd.s[0],p->bkgd.s[1],p->bkgd.s[2]);
 		if(p->bkgd_checkerboard) {
-			iw_set_bkgd_checkerboard(ctx,p->bkgd_check_size,p->bkgd2.r,p->bkgd2.g,p->bkgd2.b);
+			iw_set_bkgd_checkerboard(ctx,p->bkgd_check_size,p->bkgd2.s[0],p->bkgd2.s[1],p->bkgd2.s[2]);
 			iw_set_bkgd_checkerboard_origin(ctx,p->bkgd_check_origin_x,p->bkgd_check_origin_y);
 		}
 	}
@@ -1469,26 +1458,22 @@ static double hexvalue4(char d1, char d2, char d3, char d4)
 // Allowed formats: 3 hex digits, 6 hex digits, or 12 hex digits.
 static void parse_bkgd_color(struct rgb_color *c, const char *s, size_t s_len)
 {
+	int k;
+
 	if(s_len==3) {
-		c->r = hexvalue1(s[0]);
-		c->g = hexvalue1(s[1]);
-		c->b = hexvalue1(s[2]);
+		for(k=0;k<3;k++) c->s[k] = hexvalue1(s[k]);
 	}
 	else if(s_len==6) {
-		c->r = hexvalue2(s[0],s[1]);
-		c->g = hexvalue2(s[2],s[3]);
-		c->b = hexvalue2(s[4],s[5]);
+		for(k=0;k<3;k++) c->s[k] = hexvalue2(s[k*2],s[k*2+1]);
 	}
 	else if(s_len==12) {
-		c->r = hexvalue4(s[0],s[1],s[2] ,s[3]);
-		c->g = hexvalue4(s[4],s[5],s[6] ,s[7]);
-		c->b = hexvalue4(s[8],s[9],s[10],s[11]);
+		for(k=0;k<3;k++) c->s[k] = hexvalue4(s[k*4],s[k*4+1],s[k*4+2],s[k*4+3]);
 	}
 	else {
 		// Invalid color description.
-		c->r = 1.0;
-		c->g = 0.0;
-		c->b = 1.0;
+		c->s[0] = 1.0;
+		c->s[1] = 0.0;
+		c->s[2] = 1.0;
 	}
 }
 
@@ -2263,23 +2248,23 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(ret<0) return 0;
 		break;
 	case PT_DITHERALPHA:
-		ret=iwcmd_decode_dithertype(p,v,&p->dither_alpha);
-		if(p->dither_alpha.family<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither[IW_CHANNELTYPE_ALPHA]);
+		if(ret<0) return 0;
 		break;
 	case PT_DITHERRED:
-		ret=iwcmd_decode_dithertype(p,v,&p->dither_red);
-		if(p->dither_red.family<0) return 0;
+		ret=iwcmd_decode_dithertype(p,v,&p->dither[IW_CHANNELTYPE_RED]);
+		if(ret<0) return 0;
 		break;
 	case PT_DITHERGREEN:
-		ret=iwcmd_decode_dithertype(p,v,&p->dither_green);
+		ret=iwcmd_decode_dithertype(p,v,&p->dither[IW_CHANNELTYPE_GREEN]);
 		if(ret<0) return 0;
 		break;
 	case PT_DITHERBLUE:
-		ret=iwcmd_decode_dithertype(p,v,&p->dither_blue);
+		ret=iwcmd_decode_dithertype(p,v,&p->dither[IW_CHANNELTYPE_BLUE]);
 		if(ret<0) return 0;
 		break;
 	case PT_DITHERGRAY:
-		ret=iwcmd_decode_dithertype(p,v,&p->dither_gray);
+		ret=iwcmd_decode_dithertype(p,v,&p->dither[IW_CHANNELTYPE_GRAY]);
 		if(ret<0) return 0;
 		break;
 	case PT_CC:
@@ -2324,32 +2309,32 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 			return 0;
 		break;
 	case PT_OFFSET_R_H:
-		p->offset_r_h=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_G_H:
-		p->offset_g_h=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_GREEN]=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_B_H:
-		p->offset_b_h=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_BLUE]=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_R_V:
-		p->offset_r_v=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_G_V:
-		p->offset_g_v=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_GREEN]=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_B_V:
-		p->offset_b_v=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_BLUE]=iwcmd_parse_dbl(v);
 		break;
 	case PT_OFFSET_RB_H:
 		// Shortcut for shifting red and blue in opposite directions.
-		p->offset_r_h=iwcmd_parse_dbl(v);
-		p->offset_b_h= -p->offset_r_h;
+		p->offset_h[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_BLUE]= -p->offset_h[IW_CHANNELTYPE_RED];
 		break;
 	case PT_OFFSET_RB_V:
 		// Shortcut for shifting red and blue vertically in opposite directions.
-		p->offset_r_v=iwcmd_parse_dbl(v);
-		p->offset_b_v= -p->offset_r_v;
+		p->offset_v[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_BLUE]= -p->offset_v[IW_CHANNELTYPE_RED];
 		break;
 	case PT_TRANSLATE:
 		if(v[0]=='s') {
@@ -2661,6 +2646,7 @@ static int iwcmd_read_commandline(struct params_struct *p, int argc, char* argv[
 
 static void init_params(struct params_struct *p)
 {
+	int k;
 	memset(p,0,sizeof(struct params_struct));
 	p->dst_width_req = -1;
 	p->dst_height_req = -1;
@@ -2669,8 +2655,10 @@ static void init_params(struct params_struct *p)
 	p->density_policy = IWCMD_DENSITY_POLICY_AUTO;
 	p->bkgd_check_size = 16;
 	p->bestfit = 0;
-	p->offset_r_h=0.0; p->offset_g_h=0.0; p->offset_b_h=0.0;
-	p->offset_r_v=0.0; p->offset_g_v=0.0; p->offset_b_v=0.0;
+	for(k=0;k<3;k++) {
+		p->offset_h[k]=0.0;
+		p->offset_v[k]=0.0;
+	}
 	p->translate_x=0.0; p->translate_y=0.0;
 	p->infmt=IW_FORMAT_UNKNOWN;
 	p->outfmt=IW_FORMAT_UNKNOWN;
@@ -2680,9 +2668,8 @@ static void init_params(struct params_struct *p)
 	p->resize_blur_y.blur = 1.0;
 	p->webp_quality = -1.0;
 	p->include_screen = -1;
-	p->dither_all.family = p->dither_nonalpha.family = p->dither_alpha.family = -1;
-	p->dither_red.family = p->dither_green.family = p->dither_blue.family = -1;
-	p->dither_gray.family = -1;
+	for(k=0;k<5;k++) p->dither[k].family = -1;
+	p->dither_all.family = p->dither_nonalpha.family = -1;
 	p->grayscale_formula = -1;
 }
 
