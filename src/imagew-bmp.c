@@ -1784,6 +1784,7 @@ static int rle_patch_file_size(struct iwbmpwritecontext *wctx,size_t rlesize)
 {
 	iw_byte buf[4];
 	size_t fileheader_size;
+	int ret;
 
 	if(!wctx->iodescr->seek_fn) {
 		iw_set_error(wctx->ctx,"Writing compressed BMP requires a seek function");
@@ -1792,7 +1793,8 @@ static int rle_patch_file_size(struct iwbmpwritecontext *wctx,size_t rlesize)
 
 	if(wctx->include_file_header) {
 		// Patch the file size in the file header
-		(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,2,SEEK_SET);
+		ret=(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,2,SEEK_SET);
+		if(!ret) return 0;
 		iw_set_ui32le(buf,(unsigned int)(14+wctx->header_size+wctx->bitfields_size+wctx->palsize+rlesize));
 		iwbmp_write(wctx,buf,4);
 		fileheader_size = 14;
@@ -1802,7 +1804,8 @@ static int rle_patch_file_size(struct iwbmpwritecontext *wctx,size_t rlesize)
 	}
 
 	// Patch the "bits" size
-	(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,fileheader_size+20,SEEK_SET);
+	ret=(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,fileheader_size+20,SEEK_SET);
+	if(!ret) return 0;
 	iw_set_ui32le(buf,(unsigned int)rlesize);
 	iwbmp_write(wctx,buf,4);
 
