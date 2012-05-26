@@ -1667,6 +1667,7 @@ static int rle4_compress_row(struct rle_context *rlectx)
 	int next_pix_is_trns;
 	int num_trns = 0; // number of consecutive transparent pixels seen
 	int retval = 0;
+	iw_byte tmpb;
 
 	rlectx->pending_data_start=0;
 	rlectx->unc_len=0;
@@ -1720,12 +1721,18 @@ static int rle4_compress_row(struct rle_context *rlectx)
 		}
 		else if(ok_to_move_to_unc(rlectx)) {
 			// We have a compressible run, but we think it's not long enough to be
-			// beneficial. Convert it to uncompressed bytes.
-			rlectx->unc_len += rlectx->run_len;
+			// beneficial. Convert it to uncompressed bytes -- except for the last
+			// pixel, which can be left in the run.
+			rlectx->unc_len += rlectx->run_len-1;
+ 
+			if((rlectx->run_len&1)==0)
+				rlectx->run_byte = (rlectx->run_byte&0x0f)<<4;
+			else
+				rlectx->run_byte = (rlectx->run_byte&0xf0);
 
 			// Put the next byte in RLE. (It might get moved to UNC, below.)
-			rlectx->run_len = 1;
-			rlectx->run_byte = next_pix<<4;
+			rlectx->run_len = 2;
+			rlectx->run_byte |= next_pix;
 		}
 		else {
 			// Nowhere to put the byte: write out everything, and start fresh.
@@ -1739,6 +1746,10 @@ static int rle4_compress_row(struct rle_context *rlectx)
 		while(rlectx->unc_len>0 && rlectx->run_len>0 && rle4_get_incr_unc_cost(rlectx)==0) {
 			rlectx->unc_len++;
 			rlectx->run_len--;
+			tmpb = rlectx->run_byte;
+			// Reverse the two pixels stored in run_byte.
+			rlectx->run_byte = (tmpb>>4) | ((tmpb&0x0f)<<4);
+			if(rlectx->run_len==1) rlectx->run_byte &= 0xf0;
 		}
 
 		// --------------------------------------------------------------
