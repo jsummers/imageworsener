@@ -44,6 +44,7 @@ struct iwbmpreadcontext {
 	int uses_bitfields; // 'compression' is BI_BITFIELDS
 	int has_alpha_channel;
 	int bitfields_set;
+	int need_16bit;
 	unsigned int palette_entries;
 	size_t fileheader_size;
 	size_t infoheader_size;
@@ -204,7 +205,7 @@ static int decode_v3_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 	return 1;
 }
 
-static void process_bf_mask(struct iwbmpreadcontext *rctx, int k);
+static int process_bf_mask(struct iwbmpreadcontext *rctx, int k);
 
 // Decode the fields that are in v4 and not in v3.
 static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
@@ -216,7 +217,7 @@ static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 		// Set the bitfields masks here, instead of in iwbmp_read_bitfields().
 		for(k=0;k<4;k++) {
 			rctx->bf_mask[k] = iw_get_ui32le(&buf[40+k*4]);
-			process_bf_mask(rctx,k);
+			if(!process_bf_mask(rctx,k)) return 0;
 		}
 		rctx->bitfields_set=1; // Remember not to overwrite the bf_* fields.
 
@@ -382,13 +383,27 @@ static int find_low_bit(unsigned int x)
 }
 
 // Given .bf_mask[k], set high_bit[k], low_bit[k], etc.
-static void process_bf_mask(struct iwbmpreadcontext *rctx, int k)
+static int process_bf_mask(struct iwbmpreadcontext *rctx, int k)
 {
 	// The bits representing the mask for each channel are required to be
 	// contiguous, so all we need to do is find the highest and lowest bit.
 	rctx->bf_high_bit[k] = find_high_bit(rctx->bf_mask[k]);
 	rctx->bf_low_bit[k] = find_low_bit(rctx->bf_mask[k]);
 	rctx->bf_bits_count[k] = 1+rctx->bf_high_bit[k]-rctx->bf_low_bit[k];
+
+	// Check if the mask specifies an invalid bit
+	if(rctx->bf_high_bit[k] > (int)(rctx->bitcount-1)) return 0;
+
+	if(rctx->bf_bits_count[k]>16) {
+		iw_set_errorf(rctx->ctx,"BMP bits per channel >16 (%d) not supported",
+			rctx->bf_bits_count[k]);
+		return 0;
+	}
+	else if(rctx->bf_bits_count[k]>8) {
+		rctx->need_16bit = 1;
+	}
+
+	return 1;
 }
 
 static int iwbmp_read_bitfields(struct iwbmpreadcontext *rctx)
@@ -403,18 +418,7 @@ static int iwbmp_read_bitfields(struct iwbmpreadcontext *rctx)
 		if(rctx->bf_mask[k]==0) return 0;
 
 		// Find the high bit, low bit, etc.
-		process_bf_mask(rctx,k);
-
-		// Check if the mask specifies an invalid bit
-		if(rctx->bf_high_bit[k] > (int)(rctx->bitcount-1)) return 0;
-
-		if(rctx->bf_bits_count[k]>8) {
-			// We could support larger bit counts with a little effort, but such BMP
-			// files are, as far as I know, nonexistent.
-			iw_set_errorf(rctx->ctx,"BMP bits per channel >8 (%d) not supported",
-				rctx->bf_bits_count[k]);
-			return 0;
-		}
+		if(!process_bf_mask(rctx,k)) return 0;
 	}
 
 	return 1;
@@ -481,9 +485,9 @@ static void bmpr_convert_row_32_16(struct iwbmpreadcontext *rctx, const iw_byte 
 {
 	int i,k;
 	unsigned int v,x;
-	int bytesperpix;
+	int numchannels;
 
-	bytesperpix = rctx->has_alpha_channel ? 4 : 3;
+	numchannels = rctx->has_alpha_channel ? 4 : 3;
 
 	for(i=0;i<rctx->width;i++) {
 		if(rctx->bitcount==32) {
@@ -494,11 +498,17 @@ static void bmpr_convert_row_32_16(struct iwbmpreadcontext *rctx, const iw_byte 
 			x = ((unsigned int)src[i*2+0]) | ((unsigned int)src[i*2+1])<<8;
 		}
 		v = 0;
-		for(k=0;k<bytesperpix;k++) { // For red, green, blue:
+		for(k=0;k<numchannels;k++) { // For red, green, blue [, alpha]:
 			v = x & rctx->bf_mask[k];
 			if(rctx->bf_low_bit[k]>0)
 				v >>= rctx->bf_low_bit[k];
-			rctx->img->pixels[row*rctx->img->bpr + i*bytesperpix + k] = (iw_byte)v;
+			if(rctx->img->bit_depth==16) {
+				rctx->img->pixels[row*rctx->img->bpr + i*numchannels*2 + k*2+0] = (iw_byte)(v>>8);
+				rctx->img->pixels[row*rctx->img->bpr + i*numchannels*2 + k*2+1] = (iw_byte)(v&0xff);
+			}
+			else {
+				rctx->img->pixels[row*rctx->img->bpr + i*numchannels + k] = (iw_byte)v;
+			}
 		}
 	}
 }
@@ -558,13 +568,14 @@ static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
 
 	if(rctx->has_alpha_channel) {
 		rctx->img->imgtype = IW_IMGTYPE_RGBA;
-		rctx->img->bit_depth = 8;
-		rctx->img->bpr = iw_calc_bytesperrow(rctx->width,32);
+		
+		rctx->img->bit_depth = rctx->need_16bit ? 16 : 8;
+		rctx->img->bpr = iw_calc_bytesperrow(rctx->width,4*rctx->img->bit_depth);
 	}
 	else {
 		rctx->img->imgtype = IW_IMGTYPE_RGB;
-		rctx->img->bit_depth = 8;
-		rctx->img->bpr = iw_calc_bytesperrow(rctx->width,24);
+		rctx->img->bit_depth = rctx->need_16bit ? 16 : 8;
+		rctx->img->bpr = iw_calc_bytesperrow(rctx->width,3*rctx->img->bit_depth);
 	}
 
 	bmp_bpr = iwbmp_calc_bpr(rctx->bitcount,rctx->width);
