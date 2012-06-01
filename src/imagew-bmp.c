@@ -965,53 +965,63 @@ static void bmpw_convert_row_8(const iw_byte *srcrow, iw_byte *dstrow, int width
 	memcpy(dstrow,srcrow,width);
 }
 
-static void bmpw_convert_row_16(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
+static void bmpw_convert_row_16_32(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
 	iw_byte *dstrow, int width)
 {
-	int i;
+	int i,k;
 	unsigned int v;
+	int num_src_samples;
+	unsigned int src_sample[4];
+
+	num_src_samples = iw_imgtype_num_channels(wctx->img->imgtype);
 
 	for(i=0;i<width;i++) {
-		if(wctx->img->imgtype==IW_IMGTYPE_GRAY) {
-			v = srcrow[i] << wctx->bf_amt_to_shift[0];
-			v |= srcrow[i] << wctx->bf_amt_to_shift[1];
-			v |= srcrow[i] << wctx->bf_amt_to_shift[2];
+
+		// Read the source samples into a convenient format.
+		for(k=0;k<num_src_samples;k++) {
+			if(wctx->img->bit_depth==16) {
+				src_sample[k] = (srcrow[num_src_samples*2*i + k*2]<<8) | srcrow[num_src_samples*2*i + k*2 +1];
+			}
+			else {
+				src_sample[k] = srcrow[num_src_samples*i + k];
+			}
 		}
-		else if(wctx->img->imgtype==IW_IMGTYPE_RGBA) {
-			v = srcrow[i*4+0] << wctx->bf_amt_to_shift[0];
-			v |= srcrow[i*4+1] << wctx->bf_amt_to_shift[1];
-			v |= srcrow[i*4+2] << wctx->bf_amt_to_shift[2];
-			v |= srcrow[i*4+3] << wctx->bf_amt_to_shift[3];
+
+		// Pack the pixels' bits into a single int.
+		switch(wctx->img->imgtype) {
+		case IW_IMGTYPE_GRAY:
+			v = src_sample[0] << wctx->bf_amt_to_shift[0];
+			v |= src_sample[0] << wctx->bf_amt_to_shift[1];
+			v |= src_sample[0] << wctx->bf_amt_to_shift[2];
+			break;
+		case IW_IMGTYPE_RGBA:
+			v = src_sample[0] << wctx->bf_amt_to_shift[0];
+			v |= src_sample[1] << wctx->bf_amt_to_shift[1];
+			v |= src_sample[2] << wctx->bf_amt_to_shift[2];
+			v |= src_sample[3] << wctx->bf_amt_to_shift[3];
+			break;
+		case IW_IMGTYPE_GRAYA:
+			v = src_sample[0] << wctx->bf_amt_to_shift[0];
+			v |= src_sample[0] << wctx->bf_amt_to_shift[1];
+			v |= src_sample[0] << wctx->bf_amt_to_shift[2];
+			v |= src_sample[1] << wctx->bf_amt_to_shift[3];
+			break;
+		default:
+			v = src_sample[0] << wctx->bf_amt_to_shift[0];
+			v |= src_sample[1] << wctx->bf_amt_to_shift[1];
+			v |= src_sample[2] << wctx->bf_amt_to_shift[2];
+		}
+
+		// Split the int into bytes, and write it to the target image.
+		if(wctx->bitcount==32) {
+			dstrow[i*4+0] = (iw_byte)(v&0xff);
+			dstrow[i*4+1] = (iw_byte)((v&0x0000ff00)>>8);
+			dstrow[i*4+2] = (iw_byte)((v&0x00ff0000)>>16);
+			dstrow[i*4+3] = (iw_byte)((v&0xff000000)>>24);
 		}
 		else {
-			v = srcrow[i*3+0] << wctx->bf_amt_to_shift[0];
-			v |= srcrow[i*3+1] << wctx->bf_amt_to_shift[1];
-			v |= srcrow[i*3+2] << wctx->bf_amt_to_shift[2];
-		}
-		dstrow[i*2+0] = (iw_byte)(v&0xff);
-		dstrow[i*2+1] = (iw_byte)(v>>8);
-	}
-}
-
-static void bmpw_convert_row_32(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
-	iw_byte *dstrow, int width)
-{
-	int i;
-
-	if(wctx->img->imgtype==IW_IMGTYPE_RGBA) {
-		for(i=0;i<width;i++) {
-			dstrow[i*4+0] = srcrow[i*4+2]; // B
-			dstrow[i*4+1] = srcrow[i*4+1]; // G
-			dstrow[i*4+2] = srcrow[i*4+0]; // R
-			dstrow[i*4+3] = srcrow[i*4+3]; // A
-		}
-	}
-	else if(wctx->img->imgtype==IW_IMGTYPE_GRAYA) {
-		for(i=0;i<width;i++) {
-			dstrow[i*4+0] = srcrow[i*2];
-			dstrow[i*4+1] = srcrow[i*2];
-			dstrow[i*4+2] = srcrow[i*2];
-			dstrow[i*4+3] = srcrow[i*2+1];
+			dstrow[i*2+0] = (iw_byte)(v&0xff);
+			dstrow[i*2+1] = (iw_byte)(v>>8);
 		}
 	}
 }
@@ -1132,6 +1142,8 @@ static int iwbmp_write_bmp_v45header_fields(struct iwbmpwritecontext *wctx)
 	}
 
 	// Colorspace Type
+	// TODO: Don't do this if the output colorspace is not sRGB,
+	// or no_cslabel is set.
 	iw_set_ui32le(&header[56],IWBMPCS_SRGB);
 
 	// Intent
@@ -1162,24 +1174,25 @@ static int iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 	return iwbmp_write_bmp_v3header(wctx);
 }
 
-// Given wctx->maxcolor[*], sets -> bf_mask[*] and bf_amt_to_shift[*].
+// Given wctx->maxcolor[*], sets -> bf_mask[*] and bf_amt_to_shift[*],
+// and sets wctx->bitcount (to 16 or 32).
 static int iwbmp_calc_bitfields_masks(struct iwbmpwritecontext *wctx, int num_masks)
 {
 	int k;
 	int bits[4]; // R, G, B, A
 	int tot_bits = 0;
 
-	if(wctx->bitcount != 16) return 0;
-
 	for(k=0;k<num_masks;k++) {
 		bits[k] = iw_max_color_to_bitdepth(wctx->maxcolor[k]);
 		tot_bits += bits[k];
 	}
 
-	if(tot_bits > 16) {
+	if(tot_bits > 32) {
 		iw_set_error(wctx->ctx,"Cannot write a BMP image in this color format");
 		return 0;
 	}
+	
+	wctx->bitcount = (tot_bits>16) ? 32 : 16;
 
 	wctx->bf_amt_to_shift[0] = bits[1] + bits[2];
 	wctx->bf_amt_to_shift[1] = bits[2];
@@ -1199,9 +1212,7 @@ static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 	iw_byte buf[12];
 	int k;
 
-	if(wctx->bitcount != 16) return 0;
-
-	//if(!iwbmp_calc_bitfields_masks(wctx,3)) return 0;
+	if(wctx->bitcount!=16 && wctx->bitcount!=32) return 0;
 
 	for(k=0;k<3;k++) {
 		iw_set_ui32le(&buf[4*k],wctx->bf_mask[k]);
@@ -1886,9 +1897,9 @@ static void iwbmp_write_pixels_uncompressed(struct iwbmpwritecontext *wctx,
 	for(j=img->height-1;j>=0;j--) {
 		srcrow = &img->pixels[j*img->bpr];
 		switch(wctx->bitcount) {
-		case 32: bmpw_convert_row_32(wctx,srcrow,dstrow,img->width); break;
+		case 32: bmpw_convert_row_16_32(wctx,srcrow,dstrow,img->width); break;
 		case 24: bmpw_convert_row_24(wctx,srcrow,dstrow,img->width); break;
-		case 16: bmpw_convert_row_16(wctx,srcrow,dstrow,img->width); break;
+		case 16: bmpw_convert_row_16_32(wctx,srcrow,dstrow,img->width); break;
 		case 8: bmpw_convert_row_8(srcrow,dstrow,img->width); break;
 		case 4: bmpw_convert_row_4(srcrow,dstrow,img->width); break;
 		case 1: bmpw_convert_row_1(srcrow,dstrow,img->width); break;
@@ -1916,8 +1927,8 @@ static int check_palette_transparency(const struct iw_palette *p)
 	return retval;
 }
 
-// Do some preparations needed to write a 16-bit BMP.
-static int setup_16bit(struct iwbmpwritecontext *wctx,
+// Do some preparations needed to write a 16-bit or 32-bit BMP.
+static int setup_16_32bit(struct iwbmpwritecontext *wctx,
 	int mcc_r, int mcc_g, int mcc_b, int mcc_a)
 {
 	int has_alpha;
@@ -1931,11 +1942,9 @@ static int setup_16bit(struct iwbmpwritecontext *wctx,
 	}
 
 	if(has_alpha && wctx->bmpversion<5) {
-		iw_set_error(wctx->ctx,"Internal: Attempt to write v3 16-bit image with transparency");
+		iw_set_error(wctx->ctx,"Internal: Attempt to write v3 16- or 32-bit image with transparency");
 		return 0;
 	}
-
-	wctx->bitcount=16;
 
 	// Make our own copy of the max color codes, so that we don't have to
 	// do "if(grayscale)" so much.
@@ -1956,28 +1965,6 @@ static int setup_16bit(struct iwbmpwritecontext *wctx,
 		wctx->uses_bitfields = 1;
 		wctx->bitfields_size = (wctx->bmpversion==3) ? 12 : 0;
 	}
-	return 1;
-}
-
-static int setup_32bit(struct iwbmpwritecontext *wctx)
-{
-	if(wctx->bmpversion<5) {
-		// It should only be possible to get here if the user enabled the transparent-BMP hack.
-		iw_set_errorf(wctx->ctx,"Cannot save this image as a transparent v%d BMP: Too many colors",
-			wctx->bmpversion);
-		return 0;
-	}
-
-	// The only format we allow for this is 32-bit 8,8,8,8 ARGB.
-	wctx->uses_bitfields = 1;
-	wctx->bitfields_size = 0;
-
-	wctx->bf_mask[0] = 0x00ff0000; // R
-	wctx->bf_mask[1] = 0x0000ff00; // G
-	wctx->bf_mask[2] = 0x000000ff; // B
-	wctx->bf_mask[3] = 0xff000000; // A
-
-	wctx->bitcount=32;
 	return 1;
 }
 
@@ -2021,7 +2008,7 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	if(img->imgtype==IW_IMGTYPE_RGB) {
 		if(img->reduced_maxcolors) {
-			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,0)) {
+			if(!setup_16_32bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,0)) {
 				goto done;
 			}
 		}
@@ -2056,32 +2043,32 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 	}
 	else if(img->imgtype==IW_IMGTYPE_RGBA) {
 		if(img->reduced_maxcolors) {
-			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,img->maxcolor_a)) {
+			if(!setup_16_32bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,img->maxcolor_a)) {
 				goto done;
 			}
 		}
 		else {
-			if(!setup_32bit(wctx)) {
+			if(!setup_16_32bit(wctx,255,255,255,255)) {
 				goto done;
 			}
 		}
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAYA) {
 		if(img->reduced_maxcolors) {
-			if(!setup_16bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,img->maxcolor_a)) {
+			if(!setup_16_32bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k,img->maxcolor_a)) {
 				goto done;
 			}
 		}
 		else {
-			if(!setup_32bit(wctx)) {
+			if(!setup_16_32bit(wctx,255,255,255,255)) {
 				goto done;
 			}
 		}
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAY) {
 		if(img->reduced_maxcolors) {
-			if(img->maxcolor_k<=31) {
-				if(!setup_16bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k,0)) {
+			if(img->maxcolor_k<=1023) {
+				if(!setup_16_32bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k,0)) {
 					goto done;
 				}
 			}

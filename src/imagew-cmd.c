@@ -1075,6 +1075,9 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->outfmt==IW_FORMAT_BMP && p->bmp_version>=5) {
 		profile |= IW_PROFILE_TRANSPARENCY;
 	}
+	if(p->outfmt==IW_FORMAT_BMP) {
+		profile |= IW_PROFILE_16BPS;
+	}
 	iw_set_output_profile(ctx, profile);
 
 	iwcmd_set_bitdepth(p,ctx);
