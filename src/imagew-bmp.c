@@ -926,6 +926,7 @@ struct iwbmpwritecontext {
 	unsigned int bf_mask[4];
 	unsigned int maxcolor[4]; // R, G, B -- For 16-bit images.
 	struct iw_csdescr csdescr;
+	int no_cslabel;
 };
 
 static void iwbmp_write(struct iwbmpwritecontext *wctx, const void *buf, size_t n)
@@ -1142,13 +1143,16 @@ static int iwbmp_write_bmp_v45header_fields(struct iwbmpwritecontext *wctx)
 	}
 
 	// Colorspace Type
-	// TODO: Don't do this if the output colorspace is not sRGB,
-	// or no_cslabel is set.
-	iw_set_ui32le(&header[56],IWBMPCS_SRGB);
+	// TODO: We could support CSTYPE_GAMMA by using LCS_CALIBRATED_RGB,
+	// but documentation about how to do that is hard to find.
+	if(wctx->csdescr.cstype==IW_CSTYPE_SRGB && !wctx->no_cslabel)
+		iw_set_ui32le(&header[56],IWBMPCS_SRGB);
+	else
+		iw_set_ui32le(&header[56],IWBMPCS_DEVICE_RGB);
 
 	// Intent
 	intent_bmp_style = 4; // Perceptual
-	if(wctx->csdescr.cstype==IW_CSTYPE_SRGB) {
+	if(wctx->csdescr.cstype==IW_CSTYPE_SRGB && !wctx->no_cslabel) {
 		switch(wctx->csdescr.srgb_intent) {
 		case IW_SRGB_INTENT_PERCEPTUAL: intent_bmp_style = 4; break;
 		case IW_SRGB_INTENT_RELATIVE:   intent_bmp_style = 2; break;
@@ -1999,6 +2003,8 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 		wctx->header_size = 124;
 	else
 		wctx->header_size = 40;
+
+	wctx->no_cslabel = iw_get_value(wctx->ctx,IW_VAL_NO_CSLABEL);
 
 	// If any kind of compression was requested, use RLE if possible.
 	if(cmpr_req==IW_COMPRESSION_AUTO || cmpr_req==IW_COMPRESSION_NONE)
