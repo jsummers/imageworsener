@@ -1,4 +1,7 @@
 Unreleased changes
+ - (none)
+
+Version 0.9.10 - 2 Jun 2012
  - Support reading and writing BMP files with more than 8 bits per sample.
  - Support writing v5 BMP files (use -bmpversion 5).
  - Support for reading some v4 and v5 BMP files.

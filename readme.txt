@@ -1,5 +1,5 @@
 ImageWorsener is a raster image scaling and processing utility.
-Version 0.9.9
+Version 0.9.10
 Copyright (c) 2011-2012 Jason Summers  <jason1@pobox.com>
 
 Web site: http://entropymine.com/imageworsener/
