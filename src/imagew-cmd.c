@@ -536,10 +536,21 @@ static int my_clipboard_w_seekfn(struct iw_context *ctx,
 	struct params_struct *p;
 	p = (struct params_struct *)iw_get_userdata(ctx);
 
+	// The only seeks the BMP encoder is ever expected to do are SEEK_SETs
+	// to near the beginning of the file, and SEEK_END with offset=0. So we
+	// really don't have to worry about integer overflow or underflow, and
+	// casting to size_t is safe.
+
 	switch(whence) {
-	case SEEK_SET: p->cb_w_data_pos = offset; break;
-	case SEEK_CUR: p->cb_w_data_pos += offset; break;
-	case SEEK_END: p->cb_w_data_pos = p->cb_w_data_high_water_mark; break;
+	case SEEK_SET:
+		p->cb_w_data_pos = (size_t)offset;
+		break;
+	case SEEK_CUR:
+		p->cb_w_data_pos += (size_t)offset;
+		break;
+	case SEEK_END:
+		p->cb_w_data_pos = (size_t)(p->cb_w_data_high_water_mark + offset);
+		break;
 	}
 	return 1;
 }
