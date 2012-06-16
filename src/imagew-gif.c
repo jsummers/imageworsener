@@ -266,6 +266,7 @@ struct lzwdeccontext {
 
 	unsigned int clear_code;
 	unsigned int eoi_code;
+	unsigned int last_code_added;
 
 	unsigned int ct_used; // Number of items used in the code table
 	struct lzw_tableentry ct[4096]; // Code table
@@ -320,9 +321,9 @@ static void lzw_emit_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d
 }
 
 // Add a code to the dictionary.
-// Returns the position where it was added.
-// If table is full, returns -1.
-static unsigned int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, iw_byte val)
+// Sets d->last_code_added to the position where it was added.
+// Returns 1 if successful, 0 if table is full.
+static int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, iw_byte val)
 {
 	static const unsigned int last_code_of_size[] = {
 		// The first 3 values are unused.
@@ -331,7 +332,8 @@ static unsigned int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcod
 	unsigned int newpos;
 
 	if(d->ct_used>=4096) {
-		return -1;
+		d->last_code_added = 0;
+		return 0;
 	}
 
 	newpos = d->ct_used;
@@ -349,15 +351,14 @@ static unsigned int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcod
 		}
 	}
 
-	return newpos;
+	d->last_code_added = newpos;
+	return 1;
 }
 
 // Process a single LZW code that was read from the input stream.
 static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d,
 		unsigned int code)
 {
-	unsigned int newpos;
-
 	if(code==d->eoi_code) {
 		d->eoi_flag=1;
 		return 1;
@@ -395,11 +396,10 @@ static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext 
 
 		// Let k = the first char of the translation of oldcode.
 		// Add <oldcode>k to the dictionary.
-		newpos = lzw_add_to_dict(d,d->oldcode,d->ct[d->oldcode].firstchar);
-
-		// Write <oldcode>k to the output stream.
-		if(newpos>=0)
-			lzw_emit_code(rctx,d,newpos);
+		if(lzw_add_to_dict(d,d->oldcode,d->ct[d->oldcode].firstchar)) {
+			// Write <oldcode>k to the output stream.
+			lzw_emit_code(rctx,d,d->last_code_added);
+		}
 	}
 	d->oldcode = code;
 
