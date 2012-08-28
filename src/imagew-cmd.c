@@ -154,7 +154,7 @@ struct params_struct {
 	struct iw_csdescr cs_in;
 	struct iw_csdescr cs_out;
 	int output_encoding;
-	int output_encoding_setmode;
+	int output_encoding_req;
 #ifdef IW_WINDOWS
 	// Used when pasting (reading) from clipboard:
 	int cb_r_clipboard_is_open;
@@ -2460,32 +2460,22 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 
 static int read_encoding_option(struct params_struct *p, const char *v)
 {
-	if(!strcmp(v,"ascii")) {
-		p->output_encoding = IWCMD_ENCODING_ASCII;
+	if(!strcmp(v,"auto")) {
+		p->output_encoding_req = IWCMD_ENCODING_AUTO;
+	}
+	else if(!strcmp(v,"ascii")) {
+		p->output_encoding_req = IWCMD_ENCODING_ASCII;
 	}
 	else if(!strcmp(v,"utf8")) {
-#ifdef _UNICODE
-		// In Windows, if we set the output mode to UTF-8, we have to print
-		// using UTF-16, and let Windows do the conversion.
-		p->output_encoding = IWCMD_ENCODING_UTF16;
-		p->output_encoding_setmode = IWCMD_ENCODING_UTF8;
-#else
-		p->output_encoding = IWCMD_ENCODING_UTF8;
-#endif
-	}
-	else if(!strcmp(v,"utf8raw")) {
-		p->output_encoding = IWCMD_ENCODING_UTF8;
+		p->output_encoding_req = IWCMD_ENCODING_UTF8;
 	}
 #ifdef _UNICODE
 	else if(!strcmp(v,"utf16")) {
-		p->output_encoding = IWCMD_ENCODING_UTF16;
-		p->output_encoding_setmode = IWCMD_ENCODING_UTF16;
-	}
-	else if(!strcmp(v,"utf16raw")) {
-		p->output_encoding = IWCMD_ENCODING_UTF16;
+		p->output_encoding_req = IWCMD_ENCODING_UTF16;
 	}
 #endif
 	else {
+		iwcmd_error(p,"Unknown encoding \xe2\x80\x9c%s\xe2\x80\x9d\n",v);
 		return 0;
 	}
 
@@ -2494,25 +2484,50 @@ static int read_encoding_option(struct params_struct *p, const char *v)
 
 // Figure out what output character encoding to use, and do other
 // encoding-related setup as needed.
-static void handle_encoding(struct params_struct *p, int argc, char* argv[])
+static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 {
 	int i;
+#ifdef IW_WINDOWS
+	int is_windows_console = 0;
+	BOOL b;
+	DWORD consolemode=0;
+#endif
 
 	// Pre-scan the arguments for an "encoding" option.
 	// This has to be done before we process the other options, so that we
 	// can correctly print messages while parsing the other options.
 	for(i=1;i<argc-1;i++) {
 		if(!strcmp(argv[i],"-encoding")) {
-			read_encoding_option(p, argv[i+1]);
+			if(!read_encoding_option(p, argv[i+1])) {
+				return 0;
+			}
 		}
 	}
 
+	p->output_encoding = p->output_encoding_req; // Initial default
+
+#ifdef IW_WINDOWS
+	b=GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE),&consolemode);
+	// According to the documentation of WriteConsole(), if GetConsoleMode()
+	// succeeds, we've got a real console.
+	if(b) is_windows_console = 1;
+#endif
+
 #if defined(_UNICODE)
 	// If the user didn't set an encoding, and this is a Windows Unicode
-	// build, use UTF-16.
-	if(p->output_encoding==IWCMD_ENCODING_AUTO) {
-		p->output_encoding = IWCMD_ENCODING_UTF16;
-		p->output_encoding_setmode = IWCMD_ENCODING_UTF16;
+	// build, use UTF-16 if we're writing to a real Windows console, or UTF-8
+	// otherwise (e.g. if we're redirected to a file).
+	// I think we could call _setmode(...,_O_U8TEXT) to do essentially the
+	// same thing as this. We avoid that because it would mean we'd have to
+	// convert our internal UTF-8 text to UTF-16, only to have it be
+	// immediately converted back to UTF-8.
+	if(p->output_encoding_req==IWCMD_ENCODING_AUTO) {
+		if(is_windows_console) {
+			p->output_encoding = IWCMD_ENCODING_UTF16;
+		}
+		else {
+			p->output_encoding = IWCMD_ENCODING_UTF8;
+		}
 	}
 
 #elif !defined(IW_NO_LOCALE)
@@ -2520,7 +2535,7 @@ static void handle_encoding(struct params_struct *p, int argc, char* argv[])
 	setlocale(LC_CTYPE,"");
 	// If the user didn't set an encoding, try to detect if we should use
 	// UTF-8.
-	if(p->output_encoding==IWCMD_ENCODING_AUTO) {
+	if(p->output_encoding_req==IWCMD_ENCODING_AUTO) {
 		if(strcmp(nl_langinfo(CODESET), "UTF-8") == 0) {
 			p->output_encoding = IWCMD_ENCODING_UTF8;
 		}
@@ -2534,18 +2549,16 @@ static void handle_encoding(struct params_struct *p, int argc, char* argv[])
 	}
 
 #ifdef IW_WINDOWS
-	// In Windows, set the output mode, if appropriate.
-	if(p->output_encoding_setmode==IWCMD_ENCODING_UTF8) {
-		_setmode(_fileno(stdout),_O_U8TEXT);
-	}
-	// TODO: Not sure how much of this works in non-Unicode builds. Need to
-	// investigate that (or remove support for non-Unicode builds).
 #ifdef _UNICODE
-	if(p->output_encoding_setmode==IWCMD_ENCODING_UTF16) {
+	if(p->output_encoding==IWCMD_ENCODING_UTF16) {
+		// Tell the C library (e.g. fputws()) not not to translate our UTF-16
+		// text to an "ANSI" encoding, or anything else.
 		_setmode(_fileno(stdout),_O_U16TEXT);
 	}
 #endif
 #endif
+
+	return 1;
 }
 
 // Our "schemes" consist of 2-32 lowercase letters, digits, and {+,-,.}.
@@ -2613,7 +2626,9 @@ static int iwcmd_read_commandline(struct params_struct *p, int argc, char* argv[
 	ps.printversion=0;
 	ps.showhelp=0;
 
-	handle_encoding(p,argc,argv);
+	if(!handle_encoding(p,argc,argv)) {
+		return IWCMD_ACTION_EXIT_FAIL;
+	}
 
 	for(i=1;i<argc;i++) {
 		if(argv[i][0]=='-' && ps.param_type==PT_NONE) {
@@ -2677,7 +2692,7 @@ static void init_params(struct params_struct *p)
 	p->infmt=IW_FORMAT_UNKNOWN;
 	p->outfmt=IW_FORMAT_UNKNOWN;
 	p->output_encoding=IWCMD_ENCODING_AUTO;
-	p->output_encoding_setmode=IWCMD_ENCODING_AUTO;
+	p->output_encoding_req=IWCMD_ENCODING_AUTO;
 	p->resize_blur_x.blur = 1.0;
 	p->resize_blur_y.blur = 1.0;
 	p->webp_quality = -1.0;

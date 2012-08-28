@@ -1,5 +1,7 @@
 Unreleased changes
- - (none)
+ - Changed how the -encoding option works. On Windows, write UTF-8 text by
+   default if not writing to a console. Removed the "utf8raw" and "utf16raw"
+   options.
 
 Version 0.9.10 - 2 Jun 2012
  - Support reading and writing BMP files with more than 8 bits per sample.

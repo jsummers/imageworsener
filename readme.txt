@@ -686,17 +686,13 @@ Options:
    redirecting the output, or using a nonstandard terminal program.
 
    Encoding names:
+    "auto": The default. On Windows, write Unicode text if writing to a
+         console; otherwise write UTF-8. On non-Windows systems, try to detect
+         whether to use UTF-8 or US-ASCII.
     "ascii": US-ASCII
-    "utf8": UTF-8. In Windows, IW sets the output mode to UTF-8, and writes
-         Unicode output.
-    "utf8raw": UTF-8. In Windows, IW writes raw UTF-8 output without setting
-         the output mode. In a standard Windows command prompt, this will
-         display garbage.
-    "utf16": Windows only. IW sets the output mode to UTF-16, and writes
-         Unicode output.
-    "utf16raw": Windows only. IW writes Unicode output, without setting the
-         output mode. In a standard Windows command prompt, this will likely
-         display garbage.
+    "utf8": UTF-8
+    "utf16": (Windows only.) Write Unicode text if writing to a console;
+         otherwise write little-endian UTF-16.
 
  -noinfo
    Suppress informational messages.
