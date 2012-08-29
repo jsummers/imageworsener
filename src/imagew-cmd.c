@@ -2511,6 +2511,16 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 	// According to the documentation of WriteConsole(), if GetConsoleMode()
 	// succeeds, we've got a real console.
 	if(b) is_windows_console = 1;
+
+	if(!is_windows_console) {
+		// A real Windows console will not have excessive buffering, but
+		// otherwise, disable buffering to make sure that printed text is
+		// displayed immediately.
+		// This is mostly for the benefit of mintty users.
+		// It's overkill, but we print so little text that it shouldn't be a
+		// problem.
+		setvbuf(stdout,0,_IONBF,0);
+	}
 #endif
 
 #if defined(_UNICODE)
