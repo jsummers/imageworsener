@@ -53,13 +53,6 @@
 #define IW_SUPPORT_WEBP 0
 #endif
 
-#if defined(IW_AC_SAMPLE_DEPTH) && !defined(IWCONFIG_SAMPLE_FLOAT) && \
-    !defined(IWCONFIG_SAMPLE_DOUBLE)
-#if IW_AC_SAMPLE_DEPTH <= 32
-#define IWCONFIG_SAMPLE_FLOAT
-#endif
-#endif
-
 #else
 // Not using autoconf
 

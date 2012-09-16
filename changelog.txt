@@ -1,4 +1,5 @@
 Unreleased changes
+ - Removed the --with-sample-depth configuration option.
  - Removed CMake support.
  - Renamed "boxmv" filter to "boxavg".
  - Changed how the -encoding option works. On Windows, write UTF-8 text by

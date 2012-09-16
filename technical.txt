@@ -176,33 +176,21 @@ pathological filenames like "clip:.jpg".
 Double-precision floating point?
 --------------------------------
 
-[This section has not yet been updated to account for the new "-precision 32"
-option.]
+IW normally uses double-precision floating point for almost everything, even
+though that's probably overkill. I used double-precision while developing it,
+because I didn't want to place any artificial restrictions on accuracy, and
+never found a compelling reason to change it.
 
-IW can be compiled to use any available floating point type for its internal
-representation of samples. (Unfortunately, it's impractical to make this a
-run-time option.) Its default is currently set to be "double", which is
-usually an 8-byte floating-point number. This may seem like overkill, and I
-admit, it probably is. Using double precision shouldn't have much effect on
-performance, especially if it's compiled as a 64-bit application. But it will
-use a lot more memory.
+The "-precision 32" option can be used to make IW conserve memory by using
+single-precision when storing large arrays of samples in memory. It will still
+use double-precision when doing the calculations: it will converts a row to
+double-precision, resize it, then convert it back to single-precision to store
+it.
 
-The real reason I haven't switched to single-precision is simply because I
-haven't found any particular reason to do so. IW is intended to be used on
-reasonably modern PCs, and it does not aim for low memory use or the highest
-possible performance, so this might not be much of an issue.
-
-For 8-bit target images, switching to 4-byte floating point affects very
-roughly one pixel in every 50,000. For 16-bit target images, it's more like
-one pixel in every few hundred. Not that that means anything -- the image
-processing algorithms being used aren't even "correct" to that degree.
-
-4-byte floating-point numbers give you about 7 significant digits, which in
-extreme cases may not be quite enough. Particularly for 16-bit target images,
-when working in a linear colorspace, bright samples are much, much brighter
-than the dimmest samples. If IW has to add a huge number of dim pixels together
-with just a few bright pixels, 7 significant digits might not be enough to
-do the kind of accurate calculations it strives for.
+Technically-oriented persons may compile a custom copy of IW that uses single-
+precision (or any available floating-point type) almost everywhere, by defining
+the IW_SAMPLE_TYPE macro to "float" (e.g. use a compiler flag of
+"-DIW_SAMPLE_TYPE=float").
 
 Unicode
 -------
@@ -500,9 +488,6 @@ Features I'm considering adding:
   the code shouldn't assume that image pixel dimensions have to integers.)
 
 - Ability to maintain PNG and GIF background colors.
-
-- Consider removing the compile-time IWCONFIG_SAMPLE_FLOAT option, and/or the
-  --with-sample-depth autoconf option.
 
 - Faster creation of palette images. (Using a hash table?)
 

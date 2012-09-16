@@ -15,12 +15,10 @@
 
 #define IW_MSG_MAX 200 // The usual max length of error messages, etc.
 
-#if defined(IWCONFIG_SAMPLE_DOUBLE)
-#define IW_SAMPLE double
-#elif defined(IWCONFIG_SAMPLE_FLOAT)
-#define IW_SAMPLE float
+#ifdef IW_SAMPLE_TYPE
+typedef IW_SAMPLE_TYPE IW_SAMPLE;
 #else
-#define IW_SAMPLE double
+typedef double IW_SAMPLE;
 #endif
 
 #ifdef IW_64BIT

@@ -672,12 +672,9 @@ Options:
    sample. Default is 64. Setting this to 32 will save memory, with minimal
    reduction in accuracy. The effect on performance is not clear.
 
-   This option has no useful effect if IW was compiled to use 32-bit floating
-   point for its internal calculations.
-
-   Assuming IW was compiled to use 64-bit floating point, it will use that for
-   all its calculations, regardless of the "precision" setting. It will only
-   use 32-bit for storing large amounts of data in memory.
+   Generally speaking, 64-bit floating point will be used for all calculations,
+   regardless of the -precision setting. If -precision is set to 32, 32-bit
+   floating point will be used when storing large amounts of data in memory.
 
  -encoding <encoding>
    Set the encoding used for text output (informational and error messages).
