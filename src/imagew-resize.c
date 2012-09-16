@@ -54,9 +54,9 @@ struct iw_rr_ctx {
 };
 
 
-static IW_INLINE double iw_sinc(double x)
+static double iw_sinc(double x)
 {
-	if(x==0.0) return 1.0;
+	if(x<=0.000000005) return 1.0;
 	return sin(M_PI*x)/(M_PI*x);
 }
 
