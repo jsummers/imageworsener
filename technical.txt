@@ -69,7 +69,7 @@ Suggested options:
    CFLAGS="-g -O3" ./configure --disable-shared
 
 If there is no "configure" file in the distribution you're using, you need to
-generate it by running 
+generate it by running
    scripts/autogen.sh
 You must have GNU autotools (autoconf, automake, libtool) installed. To clean
 up the mess made by autogen.sh, run
@@ -110,7 +110,7 @@ IW does not really care about the details of how an image is stored in a file;
 it only cares about the essential image itself. For example, a 1-bit image is
 treated the same as an 8-bit representation of the same image. If you resize a
 bilevel image, you'll automatically get high quality grayscale image, not a
-low quality bilevel image. 
+low quality bilevel image.
 
 Architecture
 ------------
@@ -140,7 +140,7 @@ For example, if your application supports only PNG files, you can probably
 Files in core library:
  imagew-internals.h, imagew-main.c, imagew-resize.c, imagew-opt.c,
  imagew-api.c, imagew-util.c
- 
+
 Files in auxiliary library:
  imagew-png.c, imagew-jpeg.c, imagew-webp.c, imagew-gif.c, imagew-miff.c,
  imagew-bmp.c, imagew-tiff.c, imagew-zlib.c, imagew-allfmts.c

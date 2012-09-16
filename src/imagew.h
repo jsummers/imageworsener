@@ -428,7 +428,7 @@ struct iw_init_params {
 	void *userdata;
 
 	// The mallocfn and freefn functions are optional, and can be set to NULL.
-	// If one set, they must both be set.
+	// If one is set, they must both be set.
 	// For details, see the definition of iw_mallocfn_type and and iw_freefn_type.
 	iw_mallocfn_type mallocfn;
 	iw_freefn_type freefn;
@@ -681,7 +681,6 @@ IW_EXPORT(int) iw_stricmp(const char *s1, const char *s2);
 IW_EXPORT(void) iw_zeromem(void *mem, size_t n);
 
 // Tell IW which color code represents maximum intensity.
-// TODO: Maybe we should use a field in the iw_image struct, instead.
 IW_EXPORT(void) iw_set_input_max_color_code(struct iw_context *ctx, int input_channel, int c);
 
 IW_EXPORT(int) iw_imgtype_num_channels(int t);
