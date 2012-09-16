@@ -37,7 +37,7 @@ Dependencies (optional):
   libwebp
      <http://www.webmproject.org/code/#libwebp_webp_image_decoder_library>
 
-Here are four possible ways to build ImageWorsener:
+Here are three possible ways to build ImageWorsener:
 
 * Prebuilt Visual Studio 2008 project files
 
@@ -74,58 +74,6 @@ generate it by running
 You must have GNU autotools (autoconf, automake, libtool) installed. To clean
 up the mess made by autogen.sh, run
    scripts/autogen.sh clean
-
-* Using CMake (deprecated?)
-
-CMake is a utility that generates Makefiles and project files.
-
-If you don't have CMake installed, you can download it from
-<http://www.cmake.org/>.
-
-In a Unix-ish environment:
-
-$ mkdir build
-$ cd build
-$ cmake ..
-$ make
-
-Using CMake from Windows is not recommended at this time, but you can try it
-if you want.
-
-First, set your environment variables correctly by running a command prompt
-via Start -> All Programs -> Microsoft Visual [whatever] ->
-Visual Studio Tools -> Visual Studio Command Prompt. If you can't find such
-a utility, look for a script named VCVARS32.BAT and run that.
-
-To build from the command line:
-
-> cd <path_to_imagew>
-> mkdir build
-> cd build
-> cmake ..
-> nmake
-
-To build from the IDE:
-
-> cd <path_to_imagew>
-> mkdir build
-> cd build
-> cmake -G "Visual Studio 9 2008" ..
-Now open the imagew.sln file.
-
-Instead of "Visual Studio 9 2008", you can name any "generator" supported by
-CMake. Consult the CMake documentation. Here are some examples:
-
- "Visual Studio 7 .NET 2003"
- "Visual Studio 8 2005"
- "Visual Studio 8 2005 Win64"
- "Visual Studio 9 2008"
- "Visual Studio 9 2008 Win64"
- "Visual Studio 10"
- "Visual Studio 10 Win64"
-
-This is not meant to imply that IW is guaranteed to work with all of the
-compilers listed above.
 
 Philosophy
 ----------

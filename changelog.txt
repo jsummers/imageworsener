@@ -1,4 +1,5 @@
 Unreleased changes
+ - Removed CMake support.
  - Renamed "boxmv" filter to "boxavg".
  - Changed how the -encoding option works. On Windows, write UTF-8 text by
    default if not writing to a console. Removed the "utf8raw" and "utf16raw"
