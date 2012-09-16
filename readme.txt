@@ -238,7 +238,7 @@ Options:
     box
      Box filter.
 
-    boxmv
+    boxavg
      A slightly modified box filter, which is more well-behaved and symmetric,
      but less standard. Refer to technical.txt for more information.
 

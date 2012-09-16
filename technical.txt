@@ -419,12 +419,12 @@ the right (or bottom) box instead, you could translate the image by a very
 small amount; e.g. "-translate 0.000001,0.000001". To use the "clone" strategy,
 use a very small blur; e.g. "-blur 1.000001".
 
-IW's "boxmv" filter implements the "split" strategy. The name comes from the
-idea of a "mean value": instead of using the filter's value box(x) directly, it
-uses ( box(x-epsilon) + box(x+epsilon) ) / 2. In effect, this means it uses a
-box filter variant which has isolated points at (-0.5, 0.5) and (0.5, 0.5). The
-difference between "box" and "boxmv" can be seen by, for example, reducing an
-image dimension by exactly 1/3 (e.g. from 300 to 200 pixels).
+IW's "boxavg" filter implements the "split" strategy. Instead of using box(x)
+directly, it uses ( box(x-epsilon) + box(x+epsilon) ) / 2. In effect, this
+means it uses a box filter variant which has isolated points at (-0.5, 0.5) and
+(0.5, 0.5). The difference between "box" and "boxavg" can be seen by, for
+example, reducing an image dimension by exactly 1/3 (e.g. from 300 to 200
+pixels).
 
 Nearest neighbor
 ----------------

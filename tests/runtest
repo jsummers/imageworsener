@@ -111,7 +111,7 @@ $IW srcimg/rings1.png actual/ds-linearinterp.png $CMPR -w 35 -h 35 -filter trian
 # Special test for box filter.
 # A source image with odd dimensions is best.
 $IW srcimg/rgb8.png actual/ds-box.png $CMPR -w 20 -h 20 -filter box -translate 0.0000001,0
-$IW srcimg/rgb8.png actual/ds-boxmv.png -w 20 -h 20 -filter boxmv
+$IW srcimg/rgb8.png actual/ds-boxavg.png -w 20 -h 20 -filter boxavg
 
 # Special test for nearest neighbor.
 # A source image with even dimensions is best
