@@ -19,6 +19,9 @@
 #ifdef IW_INCLUDE_UTIL_FUNCTIONS
 #include <stdarg.h> // for va_list
 #endif
+#ifndef IW_WINDOWS
+#include <stdint.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -294,25 +297,23 @@ extern "C" {
 #define IW_MALLOCFLAG_ZEROMEM     0x01
 #define IW_MALLOCFLAG_NOERRORS    0x02
 
-// !!! Portability warning: These definitions make a lot of assumptions about
-// the sizes of data types.
-// TODO: Try to use <stdint.h> instead.
+#ifdef IW_WINDOWS
 #define iw_byte     unsigned char
-#define iw_float32  float
-#define iw_float64  double
 #define iw_uint16   unsigned short
 #define iw_int32    int
 #define iw_uint32   unsigned int
-#ifdef IW_WINDOWS
 #define iw_int64    __int64
 #define iw_uint64   unsigned __int64
-#elif defined (__x86_64__)
-#define iw_int64    long
-#define iw_uint64   unsigned long
 #else
-#define iw_int64    long long
-#define iw_uint64   unsigned long long
+#define iw_byte     uint8_t
+#define iw_uint16   uint16_t
+#define iw_int32    int32_t
+#define iw_uint32   uint32_t
+#define iw_int64    int64_t
+#define iw_uint64   uint64_t
 #endif
+#define iw_float32  float
+#define iw_float64  double
 
 // Colorspace descriptor
 struct iw_csdescr {
