@@ -94,6 +94,7 @@ struct params_struct {
 	struct resize_blur resize_blur_x;
 	struct resize_blur resize_blur_y;
 	int bestfit;
+	int bestfit_option;
 	int precision;
 	int depth; // Overall depth
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
@@ -1943,7 +1944,8 @@ static void iwcmd_printversion(struct params_struct *p)
 }
 
 enum iwcmd_param_types {
- PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS,
+ PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_SIZE, PT_EXACTSIZE,
+ PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS,
  PT_PRECISION, PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
  PT_BLUR, PT_BLUR_X, PT_BLUR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
@@ -1980,6 +1982,8 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"width",PT_WIDTH,1},
 		{"h",PT_HEIGHT,1},
 		{"height",PT_HEIGHT,1},
+		{"s",PT_SIZE,1},
+		{"S",PT_EXACTSIZE,1},
 		{"precision",PT_PRECISION,1},
 		{"depth",PT_DEPTH,1},
 		{"depthgray",PT_DEPTHGRAY,1},
@@ -2082,10 +2086,10 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 	// Handle parameterless options.
 	switch(pt) {
 	case PT_BESTFIT:
-		p->bestfit=1;
+		p->bestfit_option=1;
 		break;
 	case PT_NOBESTFIT:
-		p->bestfit=0;
+		p->bestfit_option=0;
 		break;
 	case PT_NORESIZE:
 		p->noresize_flag=1;
@@ -2163,6 +2167,20 @@ static void iwcmd_read_w_or_h(struct params_struct *p, const char *v,
 	}
 }
 
+static int iwcmd_decode_size(struct params_struct *p, const char *v)
+{
+	char *cpos;
+
+	cpos = strchr(v,',');
+	if(!cpos) {
+		iwcmd_error(p,"Bad size option");
+		return 0;
+	}
+	iwcmd_read_w_or_h(p,v,     &p->dst_width_req,&p->rel_width_flag,&p->rel_width);
+	iwcmd_read_w_or_h(p,cpos+1,&p->dst_height_req,&p->rel_height_flag,&p->rel_height);
+	return 1;
+}
+
 static int iwcmd_read_depth(struct params_struct *p, const char *v)
 {
 	if(strchr(v,',')) {
@@ -2203,6 +2221,16 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_HEIGHT:
 		iwcmd_read_w_or_h(p,v,&p->dst_height_req,&p->rel_height_flag,&p->rel_height);
+		break;
+	case PT_SIZE:
+		ret=iwcmd_decode_size(p,v);
+		p->bestfit=1;
+		if(ret<0) return 0;
+		break;
+	case PT_EXACTSIZE:
+		ret=iwcmd_decode_size(p,v);
+		p->bestfit=0;
+		if(ret<0) return 0;
 		break;
 	case PT_PRECISION:
 		p->precision = iwcmd_parse_int(v);
@@ -2680,6 +2708,9 @@ static int iwcmd_read_commandline(struct params_struct *p, int argc, char* argv[
 		return IWCMD_ACTION_EXIT_FAIL;
 	}
 
+	// Make sure it doesn't matter where on the command line -bestfit/-nobestfit
+	// were given.
+	if(p->bestfit_option>=0) p->bestfit = p->bestfit_option;
 	return IWCMD_ACTION_RUN;
 }
 
@@ -2694,6 +2725,7 @@ static void init_params(struct params_struct *p)
 	p->density_policy = IWCMD_DENSITY_POLICY_AUTO;
 	p->bkgd_check_size = 16;
 	p->bestfit = 0;
+	p->bestfit_option = -1;
 	for(k=0;k<3;k++) {
 		p->offset_h[k]=0.0;
 		p->offset_v[k]=0.0;

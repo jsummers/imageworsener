@@ -141,33 +141,29 @@ slash. For example, instead of "-w x0.666666666", you can use "-w x2/3".
 
 Options:
 
- -width <n>  -height <n>
- -w <n>  -h <n>
-   The width and height of the output image. <n> is normally the number of
-   pixels.
+ -w <width>  -h <height>  (or -width <width>  -height <height>)
+ -s <width>,<height>
+ -S <width>,<height>
+   The width and height of the output image. <width> or <height> is normally a
+   number of pixels.
+
+   Using the -s option, or specifying only one of the width or height, will
+   cause the "bestfit" feature to be enabled.
+   Using the -S option, or specifying both the height and width, will cause
+   "bestfit" to be disabled, so the image will have the exact size you request.
+
    If you use a prefix of "x", for example "-w x1.5", then the new size will
    instead be that number multiplied by the size of the source image.
 
-   If neither -width nor -height are specified, the dimensions of the source
-   image will be used.
-   If one dimension is specified, but not the other, the image will be
-   resized to the dimension that was specified, while retaining its aspect
-   ratio.
-   If both dimensions are specified, the result depends on whether the
-   -bestfit option was used. If it was not, image will be stretched to
-   the exact dimensions specified, which may change its aspect ratio.
-
  -bestfit
-   If both -width and -height are also specified, the image will be "best fit"
-   into those dimensions. If not, has no effect.
-
  -nobestfit
-   Disables -bestfit. This is the default, so it has no effect.
+   Explicitly enable or disable the "bestfit" feature. If enabled, the image's
+   shape will not be changed.
 
  -noresize
    Ensures that the image will not be resized at all. This is only useful if
    the source image may have non-square pixels.
-   Incompatible with -width, -height, and -bestfit.
+   Incompatible with -bestfit and the sizing options.
 
  -infmt <fmt>  -outfmt <fmt>
    Specifies the image file format of the input or output file. If not used,
