@@ -119,7 +119,7 @@ struct iw_opt_ctx {
 	struct iw_palette *palette;
 
 	int has_colorkey_trns;
-	unsigned int colorkey_r, colorkey_g, colorkey_b;
+	unsigned int colorkey[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 };
 
 struct iw_context {

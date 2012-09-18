@@ -348,10 +348,9 @@ struct iw_image {
 	int density_code; // IW_DENSITY_*
 	double density_x, density_y;
 	int has_colorkey_trns;
-	unsigned int colorkey_r, colorkey_g, colorkey_b;
+	unsigned int colorkey[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 	int reduced_maxcolors;
-	unsigned int maxcolor_r, maxcolor_g, maxcolor_b;
-	unsigned int maxcolor_a, maxcolor_k;
+	unsigned int maxcolorcode[5];  // Indexed by IW_CHANNELTYPE_[RED..GRAY]
 };
 
 struct iw_rgba8color {

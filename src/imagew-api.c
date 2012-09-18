@@ -300,23 +300,23 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->density_x = ctx->img2.density_x;
 	img->density_y = ctx->img2.density_y;
 	img->has_colorkey_trns = ctx->optctx.has_colorkey_trns;
-	img->colorkey_r = ctx->optctx.colorkey_r;
-	img->colorkey_g = ctx->optctx.colorkey_g;
-	img->colorkey_b = ctx->optctx.colorkey_b;
+	img->colorkey[0] = ctx->optctx.colorkey[0];
+	img->colorkey[1] = ctx->optctx.colorkey[1];
+	img->colorkey[2] = ctx->optctx.colorkey[2];
 	if(ctx->reduced_output_maxcolor_flag) {
 		img->reduced_maxcolors = 1;
 		if(IW_IMGTYPE_IS_GRAY(img->imgtype)) {
-			img->maxcolor_k = ctx->img2_ci[0].maxcolorcode_int;
+			img->maxcolorcode[IW_CHANNELTYPE_GRAY] = ctx->img2_ci[0].maxcolorcode_int;
 			if(IW_IMGTYPE_HAS_ALPHA(img->imgtype)) {
-				img->maxcolor_a = ctx->img2_ci[1].maxcolorcode_int;
+				img->maxcolorcode[IW_CHANNELTYPE_ALPHA] = ctx->img2_ci[1].maxcolorcode_int;
 			}
 		}
 		else {
-			img->maxcolor_r = ctx->img2_ci[0].maxcolorcode_int;
-			img->maxcolor_g = ctx->img2_ci[1].maxcolorcode_int;
-			img->maxcolor_b = ctx->img2_ci[2].maxcolorcode_int;
+			img->maxcolorcode[IW_CHANNELTYPE_RED]   = ctx->img2_ci[0].maxcolorcode_int;
+			img->maxcolorcode[IW_CHANNELTYPE_GREEN] = ctx->img2_ci[1].maxcolorcode_int;
+			img->maxcolorcode[IW_CHANNELTYPE_BLUE]  = ctx->img2_ci[2].maxcolorcode_int;
 			if(IW_IMGTYPE_HAS_ALPHA(img->imgtype)) {
-				img->maxcolor_a = ctx->img2_ci[3].maxcolorcode_int;
+				img->maxcolorcode[IW_CHANNELTYPE_ALPHA] = ctx->img2_ci[3].maxcolorcode_int;
 			}
 		}
 	}

@@ -476,9 +476,9 @@ static void iwopt_try_rgb8_binary_trns(struct iw_context *ctx, struct iw_opt_ctx
 	}
 
 	optctx->has_colorkey_trns = 1;
-	optctx->colorkey_r = key_clr;
-	optctx->colorkey_g = 192;
-	optctx->colorkey_b = 192;
+	optctx->colorkey[IW_CHANNELTYPE_RED] = key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_GREEN] = 192;
+	optctx->colorkey[IW_CHANNELTYPE_BLUE] = 192;
 
 done:
 	if(trns_mask) iw_free(ctx,trns_mask);
@@ -544,9 +544,9 @@ static void iwopt_try_rgb16_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	}
 
 	optctx->has_colorkey_trns = 1;
-	optctx->colorkey_r = 192*256+key_clr;
-	optctx->colorkey_g = 192*256+192;
-	optctx->colorkey_b = 192*256+192;
+	optctx->colorkey[IW_CHANNELTYPE_RED] = 192*256+key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_GREEN] = 192*256+192;
+	optctx->colorkey[IW_CHANNELTYPE_BLUE] = 192*256+192;
 
 done:
 	if(trns_mask) iw_free(ctx,trns_mask);
@@ -604,9 +604,9 @@ static void iwopt_try_gray8_binary_trns(struct iw_context *ctx, struct iw_opt_ct
 	}
 
 	optctx->has_colorkey_trns = 1;
-	optctx->colorkey_r = key_clr;
-	optctx->colorkey_g = key_clr;
-	optctx->colorkey_b = key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_RED] = key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_GREEN] = key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_BLUE] = key_clr;
 
 done:
 	if(trns_mask) iw_free(ctx,trns_mask);
@@ -668,9 +668,9 @@ static void iwopt_try_gray16_binary_trns(struct iw_context *ctx, struct iw_opt_c
 	}
 
 	optctx->has_colorkey_trns = 1;
-	optctx->colorkey_r = 192*256+key_clr;
-	optctx->colorkey_g = 192*256+key_clr;
-	optctx->colorkey_b = 192*256+key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_RED] = 192*256+key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_GREEN] = 192*256+key_clr;
+	optctx->colorkey[IW_CHANNELTYPE_BLUE] = 192*256+key_clr;
 
 done:
 	if(trns_mask) iw_free(ctx,trns_mask);
@@ -796,7 +796,7 @@ static void iwopt_convert_to_palette_image(struct iw_context *ctx, struct iw_opt
 
 			if(optctx->has_colorkey_trns && c.a==0) {
 				// We'll only get here if the image is really grayscale.
-				e = optctx->colorkey_r;
+				e = optctx->colorkey[IW_CHANNELTYPE_RED];
 			}
 			else {
 				e = iwopt_find_color(optctx->palette,&c);
@@ -1000,7 +1000,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 		iwopt_make_gray_palette(ctx,optctx,1);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
-			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
+			optctx->colorkey[IW_CHANNELTYPE_RED] = optctx->colorkey[IW_CHANNELTYPE_BLUE] = optctx->colorkey[IW_CHANNELTYPE_GREEN] = trns_shade;
 		}
 	}
 	else if(iwopt_palette_opt_ok(ctx,optctx,1)) {
@@ -1010,7 +1010,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 		iwopt_make_gray_palette(ctx,optctx,2);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
-			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
+			optctx->colorkey[IW_CHANNELTYPE_RED] = optctx->colorkey[IW_CHANNELTYPE_BLUE] = optctx->colorkey[IW_CHANNELTYPE_GREEN] = trns_shade;
 		}
 	}
 	else if(iwopt_palette_opt_ok(ctx,optctx,2)) {
@@ -1020,7 +1020,7 @@ static void iwopt_try_pal_lowgray_optimization(struct iw_context *ctx, struct iw
 		iwopt_make_gray_palette(ctx,optctx,4);
 		if(binary_trns) {
 			optctx->has_colorkey_trns = 1;
-			optctx->colorkey_r = optctx->colorkey_b = optctx->colorkey_g = trns_shade;
+			optctx->colorkey[IW_CHANNELTYPE_RED] = optctx->colorkey[IW_CHANNELTYPE_BLUE] = optctx->colorkey[IW_CHANNELTYPE_GREEN] = trns_shade;
 		}
 	}
 	else if(iwopt_palette_opt_ok(ctx,optctx,4)) {

@@ -438,13 +438,15 @@ static void iwpng_set_binary_trns(struct iw_pngwctx *pngwctx, int lpng_color_typ
 
 	if(pngwctx->img->has_colorkey_trns) {
 		if(lpng_color_type==PNG_COLOR_TYPE_GRAY) {
-			newtrns.gray = (png_uint_16)pngwctx->img->colorkey_r;
+			// The R, G, and B components of the colorkey should all be the same,
+			// so we only need to look at one of them.
+			newtrns.gray = (png_uint_16)pngwctx->img->colorkey[IW_CHANNELTYPE_RED];
 			png_set_tRNS(pngwctx->png_ptr, pngwctx->info_ptr, NULL, 1, &newtrns);
 		}
 		else if(lpng_color_type==PNG_COLOR_TYPE_RGB) {
-			newtrns.red   = (png_uint_16)pngwctx->img->colorkey_r;
-			newtrns.green = (png_uint_16)pngwctx->img->colorkey_g;
-			newtrns.blue  = (png_uint_16)pngwctx->img->colorkey_b;
+			newtrns.red   = (png_uint_16)pngwctx->img->colorkey[IW_CHANNELTYPE_RED];
+			newtrns.green = (png_uint_16)pngwctx->img->colorkey[IW_CHANNELTYPE_GREEN];
+			newtrns.blue  = (png_uint_16)pngwctx->img->colorkey[IW_CHANNELTYPE_BLUE];
 			png_set_tRNS(pngwctx->png_ptr, pngwctx->info_ptr, NULL, 1, &newtrns);
 		}
 	}
@@ -613,11 +615,11 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	if(img.reduced_maxcolors) {
 		png_color_8 sbit;
-		sbit.red   = iw_max_color_to_bitdepth(img.maxcolor_r);
-		sbit.green = iw_max_color_to_bitdepth(img.maxcolor_g);
-		sbit.blue  = iw_max_color_to_bitdepth(img.maxcolor_b);
-		sbit.gray  = iw_max_color_to_bitdepth(img.maxcolor_k);
-		sbit.alpha = iw_max_color_to_bitdepth(img.maxcolor_a);
+		sbit.red   = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_RED]);
+		sbit.green = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_GREEN]);
+		sbit.blue  = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_BLUE]);
+		sbit.gray  = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_GRAY]);
+		sbit.alpha = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_ALPHA]);
 		png_set_sBIT(png_ptr,info_ptr,&sbit);
 		png_set_shift(png_ptr,&sbit);
 	}

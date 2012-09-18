@@ -2014,7 +2014,10 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 
 	if(img->imgtype==IW_IMGTYPE_RGB) {
 		if(img->reduced_maxcolors) {
-			if(!setup_16_32bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,0)) {
+			if(!setup_16_32bit(wctx,img->maxcolorcode[IW_CHANNELTYPE_RED],
+				img->maxcolorcode[IW_CHANNELTYPE_GREEN],
+				img->maxcolorcode[IW_CHANNELTYPE_BLUE],0))
+			{
 				goto done;
 			}
 		}
@@ -2049,7 +2052,11 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 	}
 	else if(img->imgtype==IW_IMGTYPE_RGBA) {
 		if(img->reduced_maxcolors) {
-			if(!setup_16_32bit(wctx,img->maxcolor_r,img->maxcolor_g,img->maxcolor_b,img->maxcolor_a)) {
+			if(!setup_16_32bit(wctx,img->maxcolorcode[IW_CHANNELTYPE_RED],
+				img->maxcolorcode[IW_CHANNELTYPE_GREEN],
+				img->maxcolorcode[IW_CHANNELTYPE_BLUE],
+				img->maxcolorcode[IW_CHANNELTYPE_ALPHA]))
+			{
 				goto done;
 			}
 		}
@@ -2061,7 +2068,11 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAYA) {
 		if(img->reduced_maxcolors) {
-			if(!setup_16_32bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k,img->maxcolor_a)) {
+			if(!setup_16_32bit(wctx,img->maxcolorcode[IW_CHANNELTYPE_GRAY],
+				img->maxcolorcode[IW_CHANNELTYPE_GRAY],
+				img->maxcolorcode[IW_CHANNELTYPE_GRAY],
+				img->maxcolorcode[IW_CHANNELTYPE_ALPHA]))
+			{
 				goto done;
 			}
 		}
@@ -2073,8 +2084,11 @@ static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
 	}
 	else if(img->imgtype==IW_IMGTYPE_GRAY) {
 		if(img->reduced_maxcolors) {
-			if(img->maxcolor_k<=1023) {
-				if(!setup_16_32bit(wctx,img->maxcolor_k,img->maxcolor_k,img->maxcolor_k,0)) {
+			if(img->maxcolorcode[IW_CHANNELTYPE_GRAY]<=1023) {
+				if(!setup_16_32bit(wctx,img->maxcolorcode[IW_CHANNELTYPE_GRAY],
+					img->maxcolorcode[IW_CHANNELTYPE_GRAY],
+					img->maxcolorcode[IW_CHANNELTYPE_GRAY],0))
+				{
 					goto done;
 				}
 			}
