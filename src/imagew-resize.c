@@ -92,10 +92,22 @@ static double iw_filter_sinc(struct iw_rr_ctx *rrctx, double x)
 	return 0.0;
 }
 
+// Gaussian filter, evaluated out to 2.0 (4*sigma).
 static double iw_filter_gaussian(struct iw_rr_ctx *rrctx, double x)
 {
+	double value;
+
+	if(x>=2.0) return 0.0;
 	// The 0.797 constant is 1.0/sqrt(0.5*M_PI)
-	return exp(-2.0*x*x) * 0.79788456080286535587989;
+	value = exp(-2.0*x*x) * 0.79788456080286535587989;
+	if(x<=1.999) return value;
+
+	// At 2.0, the filter's value is about 0.00026766, which is visually
+	// insignificant, but big enough to change some pixel values. The
+	// discontinuity causes indeterminism when evaluating values very near 2.0.
+	// To fix this, we'll make the filter continuous, by applying a simple
+	// windowing function when the coordinate is near 2.0.
+	return 1000.0*(2.0-x)*value;
 }
 
 static double iw_filter_triangle(struct iw_rr_ctx *rrctx, double x)
