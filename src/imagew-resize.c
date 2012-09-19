@@ -264,8 +264,8 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 		// There are up to radius*reduction_factor source pixels on each side
 		// of the target pixel that we need to look at.
 
-		first_input_pixel = (int)ceil(pos_in_inpix - rrctx->radius*reduction_factor);
-		last_input_pixel = (int)floor(pos_in_inpix + rrctx->radius*reduction_factor);
+		first_input_pixel = (int)ceil(pos_in_inpix - rrctx->radius*reduction_factor -0.0001);
+		last_input_pixel = (int)floor(pos_in_inpix + rrctx->radius*reduction_factor +0.0001);
 
 		// Remember which item in the weightlist was the first one for this
 		// target sample.
