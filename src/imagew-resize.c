@@ -199,6 +199,17 @@ static void weightlist_add_weight(struct iw_rr_ctx *rrctx, int src_pix, int dst_
 	rrctx->wl_used++;
 }
 
+// If the filter is symmetric, return the absolute value of pos.
+// (For convenience, we don't call such filters with negative numbers.)
+// Otherwise, return pos.
+static double fixup_pos(struct iw_rr_ctx *rrctx, double pos)
+{
+	if(rrctx->family_flags & IW_FFF_ASYMMETRIC) {
+		return pos;
+	}
+	return (pos<0) ? -pos : pos;
+}
+
 static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 {
 	int out_pix;
@@ -260,19 +271,13 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 			}
 
 			pos = (((double)input_pixel)-pos_in_inpix)/reduction_factor;
-			if(!(rrctx->family_flags & IW_FFF_ASYMMETRIC)) {
-				// If the filter is symmetric, then for convenience, don't call it with
-				// negative numbers.
-				if(pos<0.0)
-					pos = -pos;
-			}
 			if(rrctx->family_flags & IW_FFF_AVERAGEVALUE) {
-				v = (*rrctx->filter_fn)(rrctx, pos-0.00000000001);
-				v += (*rrctx->filter_fn)(rrctx, pos+0.00000000001);
+				v = (*rrctx->filter_fn)(rrctx, fixup_pos(rrctx,pos-0.00000000001));
+				v += (*rrctx->filter_fn)(rrctx, fixup_pos(rrctx,pos+0.00000000001));
 				v = v/2.0;
 			}
 			else {
-				v = (*rrctx->filter_fn)(rrctx, pos);
+				v = (*rrctx->filter_fn)(rrctx, fixup_pos(rrctx,pos));
 			}
 			if(v==0.0) continue;
 
