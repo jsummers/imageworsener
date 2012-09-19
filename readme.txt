@@ -301,7 +301,7 @@ Options:
    Adjust the width of the resampling filter.
 
    This is really a parameter of the resampling filter: if you use -blur,
-   you must also use -filter. "-blur" does not work with some algorithms,
+   you should also use -filter. "-blur" does not work with some algorithms,
    such as "nearest".
 
    The default value is 1.0. Larger values blur the image more. A value

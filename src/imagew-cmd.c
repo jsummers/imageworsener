@@ -56,8 +56,9 @@ struct resize_alg {
 };
 
 struct resize_blur {
+	int is_set; // Did the user set this blur option?
 	double blur;
-	int interpolate; // If set, muliply 'blur' by the scaling factor (if downscaling)
+	int interpolate; // If set, multiply 'blur' by the scaling factor (if downscaling)
 };
 
 struct dither_setting {
@@ -949,6 +950,7 @@ static int iwcmd_run(struct params_struct *p)
 	const char *s;
 	unsigned int profile;
 	int k;
+	int tmpflag;
 
 	memset(&init_params,0,sizeof(struct iw_init_params));
 	memset(&readdescr,0,sizeof(struct iw_iodescr));
@@ -1188,6 +1190,20 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->translate_x!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_X,p->translate_x);
 	if(p->translate_y!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_Y,p->translate_y);
 
+	tmpflag = 0; // Have we displayed a "gaussian filter" warning yet?
+	if(p->resize_blur_x.is_set && !p->resize_alg_x.family) {
+		if(!p->nowarn) {
+			iwcmd_warning(p,"Notice: Selecting gaussian filter for blurring\n");
+			tmpflag = 1;
+		}
+		p->resize_alg_x.family = IW_RESIZETYPE_GAUSSIAN;
+	}
+	if(p->resize_blur_y.is_set && !p->resize_alg_y.family) {
+		if(!p->nowarn && !tmpflag) {
+			iwcmd_warning(p,"Notice: Selecting gaussian filter for blurring\n");
+		}
+		p->resize_alg_y.family = IW_RESIZETYPE_GAUSSIAN;
+	}
 
 	// Wait until we know the target image size to set the resize algorithm, so
 	// that we can support our "interpolate" option.
@@ -1203,13 +1219,6 @@ static int iwcmd_run(struct params_struct *p)
 			p->resize_blur_y.blur *= ((double)p->dst_height)/p->src_height;
 		}
 		iwcmd_set_resize(ctx,IW_DIMENSION_V,&p->resize_alg_y,&p->resize_blur_y);
-	}
-
-	if( (!p->resize_alg_x.family && (p->resize_blur_x.blur!=1.0 || p->resize_blur_x.interpolate)) ||
-		(!p->resize_alg_y.family && (p->resize_blur_y.blur!=1.0 || p->resize_blur_y.interpolate)) )
-	{
-		if(!p->nowarn)
-			iwcmd_warning(p,"Warning: -blur option requires -filter\n");
 	}
 
 	if(p->noinfo) {
@@ -1645,6 +1654,7 @@ static int iwcmd_decode_blur_option(struct params_struct *p,
 {
 	int namelen;
 
+	rblur->is_set = 1;
 	namelen=iwcmd_get_name_len(s);
 
 	if(namelen==1 && !strncmp(s,"x",namelen)) {

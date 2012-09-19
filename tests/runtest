@@ -157,7 +157,7 @@ $IW srcimg/4x4.png actual/intclamp.png $DCMPR $SCALE -filter lanczos -intclamp
 $IW srcimg/4x4.png actual/grayscale.png $DCMPR $SCALE -filter catrom -grayscale
 $IW srcimg/4x4.png actual/grayscale-c.png $DCMPR $SCALE -filter catrom -nogamma -grayscaleformula c
 $IW srcimg/4x4.png actual/grayscale-w.png $CMPR $SCALE -filter quadratic -gsf w3,7,1
-$IW srcimg/4x4.png actual/grayscale-v.png $CMPR $SCALE -filter gaussian -gsf v.4,.1,.4 -grayscale
+$IW srcimg/4x4.png actual/grayscale-v.png $CMPR $SCALE -blur 1 -gsf v.4,.1,.4 -grayscale -nowarn
 
 $IW srcimg/4x4.png actual/offset.png $DCMPR $SCALE -filter mix -offsetred .333 -offsetgreen -0.2 -offsetblue -1.5 -edge r
 $IW srcimg/rgb8a.png actual/offsetv.png $DCMPR $SCALE -filter mix -offsetvred .333 -offsetvgreen -0.2 -offsetvblue -1.5 -edge r -nowarn
