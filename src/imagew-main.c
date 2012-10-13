@@ -842,7 +842,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 
 			ctx->in_pix[j] = get_sample_cvt_to_linear(ctx,i,j,channel,in_csdescr);
 
-			if(int_ci->need_unassoc_alph_processing) { // We need opacity information also
+			if(int_ci->need_unassoc_alpha_processing) { // We need opacity information also
 				tmp_alpha = get_raw_sample(ctx,i,j,ctx->img1_alpha_channel_index);
 
 				// Multiply color amount by opacity
@@ -995,7 +995,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	}
 	else if(ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
 		// If we are applying a background color (after resizing)...
-		if(int_ci->need_unassoc_alph_processing) {
+		if(int_ci->need_unassoc_alpha_processing) {
 			// then the color channels should only be clamped after applying
 			// the background...
 			clamp_after_composite = 1;
@@ -1082,7 +1082,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 			tmpsamp = ctx->out_pix[i];
 
-			if(int_ci->need_unassoc_alph_processing) {
+			if(int_ci->need_unassoc_alpha_processing) {
 				// Special processing for (partially) transparent pixels.
 				if(ctx->precision==64)
 					alphasamp = ctx->final_alpha64[((size_t)j)*ctx->img2.width + i];
@@ -1093,7 +1093,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 				}
 			}
 
-			if(int_ci->need_unassoc_alph_processing && ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
+			if(int_ci->need_unassoc_alpha_processing && ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
 				// Apply a background color (or checkerboard pattern).
 				IW_SAMPLE bkcolor;
 				if(ctx->bkgd_checkerboard) {
@@ -1986,7 +1986,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {
 		for(i=0;i<ctx->intermed_numchannels;i++) {
 			if(ctx->intermed_ci[i].channeltype!=IW_CHANNELTYPE_ALPHA)
-				ctx->intermed_ci[i].need_unassoc_alph_processing = 1;
+				ctx->intermed_ci[i].need_unassoc_alpha_processing = 1;
 		}
 	}
 

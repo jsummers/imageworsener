@@ -72,7 +72,7 @@ struct iw_channelinfo_intermed {
 
 	IW_SAMPLE bkgd_color_lin; // Used if ctx->apply_bkgd && bkgd_strategy==EARLY
 
-	int need_unassoc_alph_processing; // Is this a color channel in an image with transparency?
+	int need_unassoc_alpha_processing; // Is this a color channel in an image with transparency?
 };
 
 struct iw_channelinfo_out {
