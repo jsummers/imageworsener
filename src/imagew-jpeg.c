@@ -277,23 +277,23 @@ static void handle_exif_density(struct iw_jpegrctx *rctx, struct iw_image *img)
 
 static void my_init_source_fn(j_decompress_ptr cinfo)
 {
-	struct iw_jpegrctx *jpegrctx = (struct iw_jpegrctx*)cinfo->src;
-	jpegrctx->pub.next_input_byte = jpegrctx->buffer;
-	jpegrctx->pub.bytes_in_buffer = 0;
+	struct iw_jpegrctx *rctx = (struct iw_jpegrctx*)cinfo->src;
+	rctx->pub.next_input_byte = rctx->buffer;
+	rctx->pub.bytes_in_buffer = 0;
 }
 
 static boolean my_fill_input_buffer_fn(j_decompress_ptr cinfo)
 {
-	struct iw_jpegrctx *jpegrctx = (struct iw_jpegrctx*)cinfo->src;
+	struct iw_jpegrctx *rctx = (struct iw_jpegrctx*)cinfo->src;
 	size_t bytesread = 0;
 	int ret;
 
-	ret = (*jpegrctx->iodescr->read_fn)(jpegrctx->ctx,jpegrctx->iodescr,
-		jpegrctx->buffer,jpegrctx->buffer_len,&bytesread);
+	ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
+		rctx->buffer,rctx->buffer_len,&bytesread);
 	if(!ret) return FALSE;
 
-	jpegrctx->pub.next_input_byte = jpegrctx->buffer;
-	jpegrctx->pub.bytes_in_buffer = bytesread;
+	rctx->pub.next_input_byte = rctx->buffer;
+	rctx->pub.bytes_in_buffer = bytesread;
 
 	if(bytesread<1) return FALSE;
 	return TRUE;
@@ -301,7 +301,7 @@ static boolean my_fill_input_buffer_fn(j_decompress_ptr cinfo)
 
 static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes)
 {
-	struct iw_jpegrctx *jpegrctx = (struct iw_jpegrctx*)cinfo->src;
+	struct iw_jpegrctx *rctx = (struct iw_jpegrctx*)cinfo->src;
 	size_t bytes_still_to_skip;
 	size_t nbytes;
 	int ret;
@@ -311,15 +311,15 @@ static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes)
 	bytes_still_to_skip = (size_t)num_bytes;
 
 	while(bytes_still_to_skip>0) {
-		if(jpegrctx->pub.bytes_in_buffer>0) {
+		if(rctx->pub.bytes_in_buffer>0) {
 			// There are some bytes in the buffer. Skip up to
 			// 'bytes_still_to_skip' of them.
-			nbytes = jpegrctx->pub.bytes_in_buffer;
+			nbytes = rctx->pub.bytes_in_buffer;
 			if(nbytes>bytes_still_to_skip)
 				nbytes = bytes_still_to_skip;
 
-			jpegrctx->pub.bytes_in_buffer -= nbytes;
-			jpegrctx->pub.next_input_byte += nbytes;
+			rctx->pub.bytes_in_buffer -= nbytes;
+			rctx->pub.next_input_byte += nbytes;
 			bytes_still_to_skip -= nbytes;
 		}
 
@@ -327,12 +327,12 @@ static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes)
 
 		// Need to read from the file (or do a seek, but we currently don't
 		// support seeking).
-		ret = (*jpegrctx->iodescr->read_fn)(jpegrctx->ctx,jpegrctx->iodescr,
-			jpegrctx->buffer,jpegrctx->buffer_len,&bytesread);
+		ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
+			rctx->buffer,rctx->buffer_len,&bytesread);
 		if(!ret) bytesread=0;
 
-		jpegrctx->pub.next_input_byte = jpegrctx->buffer;
-		jpegrctx->pub.bytes_in_buffer = bytesread;
+		rctx->pub.next_input_byte = rctx->buffer;
+		rctx->pub.bytes_in_buffer = bytesread;
 	}
 }
 
@@ -374,14 +374,14 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	JSAMPLE *jsamprow;
 	int numchannels=0;
 	struct iw_image img;
-	struct iw_jpegrctx jpegrctx;
+	struct iw_jpegrctx rctx;
 	JSAMPLE *tmprow = NULL;
 	int cmyk_flag = 0;
 
 	iw_zeromem(&img,sizeof(struct iw_image));
 	iw_zeromem(&cinfo,sizeof(struct jpeg_decompress_struct));
 	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
-	iw_zeromem(&jpegrctx,sizeof(struct iw_jpegrctx));
+	iw_zeromem(&rctx,sizeof(struct iw_jpegrctx));
 
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = my_error_exit;
@@ -401,19 +401,19 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	cinfo_valid=1;
 
 	// Set up our custom source manager.
-	jpegrctx.pub.init_source = my_init_source_fn;
-	jpegrctx.pub.fill_input_buffer = my_fill_input_buffer_fn;
-	jpegrctx.pub.skip_input_data = my_skip_input_data_fn;
-	jpegrctx.pub.resync_to_restart = jpeg_resync_to_restart; // libjpeg default
-	jpegrctx.pub.term_source = my_term_source_fn;
-	jpegrctx.ctx = ctx;
-	jpegrctx.iodescr = iodescr;
-	jpegrctx.buffer_len = 32768;
-	jpegrctx.buffer = iw_malloc(ctx, jpegrctx.buffer_len);
-	if(!jpegrctx.buffer) goto done;
-	jpegrctx.exif_density_x = -1.0;
-	jpegrctx.exif_density_y = -1.0;
-	cinfo.src = (struct jpeg_source_mgr*)&jpegrctx;
+	rctx.pub.init_source = my_init_source_fn;
+	rctx.pub.fill_input_buffer = my_fill_input_buffer_fn;
+	rctx.pub.skip_input_data = my_skip_input_data_fn;
+	rctx.pub.resync_to_restart = jpeg_resync_to_restart; // libjpeg default
+	rctx.pub.term_source = my_term_source_fn;
+	rctx.ctx = ctx;
+	rctx.iodescr = iodescr;
+	rctx.buffer_len = 32768;
+	rctx.buffer = iw_malloc(ctx, rctx.buffer_len);
+	if(!rctx.buffer) goto done;
+	rctx.exif_density_x = -1.0;
+	rctx.exif_density_y = -1.0;
+	cinfo.src = (struct jpeg_source_mgr*)&rctx;
 
 	// The lazy way. It would be more efficient to use
 	// jpeg_set_marker_processor(), instead of saving everything to memory.
@@ -423,11 +423,11 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	jpeg_read_header(&cinfo, TRUE);
 
-	jpegrctx.is_jfif = cinfo.saw_JFIF_marker;
+	rctx.is_jfif = cinfo.saw_JFIF_marker;
 
 	iwjpeg_read_density(ctx,&img,&cinfo);
 
-	iwjpeg_read_saved_markers(&jpegrctx,&cinfo);
+	iwjpeg_read_saved_markers(&rctx,&cinfo);
 
 	jpeg_start_decompress(&cinfo);
 
@@ -493,24 +493,24 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	}
 	jpeg_finish_decompress(&cinfo);
 
-	handle_exif_density(&jpegrctx, &img);
+	handle_exif_density(&rctx, &img);
 
 	iw_set_input_image(ctx, &img);
 
-	if(jpegrctx.exif_orientation>=2 && jpegrctx.exif_orientation<=8) {
+	if(rctx.exif_orientation>=2 && rctx.exif_orientation<=8) {
 		static const unsigned int exif_orient_to_transform[9] =
 		   { 0,0, 1,3,2,4,5,7,6 };
 
 		// An Exif marker indicated an unusual image orientation.
 
-		if(jpegrctx.is_jfif) {
+		if(rctx.is_jfif) {
 			// The presence of a JFIF marker implies a particular orientation.
 			// If there's also an Exif marker that says something different,
 			// I'm not sure what we're supposed to do.
 			iw_warning(ctx,"JPEG image has an ambiguous orientation");
 		}
 		else {
-			iw_reorient_image(ctx,exif_orient_to_transform[jpegrctx.exif_orientation]);
+			iw_reorient_image(ctx,exif_orient_to_transform[rctx.exif_orientation]);
 		}
 	}
 
@@ -518,7 +518,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 done:
 	if(cinfo_valid) jpeg_destroy_decompress(&cinfo);
-	if(jpegrctx.buffer) iw_free(ctx,jpegrctx.buffer);
+	if(rctx.buffer) iw_free(ctx,rctx.buffer);
 	if(tmprow) iw_free(ctx,tmprow);
 	return retval;
 }
@@ -563,36 +563,36 @@ static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct
 
 static void my_init_destination_fn(j_compress_ptr cinfo)
 {
-	struct iw_jpegwctx *jpegwctx = (struct iw_jpegwctx*)cinfo->dest;
+	struct iw_jpegwctx *wctx = (struct iw_jpegwctx*)cinfo->dest;
 
 	// Configure the destination manager to use our buffer.
-	jpegwctx->pub.next_output_byte = jpegwctx->buffer;
-	jpegwctx->pub.free_in_buffer = jpegwctx->buffer_len;
+	wctx->pub.next_output_byte = wctx->buffer;
+	wctx->pub.free_in_buffer = wctx->buffer_len;
 }
 
 static boolean my_empty_output_buffer_fn(j_compress_ptr cinfo)
 {
-	struct iw_jpegwctx *jpegwctx = (struct iw_jpegwctx*)cinfo->dest;
+	struct iw_jpegwctx *wctx = (struct iw_jpegwctx*)cinfo->dest;
 
 	// Write out the entire buffer
-	(*jpegwctx->iodescr->write_fn)(jpegwctx->ctx,jpegwctx->iodescr,
-		jpegwctx->buffer,jpegwctx->buffer_len);
+	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,
+		wctx->buffer,wctx->buffer_len);
 	// Change the data pointer and free-space indicator to reflect the
 	// data we wrote.
-	jpegwctx->pub.next_output_byte = jpegwctx->buffer;
-	jpegwctx->pub.free_in_buffer = jpegwctx->buffer_len;
+	wctx->pub.next_output_byte = wctx->buffer;
+	wctx->pub.free_in_buffer = wctx->buffer_len;
 	return TRUE;
 }
 
 static void my_term_destination_fn(j_compress_ptr cinfo)
 {
-	struct iw_jpegwctx *jpegwctx = (struct iw_jpegwctx*)cinfo->dest;
+	struct iw_jpegwctx *wctx = (struct iw_jpegwctx*)cinfo->dest;
 	size_t bytesleft;
 
-	bytesleft = jpegwctx->buffer_len - jpegwctx->pub.free_in_buffer;
+	bytesleft = wctx->buffer_len - wctx->pub.free_in_buffer;
 	if(bytesleft>0) {
-		(*jpegwctx->iodescr->write_fn)(jpegwctx->ctx,jpegwctx->iodescr,
-			jpegwctx->buffer,bytesleft);
+		(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,
+			wctx->buffer,bytesleft);
 	}
 }
 
@@ -611,11 +611,11 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	struct iw_image img;
 	int jpeg_quality;
 	int samp_factor_h, samp_factor_v;
-	struct iw_jpegwctx jpegwctx;
+	struct iw_jpegwctx wctx;
 
 	iw_zeromem(&cinfo,sizeof(struct jpeg_compress_struct));
 	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
-	iw_zeromem(&jpegwctx,sizeof(struct iw_jpegwctx));
+	iw_zeromem(&wctx,sizeof(struct iw_jpegwctx));
 
 	iw_get_output_image(ctx,&img);
 
@@ -657,17 +657,17 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	compress_created=1;
 
 	// Set up our custom destination manager.
-	jpegwctx.pub.init_destination = my_init_destination_fn;
-	jpegwctx.pub.empty_output_buffer = my_empty_output_buffer_fn;
-	jpegwctx.pub.term_destination = my_term_destination_fn;
-	jpegwctx.ctx = ctx;
-	jpegwctx.iodescr = iodescr;
-	jpegwctx.buffer_len = 32768;
-	jpegwctx.buffer = iw_malloc(ctx,jpegwctx.buffer_len);
-	if(!jpegwctx.buffer) goto done;
-	// Our jpegwctx is organized so it can double as a
+	wctx.pub.init_destination = my_init_destination_fn;
+	wctx.pub.empty_output_buffer = my_empty_output_buffer_fn;
+	wctx.pub.term_destination = my_term_destination_fn;
+	wctx.ctx = ctx;
+	wctx.iodescr = iodescr;
+	wctx.buffer_len = 32768;
+	wctx.buffer = iw_malloc(ctx,wctx.buffer_len);
+	if(!wctx.buffer) goto done;
+	// Our wctx is organized so it can double as a
 	// 'struct jpeg_destination_mgr'.
-	cinfo.dest = (struct jpeg_destination_mgr*)&jpegwctx;
+	cinfo.dest = (struct jpeg_destination_mgr*)&wctx;
 
 	cinfo.image_width = img.width;
 	cinfo.image_height = img.height;
@@ -726,7 +726,7 @@ done:
 
 	if(row_pointers) iw_free(ctx,row_pointers);
 
-	if(jpegwctx.buffer) iw_free(ctx,jpegwctx.buffer);
+	if(wctx.buffer) iw_free(ctx,wctx.buffer);
 
 	return retval;
 }
