@@ -21,7 +21,6 @@ imagew_LDADD=libimageworsener.la
 include_HEADERS=src/imagew.h
 
 EXTRA_DIST = readme.txt technical.txt COPYING.txt changelog.txt \
- CMakeLists.txt \
  scripts/autogen.sh scripts/Makefile scripts/makerelease.sh \
  scripts/imagew2008.sln scripts/imagew2008.vcproj scripts/libimagew2008.vcproj \
  src/imagew-config.h src/imagew-internals.h \
