@@ -16,7 +16,7 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-struct iw_pngrctx {
+struct iwpngrcontext {
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
 	png_structp png_ptr;
@@ -78,12 +78,12 @@ static void my_png_warning_fn(png_structp png_ptr, const char *warn_msg)
 static void my_png_read_fn(png_structp png_ptr,
       png_bytep buf, png_size_t length)
 {
-	struct iw_pngrctx *rctx;
+	struct iwpngrcontext *rctx;
 	struct iw_context *ctx;
 	int ret;
 	size_t bytesread = 0;
 
-	rctx = (struct iw_pngrctx*)png_get_io_ptr(png_ptr);
+	rctx = (struct iwpngrcontext*)png_get_io_ptr(png_ptr);
 	ctx = rctx->ctx;
 
 	ret = (*rctx->iodescr->read_fn)(ctx,rctx->iodescr,buf,(size_t)length,&bytesread);
@@ -111,7 +111,7 @@ static double fixup_png_gamma(double g)
 	return ((double)((int)(0.5+100000.0*g)))/100000.0;
 }
 
-static void iwpng_read_colorspace(struct iw_pngrctx *rctx)
+static void iwpng_read_colorspace(struct iwpngrcontext *rctx)
 {
 	int tmp;
 	double file_gamma;
@@ -132,7 +132,7 @@ static void iwpng_read_colorspace(struct iw_pngrctx *rctx)
 	iw_set_input_colorspace(rctx->ctx,&csdescr);
 }
 
-static void iwpng_read_density(struct iw_pngrctx *rctx)
+static void iwpng_read_density(struct iwpngrcontext *rctx)
 {
 	png_uint_32 pngdensity_x,pngdensity_y;
 	int pngdensity_units;
@@ -157,7 +157,7 @@ static void iwpng_read_density(struct iw_pngrctx *rctx)
 	rctx->img->density_code = density_code;
 }
 
-static void iwpng_read_sbit(struct iw_pngrctx *rctx)
+static void iwpng_read_sbit(struct iwpngrcontext *rctx)
 {
 	png_uint_32 ret;
 	png_color_8p sbit;
@@ -203,7 +203,7 @@ static void iwpng_read_sbit(struct iw_pngrctx *rctx)
 	}
 }
 
-static void iwpng_read_bkgd(struct iw_pngrctx *rctx)
+static void iwpng_read_bkgd(struct iwpngrcontext *rctx)
 {
 	png_color_16p bg_colorp;
 	double maxcolor;
@@ -229,12 +229,12 @@ static void iwpng_read_bkgd(struct iw_pngrctx *rctx)
 	}
 }
 
-static void iw_read_ancillary_data1(struct iw_pngrctx *rctx)
+static void iw_read_ancillary_data1(struct iwpngrcontext *rctx)
 {
 	iwpng_read_sbit(rctx);
 }
 
-static void iw_read_ancillary_data(struct iw_pngrctx *rctx)
+static void iw_read_ancillary_data(struct iwpngrcontext *rctx)
 {
 	iwpng_read_colorspace(rctx);
 	iwpng_read_density(rctx);
@@ -257,9 +257,9 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	int retval=0;
 	png_structp png_ptr = NULL;
 	png_infop  info_ptr = NULL;
-	struct iw_pngrctx rctx;
+	struct iwpngrcontext rctx;
 
-	iw_zeromem(&rctx,sizeof(struct iw_pngrctx));
+	iw_zeromem(&rctx,sizeof(struct iwpngrcontext));
 	iw_zeromem(&img,sizeof(struct iw_image));
 
 	errinfo.jbufp = &jbuf;
@@ -406,7 +406,7 @@ done:
 
 ///////////////////////////////////////////////////////////////////////
 
-struct iw_pngwctx {
+struct iwpngwcontext {
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
 	png_structp png_ptr;
@@ -414,7 +414,7 @@ struct iw_pngwctx {
 	struct iw_image *img;
 };
 
-static void iwpng_set_phys(struct iw_pngwctx *wctx)
+static void iwpng_set_phys(struct iwpngwcontext *wctx)
 {
 	png_uint_32 pngres_x, pngres_y;
 
@@ -430,7 +430,7 @@ static void iwpng_set_phys(struct iw_pngwctx *wctx)
 	}
 }
 
-static void iwpng_set_binary_trns(struct iw_pngwctx *wctx, int lpng_color_type)
+static void iwpng_set_binary_trns(struct iwpngwcontext *wctx, int lpng_color_type)
 {
 	png_color_16 newtrns;
 
@@ -452,7 +452,7 @@ static void iwpng_set_binary_trns(struct iw_pngwctx *wctx, int lpng_color_type)
 	}
 }
 
-static void iwpng_set_palette(struct iw_pngwctx *wctx,
+static void iwpng_set_palette(struct iwpngwcontext *wctx,
 	const struct iw_palette *iwpal)
 {
 	int i;
@@ -480,9 +480,9 @@ static void iwpng_set_palette(struct iw_pngwctx *wctx,
 
 static void my_png_write_fn(png_structp png_ptr, png_bytep data, png_size_t length)
 {
-	struct iw_pngwctx *wctx;
+	struct iwpngwcontext *wctx;
 
-	wctx = (struct iw_pngwctx*)png_get_io_ptr(png_ptr);
+	wctx = (struct iwpngwcontext*)png_get_io_ptr(png_ptr);
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,(void*)data,(size_t)length);
 }
 
@@ -508,9 +508,9 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	int no_cslabel;
 	int palette_is_gray;
 	int cmprlevel;
-	struct iw_pngwctx wctx;
+	struct iwpngwcontext wctx;
 
-	iw_zeromem(&wctx,sizeof(struct iw_pngwctx));
+	iw_zeromem(&wctx,sizeof(struct iwpngwcontext));
 
 	iw_get_output_image(ctx,&img);
 	iw_get_output_colorspace(ctx,&csdescr);

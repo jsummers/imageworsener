@@ -27,7 +27,7 @@
 #define IW_WEBPDECMETHOD 3
 #endif
 
-struct iwwebpreadcontext {
+struct iwwebprcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
@@ -37,7 +37,7 @@ struct iwwebpreadcontext {
 };
 
 // Sets rctx->has_color and ->has_transparency if appropriate.
-static void iwwebp_scan_pixels(struct iwwebpreadcontext *rctx,
+static void iwwebp_scan_pixels(struct iwwebprcontext *rctx,
   const iw_byte *pixels, size_t npixels)
 {
 	size_t i;
@@ -59,7 +59,7 @@ static void iwwebp_scan_pixels(struct iwwebpreadcontext *rctx,
 	}
 }
 
-static void iwwebpr_convert_pixels_gray(struct iwwebpreadcontext *rctx,
+static void iwwebpr_convert_pixels_gray(struct iwwebprcontext *rctx,
    const iw_byte *src, size_t nsrcpix)
 {
 	size_t i;
@@ -68,7 +68,7 @@ static void iwwebpr_convert_pixels_gray(struct iwwebpreadcontext *rctx,
 	}
 }
 
-static void iwwebpr_convert_pixels_graya(struct iwwebpreadcontext *rctx,
+static void iwwebpr_convert_pixels_graya(struct iwwebprcontext *rctx,
    const iw_byte *src, size_t nsrcpix)
 {
 	size_t i;
@@ -78,7 +78,7 @@ static void iwwebpr_convert_pixels_graya(struct iwwebpreadcontext *rctx,
 	}
 }
 
-static void iwwebpr_convert_pixels_rgb(struct iwwebpreadcontext *rctx,
+static void iwwebpr_convert_pixels_rgb(struct iwwebprcontext *rctx,
    const iw_byte *src, size_t nsrcpix)
 {
 	size_t i;
@@ -89,7 +89,7 @@ static void iwwebpr_convert_pixels_rgb(struct iwwebpreadcontext *rctx,
 	}
 }
 
-static void iwwebpr_convert_pixels_rgba(struct iwwebpreadcontext *rctx,
+static void iwwebpr_convert_pixels_rgba(struct iwwebprcontext *rctx,
    const iw_byte *src, size_t nsrcpix)
 {
 	memcpy(rctx->img->pixels,src,nsrcpix*4);
@@ -115,7 +115,7 @@ static const char* get_vp8_status_msg(VP8StatusCode x)
 
 #if IW_WEBPDECMETHOD == 1 // WebPINewDecoder()
 
-static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
+static int iwwebp_read_main(struct iwwebprcontext *rctx)
 {
 	struct iw_image *img;
 	int retval=0;
@@ -241,7 +241,7 @@ done:
 
 #if IW_WEBPDECMETHOD == 2 // WebPIDecode()
 
-static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
+static int iwwebp_read_main(struct iwwebprcontext *rctx)
 {
 	struct iw_image *img;
 	int retval=0;
@@ -362,7 +362,7 @@ done:
 
 #if IW_WEBPDECMETHOD == 3 // WebPDecodeRGBA()
 
-static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
+static int iwwebp_read_main(struct iwwebprcontext *rctx)
 {
 	struct iw_image *img;
 	int retval=0;
@@ -432,7 +432,7 @@ done:
 
 #if IW_WEBPDECMETHOD == 4 // WebPDecode()
 
-static int iwwebp_read_main(struct iwwebpreadcontext *rctx)
+static int iwwebp_read_main(struct iwwebprcontext *rctx)
 {
 	struct iw_image *img;
 	int retval=0;
@@ -527,10 +527,10 @@ done:
 IW_IMPL(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
-	struct iwwebpreadcontext rctx;
+	struct iwwebprcontext rctx;
 	int retval=0;
 
-	iw_zeromem(&rctx,sizeof(struct iwwebpreadcontext));
+	iw_zeromem(&rctx,sizeof(struct iwwebprcontext));
 	iw_zeromem(&img,sizeof(struct iw_image));
 
 	rctx.ctx = ctx;
@@ -556,19 +556,19 @@ done:
 	return retval;
 }
 
-struct iwwebpwritecontext {
+struct iwwebpwcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
 	iw_byte *tmppixels;
 };
 
-static void iwwebp_write(struct iwwebpwritecontext *wctx, const void *buf, size_t n)
+static void iwwebp_write(struct iwwebpwcontext *wctx, const void *buf, size_t n)
 {
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 }
 
-static void iwwebp_gray_to_rgb(struct iwwebpwritecontext *wctx, int alphaflag)
+static void iwwebp_gray_to_rgb(struct iwwebpwcontext *wctx, int alphaflag)
 {
 	int i,j;
 	struct iw_image *img = wctx->img;
@@ -595,7 +595,7 @@ static void iwwebp_gray_to_rgb(struct iwwebpwritecontext *wctx, int alphaflag)
 	}
 }
 
-static int iwwebp_write_main(struct iwwebpwritecontext *wctx)
+static int iwwebp_write_main(struct iwwebpwcontext *wctx)
 {
 	struct iw_image *img;
 	size_t ret;
@@ -654,12 +654,12 @@ done:
 
 IW_IMPL(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	struct iwwebpwritecontext wctx;
+	struct iwwebpwcontext wctx;
 	int retval=0;
 	struct iw_image img1;
 
 	iw_zeromem(&img1,sizeof(struct iw_image));
-	iw_zeromem(&wctx,sizeof(struct iwwebpwritecontext));
+	iw_zeromem(&wctx,sizeof(struct iwwebpwcontext));
 
 	wctx.ctx = ctx;
 

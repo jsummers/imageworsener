@@ -31,7 +31,7 @@ static size_t iwbmp_calc_bpr(int bpp, size_t width)
 	return ((bpp*width+31)/32)*4;
 }
 
-struct iwbmpreadcontext {
+struct iwbmprcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
@@ -62,7 +62,7 @@ struct iwbmpreadcontext {
 	struct iw_csdescr csdescr;
 };
 
-static int iwbmp_read(struct iwbmpreadcontext *rctx,
+static int iwbmp_read(struct iwbmprcontext *rctx,
 		iw_byte *buf, size_t buflen)
 {
 	int ret;
@@ -76,7 +76,7 @@ static int iwbmp_read(struct iwbmpreadcontext *rctx,
 	return 1;
 }
 
-static int iwbmp_skip_bytes(struct iwbmpreadcontext *rctx, size_t n)
+static int iwbmp_skip_bytes(struct iwbmprcontext *rctx, size_t n)
 {
 	iw_byte buf[1024];
 	size_t still_to_read;
@@ -94,7 +94,7 @@ static int iwbmp_skip_bytes(struct iwbmpreadcontext *rctx, size_t n)
 	return 1;
 }
 
-static int iwbmp_read_file_header(struct iwbmpreadcontext *rctx)
+static int iwbmp_read_file_header(struct iwbmprcontext *rctx)
 {
 	iw_byte buf[14];
 
@@ -109,7 +109,7 @@ static int iwbmp_read_file_header(struct iwbmpreadcontext *rctx)
 	return 1;
 }
 
-static int decode_v2_header(struct iwbmpreadcontext *rctx, const iw_byte *buf)
+static int decode_v2_header(struct iwbmprcontext *rctx, const iw_byte *buf)
 {
 	unsigned int nplanes;
 
@@ -129,7 +129,7 @@ static int decode_v2_header(struct iwbmpreadcontext *rctx, const iw_byte *buf)
 	return 1;
 }
 
-static int decode_v3_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
+static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *buf)
 {
 	unsigned int nplanes;
 	int biXPelsPerMeter, biYPelsPerMeter;
@@ -205,10 +205,10 @@ static int decode_v3_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 	return 1;
 }
 
-static int process_bf_mask(struct iwbmpreadcontext *rctx, int k);
+static int process_bf_mask(struct iwbmprcontext *rctx, int k);
 
 // Decode the fields that are in v4 and not in v3.
-static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
+static int decode_v4_header_fields(struct iwbmprcontext *rctx, const iw_byte *buf)
 {
 	int k;
 	unsigned int cstype;
@@ -281,7 +281,7 @@ static int decode_v4_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 }
 
 // Decode the fields that are in v5 and not in v4.
-static int decode_v5_header_fields(struct iwbmpreadcontext *rctx, const iw_byte *buf)
+static int decode_v5_header_fields(struct iwbmprcontext *rctx, const iw_byte *buf)
 {
 	unsigned int cstype;
 	unsigned int intent_bmp_style;
@@ -313,7 +313,7 @@ static int decode_v5_header_fields(struct iwbmpreadcontext *rctx, const iw_byte 
 	return 1;
 }
 
-static int iwbmp_read_info_header(struct iwbmpreadcontext *rctx)
+static int iwbmp_read_info_header(struct iwbmprcontext *rctx)
 {
 	iw_byte buf[124];
 	int retval = 0;
@@ -383,7 +383,7 @@ static int find_low_bit(unsigned int x)
 }
 
 // Given .bf_mask[k], set high_bit[k], low_bit[k], etc.
-static int process_bf_mask(struct iwbmpreadcontext *rctx, int k)
+static int process_bf_mask(struct iwbmprcontext *rctx, int k)
 {
 	// The bits representing the mask for each channel are required to be
 	// contiguous, so all we need to do is find the highest and lowest bit.
@@ -406,7 +406,7 @@ static int process_bf_mask(struct iwbmpreadcontext *rctx, int k)
 	return 1;
 }
 
-static int iwbmp_read_bitfields(struct iwbmpreadcontext *rctx)
+static int iwbmp_read_bitfields(struct iwbmprcontext *rctx)
 {
 	iw_byte buf[12];
 	int k;
@@ -424,7 +424,7 @@ static int iwbmp_read_bitfields(struct iwbmpreadcontext *rctx)
 	return 1;
 }
 
-static void iwbmp_set_default_bitfields(struct iwbmpreadcontext *rctx)
+static void iwbmp_set_default_bitfields(struct iwbmprcontext *rctx)
 {
 	int k;
 
@@ -450,7 +450,7 @@ static void iwbmp_set_default_bitfields(struct iwbmpreadcontext *rctx)
 	}
 }
 
-static int iwbmp_read_palette(struct iwbmpreadcontext *rctx)
+static int iwbmp_read_palette(struct iwbmprcontext *rctx)
 {
 	size_t i;
 	iw_byte buf[4*256];
@@ -481,7 +481,7 @@ static int iwbmp_read_palette(struct iwbmpreadcontext *rctx)
 	return 1;
 }
 
-static void bmpr_convert_row_32_16(struct iwbmpreadcontext *rctx, const iw_byte *src, size_t row)
+static void bmpr_convert_row_32_16(struct iwbmprcontext *rctx, const iw_byte *src, size_t row)
 {
 	int i,k;
 	unsigned int v,x;
@@ -513,7 +513,7 @@ static void bmpr_convert_row_32_16(struct iwbmpreadcontext *rctx, const iw_byte 
 	}
 }
 
-static void bmpr_convert_row_24(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+static void bmpr_convert_row_24(struct iwbmprcontext *rctx,const iw_byte *src, size_t row)
 {
 	int i;
 	for(i=0;i<rctx->width;i++) {
@@ -523,7 +523,7 @@ static void bmpr_convert_row_24(struct iwbmpreadcontext *rctx,const iw_byte *src
 	}
 }
 
-static void bmpr_convert_row_8(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+static void bmpr_convert_row_8(struct iwbmprcontext *rctx,const iw_byte *src, size_t row)
 {
 	int i;
 	for(i=0;i<rctx->width;i++) {
@@ -533,7 +533,7 @@ static void bmpr_convert_row_8(struct iwbmpreadcontext *rctx,const iw_byte *src,
 	}
 }
 
-static void bmpr_convert_row_4(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+static void bmpr_convert_row_4(struct iwbmprcontext *rctx,const iw_byte *src, size_t row)
 {
 	int i;
 	int pal_index;
@@ -546,7 +546,7 @@ static void bmpr_convert_row_4(struct iwbmpreadcontext *rctx,const iw_byte *src,
 	}
 }
 
-static void bmpr_convert_row_1(struct iwbmpreadcontext *rctx,const iw_byte *src, size_t row)
+static void bmpr_convert_row_1(struct iwbmprcontext *rctx,const iw_byte *src, size_t row)
 {
 	int i;
 	int pal_index;
@@ -559,7 +559,7 @@ static void bmpr_convert_row_1(struct iwbmpreadcontext *rctx,const iw_byte *src,
 	}
 }
 
-static int bmpr_read_uncompressed(struct iwbmpreadcontext *rctx)
+static int bmpr_read_uncompressed(struct iwbmprcontext *rctx)
 {
 	iw_byte *rowbuf = NULL;
 	size_t bmp_bpr;
@@ -618,7 +618,7 @@ done:
 
 // Read and decompress RLE8 or RLE4-compressed bits, and write pixels to
 // rctx->img->pixels.
-static int bmpr_read_rle_internal(struct iwbmpreadcontext *rctx)
+static int bmpr_read_rle_internal(struct iwbmprcontext *rctx)
 {
 	int retval = 0;
 	int pos_x, pos_y;
@@ -753,7 +753,7 @@ static void bmpr_strip_alpha(struct iw_image *img)
 	}
 }
 
-static int bmpr_read_rle(struct iwbmpreadcontext *rctx)
+static int bmpr_read_rle(struct iwbmprcontext *rctx)
 {
 	int retval = 0;
 
@@ -792,7 +792,7 @@ done:
 	return retval;
 }
 
-static int iwbmp_read_bits(struct iwbmpreadcontext *rctx)
+static int iwbmp_read_bits(struct iwbmprcontext *rctx)
 {
 	int retval = 0;
 
@@ -837,7 +837,7 @@ done:
 	return retval;
 }
 
-static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmpreadcontext *rctx)
+static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmprcontext *rctx)
 {
 	// Have IW flip the image, if necessary.
 	if(!rctx->topdown) {
@@ -863,11 +863,11 @@ static void iwbmpr_misc_config(struct iw_context *ctx, struct iwbmpreadcontext *
 
 IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	struct iwbmpreadcontext rctx;
+	struct iwbmprcontext rctx;
 	struct iw_image img;
 	int retval = 0;
 
-	iw_zeromem(&rctx,sizeof(struct iwbmpreadcontext));
+	iw_zeromem(&rctx,sizeof(struct iwbmprcontext));
 	iw_zeromem(&img,sizeof(struct iw_image));
 
 	rctx.ctx = ctx;
@@ -905,7 +905,7 @@ done:
 	return retval;
 }
 
-struct iwbmpwritecontext {
+struct iwbmpwcontext {
 	int bmpversion;
 	int include_file_header;
 	int bitcount;
@@ -929,7 +929,7 @@ struct iwbmpwritecontext {
 	int no_cslabel;
 };
 
-static void iwbmp_write(struct iwbmpwritecontext *wctx, const void *buf, size_t n)
+static void iwbmp_write(struct iwbmpwcontext *wctx, const void *buf, size_t n)
 {
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 	wctx->total_written+=n;
@@ -966,7 +966,7 @@ static void bmpw_convert_row_8(const iw_byte *srcrow, iw_byte *dstrow, int width
 	memcpy(dstrow,srcrow,width);
 }
 
-static void bmpw_convert_row_16_32(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
+static void bmpw_convert_row_16_32(struct iwbmpwcontext *wctx, const iw_byte *srcrow,
 	iw_byte *dstrow, int width)
 {
 	int i,k;
@@ -1027,7 +1027,7 @@ static void bmpw_convert_row_16_32(struct iwbmpwritecontext *wctx, const iw_byte
 	}
 }
 
-static void bmpw_convert_row_24(struct iwbmpwritecontext *wctx, const iw_byte *srcrow,
+static void bmpw_convert_row_24(struct iwbmpwcontext *wctx, const iw_byte *srcrow,
 	iw_byte *dstrow, int width)
 {
 	int i;
@@ -1048,7 +1048,7 @@ static void bmpw_convert_row_24(struct iwbmpwritecontext *wctx, const iw_byte *s
 	}
 }
 
-static void iwbmp_write_file_header(struct iwbmpwritecontext *wctx)
+static void iwbmp_write_file_header(struct iwbmpwcontext *wctx)
 {
 	iw_byte fileheader[14];
 
@@ -1066,7 +1066,7 @@ static void iwbmp_write_file_header(struct iwbmpwritecontext *wctx)
 	iwbmp_write(wctx,fileheader,14);
 }
 
-static int iwbmp_write_bmp_v2header(struct iwbmpwritecontext *wctx)
+static int iwbmp_write_bmp_v2header(struct iwbmpwcontext *wctx)
 {
 	iw_byte header[12];
 
@@ -1086,7 +1086,7 @@ static int iwbmp_write_bmp_v2header(struct iwbmpwritecontext *wctx)
 	return 1;
 }
 
-static int iwbmp_write_bmp_v3header(struct iwbmpwritecontext *wctx)
+static int iwbmp_write_bmp_v3header(struct iwbmpwcontext *wctx)
 {
 	unsigned int dens_x, dens_y;
 	unsigned int cmpr;
@@ -1128,7 +1128,7 @@ static int iwbmp_write_bmp_v3header(struct iwbmpwritecontext *wctx)
 	return 1;
 }
 
-static int iwbmp_write_bmp_v45header_fields(struct iwbmpwritecontext *wctx)
+static int iwbmp_write_bmp_v45header_fields(struct iwbmpwcontext *wctx)
 {
 	iw_byte header[124];
 	unsigned int intent_bmp_style;
@@ -1166,7 +1166,7 @@ static int iwbmp_write_bmp_v45header_fields(struct iwbmpwritecontext *wctx)
 	return 1;
 }
 
-static int iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
+static int iwbmp_write_bmp_header(struct iwbmpwcontext *wctx)
 {
 	if(wctx->bmpversion==2) {
 		return iwbmp_write_bmp_v2header(wctx);
@@ -1180,7 +1180,7 @@ static int iwbmp_write_bmp_header(struct iwbmpwritecontext *wctx)
 
 // Given wctx->maxcolor[*], sets -> bf_mask[*] and bf_amt_to_shift[*],
 // and sets wctx->bitcount (to 16 or 32).
-static int iwbmp_calc_bitfields_masks(struct iwbmpwritecontext *wctx, int num_masks)
+static int iwbmp_calc_bitfields_masks(struct iwbmpwcontext *wctx, int num_masks)
 {
 	int k;
 	int bits[4]; // R, G, B, A
@@ -1211,7 +1211,7 @@ static int iwbmp_calc_bitfields_masks(struct iwbmpwritecontext *wctx, int num_ma
 }
 
 // Write the BITFIELDS segment, and set the wctx->bf_amt_to_shift[] values.
-static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
+static int iwbmp_write_bitfields(struct iwbmpwcontext *wctx)
 {
 	iw_byte buf[12];
 	int k;
@@ -1225,7 +1225,7 @@ static int iwbmp_write_bitfields(struct iwbmpwritecontext *wctx)
 	return 1;
 }
 
-static void iwbmp_write_palette(struct iwbmpwritecontext *wctx)
+static void iwbmp_write_palette(struct iwbmpwcontext *wctx)
 {
 	int i;
 	iw_byte buf[4];
@@ -1267,7 +1267,7 @@ static void iwbmp_write_palette(struct iwbmpwritecontext *wctx)
 
 struct rle_context {
 	struct iw_context *ctx;
-	struct iwbmpwritecontext *wctx;
+	struct iwbmpwcontext *wctx;
 	const iw_byte *srcrow;
 
 	size_t img_width;
@@ -1817,7 +1817,7 @@ done:
 //======================================================================
 
 // Seek back and write the "file size" and "bits size" fields.
-static int rle_patch_file_size(struct iwbmpwritecontext *wctx,size_t rlesize)
+static int rle_patch_file_size(struct iwbmpwcontext *wctx,size_t rlesize)
 {
 	iw_byte buf[4];
 	size_t fileheader_size;
@@ -1850,7 +1850,7 @@ static int rle_patch_file_size(struct iwbmpwritecontext *wctx,size_t rlesize)
 	return 1;
 }
 
-static int iwbmp_write_pixels_compressed(struct iwbmpwritecontext *wctx,
+static int iwbmp_write_pixels_compressed(struct iwbmpwcontext *wctx,
 	struct iw_image *img)
 {
 	struct rle_context rlectx;
@@ -1888,7 +1888,7 @@ done:
 	return retval;
 }
 
-static void iwbmp_write_pixels_uncompressed(struct iwbmpwritecontext *wctx,
+static void iwbmp_write_pixels_uncompressed(struct iwbmpwcontext *wctx,
 	struct iw_image *img)
 {
 	int j;
@@ -1932,7 +1932,7 @@ static int check_palette_transparency(const struct iw_palette *p)
 }
 
 // Do some preparations needed to write a 16-bit or 32-bit BMP.
-static int setup_16_32bit(struct iwbmpwritecontext *wctx,
+static int setup_16_32bit(struct iwbmpwcontext *wctx,
 	int mcc_r, int mcc_g, int mcc_b, int mcc_a)
 {
 	int has_alpha;
@@ -1972,7 +1972,7 @@ static int setup_16_32bit(struct iwbmpwritecontext *wctx,
 	return 1;
 }
 
-static int iwbmp_write_main(struct iwbmpwritecontext *wctx)
+static int iwbmp_write_main(struct iwbmpwcontext *wctx)
 {
 	struct iw_image *img;
 	int cmpr_req;
@@ -2165,13 +2165,13 @@ done:
 
 IW_IMPL(int) iw_write_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	struct iwbmpwritecontext wctx;
+	struct iwbmpwcontext wctx;
 	int retval=0;
 	struct iw_image img1;
 
 	iw_zeromem(&img1,sizeof(struct iw_image));
 
-	iw_zeromem(&wctx,sizeof(struct iwbmpwritecontext));
+	iw_zeromem(&wctx,sizeof(struct iwbmpwcontext));
 
 	wctx.ctx = ctx;
 	wctx.include_file_header = 1;

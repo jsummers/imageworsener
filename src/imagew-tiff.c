@@ -12,7 +12,7 @@
 
 #define IWTIFF_MAX_TAGS 20
 
-struct iwtiffwritecontext {
+struct iwtiffwcontext {
 	int bitsperpixel;
 	int bitspersample;
 	int samplesperpixel;
@@ -59,12 +59,12 @@ static size_t iwtiff_calc_bpr(int bpp, size_t width)
 	return (bpp*width+7)/8;
 }
 
-static void iwtiff_write(struct iwtiffwritecontext *wctx, const void *buf, size_t n)
+static void iwtiff_write(struct iwtiffwcontext *wctx, const void *buf, size_t n)
 {
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 }
 
-static void iwtiff_write_ui16(struct iwtiffwritecontext *wctx, unsigned int n)
+static void iwtiff_write_ui16(struct iwtiffwcontext *wctx, unsigned int n)
 {
 	iw_byte buf[2];
 	iw_set_ui16le(buf,n);
@@ -116,7 +116,7 @@ static void iwtiff_convert_row16bps(const iw_byte *srcrow, iw_byte *dstrow, int 
 	}
 }
 
-static void iwtiff_write_file_header(struct iwtiffwritecontext *wctx)
+static void iwtiff_write_file_header(struct iwtiffwcontext *wctx)
 {
 	iw_byte buf[8];
 	buf[0] = 73;
@@ -127,7 +127,7 @@ static void iwtiff_write_file_header(struct iwtiffwritecontext *wctx)
 	wctx->curr_filepos = 8;
 }
 
-static void iwtiff_write_density(struct iwtiffwritecontext *wctx)
+static void iwtiff_write_density(struct iwtiffwcontext *wctx)
 {
 	iw_byte buf[16];
 	unsigned int denom;
@@ -165,7 +165,7 @@ static void iwtiff_write_density(struct iwtiffwritecontext *wctx)
 // The TransferFunction tag is one of several ways to store colorspace
 // information in a TIFF file. It's a very inefficient way to do it, but
 // the other methods aren't really any better.
-static void iwtiff_write_transferfunction(struct iwtiffwritecontext *wctx)
+static void iwtiff_write_transferfunction(struct iwtiffwcontext *wctx)
 {
 	iw_byte *buf = NULL;
 	unsigned int i;
@@ -188,7 +188,7 @@ static void iwtiff_write_transferfunction(struct iwtiffwritecontext *wctx)
 	iw_free(wctx->ctx,buf);
 }
 
-static void iwtiff_write_palette(struct iwtiffwritecontext *wctx)
+static void iwtiff_write_palette(struct iwtiffwcontext *wctx)
 {
 	int c;
 	int i;
@@ -244,7 +244,7 @@ static void iwtiff_write_palette(struct iwtiffwritecontext *wctx)
 #define IWTIFF_UINT32   4 // "LONG"
 #define IWTIFF_RATIONAL 5
 
-static void write_tag_to_ifd(struct iwtiffwritecontext *wctx,int tagnum,iw_byte *buf)
+static void write_tag_to_ifd(struct iwtiffwcontext *wctx,int tagnum,iw_byte *buf)
 {
 	iw_set_ui16le(&buf[0],tagnum);
 	iw_set_ui16le(&buf[2],IWTIFF_UINT16); // tag type (default=short)
@@ -325,7 +325,7 @@ static void write_tag_to_ifd(struct iwtiffwritecontext *wctx,int tagnum,iw_byte 
 }
 
 // Remember that we are going to include the given tag.
-static void append_tag(struct iwtiffwritecontext *wctx, unsigned short tagnum)
+static void append_tag(struct iwtiffwcontext *wctx, unsigned short tagnum)
 {
 	if(wctx->num_tags >= IWTIFF_MAX_TAGS) return;
 	wctx->taglist[wctx->num_tags] = tagnum;
@@ -333,7 +333,7 @@ static void append_tag(struct iwtiffwritecontext *wctx, unsigned short tagnum)
 }
 
 // Writes the IFD, and meta data
-static void iwtiff_write_ifd(struct iwtiffwritecontext *wctx)
+static void iwtiff_write_ifd(struct iwtiffwcontext *wctx)
 {
 	unsigned int tmppos;
 	unsigned int ifd_size;
@@ -445,7 +445,7 @@ done:
 	if(buf) iw_free(wctx->ctx,buf);
 }
 
-static int iwtiff_write_main(struct iwtiffwritecontext *wctx)
+static int iwtiff_write_main(struct iwtiffwcontext *wctx)
 {
 	struct iw_image *img;
 	iw_byte *dstrow = NULL;
@@ -584,13 +584,13 @@ done:
 
 IW_IMPL(int) iw_write_tiff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	struct iwtiffwritecontext *wctx = NULL;
+	struct iwtiffwcontext *wctx = NULL;
 	int retval=0;
 	struct iw_image img1;
 
 	iw_zeromem(&img1,sizeof(struct iw_image));
 
-	wctx = iw_mallocz(ctx,sizeof(struct iwtiffwritecontext));
+	wctx = iw_mallocz(ctx,sizeof(struct iwtiffwcontext));
 	if(!wctx) goto done;
 
 	wctx->ctx = ctx;

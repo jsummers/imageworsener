@@ -14,7 +14,7 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-struct iwmiffreadcontext {
+struct iwmiffrcontext {
 	int host_little_endian;
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
@@ -41,7 +41,7 @@ struct iwmiffreadcontext {
 	struct iw_zlib_context *zctx;
 };
 
-static int iwmiff_read(struct iwmiffreadcontext *rctx,
+static int iwmiff_read(struct iwmiffrcontext *rctx,
 		iw_byte *buf, size_t buflen)
 {
 	int ret;
@@ -56,7 +56,7 @@ static int iwmiff_read(struct iwmiffreadcontext *rctx,
 	return 1;
 }
 
-static iw_byte iwmiff_read_byte(struct iwmiffreadcontext *rctx)
+static iw_byte iwmiff_read_byte(struct iwmiffrcontext *rctx)
 {
 	iw_byte buf[1];
 	int ret;
@@ -73,7 +73,7 @@ static iw_byte iwmiff_read_byte(struct iwmiffreadcontext *rctx)
 	return buf[0];
 }
 
-static unsigned int iwmiff_read_uint32(struct iwmiffreadcontext *rctx)
+static unsigned int iwmiff_read_uint32(struct iwmiffrcontext *rctx)
 {
 	iw_byte buf[4];
 	int ret;
@@ -82,7 +82,7 @@ static unsigned int iwmiff_read_uint32(struct iwmiffreadcontext *rctx)
 	return iw_get_ui32be(buf);
 }
 
-static int iwmiff_read_zip_compressed_row(struct iwmiffreadcontext *rctx,
+static int iwmiff_read_zip_compressed_row(struct iwmiffrcontext *rctx,
 	iw_byte *buf, size_t buflen)
 {
 	size_t cmprsize;
@@ -132,7 +132,7 @@ done:
 	return retval;
 }
 
-static int iwmiff_read_and_uncompress_row(struct iwmiffreadcontext *rctx,
+static int iwmiff_read_and_uncompress_row(struct iwmiffrcontext *rctx,
 	iw_byte *buf, size_t buflen)
 {
 	if(rctx->compression==IW_COMPRESSION_NONE) {
@@ -144,7 +144,7 @@ static int iwmiff_read_and_uncompress_row(struct iwmiffreadcontext *rctx,
 	return 0;
 }
 
-static void iwmiff_parse_density(struct iwmiffreadcontext *rctx, const char *val)
+static void iwmiff_parse_density(struct iwmiffrcontext *rctx, const char *val)
 {
 	char *p;
 
@@ -156,7 +156,7 @@ static void iwmiff_parse_density(struct iwmiffreadcontext *rctx, const char *val
 }
 
 // Called for each attribute in the header of a MIFF file.
-static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
+static void iwmiff_found_attribute(struct iwmiffrcontext *rctx,
   const char *name, const char *val)
 {
 	double tmpd;
@@ -249,7 +249,7 @@ static void iwmiff_found_attribute(struct iwmiffreadcontext *rctx,
 	}
 }
 
-static int iwmiff_read_header(struct iwmiffreadcontext *rctx)
+static int iwmiff_read_header(struct iwmiffrcontext *rctx)
 {
 	char name[101];
 	char val[101];
@@ -342,7 +342,7 @@ static int iwmiff_read_header(struct iwmiffreadcontext *rctx)
 	return 1;
 }
 
-static void iwmiffr_convert_row32(struct iwmiffreadcontext *rctx,
+static void iwmiffr_convert_row32(struct iwmiffrcontext *rctx,
   const iw_byte *src, iw_byte *dst, int nsamples)
 {
 	int i;
@@ -360,7 +360,7 @@ static void iwmiffr_convert_row32(struct iwmiffreadcontext *rctx,
 	}
 }
 
-static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
+static void iwmiffr_convert_row64(struct iwmiffrcontext *rctx,
   const iw_byte *src, iw_byte *dst, int nsamples)
 {
 	int i;
@@ -378,7 +378,7 @@ static void iwmiffr_convert_row64(struct iwmiffreadcontext *rctx,
 	}
 }
 
-static void iwmiffr_convert_row64_32(struct iwmiffreadcontext *rctx,
+static void iwmiffr_convert_row64_32(struct iwmiffrcontext *rctx,
   const iw_byte *src, iw_byte *dst, int nsamples)
 {
 	int i;
@@ -418,7 +418,7 @@ static void iwmiffr_convert_row64_32(struct iwmiffreadcontext *rctx,
 	}
 }
 
-static int iwmiff_skip_bytes(struct iwmiffreadcontext *rctx, size_t n)
+static int iwmiff_skip_bytes(struct iwmiffrcontext *rctx, size_t n)
 {
 	iw_byte buf[2048];
 	size_t amt;
@@ -433,13 +433,13 @@ static int iwmiff_skip_bytes(struct iwmiffreadcontext *rctx, size_t n)
 }
 
 // Skip over the ICC color profile, if present.
-static int iwmiff_read_icc_profile(struct iwmiffreadcontext *rctx)
+static int iwmiff_read_icc_profile(struct iwmiffrcontext *rctx)
 {
 	if(rctx->profile_length<1) return 1;
 	return iwmiff_skip_bytes(rctx,(size_t)rctx->profile_length);
 }
 
-static int iwmiff_read_pixels(struct iwmiffreadcontext *rctx)
+static int iwmiff_read_pixels(struct iwmiffrcontext *rctx)
 {
 	int samples_per_pixel;
 	int samples_per_row;
@@ -500,10 +500,10 @@ done:
 IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
-	struct iwmiffreadcontext rctx;
+	struct iwmiffrcontext rctx;
 	int retval=0;
 
-	iw_zeromem(&rctx,sizeof(struct iwmiffreadcontext));
+	iw_zeromem(&rctx,sizeof(struct iwmiffrcontext));
 	iw_zeromem(&img,sizeof(struct iw_image));
 
 	rctx.ctx = ctx;
@@ -555,7 +555,7 @@ done:
 	return retval;
 }
 
-struct iwmiffwritecontext {
+struct iwmiffwcontext {
 	int has_alpha;
 	int host_little_endian;
 	int compression;
@@ -570,12 +570,12 @@ struct iwmiffwritecontext {
 	struct iw_zlib_context *zctx;
 };
 
-static void iwmiff_write(struct iwmiffwritecontext *wctx, const void *buf, size_t n)
+static void iwmiff_write(struct iwmiffwcontext *wctx, const void *buf, size_t n)
 {
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 }
 
-static void iwmiff_write_uint32(struct iwmiffwritecontext *wctx, unsigned int n)
+static void iwmiff_write_uint32(struct iwmiffwcontext *wctx, unsigned int n)
 {
 	iw_byte buf[4];
 
@@ -583,15 +583,15 @@ static void iwmiff_write_uint32(struct iwmiffwritecontext *wctx, unsigned int n)
 	iwmiff_write(wctx,buf,4);
 }
 
-static void iwmiff_write_sz(struct iwmiffwritecontext *wctx, const char *s)
+static void iwmiff_write_sz(struct iwmiffwcontext *wctx, const char *s)
 {
 	iwmiff_write(wctx,s,strlen(s));
 }
 
-static void iwmiff_writef(struct iwmiffwritecontext *wctx, const char *fmt, ...)
+static void iwmiff_writef(struct iwmiffwcontext *wctx, const char *fmt, ...)
   iw_gnuc_attribute ((format (printf, 2, 3)));
 
-static void iwmiff_writef(struct iwmiffwritecontext *wctx, const char *fmt, ...)
+static void iwmiff_writef(struct iwmiffwcontext *wctx, const char *fmt, ...)
 {
 	char buf[500];
 	va_list ap;
@@ -603,7 +603,7 @@ static void iwmiff_writef(struct iwmiffwritecontext *wctx, const char *fmt, ...)
 	iwmiff_write_sz(wctx,buf);
 }
 
-static void iwmiff_write_header(struct iwmiffwritecontext *wctx)
+static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 {
 	iwmiff_write_sz(wctx,"id=ImageMagick  version=1.0\n");
 	iwmiff_writef(wctx,"class=DirectClass  colors=0  matte=%s\n",wctx->has_alpha?"True":"False");
@@ -642,7 +642,7 @@ static void iwmiff_write_header(struct iwmiffwritecontext *wctx)
 	iwmiff_write(wctx,"\x0c\x0a\x3a\x1a",4);
 }
 
-static void iwmiffw_convert_row32(struct iwmiffwritecontext *wctx,
+static void iwmiffw_convert_row32(struct iwmiffwcontext *wctx,
 	const iw_byte *srcrow, iw_byte *dstrow, int numsamples)
 {
 	int i,j;
@@ -660,7 +660,7 @@ static void iwmiffw_convert_row32(struct iwmiffwritecontext *wctx,
 	}
 }
 
-static void iwmiffw_convert_row64(struct iwmiffwritecontext *wctx,
+static void iwmiffw_convert_row64(struct iwmiffwcontext *wctx,
 	const iw_byte *srcrow, iw_byte *dstrow, int numsamples)
 {
 	int i,j;
@@ -677,7 +677,7 @@ static void iwmiffw_convert_row64(struct iwmiffwritecontext *wctx,
 	}
 }
 
-static int iwmiff_write_zip_compressed_row(struct iwmiffwritecontext *wctx,
+static int iwmiff_write_zip_compressed_row(struct iwmiffwcontext *wctx,
 	iw_byte *buf, size_t buflen)
 {
 	int retval=0;
@@ -710,7 +710,7 @@ done:
 	return retval;
 }
 
-static int iwmiff_compress_and_write_row(struct iwmiffwritecontext *wctx,
+static int iwmiff_compress_and_write_row(struct iwmiffwcontext *wctx,
 	iw_byte *dstrow, size_t dstbpr)
 {
 	if(wctx->compression==IW_COMPRESSION_NONE) {
@@ -723,7 +723,7 @@ static int iwmiff_compress_and_write_row(struct iwmiffwritecontext *wctx,
 	return 0;
 }
 
-static int iwmiff_write_main(struct iwmiffwritecontext *wctx)
+static int iwmiff_write_main(struct iwmiffwcontext *wctx)
 {
 	struct iw_image *img;
 	iw_byte *dstrow = NULL;
@@ -813,13 +813,13 @@ done:
 
 IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	struct iwmiffwritecontext wctx;
+	struct iwmiffwcontext wctx;
 	int retval=0;
 	struct iw_image img1;
 
 	iw_zeromem(&img1,sizeof(struct iw_image));
 
-	iw_zeromem(&wctx,sizeof(struct iwmiffwritecontext));
+	iw_zeromem(&wctx,sizeof(struct iwmiffwcontext));
 
 	wctx.ctx = ctx;
 

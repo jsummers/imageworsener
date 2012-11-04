@@ -14,7 +14,7 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-struct iwgifreadcontext {
+struct iwgifrcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
@@ -48,7 +48,7 @@ struct iwgifreadcontext {
 	iw_byte rbuf[768];
 };
 
-static int iwgif_read(struct iwgifreadcontext *rctx,
+static int iwgif_read(struct iwgifrcontext *rctx,
 		iw_byte *buf, size_t buflen)
 {
 	int ret;
@@ -62,7 +62,7 @@ static int iwgif_read(struct iwgifreadcontext *rctx,
 	return 1;
 }
 
-static int iwgif_read_file_header(struct iwgifreadcontext *rctx)
+static int iwgif_read_file_header(struct iwgifrcontext *rctx)
 {
 	if(!iwgif_read(rctx,rctx->rbuf,6)) return 0;
 	if(rctx->rbuf[0]!='G' || rctx->rbuf[1]!='I' || rctx->rbuf[2]!='F') {
@@ -72,7 +72,7 @@ static int iwgif_read_file_header(struct iwgifreadcontext *rctx)
 	return 1;
 }
 
-static int iwgif_read_screen_descriptor(struct iwgifreadcontext *rctx)
+static int iwgif_read_screen_descriptor(struct iwgifrcontext *rctx)
 {
 	int has_global_ct;
 	int global_ct_size;
@@ -110,7 +110,7 @@ static int iwgif_read_screen_descriptor(struct iwgifreadcontext *rctx)
 
 // Read a global or local palette into memory.
 // ct->num_entries must be set by caller
-static int iwgif_read_color_table(struct iwgifreadcontext *rctx, struct iw_palette *ct)
+static int iwgif_read_color_table(struct iwgifrcontext *rctx, struct iw_palette *ct)
 {
 	int i;
 	if(ct->num_entries<1) return 1;
@@ -124,7 +124,7 @@ static int iwgif_read_color_table(struct iwgifreadcontext *rctx, struct iw_palet
 	return 1;
 }
 
-static int iwgif_skip_subblocks(struct iwgifreadcontext *rctx)
+static int iwgif_skip_subblocks(struct iwgifrcontext *rctx)
 {
 	iw_byte subblock_size;
 
@@ -143,7 +143,7 @@ static int iwgif_skip_subblocks(struct iwgifreadcontext *rctx)
 
 // We need transparency information, so we have to process graphic control
 // extensions.
-static int iwgif_read_graphic_control_ext(struct iwgifreadcontext *rctx)
+static int iwgif_read_graphic_control_ext(struct iwgifrcontext *rctx)
 {
 	int retval;
 
@@ -165,7 +165,7 @@ done:
 	return retval;
 }
 
-static int iwgif_read_extension(struct iwgifreadcontext *rctx)
+static int iwgif_read_extension(struct iwgifrcontext *rctx)
 {
 	int retval=0;
 	iw_byte ext_type;
@@ -195,7 +195,7 @@ done:
 
 // Set the (rctx->pixels_set + offset)th pixel in the logical image to the
 // color represented by palette entry #coloridx.
-static void iwgif_record_pixel(struct iwgifreadcontext *rctx, unsigned int coloridx,
+static void iwgif_record_pixel(struct iwgifrcontext *rctx, unsigned int coloridx,
 		int offset)
 {
 	struct iw_image *img;
@@ -299,7 +299,7 @@ static void lzw_clear(struct lzwdeccontext *d)
 }
 
 // Decode an LZW code to one or more pixels, and record it in the image.
-static void lzw_emit_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d,
+static void lzw_emit_code(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
 		unsigned int first_code)
 {
 	unsigned int code;
@@ -356,7 +356,7 @@ static int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, iw_byt
 }
 
 // Process a single LZW code that was read from the input stream.
-static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext *d,
+static int lzw_process_code(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
 		unsigned int code)
 {
 	if(code==d->eoi_code) {
@@ -409,7 +409,7 @@ static int lzw_process_code(struct iwgifreadcontext *rctx, struct lzwdeccontext 
 // Decode as much as possible of the provided LZW-encoded data.
 // Any unfinished business is recorded, to be continued the next time
 // this function is called.
-static int lzw_process_bytes(struct iwgifreadcontext *rctx, struct lzwdeccontext *d,
+static int lzw_process_bytes(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
 	iw_byte *data, size_t data_size)
 {
 	size_t i;
@@ -445,7 +445,7 @@ done:
 ////////////////////////////////////////////////////////
 
 // Allocate and set up the global "screen".
-static int iwgif_init_screen(struct iwgifreadcontext *rctx)
+static int iwgif_init_screen(struct iwgifrcontext *rctx)
 {
 	struct iw_image *img;
 	int bg_visible=0;
@@ -507,7 +507,7 @@ done:
 // Make an array of pointers into the global screen, which point to the
 // start of each row in the local image. This will be useful for
 // de-interlacing.
-static int iwgif_make_row_pointers(struct iwgifreadcontext *rctx)
+static int iwgif_make_row_pointers(struct iwgifrcontext *rctx)
 {
 	struct iw_image *img;
 	int pass;
@@ -556,7 +556,7 @@ static int iwgif_make_row_pointers(struct iwgifreadcontext *rctx)
 	return 1;
 }
 
-static int iwgif_skip_image(struct iwgifreadcontext *rctx)
+static int iwgif_skip_image(struct iwgifrcontext *rctx)
 {
 	int has_local_ct;
 	int local_ct_size;
@@ -593,7 +593,7 @@ done:
 	return retval;
 }
 
-static int iwgif_read_image(struct iwgifreadcontext *rctx)
+static int iwgif_read_image(struct iwgifrcontext *rctx)
 {
 	int retval=0;
 	struct lzwdeccontext d;
@@ -684,7 +684,7 @@ done:
 	return retval;
 }
 
-static int iwgif_read_main(struct iwgifreadcontext *rctx)
+static int iwgif_read_main(struct iwgifrcontext *rctx)
 {
 	int retval=0;
 	int i;
@@ -754,11 +754,11 @@ done:
 IW_IMPL(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iw_image img;
-	struct iwgifreadcontext *rctx = NULL;
+	struct iwgifrcontext *rctx = NULL;
 	int retval=0;
 
 	iw_zeromem(&img,sizeof(struct iw_image));
-	rctx = iw_mallocz(ctx,sizeof(struct iwgifreadcontext));
+	rctx = iw_mallocz(ctx,sizeof(struct iwgifrcontext));
 	if(!rctx) goto done;
 
 	rctx->ctx = ctx;

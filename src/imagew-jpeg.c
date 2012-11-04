@@ -40,7 +40,7 @@ static void my_output_message(j_common_ptr cinfo)
 	return;
 }
 
-struct iw_jpegrctx {
+struct iwjpegrcontext {
 	struct jpeg_source_mgr pub; // This field must be first.
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
@@ -115,7 +115,7 @@ static int get_exif_tag_dbl_value(struct iw_exif_state *e, unsigned int tag_pos,
 	return 1;
 }
 
-static void iwjpeg_scan_exif_ifd(struct iw_jpegrctx *rctx,
+static void iwjpeg_scan_exif_ifd(struct iwjpegrcontext *rctx,
 	struct iw_exif_state *e, iw_uint32 ifd)
 {
 	unsigned int tag_count;
@@ -163,7 +163,7 @@ static void iwjpeg_scan_exif_ifd(struct iw_jpegrctx *rctx,
 	}
 }
 
-static void iwjpeg_scan_exif(struct iw_jpegrctx *rctx,
+static void iwjpeg_scan_exif(struct iwjpegrcontext *rctx,
 		const iw_byte *d, size_t d_len)
 {
 	struct iw_exif_state e;
@@ -184,7 +184,7 @@ static void iwjpeg_scan_exif(struct iw_jpegrctx *rctx,
 
 // Look at the saved JPEG markers.
 // The only one we care about is Exif.
-static void iwjpeg_read_saved_markers(struct iw_jpegrctx *rctx,
+static void iwjpeg_read_saved_markers(struct iwjpegrcontext *rctx,
 	struct jpeg_decompress_struct *cinfo)
 {
 	struct jpeg_marker_struct *mk;
@@ -239,7 +239,7 @@ static void iwjpeg_read_density(struct iw_context *ctx, struct iw_image *img,
 
 // Look at the Exif density setting that we may have recorded, and copy
 // it to the image, if appropriate.
-static void handle_exif_density(struct iw_jpegrctx *rctx, struct iw_image *img)
+static void handle_exif_density(struct iwjpegrcontext *rctx, struct iw_image *img)
 {
 	if(img->density_code!=IW_DENSITY_UNKNOWN) {
 		// We already have a density, presumably from the JFIF segment.
@@ -277,14 +277,14 @@ static void handle_exif_density(struct iw_jpegrctx *rctx, struct iw_image *img)
 
 static void my_init_source_fn(j_decompress_ptr cinfo)
 {
-	struct iw_jpegrctx *rctx = (struct iw_jpegrctx*)cinfo->src;
+	struct iwjpegrcontext *rctx = (struct iwjpegrcontext*)cinfo->src;
 	rctx->pub.next_input_byte = rctx->buffer;
 	rctx->pub.bytes_in_buffer = 0;
 }
 
 static boolean my_fill_input_buffer_fn(j_decompress_ptr cinfo)
 {
-	struct iw_jpegrctx *rctx = (struct iw_jpegrctx*)cinfo->src;
+	struct iwjpegrcontext *rctx = (struct iwjpegrcontext*)cinfo->src;
 	size_t bytesread = 0;
 	int ret;
 
@@ -301,7 +301,7 @@ static boolean my_fill_input_buffer_fn(j_decompress_ptr cinfo)
 
 static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes)
 {
-	struct iw_jpegrctx *rctx = (struct iw_jpegrctx*)cinfo->src;
+	struct iwjpegrcontext *rctx = (struct iwjpegrcontext*)cinfo->src;
 	size_t bytes_still_to_skip;
 	size_t nbytes;
 	int ret;
@@ -374,14 +374,14 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	JSAMPLE *jsamprow;
 	int numchannels=0;
 	struct iw_image img;
-	struct iw_jpegrctx rctx;
+	struct iwjpegrcontext rctx;
 	JSAMPLE *tmprow = NULL;
 	int cmyk_flag = 0;
 
 	iw_zeromem(&img,sizeof(struct iw_image));
 	iw_zeromem(&cinfo,sizeof(struct jpeg_decompress_struct));
 	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
-	iw_zeromem(&rctx,sizeof(struct iw_jpegrctx));
+	iw_zeromem(&rctx,sizeof(struct iwjpegrcontext));
 
 	cinfo.err = jpeg_std_error(&jerr.pub);
 	jerr.pub.error_exit = my_error_exit;
@@ -525,7 +525,7 @@ done:
 
 ////////////////////////////////////
 
-struct iw_jpegwctx {
+struct iwjpegwcontext {
 	struct jpeg_destination_mgr pub; // This field must be first.
 	struct iw_context *ctx;
 	struct iw_iodescr *iodescr;
@@ -563,7 +563,7 @@ static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct
 
 static void my_init_destination_fn(j_compress_ptr cinfo)
 {
-	struct iw_jpegwctx *wctx = (struct iw_jpegwctx*)cinfo->dest;
+	struct iwjpegwcontext *wctx = (struct iwjpegwcontext*)cinfo->dest;
 
 	// Configure the destination manager to use our buffer.
 	wctx->pub.next_output_byte = wctx->buffer;
@@ -572,7 +572,7 @@ static void my_init_destination_fn(j_compress_ptr cinfo)
 
 static boolean my_empty_output_buffer_fn(j_compress_ptr cinfo)
 {
-	struct iw_jpegwctx *wctx = (struct iw_jpegwctx*)cinfo->dest;
+	struct iwjpegwcontext *wctx = (struct iwjpegwcontext*)cinfo->dest;
 
 	// Write out the entire buffer
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,
@@ -586,7 +586,7 @@ static boolean my_empty_output_buffer_fn(j_compress_ptr cinfo)
 
 static void my_term_destination_fn(j_compress_ptr cinfo)
 {
-	struct iw_jpegwctx *wctx = (struct iw_jpegwctx*)cinfo->dest;
+	struct iwjpegwcontext *wctx = (struct iwjpegwcontext*)cinfo->dest;
 	size_t bytesleft;
 
 	bytesleft = wctx->buffer_len - wctx->pub.free_in_buffer;
@@ -611,11 +611,11 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	struct iw_image img;
 	int jpeg_quality;
 	int samp_factor_h, samp_factor_v;
-	struct iw_jpegwctx wctx;
+	struct iwjpegwcontext wctx;
 
 	iw_zeromem(&cinfo,sizeof(struct jpeg_compress_struct));
 	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
-	iw_zeromem(&wctx,sizeof(struct iw_jpegwctx));
+	iw_zeromem(&wctx,sizeof(struct iwjpegwcontext));
 
 	iw_get_output_image(ctx,&img);
 
