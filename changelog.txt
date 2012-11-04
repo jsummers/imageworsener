@@ -1,4 +1,7 @@
 Unreleased changes
+ - (none)
+
+Version 1.0.0 - 4 Nov 2012
  - If -blur is used without -filter, default to "-filter gaussian".
  - Added -s and -S options.
  - Removed the --with-sample-depth configuration option.

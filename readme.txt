@@ -1,5 +1,5 @@
 ImageWorsener is a raster image scaling and processing utility.
-Version 0.9.10
+Version 1.0.0
 Copyright (c) 2011-2012 Jason Summers  <jason1@pobox.com>
 
 Web site: http://entropymine.com/imageworsener/
@@ -115,10 +115,9 @@ Other information:
 Documentation for the ImageWorsener C library
 ---------------------------------------------
 
-There is no documentation for the library at this time, aside from bits and
-pieces in the imagew.h header file. Use of the library for anything serious is
-discouraged, as the API may change in incompatible ways before version 1.0 is
-released.
+There is no documentation for the library at this time, aside from the
+comments in the imagew.h header file. Improving the documentation is a high
+priority.
 
 
 Documentation for the "imagew" command line utility
