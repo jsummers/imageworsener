@@ -170,6 +170,9 @@ done
 
 $IW srcimg/4x4.png actual/dither-gray.png $DCMPR $SCALE -filter catrom -cc 2 -grayscale -dither f
 
+# test -imagesize
+$IW srcimg/p8t.png actual/imgsize1.png $CMPR -S 35,35 -translate 5.2,5.9 -imagesize 24,25.5 -edge t -bkgd 987,654 -filter lanczos4
+
 # test reading/writing JPEG
 
 $IW srcimg/rgb8.jpg actual/jpeg.jpg $SCALE -filter catrom -jpegarith
