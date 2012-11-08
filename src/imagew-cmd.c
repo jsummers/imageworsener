@@ -105,6 +105,8 @@ struct params_struct {
 	double offset_v[3];
 	double translate_x, translate_y;
 	int translate_src_flag; // If 1, translate_[xy] is in source pixels.
+	double imagesize_x, imagesize_y;
+	int imagesize_set;
 	struct dither_setting dither[5]; // Indexed by IW_CHANNELTYPE_[RED..GRAY]
 	struct dither_setting dither_all;
 	struct dither_setting dither_nonalpha;
@@ -1233,6 +1235,9 @@ static int iwcmd_run(struct params_struct *p)
 	}
 
 	iw_set_output_canvas_size(ctx,p->dst_width,p->dst_height);
+	if(p->imagesize_set) {
+		iw_set_output_image_size(ctx,p->imagesize_x,p->imagesize_y);
+	}
 	if(p->use_crop) {
 		iw_set_input_crop(ctx,p->crop_x,p->crop_y,p->crop_w,p->crop_h);
 	}
@@ -1962,7 +1967,7 @@ enum iwcmd_param_types {
  PT_CC, PT_CCCOLOR, PT_CCALPHA, PT_CCRED, PT_CCGREEN, PT_CCBLUE, PT_CCGRAY,
  PT_BKGD, PT_BKGD2, PT_CHECKERSIZE, PT_CHECKERORG, PT_CROP, PT_REORIENT,
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
- PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE,
+ PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE, PT_IMAGESIZE,
  PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH, PT_BMPTRNS, PT_BMPVERSION,
  PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
@@ -2034,6 +2039,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"offsetvblue",PT_OFFSET_B_V,1},
 		{"offsetvrb",PT_OFFSET_RB_V,1},
 		{"translate",PT_TRANSLATE,1},
+		{"imagesize",PT_IMAGESIZE,1},
 		{"compress",PT_COMPRESS,1},
 		{"page",PT_PAGETOREAD,1},
 		{"jpegquality",PT_JPEGQUALITY,1},
@@ -2396,6 +2402,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		else {
 			iwcmd_parse_dbl_pair(v,&p->translate_x,&p->translate_y);
 		}
+		break;
+	case PT_IMAGESIZE:
+		iwcmd_parse_dbl_pair(v,&p->imagesize_x,&p->imagesize_y);
+		p->imagesize_set = 1;
 		break;
 	case PT_COMPRESS:
 		p->compression=iwcmd_decode_compression_name(p,v);

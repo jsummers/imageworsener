@@ -242,8 +242,8 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 
 	rrctx->wl_used = 0;
 
-	if(ctx->num_out_pix<ctx->num_in_pix) {
-		reduction_factor = ((double)ctx->num_in_pix) / ctx->num_out_pix;
+	if(ctx->out_true_size<(double)ctx->num_in_pix) {
+		reduction_factor = ((double)ctx->num_in_pix) / ctx->out_true_size;
 	}
 	else {
 		reduction_factor = 1.0;
@@ -258,7 +258,7 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 	}
 
 	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
-		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/(double)ctx->num_out_pix;
+		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/ctx->out_true_size;
 		pos_in_inpix = out_pix_center*(double)ctx->num_in_pix -0.5;
 
 		// There are up to radius*reduction_factor source pixels on each side

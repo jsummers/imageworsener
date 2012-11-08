@@ -338,6 +338,13 @@ IW_IMPL(void) iw_set_output_canvas_size(struct iw_context *ctx, int w, int h)
 	ctx->canvas_height = h;
 }
 
+IW_IMPL(void) iw_set_output_image_size(struct iw_context *ctx, double w, double h)
+{
+	ctx->out_true_width_req = w;
+	ctx->out_true_height_req = h;
+	ctx->out_true_req_valid = 1;
+}
+
 IW_IMPL(void) iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h)
 {
 	ctx->input_start_x = x;

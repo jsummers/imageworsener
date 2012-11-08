@@ -484,9 +484,6 @@ Features I'm considering adding:
 - More options for specifying the image size to use; e.g. "enlarge the image
   only if it's smaller than a certain size".
 
-- More options for aligning the input pixels with the output pixels. (Most of
-  the code shouldn't assume that image pixel dimensions have to integers.)
-
 - Ability to maintain PNG and GIF background colors.
 
 - Faster creation of palette images. (Using a hash table?)

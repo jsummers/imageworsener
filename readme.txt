@@ -164,6 +164,16 @@ Options:
    the source image may have non-square pixels.
    Incompatible with -bestfit and the sizing options.
 
+ -imagesize <width>,<height>
+   The other sizing options set the size of the entire output image. Normally,
+   the region of that image corresponding to the input image will be that same
+   size. However, you can use -imagesize to make that region be a different
+   size. For example, you can shrink the image, to effectively
+   add a border around it.
+   Note that <height> and <width> do not have to be integers.
+   If you use -imagesize, you should probably also use -translate and
+   "-edge t".
+
  -infmt <fmt>  -outfmt <fmt>
    Specifies the image file format of the input or output file. If not used,
    imagew will try to figure out the format based on the contents of the file,
@@ -556,9 +566,9 @@ Options:
 
  -translate [s]<x>,<y>
    Move the entire image by the given amount, measured in target pixels. This
-   is mainly intended for fine-tuning the image's position relative to the
-   pixel grid, so it's expected that the absolute value of x and y will be
-   less than 1.
+   is mainly intended for use with -imagesize, or for fine-tuning the image's
+   position relative to the pixel grid.
+   Note that x and y do not have to be integers.
    If you use the "s" prefix, the measurements are in source pixels instead of
    target pixels.
 

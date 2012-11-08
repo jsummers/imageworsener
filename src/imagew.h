@@ -483,9 +483,14 @@ IW_EXPORT(void) iw_set_warning_fn(struct iw_context *ctx, iw_warningfn_type warn
 IW_EXPORT(void) iw_set_max_malloc(struct iw_context *ctx, size_t n);
 
 // The full size of the output image, in pixels.
-// Named "canvas_size" because future features might allow the input image
-// to be scaled to a size other than that of the canvas (e.g. to add a border).
 IW_EXPORT(void) iw_set_output_canvas_size(struct iw_context *ctx, int w, int h);
+
+// The size of the part of the output image that corresponds to the input image.
+// By default, this is the same as the "canvas size", but by calling
+// iw_set_output_image_size() you can change that (e.g. to add a border).
+// If you use this, you should probably use set the IW_VAL_TRANSLATE_X and
+// IW_VAL_TRANSLATE_Y values.
+IW_EXPORT(void) iw_set_output_image_size(struct iw_context *ctx, double w, double h);
 
 // Crop before resizing.
 IW_EXPORT(void) iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h);

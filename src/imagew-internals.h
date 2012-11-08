@@ -135,8 +135,13 @@ struct iw_context {
 
 	int num_in_pix;
 	int num_out_pix;
+	double out_true_size;
 	IW_SAMPLE *in_pix; // A single row of source samples to resample.
 	IW_SAMPLE *out_pix; // The resulting resampled row.
+
+	double out_true_width, out_true_height;
+	double out_true_width_req, out_true_height_req;
+	int out_true_req_valid;
 
 	// The "64" data is only actually only 64-bit if IW_SAMPLE is 64-bit.
 	IW_SAMPLE *intermediate64;
@@ -170,6 +175,7 @@ struct iw_context {
 	int intermed_numchannels;
 	int intermed_alpha_channel_index;
 	int intermed_width, intermed_height;
+	double intermed_true_height;
 
 	struct iw_image img2;
 	struct iw_csdescr img2cs;

@@ -820,6 +820,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	ctx->in_pix = inpix;
 
 	ctx->num_out_pix = ctx->intermed_height;
+	ctx->out_true_size = ctx->intermed_true_height;
 	outpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_out_pix * sizeof(IW_SAMPLE));
 	if(!outpix) goto done;
 	ctx->out_pix = outpix;
@@ -928,6 +929,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 	ctx->num_in_pix = ctx->intermed_width;
 	ctx->num_out_pix = ctx->img2.width;
+	ctx->out_true_size = ctx->out_true_width;
 
 	int_ci = &ctx->intermed_ci[intermed_channel];
 	output_channel = int_ci->corresponding_output_channel;
@@ -1258,6 +1260,7 @@ static int iw_process_internal(struct iw_context *ctx)
 	ctx->final_alpha32=NULL;
 	ctx->intermed_width = ctx->input_w;
 	ctx->intermed_height = ctx->img2.height;
+	ctx->intermed_true_height = ctx->out_true_height;
 
 	iw_make_linear_csdescr(&csdescr_linear);
 
@@ -1690,6 +1693,7 @@ static void iw_set_auto_resizetype(struct iw_context *ctx, int size1, int size2,
 	// If not changing the size, default to "null" resize if we can.
 	// (We can't do that if using a translation or channel offset.)
 	if(size2==size1 && !ctx->resize_settings[dimension].use_offset &&
+		!ctx->out_true_req_valid &&
 		ctx->resize_settings[dimension].translate==0.0)
 	{
 		iw_set_resize_alg(ctx, dimension, IW_RESIZETYPE_NULL, 1.0, 0.0, 0.0);
@@ -1779,6 +1783,15 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		// Acquire and record a random seed. This also seeds the PRNG, but
 		// that's irrelevant. It will be re-seeded before it is used.
 		ctx->random_seed = iwpvt_util_randomize(ctx->prng);
+	}
+
+	if(ctx->out_true_req_valid) {
+		ctx->out_true_width = ctx->out_true_width_req;
+		ctx->out_true_height = ctx->out_true_height_req;
+	}
+	else {
+		ctx->out_true_width = (double)w;
+		ctx->out_true_height = (double)h;
 	}
 
 	if(!iw_check_image_dimensions(ctx,ctx->img1.width,ctx->img1.height)) {
