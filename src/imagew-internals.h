@@ -133,12 +133,7 @@ struct iw_context {
 	iw_mallocfn_type mallocfn;
 	iw_freefn_type freefn;
 
-	int num_in_pix;
-	int num_out_pix;
-	double out_true_size;
-	IW_SAMPLE *in_pix; // A single row of source samples to resample.
-	IW_SAMPLE *out_pix; // The resulting resampled row.
-
+	// TODO: These settings should be stored in the same place as the translation settings.
 	double out_true_width, out_true_height;
 	double out_true_width_req, out_true_height_req;
 	int out_true_req_valid;
@@ -288,9 +283,9 @@ void iwpvt_default_free(void *userdata, void *mem);
 
 // Defined in imagew-resize.c
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
-  struct iw_resize_settings *rs, int channeltype);
-void iwpvt_resize_rows_done(struct iw_context *ctx, struct iw_rr_ctx *rrctx);
-void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_rr_ctx *rrctx);
+  struct iw_resize_settings *rs, int channeltype, int, int, double);
+void iwpvt_resize_rows_done(struct iw_rr_ctx *rrctx);
+void iwpvt_resize_row_main(struct iw_rr_ctx *rrctx, IW_SAMPLE *in_pix, IW_SAMPLE *out_pix);
 
 // Defined in imagew-opt.c
 void iwpvt_optimize_image(struct iw_context *ctx);

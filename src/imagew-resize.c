@@ -16,7 +16,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-typedef void (*iw_resizerowfn_type)(struct iw_context *ctx, struct iw_rr_ctx *rrctx);
+typedef void (*iw_resizerowfn_type)(struct iw_rr_ctx *rrctx);
 typedef double (*iw_filterfn_type)(struct iw_rr_ctx *rrctx, double x);
 
 struct iw_weight_struct {
@@ -27,6 +27,12 @@ struct iw_weight_struct {
 
 struct iw_rr_ctx {
 	struct iw_context *ctx;
+
+	int num_in_pix;
+	int num_out_pix;
+	double out_true_size;
+	IW_SAMPLE *in_pix; // A single row of source samples to resample.
+	IW_SAMPLE *out_pix; // The resulting resampled row.
 
 	// int family; // Oddly, we don't need this field at all.
 	double radius; // (Does not take .blur_factor into account.)
@@ -242,8 +248,8 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 
 	rrctx->wl_used = 0;
 
-	if(ctx->out_true_size<(double)ctx->num_in_pix) {
-		reduction_factor = ((double)ctx->num_in_pix) / ctx->out_true_size;
+	if(rrctx->out_true_size<(double)rrctx->num_in_pix) {
+		reduction_factor = ((double)rrctx->num_in_pix) / rrctx->out_true_size;
 	}
 	else {
 		reduction_factor = 1.0;
@@ -251,15 +257,15 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 	reduction_factor *= rrctx->blur_factor;
 
 	// Estimate the size of the weight list we'll need.
-	est_nweights = (int)(2.0*rrctx->radius*reduction_factor*ctx->num_out_pix);
+	est_nweights = (int)(2.0*rrctx->radius*reduction_factor*rrctx->num_out_pix);
 	weightlist_ensure_alloc(rrctx,est_nweights);
 	if(!rrctx->wl) {
 		return;
 	}
 
-	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
-		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/ctx->out_true_size;
-		pos_in_inpix = out_pix_center*(double)ctx->num_in_pix -0.5;
+	for(out_pix=0;out_pix<rrctx->num_out_pix;out_pix++) {
+		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/rrctx->out_true_size;
+		pos_in_inpix = out_pix_center*(double)rrctx->num_in_pix -0.5;
 
 		// There are up to radius*reduction_factor source pixels on each side
 		// of the target pixel that we need to look at.
@@ -277,7 +283,7 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 			if(rrctx->edge_policy==IW_EDGE_POLICY_STANDARD) {
 				// The STANDARD method doesn't use virtual pixels, so we can
 				// ignore out-of-range source pixels.
-				if(input_pixel<0 || input_pixel>=ctx->num_in_pix) {
+				if(input_pixel<0 || input_pixel>=rrctx->num_in_pix) {
 					continue;
 				}
 			}
@@ -296,14 +302,14 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 			v_sum += v;
 			v_count++;
 
-			if(input_pixel<0 || input_pixel>ctx->num_in_pix-1) {
+			if(input_pixel<0 || input_pixel>rrctx->num_in_pix-1) {
 				// The source pixel we need doesn't exist.
 				if(rrctx->edge_policy==IW_EDGE_POLICY_TRANSPARENT) {
 					pix_to_read = -1; // Use a virtual pixel
 				}
 				else { // Assume IW_EDGE_POLICY_REPLICATE
 					if(input_pixel<0) pix_to_read=0;
-					else pix_to_read = ctx->num_in_pix-1;
+					else pix_to_read = rrctx->num_in_pix-1;
 				}
 			}
 			else {
@@ -335,21 +341,21 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 	}
 }
 
-static void iw_resize_row_std(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
+static void iw_resize_row_std(struct iw_rr_ctx *rrctx)
 {
 	int i;
 	struct iw_weight_struct *w;
 
 	if(!rrctx->wl) return;
 
-	for(i=0;i<ctx->num_out_pix;i++) {
-		ctx->out_pix[i] = 0.0;
+	for(i=0;i<rrctx->num_out_pix;i++) {
+		rrctx->out_pix[i] = 0.0;
 	}
 
 	for(i=0;i<rrctx->wl_used;i++) {
 		w = &rrctx->wl[i];
 		if(w->src_pix>=0) {
-			ctx->out_pix[w->dst_pix] += ctx->in_pix[w->src_pix] * w->weight;
+			rrctx->out_pix[w->dst_pix] += rrctx->in_pix[w->src_pix] * w->weight;
 		}
 		else {
 			// Use a virtual pixel. The only relevant virtual pixel type is
@@ -357,7 +363,7 @@ static void iw_resize_row_std(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 			// The value to use was previously calculated and stored in
 			// ->edge_sample_value (it's almost always 0, i.e. "transparent
 			// black").
-			ctx->out_pix[w->dst_pix] += rrctx->edge_sample_value * w->weight;
+			rrctx->out_pix[w->dst_pix] += rrctx->edge_sample_value * w->weight;
 		}
 	}
 }
@@ -366,21 +372,21 @@ static void iw_resize_row_std(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
 // that uses a weightlist, we use a special algorithm for it. For one thing,
 // this ensures that it does literally use the nearest neighbor, and is not
 // affected by blur settings.
-static void iw_resize_row_nearest(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
+static void iw_resize_row_nearest(struct iw_rr_ctx *rrctx)
 {
 	int out_pix;
 	double out_pix_center;
 	int input_pixel;
 	int pix_to_read;
 
-	for(out_pix=0;out_pix<ctx->num_out_pix;out_pix++) {
-		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/(double)ctx->num_out_pix;
-		input_pixel = (int)floor(out_pix_center*(double)ctx->num_in_pix);
+	for(out_pix=0;out_pix<rrctx->num_out_pix;out_pix++) {
+		out_pix_center = (0.5+(double)out_pix-rrctx->offset)/(double)rrctx->num_out_pix;
+		input_pixel = (int)floor(out_pix_center*(double)rrctx->num_in_pix);
 
 		if(input_pixel<0) pix_to_read=0;
-		else if(input_pixel>ctx->num_in_pix-1) pix_to_read = ctx->num_in_pix-1;
+		else if(input_pixel>rrctx->num_in_pix-1) pix_to_read = rrctx->num_in_pix-1;
 		else pix_to_read = input_pixel;
-		ctx->out_pix[out_pix] = ctx->in_pix[pix_to_read];
+		rrctx->out_pix[out_pix] = rrctx->in_pix[pix_to_read];
 	}
 }
 
@@ -388,21 +394,22 @@ static void iw_resize_row_nearest(struct iw_context *ctx, struct iw_rr_ctx *rrct
 // If the target size is smaller than the source size, pixels will be cropped.
 // If it is larger, the extra pixels will be black or transparent.
 // Caution: Does not support translation or offsets.
-static void iw_resize_row_null(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
+static void iw_resize_row_null(struct iw_rr_ctx *rrctx)
 {
 	int i;
-	for(i=0;i<ctx->num_out_pix;i++) {
-		if(i<ctx->num_in_pix) {
-			ctx->out_pix[i] = ctx->in_pix[i];
+	for(i=0;i<rrctx->num_out_pix;i++) {
+		if(i<rrctx->num_in_pix) {
+			rrctx->out_pix[i] =rrctx->in_pix[i];
 		}
 		else {
-			ctx->out_pix[i] = 0.0;
+			rrctx->out_pix[i] = 0.0;
 		}
 	}
 }
 
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
-  struct iw_resize_settings *rs, int channeltype)
+  struct iw_resize_settings *rs, int channeltype,
+	  int num_in_pix, int num_out_pix, double out_true_size)
 {
 	struct iw_rr_ctx *rrctx = NULL;
 
@@ -417,6 +424,10 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 	rrctx->ctx = ctx;
 	//rrctx->family = rs->family
 	rrctx->resizerow_fn = iw_resize_row_std;  // Initial default
+
+	rrctx->num_in_pix = num_in_pix;
+	rrctx->num_out_pix = num_out_pix;
+	rrctx->out_true_size = out_true_size;
 
 	// Gather filter-specific information.
 	switch(rs->family) {
@@ -435,7 +446,7 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		// whose exact shape depends on the scale factor.
 		// Precalculate a parameter (mix_param) that will be used by
 		// iw_filter_mix(). It's also used to compute the radius.
-		rrctx->mix_param = ((double)ctx->num_out_pix)/ctx->num_in_pix;
+		rrctx->mix_param = ((double)rrctx->num_out_pix)/rrctx->num_in_pix;
 		if(rrctx->mix_param > 1.0) rrctx->mix_param = 1.0/rrctx->mix_param;
 		rrctx->radius = 0.5 + rrctx->mix_param;
 		break;
@@ -542,15 +553,17 @@ done:
 	return rrctx;
 }
 
-void iwpvt_resize_rows_done(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
+void iwpvt_resize_rows_done(struct iw_rr_ctx *rrctx)
 {
 	if(!rrctx) return;
 	weightlist_free(rrctx);
-	iw_free(ctx,rrctx);
+	iw_free(rrctx->ctx,rrctx);
 }
 
-void iwpvt_resize_row_main(struct iw_context *ctx, struct iw_rr_ctx *rrctx)
+void iwpvt_resize_row_main(struct iw_rr_ctx *rrctx, IW_SAMPLE *in_pix, IW_SAMPLE *out_pix)
 {
 	if(!rrctx || !rrctx->resizerow_fn) return;
-	(*rrctx->resizerow_fn)(ctx,rrctx);
+	rrctx->in_pix = in_pix;
+	rrctx->out_pix = out_pix;
+	(*rrctx->resizerow_fn)(rrctx);
 }
