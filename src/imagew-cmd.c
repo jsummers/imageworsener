@@ -1236,6 +1236,13 @@ static int iwcmd_run(struct params_struct *p)
 
 	iw_set_output_canvas_size(ctx,p->dst_width,p->dst_height);
 	if(p->imagesize_set) {
+		if((p->edge_policy_x!=IW_EDGE_POLICY_REPLICATE &&
+			p->edge_policy_x!=IW_EDGE_POLICY_TRANSPARENT) ||
+			(p->edge_policy_y!=IW_EDGE_POLICY_REPLICATE &&
+			p->edge_policy_y!=IW_EDGE_POLICY_TRANSPARENT))
+		{
+			iw_warning(ctx,"\xe2\x80\x9c-edge t\xe2\x80\x9d is recommended when using -imagesize");
+		}
 		iw_set_output_image_size(ctx,p->imagesize_x,p->imagesize_y);
 	}
 	if(p->use_crop) {
