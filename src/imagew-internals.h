@@ -50,6 +50,7 @@ struct iw_resize_settings {
 	double param1; // 'B' in Mitchell-Netravali cubics. "lobes" in Lanczos, etc.
 	double param2; // 'C' in Mitchell-Netravali cubics.
 	double blur_factor;
+	double out_true_size; // Size onto which to map the input image.
 	double translate; // Amount to move the image, before applying any channel offsets.
 	double channel_offset[3]; // Indexed by IW_CHANNELTYPE_[Red..Blue]
 	struct iw_rr_ctx *rrctx;
@@ -133,11 +134,6 @@ struct iw_context {
 	iw_mallocfn_type mallocfn;
 	iw_freefn_type freefn;
 
-	// TODO: These settings should be stored in the same place as the translation settings.
-	double out_true_width, out_true_height;
-	double out_true_width_req, out_true_height_req;
-	int out_true_req_valid;
-
 	// The "64" data is only actually only 64-bit if IW_SAMPLE is 64-bit.
 	IW_SAMPLE *intermediate64;
 	IW_SAMPLE *intermediate_alpha64;
@@ -183,6 +179,10 @@ struct iw_context {
 
 	// Indexed by IW_DIMENSION_*.
 	struct iw_resize_settings resize_settings[2];
+
+	// Image size requested by user. The actual size to use is stored in .resize_settings.
+	double out_true_width_req, out_true_height_req;
+	int out_true_req_valid;
 
 	int to_grayscale;
 
@@ -283,7 +283,7 @@ void iwpvt_default_free(void *userdata, void *mem);
 
 // Defined in imagew-resize.c
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
-  struct iw_resize_settings *rs, int channeltype, int, int, double);
+  struct iw_resize_settings *rs, int channeltype, int num_in_pix, int num_out_pix);
 void iwpvt_resize_rows_done(struct iw_rr_ctx *rrctx);
 void iwpvt_resize_row_main(struct iw_rr_ctx *rrctx, IW_SAMPLE *in_pix, IW_SAMPLE *out_pix);
 

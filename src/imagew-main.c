@@ -812,7 +812,6 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	IW_SAMPLE *out_pix;
 	int num_in_pix;
 	int num_out_pix;
-	double out_true_size;
 
 	int_ci = &ctx->intermed_ci[channel];
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
@@ -823,7 +822,6 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	in_pix = inpix_tofree;
 
 	num_out_pix = ctx->intermed_canvas_height;
-	out_true_size = ctx->out_true_height;
 	outpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_out_pix * sizeof(IW_SAMPLE));
 	if(!outpix_tofree) goto done;
 	out_pix = outpix_tofree;
@@ -836,7 +834,7 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// TODO: The use of the word "rows" here is misleading, because we are
 		// actually resizing columns.
 		rs->rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype,
-			num_in_pix, num_out_pix, out_true_size);
+			num_in_pix, num_out_pix);
 		if(!rs->rrctx) goto done;
 	}
 
@@ -930,11 +928,9 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	IW_SAMPLE *out_pix = NULL;
 	int num_in_pix;
 	int num_out_pix;
-	double out_true_size;
 
 	num_in_pix = ctx->intermed_canvas_width;
 	num_out_pix = ctx->img2.width;
-	out_true_size = ctx->out_true_width;
 
 	int_ci = &ctx->intermed_ci[intermed_channel];
 	output_channel = int_ci->corresponding_output_channel;
@@ -1021,7 +1017,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	// able to reuse it. Otherwise, create a new one.
 	if(!rs->rrctx) {
 		rs->rrctx = iwpvt_resize_rows_init(ctx,rs,int_ci->channeltype,
-			num_in_pix, num_out_pix, out_true_size);
+			num_in_pix, num_out_pix);
 		if(!rs->rrctx) goto done;
 	}
 
@@ -1789,12 +1785,12 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->out_true_req_valid) {
-		ctx->out_true_width = ctx->out_true_width_req;
-		ctx->out_true_height = ctx->out_true_height_req;
+		ctx->resize_settings[IW_DIMENSION_H].out_true_size = ctx->out_true_width_req;
+		ctx->resize_settings[IW_DIMENSION_V].out_true_size = ctx->out_true_height_req;
 	}
 	else {
-		ctx->out_true_width = (double)w;
-		ctx->out_true_height = (double)h;
+		ctx->resize_settings[IW_DIMENSION_H].out_true_size = (double)w;
+		ctx->resize_settings[IW_DIMENSION_V].out_true_size = (double)h;
 	}
 
 	if(!iw_check_image_dimensions(ctx,ctx->img1.width,ctx->img1.height)) {

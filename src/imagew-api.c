@@ -341,7 +341,9 @@ IW_IMPL(void) iw_set_output_canvas_size(struct iw_context *ctx, int w, int h)
 IW_IMPL(void) iw_set_output_image_size(struct iw_context *ctx, double w, double h)
 {
 	ctx->out_true_width_req = w;
+	if(ctx->out_true_width_req<0.01) ctx->out_true_width_req=0.01;
 	ctx->out_true_height_req = h;
+	if(ctx->out_true_height_req<0.01) ctx->out_true_height_req=0.01;
 	ctx->out_true_req_valid = 1;
 }
 

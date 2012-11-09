@@ -30,7 +30,6 @@ struct iw_rr_ctx {
 
 	int num_in_pix;
 	int num_out_pix;
-	double out_true_size;
 	IW_SAMPLE *in_pix; // A single row of source samples to resample.
 	IW_SAMPLE *out_pix; // The resulting resampled row.
 
@@ -41,6 +40,7 @@ struct iw_rr_ctx {
 	double mix_param;
 
 	double blur_factor;
+	double out_true_size;
 	double offset;
 	int edge_policy;
 	double edge_sample_value;
@@ -409,7 +409,7 @@ static void iw_resize_row_null(struct iw_rr_ctx *rrctx)
 
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
   struct iw_resize_settings *rs, int channeltype,
-	  int num_in_pix, int num_out_pix, double out_true_size)
+	  int num_in_pix, int num_out_pix)
 {
 	struct iw_rr_ctx *rrctx = NULL;
 
@@ -427,7 +427,7 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 
 	rrctx->num_in_pix = num_in_pix;
 	rrctx->num_out_pix = num_out_pix;
-	rrctx->out_true_size = out_true_size;
+	rrctx->out_true_size = rs->out_true_size;
 
 	// Gather filter-specific information.
 	switch(rs->family) {
