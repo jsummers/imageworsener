@@ -174,8 +174,7 @@ struct iw_context {
 	int intermed_imgtype;
 	int intermed_numchannels;
 	int intermed_alpha_channel_index;
-	int intermed_width, intermed_height;
-	double intermed_true_height;
+	int intermed_canvas_width, intermed_canvas_height;
 
 	struct iw_image img2;
 	struct iw_csdescr img2cs;

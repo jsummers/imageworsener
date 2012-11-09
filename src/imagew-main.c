@@ -819,8 +819,8 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	if(!inpix) goto done;
 	ctx->in_pix = inpix;
 
-	ctx->num_out_pix = ctx->intermed_height;
-	ctx->out_true_size = ctx->intermed_true_height;
+	ctx->num_out_pix = ctx->intermed_canvas_height;
+	ctx->out_true_size = ctx->out_true_height;
 	outpix = (IW_SAMPLE*)iw_malloc(ctx, ctx->num_out_pix * sizeof(IW_SAMPLE));
 	if(!outpix) goto done;
 	ctx->out_pix = outpix;
@@ -868,18 +868,18 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 			clamp_output_samples(ctx);
 
 		// The intermediate pixels are in ctx->out_pix. Copy them to the intermediate array.
-		for(j=0;j<ctx->intermed_height;j++) {
+		for(j=0;j<ctx->intermed_canvas_height;j++) {
 			if(is_alpha_channel) {
 				if(ctx->precision==64)
-					ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_width + i] = ctx->out_pix[j];
+					ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_canvas_width + i] = ctx->out_pix[j];
 				else
-					ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_width + i] = (iw_float32)ctx->out_pix[j];
+					ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_canvas_width + i] = (iw_float32)ctx->out_pix[j];
 			}
 			else {
 				if(ctx->precision==64)
-					ctx->intermediate64[((size_t)j)*ctx->intermed_width + i] = ctx->out_pix[j];
+					ctx->intermediate64[((size_t)j)*ctx->intermed_canvas_width + i] = ctx->out_pix[j];
 				else
-					ctx->intermediate32[((size_t)j)*ctx->intermed_width + i] = (iw_float32)ctx->out_pix[j];
+					ctx->intermediate32[((size_t)j)*ctx->intermed_canvas_width + i] = (iw_float32)ctx->out_pix[j];
 			}
 		}
 	}
@@ -927,7 +927,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	ctx->in_pix = NULL;
 	ctx->out_pix = NULL;
 
-	ctx->num_in_pix = ctx->intermed_width;
+	ctx->num_in_pix = ctx->intermed_canvas_width;
 	ctx->num_out_pix = ctx->img2.width;
 	ctx->out_true_size = ctx->out_true_width;
 
@@ -1019,7 +1019,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		if(!rs->rrctx) goto done;
 	}
 
-	for(j=0;j<ctx->intermed_height;j++) {
+	for(j=0;j<ctx->intermed_canvas_height;j++) {
 
 		// As needed, either copy the input pixels to a temp buffer (inpix, which
 		// ctx->in_pix already points to), or point ctx->in_pix directly to the
@@ -1028,21 +1028,21 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 			if(inpix) {
 				// This will only happen if the precision is 32
 				for(i=0;i<ctx->num_in_pix;i++) {
-					inpix[i] = ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_width+i];
+					inpix[i] = ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_canvas_width+i];
 				}
 			}
 			else {
-				ctx->in_pix = &ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_width];
+				ctx->in_pix = &ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_canvas_width];
 			}
 		}
 		else {
 			if(inpix) {
 				for(i=0;i<ctx->num_in_pix;i++) {
-					inpix[i] = ctx->intermediate32[((size_t)j)*ctx->intermed_width+i];
+					inpix[i] = ctx->intermediate32[((size_t)j)*ctx->intermed_canvas_width+i];
 				}
 			}
 			else {
-				ctx->in_pix = &ctx->intermediate64[((size_t)j)*ctx->intermed_width];
+				ctx->in_pix = &ctx->intermediate64[((size_t)j)*ctx->intermed_canvas_width];
 			}
 		}
 
@@ -1258,9 +1258,8 @@ static int iw_process_internal(struct iw_context *ctx)
 	ctx->intermediate32=NULL;
 	ctx->intermediate_alpha32=NULL;
 	ctx->final_alpha32=NULL;
-	ctx->intermed_width = ctx->input_w;
-	ctx->intermed_height = ctx->img2.height;
-	ctx->intermed_true_height = ctx->out_true_height;
+	ctx->intermed_canvas_width = ctx->input_w;
+	ctx->intermed_canvas_height = ctx->img2.height;
 
 	iw_make_linear_csdescr(&csdescr_linear);
 
@@ -1272,13 +1271,13 @@ static int iw_process_internal(struct iw_context *ctx)
 	}
 
 	if(ctx->precision==64) {
-		ctx->intermediate64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
+		ctx->intermediate64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(IW_SAMPLE));
 		if(!ctx->intermediate64) {
 			goto done;
 		}
 	}
 	else {
-		ctx->intermediate32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(iw_float32));
+		ctx->intermediate32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(iw_float32));
 		if(!ctx->intermediate32) {
 			goto done;
 		}
@@ -1300,7 +1299,7 @@ static int iw_process_internal(struct iw_context *ctx)
 	// If an alpha channel is present, we have to process it first.
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {
 		if(ctx->precision==64) {
-			ctx->intermediate_alpha64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(IW_SAMPLE));
+			ctx->intermediate_alpha64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(IW_SAMPLE));
 			if(!ctx->intermediate_alpha64) {
 				goto done;
 			}
@@ -1310,7 +1309,7 @@ static int iw_process_internal(struct iw_context *ctx)
 			}
 		}
 		else {
-			ctx->intermediate_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_width * ctx->intermed_height, sizeof(iw_float32));
+			ctx->intermediate_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(iw_float32));
 			if(!ctx->intermediate_alpha32) {
 				goto done;
 			}
