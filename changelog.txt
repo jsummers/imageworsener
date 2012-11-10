@@ -1,4 +1,6 @@
 Unreleased changes
+ - By default, don't clamp alpha samples before converting to unassociated
+   alpha.
  - Added iw_set_output_image_size() function and -imagesize option.
 
 Version 1.0.0 - 4 Nov 2012

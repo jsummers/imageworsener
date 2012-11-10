@@ -996,6 +996,11 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		// requested.
 		;
 	}
+	else if(is_alpha_channel) {
+		// We usually can't clamp the alpha sample yet, because the unclamped
+		// version of it will be needed when we resize the other channels.
+		;
+	}
 	else if(ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
 		// If we are applying a background color (after resizing)...
 		if(int_ci->need_unassoc_alpha_processing) {
