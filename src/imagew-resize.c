@@ -51,7 +51,6 @@ struct iw_rr_ctx {
 #define IW_FFF_ASYMMETRIC 0x02 // Currently unused.
 #define IW_FFF_SINCBASED  0x04
 #define IW_FFF_BOXFILTERHACK 0x08
-#define IW_FFF_AVERAGEVALUE  0x10
 	unsigned int family_flags; // Misc. information about the filter family
 
 	struct iw_weight_struct *wl; // weightlist
@@ -163,6 +162,16 @@ static double iw_filter_box(struct iw_rr_ctx *rrctx, double x)
 {
 	if(x<=0.5)
 		return 1.0;
+	return 0.0;
+}
+
+static double iw_filter_boxavg(struct iw_rr_ctx *rrctx, double x)
+{
+	if(x<0.4999999)
+		return 1.0;
+	else if(x<=0.5000001) {
+		return 0.5;
+	}
 	return 0.0;
 }
 
@@ -289,14 +298,7 @@ static void iw_create_weightlist_std(struct iw_context *ctx, struct iw_rr_ctx *r
 			}
 
 			pos = (((double)input_pixel)-pos_in_inpix)/reduction_factor;
-			if(rrctx->family_flags & IW_FFF_AVERAGEVALUE) {
-				v = (*rrctx->filter_fn)(rrctx, fixup_pos(rrctx,pos-0.00000000001));
-				v += (*rrctx->filter_fn)(rrctx, fixup_pos(rrctx,pos+0.00000000001));
-				v = v/2.0;
-			}
-			else {
-				v = (*rrctx->filter_fn)(rrctx, fixup_pos(rrctx,pos));
-			}
+			v = (*rrctx->filter_fn)(rrctx, fixup_pos(rrctx,pos));
 			if(v==0.0) continue;
 
 			v_sum += v;
@@ -456,8 +458,8 @@ struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
 		rrctx->radius = 0.501;
 		break;
 	case IW_RESIZETYPE_BOXAVG:
-		rrctx->filter_fn = iw_filter_box;
-		rrctx->family_flags = IW_FFF_STANDARD|IW_FFF_AVERAGEVALUE;
+		rrctx->filter_fn = iw_filter_boxavg;
+		rrctx->family_flags = IW_FFF_STANDARD;
 		rrctx->radius = 0.501;
 		break;
 	case IW_RESIZETYPE_TRIANGLE:
