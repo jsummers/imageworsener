@@ -100,8 +100,14 @@ $IW srcimg/g2t.png actual/bkgd.png $CMPR -width 35 -height 35 -filter catrom -bk
 $IW srcimg/rgb8a.png actual/bkgd2.png $CMPR -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
 
 # Solid color gray image with transparency
-$IW srcimg/gt.png actual/gt1.png $CMPR -width 35 -height 35 -filter lanczos
-$IW srcimg/gt.png actual/gt2.png $CMPR -width 35 -height 35 -filter lanczos -bkgd 111
+$IW srcimg/bt-gray.png actual/bt-g1.png $CMPR -width 35 -height 35 -filter lanczos
+$IW srcimg/bt-white.png actual/bt-w1.png $CMPR -width 35 -height 35 -filter lanczos
+$IW srcimg/g1t.png actual/bt-b1.png $CMPR -width 35 -height 35 -filter lanczos
+$IW srcimg/bt-gray.png actual/bt-g2.png $CMPR -width 35 -height 35 -filter lanczos -bkgd 111
+# Apply a background to images we just created.
+$IW actual/bt-b1.png actual/bt-b1a.png $CMPR -bkgd 000000
+$IW actual/bt-g1.png actual/bt-g1a.png $CMPR -bkgd 808080
+$IW actual/bt-w1.png actual/bt-w1a.png $CMPR -bkgd ffffff
 
 # test downscaling
 for f in auto mix triangle gaussian lanczos
