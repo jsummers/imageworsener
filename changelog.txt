@@ -1,6 +1,7 @@
 Unreleased changes
- - By default, don't clamp alpha samples before converting to unassociated
-   alpha.
+ - Fixed some issues with clamping interacting badly with transparency.
+   Monochrome images with transparency could have other colors introduced
+   unnecessarily.
  - Added iw_set_output_image_size() function and -imagesize option.
 
 Version 1.0.0 - 4 Nov 2012

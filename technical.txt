@@ -482,6 +482,10 @@ dimension of every resizing operation. If a background is applied after
 resizing, clamping will be done individually to both the alpha channel and the
 color channels, then the background will be applied.
 
+It is not clear to me exactly how intermediate clamping should be done when
+transparency is involved. IW's behavior in this case is not well-defined, and
+may change in future versions.
+
 If you don't use -intclamp, no clamping will be done, except as the very last
 step. If IW applies a background after resizing the image, the alpha channel
 will not be clamped first, so it could actually contain negative opacity

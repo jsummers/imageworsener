@@ -706,6 +706,13 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 	int ditherfamily;
 	int dd; // Dither decision: 0 to use floor, 1 to use ceil.
 
+	// Clamp to the [0.0,1.0] range.
+	// The sample type is UINT, so out-of-range samples can't be represented.
+	// TODO: I think that out-of-range samples could still have a meaningful
+	// effect if we are dithering. More investigation is needed here.
+	if(samp_lin<0.0) samp_lin=0.0;
+	if(samp_lin>1.0) samp_lin=1.0;
+
 	// TODO: This is getting messy. The conditions under which we use lookup
 	// tables are too complicated, and we still don't use them as often as we
 	// should. For example, if we are not dithering, we can use a table optimized
@@ -919,8 +926,6 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int is_alpha_channel;
 	struct iw_resize_settings *rs = NULL;
 	int ditherfamily, dithersubtype;
-	int clamp_after_resize=0;
-	int clamp_after_composite=0;
 	struct iw_channelinfo_intermed *int_ci;
 	struct iw_channelinfo_out *out_ci;
 
@@ -986,36 +991,6 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		}
 	}
 
-	if(ctx->intclamp) {
-		// ctx->intclamp means to clamp at pretty much every opportunity.
-		// (Setting clamp_after_composite would have no additional effect here.
-		clamp_after_resize = 1;
-	}
-	else if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
-		// If output is floating point, never clamp unless specifically
-		// requested.
-		;
-	}
-	else if(is_alpha_channel) {
-		// We usually can't clamp the alpha sample yet, because the unclamped
-		// version of it will be needed when we resize the other channels.
-		;
-	}
-	else if(ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
-		// If we are applying a background color (after resizing)...
-		if(int_ci->need_unassoc_alpha_processing) {
-			// then the color channels should only be clamped after applying
-			// the background...
-			clamp_after_composite = 1;
-		}
-		// (and the alpha channel should not directly be clamped at all).
-	}
-	else {
-		// The typical case: clamp after resizing, because the output format
-		// requires it.
-		clamp_after_resize = 1;
-	}
-
 	rs=&ctx->resize_settings[IW_DIMENSION_H];
 
 	// If the resize context for this dimension already exists, we should be
@@ -1062,7 +1037,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		// Resize ctx->in_pix to ctx->out_pix.
 		iwpvt_resize_row_main(rs->rrctx,in_pix,out_pix);
 
-		if(clamp_after_resize)
+		if(ctx->intclamp)
 			clamp_output_samples(ctx,out_pix,num_out_pix);
 
 		// If necessary, copy the resized samples to the final_alpha image
@@ -1120,11 +1095,6 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 				}
 
 				tmpsamp = (alphasamp)*(tmpsamp) + (1.0-alphasamp)*(bkcolor);
-
-				if(clamp_after_composite) {
-					if(tmpsamp<0.0) tmpsamp=0.0;
-					else if(tmpsamp>1.0) tmpsamp=1.0;
-				}
 			}
 
 			if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT)
