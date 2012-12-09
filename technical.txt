@@ -352,7 +352,29 @@ In image formats that use unassociated alpha values to indicate transparency,
 pixels that are fully transparent still have "colors", but those colors are
 irrelevant. IW will not attempt to retain such colors, and will make fully-
 transparent pixels black in most cases. An exception is if the output image
-uses color-keyed transparency, in which case it uses a different strategy.
+uses color-keyed transparency, or if a paletted image's transparent palette
+entry is also being used to store the background color label.
+
+This is documented in the interest of making IW's behavior well-defined and
+clearly documented, not because there's anything unusual about it.
+
+Writing background color labels
+-------------------------------
+
+Writing a background color to the image's metadata is currently only supported
+for PNG files. Labels will be copied from the input file, unless the
+-nobkgdlabel option is used, or a color is specified using -bkgdlabel. If the
+output depth is 8 bits or fewer, background colors have a precision of 8 bits
+per sample; otherwise their precision is 16 bits. The -grayscale option will
+convert the background color label to grayscale. Posterization (-cc and related
+options) has no effect on background color labels.
+
+The background color is considered to be critical, in that the image will not
+be optimized to a format that cannot store it at its full precision. For
+example, a non-gray background color may prevent an otherwise-grayscale image
+from being written to a grayscale format. Or, if an image has exactly 256
+different colors, and a background color that is not identical to any of them,
+it will not be possible to write the image as a paletted PNG image.
 
 Box filter
 ----------
@@ -514,8 +536,6 @@ Features I'm considering adding:
 
 - More options for specifying the image size to use; e.g. "enlarge the image
   only if it's smaller than a certain size".
-
-- Ability to maintain PNG and GIF background colors.
 
 - Faster creation of palette images. (Using a hash table?)
 

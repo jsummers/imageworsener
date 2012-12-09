@@ -595,21 +595,19 @@ static void iw_errdiff_dither(struct iw_context *ctx,int dithersubtype,
 
 // 'channel' is the output channel.
 static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
-		int channel, const struct iw_csdescr *csdescr,
+		const struct iw_csdescr *csdescr,
 		double *s_lin_floor_1, double *s_lin_ceil_1,
-		double *s_cvt_floor_full, double *s_cvt_ceil_full)
+		double *s_cvt_floor_full, double *s_cvt_ceil_full,
+		double overall_maxcolorcode, int color_count)
 {
 	IW_SAMPLE samp_cvt;
 	double samp_cvt_expanded;
-	double overall_maxcolorcode;
 	unsigned int floor_int, ceil_int;
-
-	overall_maxcolorcode = ctx->img2_ci[channel].maxcolorcode_dbl;
 
 	// A prelimary conversion to the target color space.
 	samp_cvt = linear_to_x_sample(samp_lin,csdescr);
 
-	if(ctx->img2_ci[channel].color_count==0) {
+	if(color_count==0) {
 		// The normal case: we want to use this channel's full available depth.
 		samp_cvt_expanded = samp_cvt * overall_maxcolorcode;
 		if(samp_cvt_expanded>overall_maxcolorcode) samp_cvt_expanded=overall_maxcolorcode;
@@ -629,7 +627,7 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 		// Colors are from 0.0 to 3.0, mapped to 0.0 to 255.0.
 		// Reduction factor is 255.0/3.0 = 85.0
 
-		posterized_maxcolorcode = (double)(ctx->img2_ci[channel].color_count-1);
+		posterized_maxcolorcode = (double)(color_count-1);
 
 		samp_cvt_expanded = samp_cvt * posterized_maxcolorcode;
 		if(samp_cvt_expanded>posterized_maxcolorcode) samp_cvt_expanded=posterized_maxcolorcode;
@@ -737,9 +735,10 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 		else if(samp_lin<0.0) samp_lin=0.0;
 	}
 
-	is_exact = get_nearest_valid_colors(ctx,samp_lin,channel,csdescr,
+	is_exact = get_nearest_valid_colors(ctx,samp_lin,csdescr,
 		&s_lin_floor_1, &s_lin_ceil_1,
-		&s_cvt_floor_full, &s_cvt_ceil_full);
+		&s_cvt_floor_full, &s_cvt_ceil_full,
+		ctx->img2_ci[channel].maxcolorcode_dbl, ctx->img2_ci[channel].color_count);
 
 	if(is_exact) {
 		s_full = s_cvt_floor_full;
@@ -790,6 +789,40 @@ static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE sam
 
 okay:
 	put_raw_sample(ctx,s_full,x,y,channel);
+}
+
+// A stripped-down version of put_sample_convert_from_linear(),
+// intended for use with background colors.
+static unsigned int calc_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE samp_lin,
+	   const struct iw_csdescr *csdescr, double overall_maxcolorcode)
+{
+	double s_lin_floor_1, s_lin_ceil_1;
+	double s_cvt_floor_full, s_cvt_ceil_full;
+	double d_floor, d_ceil;
+	int is_exact;
+	double s_full;
+
+	if(samp_lin<0.0) samp_lin=0.0;
+	if(samp_lin>1.0) samp_lin=1.0;
+
+	is_exact = get_nearest_valid_colors(ctx,samp_lin,csdescr,
+		&s_lin_floor_1, &s_lin_ceil_1,
+		&s_cvt_floor_full, &s_cvt_ceil_full,
+		overall_maxcolorcode, 0);
+
+	if(is_exact) {
+		s_full = s_cvt_floor_full;
+		goto okay;
+	}
+
+	d_floor = samp_lin-s_lin_floor_1;
+	d_ceil  = s_lin_ceil_1-samp_lin;
+
+	if(d_ceil<=d_floor) s_full=s_cvt_ceil_full;
+	else s_full=s_cvt_floor_full;
+
+okay:
+	return (unsigned int)(0.5+s_full);
 }
 
 static void clamp_output_samples(struct iw_context *ctx, IW_SAMPLE *out_pix, int num_out_pix)
@@ -1218,6 +1251,72 @@ static void iw_make_nearest_color_table(struct iw_context *ctx, double **ptable,
 	*ptable = tbl;
 }
 
+// Label is returned in linear colorspace.
+// Returns 0 if no label available.
+static int get_output_bkgd_label_lin(struct iw_context *ctx, double *r, double *g, double *b)
+{
+	*r = 1.0; *g = 0.0; *b = 1.0;
+
+	if(ctx->suppress_bkgd_label) return 0;
+
+	if(ctx->img2_bkgd_label_req_set) {
+		*r = ctx->img2_bkgd_label_req.c[0];
+		*g = ctx->img2_bkgd_label_req.c[1];
+		*b = ctx->img2_bkgd_label_req.c[2];
+		return 1;
+	}
+
+	// If the user didn't specify a label, but the input file had one, copy the
+	// input file's label.
+	if(ctx->img1_bkgd_label_set) {
+		*r = ctx->img1_bkgd_label_lin.c[0];
+		*g = ctx->img1_bkgd_label_lin.c[1];
+		*b = ctx->img1_bkgd_label_lin.c[2];
+		return 1;
+	}
+
+	return 0;
+}
+
+// Quantize the background color label, and store in ctx->img2.bkgdlabel.
+// Also convert it to grayscale if needed.
+static void iw_process_bkgd_label(struct iw_context *ctx)
+{
+	int ret;
+	int k;
+	double c[3];
+
+	if(ctx->img2.sampletype!=IW_SAMPLETYPE_UINT) {
+		return;
+	}
+
+	if(!(ctx->output_profile&IW_PROFILE_PNG_BKGD)) {
+		return;
+	}
+
+	ret = get_output_bkgd_label_lin(ctx,&c[0],&c[1],&c[2]);
+	if(!ret) return;
+
+	if(ctx->to_grayscale) {
+		IW_SAMPLE g;
+		g = iw_color_to_grayscale(ctx, c[0], c[1], c[2]);
+		c[0] = c[1] = c[2] = g;
+	}
+
+	if(ctx->img2.bit_depth==8) {
+		for(k=0;k<3;k++) {
+			ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, c[k], &ctx->img2cs, 255.0);
+		}
+		ctx->img2.has_bkgdlabel = 1;
+	}
+	else if(ctx->img2.bit_depth==16) {
+		for(k=0;k<3;k++) {
+			ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, c[k], &ctx->img2cs, 65535.0);
+		}
+		ctx->img2.has_bkgdlabel = 1;
+	}
+}
+
 static int iw_process_internal(struct iw_context *ctx)
 {
 	int channel;
@@ -1309,6 +1408,9 @@ static int iw_process_internal(struct iw_context *ctx)
 			if(!ret) goto done;
 		}
 	}
+
+	iw_process_bkgd_label(ctx);
+
 	retval=1;
 
 done:
@@ -1441,7 +1543,7 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	if(ctx->img1_bkgd_label_set && !ctx->caller_set_bkgd) {
 		// If the user didn't give us a background color, and the file
 		// has one, use the file's background color as the default.
-		ctx->bkgd = ctx->img1_bkgd_label; // structure copy
+		ctx->bkgd = ctx->img1_bkgd_label_lin; // structure copy
 	}
 
 	bkgd1.c[0]=0.0; bkgd1.c[1]=0.0; bkgd1.c[2]=0.0;
@@ -1449,7 +1551,7 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 
 	if(ctx->use_bkgd_label && ctx->img1_bkgd_label_set) {
 		// Use the background color label from the input file.
-		bkgd1 = ctx->img1_bkgd_label; // sructure copy
+		bkgd1 = ctx->img1_bkgd_label_lin; // sructure copy
 		ctx->bkgd_checkerboard = 0;
 	}
 	else {
@@ -2045,9 +2147,9 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	if(ctx->img1_bkgd_label_set) {
-		// Convert the background color to a linear colorspace (in-place).
+		// Convert the background color to a linear colorspace.
 		for(i=0;i<3;i++) {
-			ctx->img1_bkgd_label.c[i] = x_to_linear_sample(ctx->img1_bkgd_label.c[i],&ctx->img1cs);
+			ctx->img1_bkgd_label_lin.c[i] = x_to_linear_sample(ctx->img1_bkgd_label_inputcs.c[i],&ctx->img1cs);
 		}
 	}
 

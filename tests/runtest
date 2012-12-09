@@ -264,6 +264,20 @@ $IW srcimg/p8tbg.png actual/rbkgd2.png $CMPR -bkgd 080,008 -checkersize 2 -usebk
 $IW srcimg/p8tbg.png actual/rbkgd3.jpg $CMPR -nowarn
 $IW srcimg/p5t.gif actual/gif1.png $CMPR
 
+# Test background color labeling
+$IW srcimg/rgb8.png actual/bkgdlabel1.png $CMPR -width 15 -noopt palette -bkgdlabel 2380ff
+$IW srcimg/rgb8abg.png actual/bkgdlabel2.png $CMPR -width 15 -noopt palette
+$IW srcimg/rgb8abg.png actual/bkgdlabel3.png $CMPR -width 15 -noopt palette -bkgd ccdd00
+$IW srcimg/p8tbg.png actual/bkgdlabel4.png $CMPR -width 15 -noopt palette
+$IW srcimg/rgb8.png actual/bkgdlabel5.png $CMPR -depth 16 -bkgdlabel 30398707ddd5
+$IW srcimg/rgb8.png actual/bkgdlabel6.png $CMPR -depth 16 -bkgdlabel 30308787dddd
+$IW srcimg/rgb8.png actual/bkgdlabel7.png $CMPR -width 15 -bkgdlabel 3e4 -grayscale
+$IW srcimg/g4t.png actual/bkgdlabel8.png $CMPR -bkgdlabel 444
+$IW srcimg/g4t.png actual/bkgdlabel9.png $CMPR -bkgdlabel 454545
+$IW srcimg/256col.png actual/bkgdlabel10.png $CMPR
+$IW srcimg/256col.png actual/bkgdlabel11.png $CMPR -nobkgdlabel
+$IW srcimg/256col.png actual/bkgdlabel12.png $CMPR -grayscale -cc 2 -dither f
+
 # More GIF tests
 
 # Page 2 has a local color table.
@@ -273,7 +287,7 @@ $IW srcimg/ani1.gif actual/gif2.png $CMPR -page 2
 # - to make sure page 2's color table doesn't get used
 # - to make sure page 3's transparency flag got unset
 # - the -noincludescreen option
-$IW srcimg/ani1.gif actual/gif3.png $CMPR -page 4 -noincludescreen
+$IW srcimg/ani1.gif actual/gif3.png $CMPR -page 4 -noincludescreen -nobkgdlabel
 
 # Tests for reading BMP files.
 $IW srcimg/bmp24.bmp actual/bmp24.png $CMPR $SMALL

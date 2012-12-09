@@ -1,4 +1,6 @@
 Unreleased changes
+ - Support for writing and maintaining background color metadata. Added
+   -bkgdlabel option.
  - Fixed some issues with clamping interacting badly with transparency.
    Monochrome images with transparency could have other colors introduced
    unnecessarily.

@@ -129,6 +129,9 @@ extern "C" {
 // Requested BMP version to write.
 #define IW_VAL_BMP_VERSION       47
 
+// If set, try not to write a background color label.
+#define IW_VAL_NO_BKGD_LABEL     48
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1
@@ -172,6 +175,7 @@ extern "C" {
 #define IW_PROFILE_ALWAYSLINEAR  0x2000
 #define IW_PROFILE_HDRI          0x4000 // Supports floating-point samples
 #define IW_PROFILE_REDUCEDBITDEPTHS 0x8000 // Supports non-default maxcolorcodes.
+#define IW_PROFILE_PNG_BKGD      0x10000 // Has PNG-style background colors
 
 #define IW_RESIZETYPE_AUTO       0x01
 #define IW_RESIZETYPE_NULL       0x02
@@ -351,6 +355,9 @@ struct iw_image {
 	unsigned int colorkey[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 	int reduced_maxcolors;
 	unsigned int maxcolorcode[5];  // Indexed by IW_CHANNELTYPE_[RED..GRAY]
+
+	int has_bkgdlabel; // For output images only.
+	unsigned int bkgdlabel[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 };
 
 struct iw_rgba8color {
@@ -528,6 +535,9 @@ IW_EXPORT(void) iw_set_grayscale_weights(struct iw_context *ctx, double r, doubl
 
 // Color values are on a scale from 0 to 1, in the input colorspace.
 IW_EXPORT(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b);
+
+// Color values are on a scale from 0 to 1, in linear colorspace.
+IW_EXPORT(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double g, double b);
 
 // The background color to apply to the image.
 // Color values are on a scale from 0 to 1, in a linear colorspace.

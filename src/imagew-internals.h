@@ -121,6 +121,9 @@ struct iw_opt_ctx {
 
 	int has_colorkey_trns;
 	unsigned int colorkey[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
+
+	int has_bkgdlabel;
+	unsigned int bkgdlabel[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 };
 
 struct iw_context {
@@ -158,8 +161,13 @@ struct iw_context {
 
 	// The suggested background color stored in the input file.
 	int img1_bkgd_label_set;
-	struct iw_rgb_color img1_bkgd_label; // img1.bkgd_color_* (source colorspace, then converted to linear)
+	struct iw_rgb_color img1_bkgd_label_inputcs;
+	struct iw_rgb_color img1_bkgd_label_lin; // img1.bkgd_color_*
 	int use_bkgd_label; // Prefer the bkgd color from the input file.
+
+	int img2_bkgd_label_req_set;
+	struct iw_rgb_color img2_bkgd_label_req; // Uses linear colorspace
+	int suppress_bkgd_label;
 
 	struct iw_channelinfo_intermed intermed_ci[IW_CI_COUNT];
 	int intermed_imgtype;

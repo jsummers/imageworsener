@@ -271,6 +271,13 @@ static void iw_opt_16_to_8(struct iw_context *ctx, struct iw_opt_ctx *optctx, in
 	optctx->pixelsptr = optctx->tmp_pixels;
 	optctx->bpr = newbpr;
 	optctx->bit_depth = 8;
+
+	// If there's a background color label, also reduce its precision.
+	if(optctx->has_bkgdlabel) {
+		optctx->bkgdlabel[0] >>= 8;
+		optctx->bkgdlabel[1] >>= 8;
+		optctx->bkgdlabel[2] >>= 8;
+	}
 }
 
 // Create a new (8-bit) image by copying up to 3 channels from the old image.
@@ -692,6 +699,26 @@ static int iwopt_find_color(const struct iw_palette *pal, const struct iw_rgba8c
 	return -1;
 }
 
+// Returns palette index to use for the background color, or -1 if not found.
+static int iwopt_find_bkgd_color(const struct iw_palette *pal, const struct iw_rgba8color *c)
+{
+	int i;
+	for(i=0;i<pal->num_entries;i++) {
+		if(pal->entry[i].a==0) {
+			// A fully transparent palette color can always be used for the background
+			// (assuming PNG-style background colors).
+			return i;
+		}
+		if(pal->entry[i].r==c->r && pal->entry[i].g==c->g &&
+			pal->entry[i].b==c->b)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+// Writes to optctx->palette.
 // Returns 1 if a palette can be used.
 static int optctx_collect_palette_colors(struct iw_context *ctx, struct iw_opt_ctx *optctx)
 {
@@ -748,6 +775,28 @@ static int optctx_collect_palette_colors(struct iw_context *ctx, struct iw_opt_c
 	}
 
 	if(optctx->palette->num_entries<1) return 0; // Shouldn't happen.
+
+	if(optctx->has_bkgdlabel) {
+		c.r = optctx->bkgdlabel[0];
+		c.g = optctx->bkgdlabel[1];
+		c.b = optctx->bkgdlabel[2];
+		c.a = 255;
+		e = iwopt_find_bkgd_color(optctx->palette,&c);
+		if(e<0) {
+			// Did not find a suiteable palette entry for the background color.
+			// Is there room to add one?
+			if(optctx->palette->num_entries<256) {
+				// Yes.
+				optctx->palette->entry[optctx->palette->num_entries] = c;
+				optctx->palette->num_entries++;
+			}
+			else {
+				// No.
+				return 0;
+			}
+		}
+	}
+
 	return 1;
 }
 
@@ -907,6 +956,15 @@ static int iwopt_palette_is_valid_gray(struct iw_context *ctx, struct iw_opt_ctx
 
 	if(optctx->palette->num_entries > max_entries)
 		return 0;
+
+	// If there is a background color label, it must be one of the available gray shades.
+	if(optctx->has_bkgdlabel && bpp<8) {
+		// We already know the bkgd label is gray (because has_color is false), so we
+		// only have to look at one of the components.
+		if(optctx->bkgdlabel[0] % factor != 0) {
+			return 0;
+		}
+	}
 
 	iw_zeromem(clr_used,256);
 
@@ -1126,6 +1184,12 @@ void iwpvt_optimize_image(struct iw_context *ctx)
 	//optctx->has_partial_transparency=0;
 	//optctx->has_16bit_precision=0;
 	//optctx->has_color=0;
+	if(ctx->img2.has_bkgdlabel) {
+		optctx->has_bkgdlabel = ctx->img2.has_bkgdlabel;
+		optctx->bkgdlabel[0] = ctx->img2.bkgdlabel[0];
+		optctx->bkgdlabel[1] = ctx->img2.bkgdlabel[1];
+		optctx->bkgdlabel[2] = ctx->img2.bkgdlabel[2];
+	}
 
 	if(ctx->img2.sampletype!=IW_SAMPLETYPE_UINT) {
 		return;
@@ -1136,6 +1200,37 @@ void iwpvt_optimize_image(struct iw_context *ctx)
 	}
 
 	make_transparent_pixels_black(ctx,&ctx->img2);
+
+	if(optctx->has_bkgdlabel) {
+		// The optimization routines are responsible for ensuring that the
+		// background color label can easily be written to the optimized image.
+		// For example, they may have to add a color to the palette just for
+		// the background color.
+		// They are NOT responsible for telling the image encoder module
+		// precisely how to write the background color. The encoder will be
+		// given the background color in RGB format, and it will have to figure
+		// out what to do with it. For example, it may have to search for that
+		// color in the palette.
+
+		// If the background color label exists, and is non-gray,
+		// make sure we don't write a grayscale image
+		// (assuming we're writing to a PNG-like format).
+		if(optctx->bkgdlabel[0] != ctx->img2.bkgdlabel[1] ||
+			optctx->bkgdlabel[0] != ctx->img2.bkgdlabel[2])
+		{
+			optctx->has_color = 1;
+		}
+
+		// If 16-bit precision is desired, and the background color cannot be
+		// losslessly reduced to 8-bit precision, use 16-bit precision.
+		if(optctx->bit_depth==16) {
+			if(optctx->bkgdlabel[0]%257!=0 || optctx->bkgdlabel[1]%257!=0 ||
+				optctx->bkgdlabel[2]%257!=0)
+			{
+				optctx->has_16bit_precision=1;
+			}
+		}
+	}
 
 	if(!iw_opt_scanpixels(ctx,optctx)) {
 		goto noscan;

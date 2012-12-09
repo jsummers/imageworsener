@@ -299,6 +299,10 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->density_code = ctx->img2.density_code;
 	img->density_x = ctx->img2.density_x;
 	img->density_y = ctx->img2.density_y;
+	img->has_bkgdlabel = ctx->optctx.has_bkgdlabel;
+	img->bkgdlabel[0] = ctx->optctx.bkgdlabel[0];
+	img->bkgdlabel[1] = ctx->optctx.bkgdlabel[1];
+	img->bkgdlabel[2] = ctx->optctx.bkgdlabel[2];
 	img->has_colorkey_trns = ctx->optctx.has_colorkey_trns;
 	img->colorkey[0] = ctx->optctx.colorkey[0];
 	img->colorkey[1] = ctx->optctx.colorkey[1];
@@ -432,10 +436,18 @@ IW_IMPL(void) iw_set_input_max_color_code(struct iw_context *ctx, int input_chan
 
 IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b)
 {
-	ctx->img1_bkgd_label.c[0] = r;
-	ctx->img1_bkgd_label.c[1] = g;
-	ctx->img1_bkgd_label.c[2] = b;
+	ctx->img1_bkgd_label_inputcs.c[0] = r;
+	ctx->img1_bkgd_label_inputcs.c[1] = g;
+	ctx->img1_bkgd_label_inputcs.c[2] = b;
 	ctx->img1_bkgd_label_set = 1;
+}
+
+IW_IMPL(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double g, double b)
+{
+	ctx->img2_bkgd_label_req.c[0] = r;
+	ctx->img2_bkgd_label_req.c[1] = g;
+	ctx->img2_bkgd_label_req.c[2] = b;
+	ctx->img2_bkgd_label_req_set = 1;
 }
 
 IW_IMPL(int) iw_get_input_density(struct iw_context *ctx,
@@ -750,6 +762,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_PRECISION:
 		ctx->precision = (n<=32)?32:64;
 		break;
+	case IW_VAL_NO_BKGD_LABEL:
+		ctx->suppress_bkgd_label = n;
+		break;
 	}
 }
 
@@ -849,6 +864,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_PRECISION:
 		ret = ctx->precision;
+		break;
+	case IW_VAL_NO_BKGD_LABEL:
+		ret = ctx->suppress_bkgd_label;
 		break;
 	}
 

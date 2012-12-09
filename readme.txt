@@ -417,7 +417,7 @@ Options:
      formulas, though they should be used with caution.
 
  -bkgd <color1>[,<color2>]
-   Apply a background color to the transparent or partially-transparent parts
+   Apply a background color to the transparent and partially-transparent parts
    of the image. This is the only way to remove transparency from an image.
 
    The color uses an HTML-like format with 3, 6, or 12 hex digits. For
@@ -432,6 +432,9 @@ Options:
 
    If you supply two colors, a checkerboard background will be used.
 
+   This does not affect the background color label that may be written to the
+   output image's metadata. Use -bkgdlabel for that.
+
  -checkersize <n>
    For checkerboard backgrounds, specifies the size of the squares in pixels.
    The default is 16.
@@ -442,10 +445,19 @@ Options:
 
  -usebkgdlabel
    If the input file contains a background color label (a PNG bKGD chunk),
-   and you used the -bkgd option, IW has to decide which of those background
-   color to prefer. Normally, it prefers the color from the -bkgd option. But
-   if you use the -usebkgdlabel option, it will prefer the color from the
-   input file.
+   and you used the -bkgd option, IW has to decide which of these background
+   colors to prefer in the event that a background is applied to the image.
+   Normally, it prefers the color from the -bkgd option. But if you use the
+   -usebkgdlabel option, it will prefer the color from the input file.
+
+ -bkgdlabel <color>
+   Specify the background color to write to the output file's metadata, if
+   supported by the file format. The color is always given in the sRGB
+   colorspace. The format of <color> is the same as for the -bkgd option.
+
+ -nobkgdlabel
+   Do not copy the input file's background color label to the output file.
+   Incompatible with -bkgdlabel.
 
  -cc <n>  (-cccolor -ccalpha -ccred -ccgreen -ccblue -ccgray)
  -cc <r>,<g>,<b>[,<a>]
@@ -456,6 +468,16 @@ Options:
    the possible values (based on -depth) in the output color space. An
    optimized palette is not used. If you use "-cc", consider also using
    "-dither".
+
+   The -cc option should usually not be used when writing to a lossy image
+   format (JPEG, WebP). Lossy formats do not store colors precisely enough,
+   so the resulting image will have more colors than requested.
+
+   If you use -cc expecting to get a PNG image in a particular format, be aware
+   that background color labels are not affected by -cc, and can prevent some
+   image format optimizations from occurring. For example, "-grayscale -cc 2"
+   will not always produce a 1-bpp grayscale image, unless you also use
+   -nobkgdlabel.
 
    The -ccX options let you have a different setting for different channels.
    If you specify overlapping options, the most specific option will have

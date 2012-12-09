@@ -117,6 +117,11 @@ struct params_struct {
 	int bkgd_check_size;
 	int bkgd_check_origin_x, bkgd_check_origin_y;
 	int use_bkgd_label;
+
+	int bkgd_label_set;
+	struct rgb_color bkgd_label; // Uses linear colorspace
+	int no_bkgd_label;
+
 	int use_crop, crop_x, crop_y, crop_w, crop_h;
 	unsigned int reorient;
 	struct rgb_color bkgd;
@@ -1159,6 +1164,12 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->use_bkgd_label) {
 		iw_set_value(ctx,IW_VAL_USE_BKGD_LABEL,1);
 	}
+	if(p->no_bkgd_label) {
+		if(p->no_bkgd_label) iw_set_value(ctx,IW_VAL_NO_BKGD_LABEL,1);
+	}
+	else if(p->bkgd_label_set) {
+		iw_set_output_bkgd_label(ctx,p->bkgd_label.s[0],p->bkgd_label.s[1],p->bkgd_label.s[2]);
+	}
 
 	p->src_width=iw_get_value(ctx,IW_VAL_INPUT_WIDTH);
 	p->src_height=iw_get_value(ctx,IW_VAL_INPUT_HEIGHT);
@@ -1528,6 +1539,17 @@ static void iwcmd_option_bkgd(struct params_struct *p, const char *s)
 	p->bkgd_checkerboard=1;
 	parse_bkgd_color(&p->bkgd,s,cpos-s);
 	parse_bkgd_color(&p->bkgd2,cpos+1,strlen(cpos+1));
+}
+
+static void iwcmd_option_bkgd_label(struct params_struct *p, const char *s)
+{
+	struct iw_csdescr cs_srgb;
+
+	parse_bkgd_color(&p->bkgd_label,s,strlen(s));
+	iw_make_srgb_csdescr(&cs_srgb,IW_SRGB_INTENT_PERCEPTUAL);
+	p->bkgd_label.s[0] = iw_convert_sample_to_linear(p->bkgd_label.s[0],&cs_srgb);
+	p->bkgd_label.s[1] = iw_convert_sample_to_linear(p->bkgd_label.s[1],&cs_srgb);
+	p->bkgd_label.s[2] = iw_convert_sample_to_linear(p->bkgd_label.s[2],&cs_srgb);
 }
 
 // Find where the "name" ends and the parameters (numbers) begin.
@@ -1981,7 +2003,7 @@ enum iwcmd_param_types {
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
  PT_BESTFIT, PT_NOBESTFIT, PT_NORESIZE, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
- PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL,
+ PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL, PT_BKGDLABEL, PT_NOBKGDLABEL,
  PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP, PT_ENCODING
 };
 
@@ -2033,6 +2055,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"ccblue",PT_CCBLUE,1},
 		{"ccgray",PT_CCGRAY,1},
 		{"bkgd",PT_BKGD,1},
+		{"bkgdlabel",PT_BKGDLABEL,1},
 		{"checkersize",PT_CHECKERSIZE,1},
 		{"checkerorigin",PT_CHECKERORG,1},
 		{"crop",PT_CROP,1},
@@ -2076,6 +2099,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"intclamp",PT_INTCLAMP,0},
 		{"nocslabel",PT_NOCSLABEL,0},
 		{"usebkgdlabel",PT_USEBKGDLABEL,0},
+		{"nobkgdlabel",PT_NOBKGDLABEL,0},
 		{"includescreen",PT_INCLUDESCREEN,0},
 		{"noincludescreen",PT_NOINCLUDESCREEN,0},
 		{"jpegarith",PT_JPEGARITH,0},
@@ -2134,6 +2158,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_USEBKGDLABEL:
 		p->use_bkgd_label=1;
+		break;
+	case PT_NOBKGDLABEL:
+		p->no_bkgd_label=1;
 		break;
 	case PT_INCLUDESCREEN:
 		p->include_screen=1;
@@ -2356,6 +2383,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_BKGD:
 		p->apply_bkgd=1;
 		iwcmd_option_bkgd(p,v);
+		break;
+	case PT_BKGDLABEL:
+		p->bkgd_label_set=1;
+		iwcmd_option_bkgd_label(p,v);
 		break;
 	case PT_CHECKERSIZE:
 		p->bkgd_check_size=iwcmd_parse_int(v);
