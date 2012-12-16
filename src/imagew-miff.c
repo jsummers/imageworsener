@@ -29,6 +29,8 @@ struct iwmiffrcontext {
 	int compression;
 	int miff_bitdepth;
 	int precision;
+	int is_srgb;
+	int rendering_intent;
 	double density_x, density_y;
 	struct iw_csdescr csdescr;
 
@@ -182,11 +184,32 @@ static void iwmiff_found_attribute(struct iwmiffrcontext *rctx,
 		if(!iw_stricmp(val,"RGB")) {
 			;
 		}
+		else if(!iw_stricmp(val,"sRGB")) {
+			rctx->is_srgb = 1;
+		}
 		else if(!iw_stricmp(val,"Gray")) {
 			rctx->is_grayscale = 1;
 		}
 		else {
 			iw_set_error(rctx->ctx,"MIFF: Unsupported colorspace");
+			rctx->error_flag=1;
+		}
+	}
+	else if(!strcmp(name,"rendering-intent")) {
+		if(!iw_stricmp(val,"perceptual")) {
+			rctx->rendering_intent = IW_SRGB_INTENT_PERCEPTUAL;
+		}
+		else if(!iw_stricmp(val,"relative")) {
+			rctx->rendering_intent = IW_SRGB_INTENT_RELATIVE;
+		}
+		else if(!iw_stricmp(val,"saturation")) {
+			rctx->rendering_intent = IW_SRGB_INTENT_SATURATION;
+		}
+		else if(!iw_stricmp(val,"absolute")) {
+			rctx->rendering_intent = IW_SRGB_INTENT_ABSOLUTE;
+		}
+		else {
+			iw_set_error(rctx->ctx,"MIFF: Unsupported rendering intent");
 			rctx->error_flag=1;
 		}
 	}
@@ -338,6 +361,10 @@ static int iwmiff_read_header(struct iwmiffrcontext *rctx)
 	(void)iwmiff_read_byte(rctx);
 	if(rctx->read_error_flag || rctx->error_flag) {
 		return 0;
+	}
+
+	if(rctx->is_srgb) {
+		iw_make_srgb_csdescr(&rctx->csdescr,rctx->rendering_intent);
 	}
 	return 1;
 }
@@ -513,6 +540,7 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	rctx.compression = IW_COMPRESSION_NONE;
 	rctx.zmod = iw_get_zlib_module(ctx);
 	rctx.precision = iw_get_value(ctx,IW_VAL_PRECISION);
+	rctx.rendering_intent = IW_SRGB_INTENT_PERCEPTUAL;
 
 	// Assume unlabeled images are sRGB
 	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
