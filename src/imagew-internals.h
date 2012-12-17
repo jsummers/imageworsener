@@ -238,6 +238,7 @@ struct iw_context {
 	struct iw_opt_ctx optctx;
 
 	int no_gamma; // Disable gamma correction. (IW_VAL_DISABLE_GAMMA)
+	int rendering_intent_req;
 	int intclamp; // Clamp the intermediate samples to the 0.0-1.0 range.
 	int no_cslabel; // Disable writing of a colorspace label to the output file.
 	int grayscale_formula; // IW_GSF_*

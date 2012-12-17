@@ -111,6 +111,17 @@ static double fixup_png_gamma(double g)
 	return ((double)((int)(0.5+100000.0*g)))/100000.0;
 }
 
+static int lpng_intent_to_iw_intent(int x)
+{
+	switch(x) {
+	case PNG_sRGB_INTENT_PERCEPTUAL: return IW_INTENT_PERCEPTUAL;
+	case PNG_sRGB_INTENT_RELATIVE:   return IW_INTENT_RELATIVE;
+	case PNG_sRGB_INTENT_SATURATION: return IW_INTENT_SATURATION;
+	case PNG_sRGB_INTENT_ABSOLUTE:   return IW_INTENT_ABSOLUTE;
+	}
+	return IW_INTENT_UNKNOWN;
+}
+
 static void iwpng_read_colorspace(struct iwpngrcontext *rctx)
 {
 	int tmp;
@@ -118,7 +129,8 @@ static void iwpng_read_colorspace(struct iwpngrcontext *rctx)
 	struct iw_csdescr csdescr;
 
 	if(png_get_sRGB(rctx->png_ptr, rctx->info_ptr, &tmp)) {
-		iw_make_srgb_csdescr(&csdescr,tmp);
+		iw_make_srgb_csdescr_2(&csdescr);
+		rctx->img->rendering_intent = lpng_intent_to_iw_intent(tmp);
 	}
 	else if(png_get_gAMA(rctx->png_ptr, rctx->info_ptr, &file_gamma)) {
 		file_gamma = fixup_png_gamma(file_gamma);
@@ -126,7 +138,7 @@ static void iwpng_read_colorspace(struct iwpngrcontext *rctx)
 	}
 	else {
 		// default:
-		iw_make_srgb_csdescr(&csdescr,IW_SRGB_INTENT_PERCEPTUAL);
+		iw_make_srgb_csdescr_2(&csdescr);
 	}
 
 	iw_set_input_colorspace(rctx->ctx,&csdescr);
@@ -561,6 +573,16 @@ static void iwpng_set_palette(struct iwpngwcontext *wctx,
 	}
 }
 
+static int iw_intent_to_lpng_intent(int x)
+{
+	switch(x) {
+	case IW_INTENT_RELATIVE:   return PNG_sRGB_INTENT_RELATIVE;
+	case IW_INTENT_SATURATION: return PNG_sRGB_INTENT_SATURATION;
+	case IW_INTENT_ABSOLUTE:   return PNG_sRGB_INTENT_ABSOLUTE;
+	}
+	return PNG_sRGB_INTENT_PERCEPTUAL;
+}
+
 static void my_png_write_fn(png_structp png_ptr, png_bytep data, png_size_t length)
 {
 	struct iwpngwcontext *wctx;
@@ -685,7 +707,8 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		png_set_gAMA(png_ptr, info_ptr, 1.0);
 	}
 	else { // Assume IW_CSTYPE_SRGB
-		png_set_sRGB(png_ptr, info_ptr, csdescr.srgb_intent);
+		png_set_sRGB(png_ptr, info_ptr,
+			iw_intent_to_lpng_intent(img.rendering_intent));
 	}
 
 	iwpng_set_phys(&wctx);

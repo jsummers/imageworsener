@@ -1904,7 +1904,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 			iw_make_linear_csdescr(&ctx->img2cs);
 		}
 		else {
-			iw_make_srgb_csdescr(&ctx->img2cs,IW_SRGB_INTENT_PERCEPTUAL);
+			iw_make_srgb_csdescr_2(&ctx->img2cs);
 		}
 	}
 
@@ -2155,6 +2155,14 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 
 	if(ctx->apply_bkgd) {
 		prepare_apply_bkgd(ctx);
+	}
+
+	if(ctx->rendering_intent_req==IW_INTENT_UNKNOWN) {
+		// User didn't request a specific intent; copy from input file.
+		ctx->img2.rendering_intent = ctx->img1.rendering_intent;
+	}
+	else {
+		ctx->img2.rendering_intent = ctx->rendering_intent_req;
 	}
 
 	if(ctx->resize_settings[IW_DIMENSION_H].family==IW_RESIZETYPE_AUTO) {

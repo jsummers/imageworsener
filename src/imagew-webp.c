@@ -538,7 +538,7 @@ IW_IMPL(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	rctx.img = &img;
 
 	// Assume WebP images are sRGB
-	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
+	iw_make_srgb_csdescr_2(&rctx.csdescr);
 
 	if(!iwwebp_read_main(&rctx))
 		goto done;

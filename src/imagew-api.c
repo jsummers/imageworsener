@@ -252,8 +252,8 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
 	ctx->input_w = -1;
 	ctx->input_h = -1;
-	iw_make_srgb_csdescr(&ctx->img1cs,IW_SRGB_INTENT_PERCEPTUAL);
-	iw_make_srgb_csdescr(&ctx->img2cs,IW_SRGB_INTENT_PERCEPTUAL);
+	iw_make_srgb_csdescr_2(&ctx->img1cs);
+	iw_make_srgb_csdescr_2(&ctx->img2cs);
 	ctx->to_grayscale=0;
 	ctx->grayscale_formula = IW_GSF_STANDARD;
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
@@ -299,6 +299,7 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->density_code = ctx->img2.density_code;
 	img->density_x = ctx->img2.density_x;
 	img->density_y = ctx->img2.density_y;
+	img->rendering_intent = ctx->img2.rendering_intent;
 	img->has_bkgdlabel = ctx->optctx.has_bkgdlabel;
 	img->bkgdlabel[0] = ctx->optctx.bkgdlabel[0];
 	img->bkgdlabel[1] = ctx->optctx.bkgdlabel[1];
@@ -488,11 +489,18 @@ IW_IMPL(void) iw_make_linear_csdescr(struct iw_csdescr *cs)
 	cs->srgb_intent = 0;
 }
 
+// This function is deprecated, and should not be used.
 IW_IMPL(void) iw_make_srgb_csdescr(struct iw_csdescr *cs, int srgb_intent)
 {
 	cs->cstype = IW_CSTYPE_SRGB;
 	cs->gamma = 0.0;
 	cs->srgb_intent = srgb_intent;
+}
+
+IW_IMPL(void) iw_make_srgb_csdescr_2(struct iw_csdescr *cs)
+{
+	cs->cstype = IW_CSTYPE_SRGB;
+	cs->gamma = 0.0;
 }
 
 IW_IMPL(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma)
@@ -765,6 +773,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_NO_BKGD_LABEL:
 		ctx->suppress_bkgd_label = n;
 		break;
+	case IW_VAL_INTENT:
+		ctx->rendering_intent_req = n;
+		break;
 	}
 }
 
@@ -867,6 +878,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_NO_BKGD_LABEL:
 		ret = ctx->suppress_bkgd_label;
+		break;
+	case IW_VAL_INTENT:
+		ret = ctx->rendering_intent_req;
 		break;
 	}
 

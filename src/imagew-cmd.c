@@ -162,6 +162,7 @@ struct params_struct {
 	int cs_in_set, cs_out_set;
 	struct iw_csdescr cs_in;
 	struct iw_csdescr cs_out;
+	int rendering_intent;
 	int output_encoding;
 	int output_encoding_req;
 #ifdef IW_WINDOWS
@@ -1109,6 +1110,9 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->cs_out_set) {
 		iw_set_output_colorspace(ctx,&p->cs_out);
 	}
+	if(p->rendering_intent!=IW_INTENT_UNKNOWN) {
+		iw_set_value(ctx, IW_VAL_INTENT, p->rendering_intent);
+	}
 
 	if(p->dither_all.family>=0)      iw_set_dither_type(ctx,IW_CHANNELTYPE_ALL     ,p->dither_all.family     ,p->dither_all.subtype);
 	if(p->dither_nonalpha.family>=0) iw_set_dither_type(ctx,IW_CHANNELTYPE_NONALPHA,p->dither_nonalpha.family,p->dither_nonalpha.subtype);
@@ -1144,7 +1148,7 @@ static int iwcmd_run(struct params_struct *p)
 			struct iw_csdescr cs_srgb;
 
 			// Make an sRGB descriptor to use with iw_convert_sample_to_linear.
-			iw_make_srgb_csdescr(&cs_srgb,IW_SRGB_INTENT_PERCEPTUAL);
+			iw_make_srgb_csdescr_2(&cs_srgb);
 
 			for(k=0;k<3;k++) {
 				p->bkgd.s[k] = iw_convert_sample_to_linear(p->bkgd.s[k],&cs_srgb);
@@ -1546,7 +1550,7 @@ static void iwcmd_option_bkgd_label(struct params_struct *p, const char *s)
 	struct iw_csdescr cs_srgb;
 
 	parse_bkgd_color(&p->bkgd_label,s,strlen(s));
-	iw_make_srgb_csdescr(&cs_srgb,IW_SRGB_INTENT_PERCEPTUAL);
+	iw_make_srgb_csdescr_2(&cs_srgb);
 	p->bkgd_label.s[0] = iw_convert_sample_to_linear(p->bkgd_label.s[0],&cs_srgb);
 	p->bkgd_label.s[1] = iw_convert_sample_to_linear(p->bkgd_label.s[1],&cs_srgb);
 	p->bkgd_label.s[2] = iw_convert_sample_to_linear(p->bkgd_label.s[2],&cs_srgb);
@@ -1765,15 +1769,13 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 		iw_make_linear_csdescr(cs);
 	}
 	else if(len>=4 && !strncmp(s,"srgb",4)) {
-		int intent;
 		switch(s[4]) {
-			case 'p': intent=IW_SRGB_INTENT_PERCEPTUAL; break;
-			case 'r': intent=IW_SRGB_INTENT_RELATIVE; break;
-			case 's': intent=IW_SRGB_INTENT_SATURATION; break;
-			case 'a': intent=IW_SRGB_INTENT_ABSOLUTE; break;
-			default:  intent=IW_SRGB_INTENT_PERCEPTUAL; break;
+			case 'p': p->rendering_intent=IW_INTENT_PERCEPTUAL; break;
+			case 'r': p->rendering_intent=IW_INTENT_RELATIVE; break;
+			case 's': p->rendering_intent=IW_INTENT_SATURATION; break;
+			case 'a': p->rendering_intent=IW_INTENT_ABSOLUTE; break;
 		}
-		iw_make_srgb_csdescr(cs,intent);
+		iw_make_srgb_csdescr_2(cs);
 	}
 	else {
 		iwcmd_error(p,"Unknown color space \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
@@ -1913,6 +1915,34 @@ static int iwcmd_option_gsf(struct params_struct *p, const char *s)
 	return 1;
 }
 
+static int iwcmd_option_intent(struct params_struct *p, const char *s)
+{
+	if(!strcmp(s,"p") || !strcmp(s,"perceptual")) {
+		p->rendering_intent = IW_INTENT_PERCEPTUAL;
+	}
+	else if(!strcmp(s,"r") || !strcmp(s,"relative")) {
+		p->rendering_intent = IW_INTENT_RELATIVE;
+	}
+	else if(!strcmp(s,"s") || !strcmp(s,"saturation")) {
+		p->rendering_intent = IW_INTENT_SATURATION;
+	}
+	else if(!strcmp(s,"a") || !strcmp(s,"absolute")) {
+		p->rendering_intent = IW_INTENT_ABSOLUTE;
+	}
+	else if(!strcmp(s,"default")) {
+		p->rendering_intent = IW_INTENT_DEFAULT;
+	}
+	else if(!strcmp(s,"none")) {
+		p->rendering_intent = IW_INTENT_NONE;
+	}
+	else {
+		iwcmd_error(p,"Unknown intent \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
+		return 0;
+	}
+	return 1;
+
+}
+
 static int iwcmd_option_reorient(struct params_struct *p, const char *s)
 {
 	if(s[0]>='0' && s[0]<='9') {
@@ -1989,7 +2019,7 @@ static void iwcmd_printversion(struct params_struct *p)
 
 enum iwcmd_param_types {
  PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_SIZE, PT_EXACTSIZE,
- PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS,
+ PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS, PT_INTENT,
  PT_PRECISION, PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
  PT_BLUR, PT_BLUR_X, PT_BLUR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
@@ -2087,6 +2117,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"density",PT_DENSITY_POLICY,1},
 		{"gsf",PT_GRAYSCALEFORMULA,1},
 		{"grayscaleformula",PT_GRAYSCALEFORMULA,1},
+		{"intent",PT_INTENT,1},
 		{"noopt",PT_NOOPT,1},
 		{"encoding",PT_ENCODING,1},
 		{"interlace",PT_INTERLACE,0},
@@ -2515,6 +2546,11 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 			return 0;
 		}
 		p->grayscale=1;
+		break;
+	case PT_INTENT:
+		if(!iwcmd_option_intent(p,v)) {
+			return 0;
+		}
 		break;
 	case PT_NOOPT:
 		if(!iwcmd_parse_noopt(p,v))

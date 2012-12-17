@@ -208,6 +208,7 @@ $IW srcimg/g4.png actual/tiff1.tif -width 11 -cc 16 -grayscale -filter mix
 # Test writing MIFF
 $IW srcimg/g8a.png actual/miff32.miff -width 11 -depth 32 -filter mix -compress none
 $IW srcimg/rgb16.png actual/miff64.miff -width 11 -depth 64 -filter mix -compress none
+$IW srcimg/rgb8.png actual/miff3.miff -width 13 -depth 32 -intent r
 
 # Test writing WebP
 $IW srcimg/rgb16.png actual/webp1.webp -width 23 -filter mix

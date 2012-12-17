@@ -534,10 +534,27 @@ Options:
     gamma" like 0.4545"). "g1.0" is the same as "linear".
 
    "srgb": sRGB colorspace. Can optionally be followed by a letter indicating
-    the "rendering intent". p=perceptual, r=relative, s=saturation, a=absolute.
+    the "rendering intent" (equivalent to using the -intent option):
+    p=perceptual, r=relative, s=saturation, a=absolute.
 
    By default IW will choose a colorspace that works with the output format;
    almost always sRGB.
+
+ -intent <rendering-intent>
+   Specify the color profile "rendering intent" setting to be written to the
+   output file. This does not affect image processing.
+
+   By default, the rendering intent of the input image will be used. If that's
+   not possible, a default setting will be used that may depend on the output
+   image format.
+
+   Rendering intents available:
+    "p" or "perceptual"
+    "r" or "relative"
+    "s" or "saturation"
+    "a" or "absolute"
+    "default": Ignore the intent of the input image.
+    "none": Request that no rendering intent be written.
 
  -inputcs <colorspace>
    Assume the input image is in the given colorspace. This is intended to be

@@ -132,6 +132,9 @@ extern "C" {
 // If set, try not to write a background color label.
 #define IW_VAL_NO_BKGD_LABEL     48
 
+// Request the output image be labeled with this rendering intent.
+#define IW_VAL_INTENT            49 // IW_INTENT_*
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1
@@ -227,10 +230,18 @@ extern "C" {
 #define IW_CSTYPE_GAMMA     2
 
 // These must be the same as the PNG definitions.
-#define IW_SRGB_INTENT_PERCEPTUAL 0
-#define IW_SRGB_INTENT_RELATIVE   1
-#define IW_SRGB_INTENT_SATURATION 2
-#define IW_SRGB_INTENT_ABSOLUTE   3
+#define IW_SRGB_INTENT_PERCEPTUAL 0 // Deprecated
+#define IW_SRGB_INTENT_RELATIVE   1 // Deprecated
+#define IW_SRGB_INTENT_SATURATION 2 // Deprecated
+#define IW_SRGB_INTENT_ABSOLUTE   3 // Deprecated
+
+#define IW_INTENT_UNKNOWN    0
+#define IW_INTENT_DEFAULT    1
+#define IW_INTENT_NONE       2
+#define IW_INTENT_PERCEPTUAL 10
+#define IW_INTENT_RELATIVE   11
+#define IW_INTENT_SATURATION 12
+#define IW_INTENT_ABSOLUTE   13
 
 #define IW_DIMENSION_H 0 // The horizontal (x) dimension.
 #define IW_DIMENSION_V 1 // The vertical (y) dimension.
@@ -322,7 +333,7 @@ extern "C" {
 // Colorspace descriptor
 struct iw_csdescr {
 	int cstype; // IW_CSTYPE_*
-	int srgb_intent; // used if CSTYPE==IW_CSTYPE_SRGB
+	int srgb_intent; // (deprecated)
 	double gamma; // used if CSTYPE==IW_CSTYPE_GAMMA
 };
 
@@ -358,6 +369,8 @@ struct iw_image {
 
 	int has_bkgdlabel; // For output images only.
 	unsigned int bkgdlabel[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
+
+	int rendering_intent; // Valid for both input and output images.
 };
 
 struct iw_rgba8color {
@@ -562,7 +575,8 @@ IW_EXPORT(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_
 // The struct must be allocated by the caller, but does not need to be
 // initialized or freed in any special way.
 IW_EXPORT(void) iw_make_linear_csdescr(struct iw_csdescr *cs);
-IW_EXPORT(void) iw_make_srgb_csdescr(struct iw_csdescr *cs, int srgb_intent);
+IW_EXPORT(void) iw_make_srgb_csdescr(struct iw_csdescr *cs, int srgb_intent); // Deprecated
+IW_EXPORT(void) iw_make_srgb_csdescr_2(struct iw_csdescr *cs);
 IW_EXPORT(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma);
 
 IW_EXPORT(int) iw_get_input_density(struct iw_context *ctx,

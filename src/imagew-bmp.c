@@ -283,25 +283,18 @@ static int decode_v4_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 // Decode the fields that are in v5 and not in v4.
 static int decode_v5_header_fields(struct iwbmprcontext *rctx, const iw_byte *buf)
 {
-	unsigned int cstype;
 	unsigned int intent_bmp_style;
 	int intent_iw_style;
 
-	cstype = iw_get_ui32le(&buf[56]);
-
-	// The 'intent' field is apparently always valid, but we
-	// only have a use for it if our output colorspace is sRGB.
-	if(rctx->csdescr.cstype==IW_CSTYPE_SRGB) {
-		intent_bmp_style = iw_get_ui32le(&buf[108]);
-		intent_iw_style = IW_SRGB_INTENT_PERCEPTUAL; // default
-		switch(intent_bmp_style) {
-			case 1: intent_iw_style = IW_SRGB_INTENT_SATURATION; break; // LCS_GM_BUSINESS
-			case 2: intent_iw_style = IW_SRGB_INTENT_RELATIVE; break; // LCS_GM_GRAPHICS
-			case 4: intent_iw_style = IW_SRGB_INTENT_PERCEPTUAL; break; // LCS_GM_IMAGES
-			case 8: intent_iw_style = IW_SRGB_INTENT_ABSOLUTE; break; // LCS_GM_ABS_COLORIMETRIC
-		}
-		iw_make_srgb_csdescr(&rctx->csdescr,intent_iw_style);
+	intent_bmp_style = iw_get_ui32le(&buf[108]);
+	intent_iw_style = IW_INTENT_UNKNOWN;
+	switch(intent_bmp_style) {
+		case 1: intent_iw_style = IW_INTENT_SATURATION; break; // LCS_GM_BUSINESS
+		case 2: intent_iw_style = IW_INTENT_RELATIVE; break; // LCS_GM_GRAPHICS
+		case 4: intent_iw_style = IW_INTENT_PERCEPTUAL; break; // LCS_GM_IMAGES
+		case 8: intent_iw_style = IW_INTENT_ABSOLUTE; break; // LCS_GM_ABS_COLORIMETRIC
 	}
+	rctx->img->rendering_intent = intent_iw_style;
 
 	// The profile may either be after the color table, or after the bitmap bits.
 	// I'm assuming that we will never need to use the profile size in order to
@@ -875,7 +868,7 @@ IW_IMPL(int) iw_read_bmp_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	rctx.iodescr = iodescr;
 
 	// Start with a default sRGB colorspace. This may be overridden later.
-	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
+	iw_make_srgb_csdescr_2(&rctx.csdescr);
 
 	rctx.has_fileheader = !iw_get_value(ctx,IW_VAL_BMP_NO_FILEHEADER);
 	if(rctx.has_fileheader) {
@@ -1151,15 +1144,16 @@ static int iwbmp_write_bmp_v45header_fields(struct iwbmpwcontext *wctx)
 		iw_set_ui32le(&header[56],IWBMPCS_DEVICE_RGB);
 
 	// Intent
-	intent_bmp_style = 4; // Perceptual
-	if(wctx->csdescr.cstype==IW_CSTYPE_SRGB && !wctx->no_cslabel) {
-		switch(wctx->csdescr.srgb_intent) {
-		case IW_SRGB_INTENT_PERCEPTUAL: intent_bmp_style = 4; break;
-		case IW_SRGB_INTENT_RELATIVE:   intent_bmp_style = 2; break;
-		case IW_SRGB_INTENT_SATURATION: intent_bmp_style = 1; break;
-		case IW_SRGB_INTENT_ABSOLUTE:   intent_bmp_style = 8; break;
-		}
+	//intent_bmp_style = 4; // Perceptual
+	//if(wctx->csdescr.cstype==IW_CSTYPE_SRGB && !wctx->no_cslabel) {
+	switch(wctx->img->rendering_intent) {
+	case IW_INTENT_PERCEPTUAL: intent_bmp_style = 4; break;
+	case IW_INTENT_RELATIVE:   intent_bmp_style = 2; break;
+	case IW_INTENT_SATURATION: intent_bmp_style = 1; break;
+	case IW_INTENT_ABSOLUTE:   intent_bmp_style = 8; break;
+	default: intent_bmp_style = 4;
 	}
+	//}
 	iw_set_ui32le(&header[108],intent_bmp_style);
 
 	iwbmp_write(wctx,&header[40],124-40);

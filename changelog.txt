@@ -1,4 +1,8 @@
 Unreleased changes
+ - Added -intent option, to set the rendering intent without setting the
+   colorspace to sRGB.
+ - By default, copy the "rendering intent" setting from the source to the
+   target image.
  - Support for writing and maintaining background color metadata. Added
    -bkgdlabel option.
  - Fixed some issues with clamping interacting badly with transparency.

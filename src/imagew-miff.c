@@ -29,8 +29,6 @@ struct iwmiffrcontext {
 	int compression;
 	int miff_bitdepth;
 	int precision;
-	int is_srgb;
-	int rendering_intent;
 	double density_x, density_y;
 	struct iw_csdescr csdescr;
 
@@ -185,7 +183,7 @@ static void iwmiff_found_attribute(struct iwmiffrcontext *rctx,
 			;
 		}
 		else if(!iw_stricmp(val,"sRGB")) {
-			rctx->is_srgb = 1;
+			iw_make_srgb_csdescr_2(&rctx->csdescr);
 		}
 		else if(!iw_stricmp(val,"Gray")) {
 			rctx->is_grayscale = 1;
@@ -197,20 +195,19 @@ static void iwmiff_found_attribute(struct iwmiffrcontext *rctx,
 	}
 	else if(!strcmp(name,"rendering-intent")) {
 		if(!iw_stricmp(val,"perceptual")) {
-			rctx->rendering_intent = IW_SRGB_INTENT_PERCEPTUAL;
+			rctx->img->rendering_intent = IW_INTENT_PERCEPTUAL;
 		}
 		else if(!iw_stricmp(val,"relative")) {
-			rctx->rendering_intent = IW_SRGB_INTENT_RELATIVE;
+			rctx->img->rendering_intent = IW_INTENT_RELATIVE;
 		}
 		else if(!iw_stricmp(val,"saturation")) {
-			rctx->rendering_intent = IW_SRGB_INTENT_SATURATION;
+			rctx->img->rendering_intent = IW_INTENT_SATURATION;
 		}
 		else if(!iw_stricmp(val,"absolute")) {
-			rctx->rendering_intent = IW_SRGB_INTENT_ABSOLUTE;
+			rctx->img->rendering_intent = IW_INTENT_ABSOLUTE;
 		}
 		else {
-			iw_set_error(rctx->ctx,"MIFF: Unsupported rendering intent");
-			rctx->error_flag=1;
+			iw_warning(rctx->ctx,"MIFF: Unrecognized rendering-intent");
 		}
 	}
 	else if(!strcmp(name,"depth")) {
@@ -363,9 +360,6 @@ static int iwmiff_read_header(struct iwmiffrcontext *rctx)
 		return 0;
 	}
 
-	if(rctx->is_srgb) {
-		iw_make_srgb_csdescr(&rctx->csdescr,rctx->rendering_intent);
-	}
 	return 1;
 }
 
@@ -540,10 +534,9 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	rctx.compression = IW_COMPRESSION_NONE;
 	rctx.zmod = iw_get_zlib_module(ctx);
 	rctx.precision = iw_get_value(ctx,IW_VAL_PRECISION);
-	rctx.rendering_intent = IW_SRGB_INTENT_PERCEPTUAL;
 
-	// Assume unlabeled images are sRGB
-	iw_make_srgb_csdescr(&rctx.csdescr,IW_SRGB_INTENT_PERCEPTUAL);
+	// Assume sRGB by default
+	iw_make_srgb_csdescr_2(&rctx.csdescr);
 
 	img.sampletype = IW_SAMPLETYPE_FLOATINGPOINT;
 
@@ -633,6 +626,8 @@ static void iwmiff_writef(struct iwmiffwcontext *wctx, const char *fmt, ...)
 
 static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 {
+	const char *tmps;
+
 	iwmiff_write_sz(wctx,"id=ImageMagick  version=1.0\n");
 	iwmiff_writef(wctx,"class=DirectClass  colors=0  matte=%s\n",wctx->has_alpha?"True":"False");
 	iwmiff_writef(wctx,"columns=%d  rows=%d  depth=%d\n",wctx->img->width,
@@ -662,6 +657,17 @@ static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 	if(wctx->img->density_code==IW_DENSITY_UNITS_PER_METER) {
 		iwmiff_write_sz(wctx,"units=PixelsPerCentimeter\n");
 		iwmiff_writef(wctx,"resolution=%.2fx%.2f\n",wctx->img->density_x/100.0,wctx->img->density_y/100.0);
+	}
+
+	switch(wctx->img->rendering_intent) {
+	case IW_INTENT_PERCEPTUAL: tmps="Perceptual"; break;
+	case IW_INTENT_RELATIVE:   tmps="Relative";   break;
+	case IW_INTENT_SATURATION: tmps="Saturation"; break;
+	case IW_INTENT_ABSOLUTE:   tmps="Absolute";   break;
+	default: tmps=NULL;
+	}
+	if(tmps) {
+		iwmiff_writef(wctx,"rendering-intent=%s\n", tmps);
 	}
 
 	iwmiff_write_sz(wctx,"gamma=1.0\n");
