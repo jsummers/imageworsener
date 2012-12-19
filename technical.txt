@@ -361,8 +361,8 @@ clearly documented, not because there's anything unusual about it.
 Writing background color labels
 -------------------------------
 
-Writing a background color to the image's metadata is currently only supported
-for PNG files. Labels will be copied from the input file, unless the
+Writing a background color to the image's metadata is supported for PNG and
+MIFF files. Labels will be copied from the input file, unless the
 -nobkgdlabel option is used, or a color is specified using -bkgdlabel. If the
 output depth is 8 bits or fewer, background colors have a precision of 8 bits
 per sample; otherwise their precision is 16 bits. The -grayscale option will

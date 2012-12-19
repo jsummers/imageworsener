@@ -1285,12 +1285,11 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 	int ret;
 	int k;
 	double c[3];
+	double maxcolor;
 
-	if(ctx->img2.sampletype!=IW_SAMPLETYPE_UINT) {
-		return;
-	}
-
-	if(!(ctx->output_profile&IW_PROFILE_PNG_BKGD)) {
+	if(!(ctx->output_profile&IW_PROFILE_PNG_BKGD) &&
+		!(ctx->output_profile&IW_PROFILE_RGB16_BKGD))
+	{
 		return;
 	}
 
@@ -1303,18 +1302,23 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 		c[0] = c[1] = c[2] = g;
 	}
 
-	if(ctx->img2.bit_depth==8) {
-		for(k=0;k<3;k++) {
-			ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, c[k], &ctx->img2cs, 255.0);
-		}
-		ctx->img2.has_bkgdlabel = 1;
+	if(ctx->output_profile&IW_PROFILE_RGB16_BKGD) {
+		maxcolor=65535.0;
+	}
+	else if(ctx->img2.bit_depth==8) {
+		maxcolor=255.0;
 	}
 	else if(ctx->img2.bit_depth==16) {
-		for(k=0;k<3;k++) {
-			ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, c[k], &ctx->img2cs, 65535.0);
-		}
-		ctx->img2.has_bkgdlabel = 1;
+		maxcolor=65535.0;
 	}
+	else {
+		return;
+	}
+
+	for(k=0;k<3;k++) {
+		ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, c[k], &ctx->img2cs, maxcolor);
+	}
+	ctx->img2.has_bkgdlabel = 1;
 }
 
 static int iw_process_internal(struct iw_context *ctx)

@@ -155,6 +155,30 @@ static void iwmiff_parse_density(struct iwmiffrcontext *rctx, const char *val)
 	rctx->density_known = 1;
 }
 
+static int hexdigit_value(char d)
+{
+	if(d>='0' && d<='9') return ((int)d)-'0';
+	if(d>='a' && d<='f') return ((int)d)+10-'a';
+	if(d>='A' && d<='F') return ((int)d)+10-'A';
+	return 0;
+}
+
+static double hexvalue4(const char *s)
+{
+	return ((double)(4096*hexdigit_value(s[0]) + 256*hexdigit_value(s[1]) +
+		16*hexdigit_value(s[2]) + hexdigit_value(s[3])))/65535.0;
+}
+
+static void iwmiff_parse_bkgd_color(struct iwmiffrcontext *rctx, const char *val)
+{
+	// The only color format we support is #rrrrggggbbbb.
+	if(strlen(val)!=13 || val[0]!='#') {
+		return;
+	}
+	iw_set_input_bkgd_label(rctx->ctx, hexvalue4(&val[1]), hexvalue4(&val[5]),
+		hexvalue4(&val[9]));
+}
+
 // Called for each attribute in the header of a MIFF file.
 static void iwmiff_found_attribute(struct iwmiffrcontext *rctx,
   const char *name, const char *val)
@@ -246,6 +270,9 @@ static void iwmiff_found_attribute(struct iwmiffrcontext *rctx,
 		if(tmpd>=0.00001 && tmpd<=10.0) {
 			iw_make_gamma_csdescr(&rctx->csdescr,1.0/tmpd);
 		}
+	}
+	else if(!strcmp(name,"background-color")) {
+		iwmiff_parse_bkgd_color(rctx,val);
 	}
 	else if(!strcmp(name,"quantum:format")) {
 		if(iw_stricmp(val,"floating-point")) {
@@ -627,6 +654,7 @@ static void iwmiff_writef(struct iwmiffwcontext *wctx, const char *fmt, ...)
 static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 {
 	const char *tmps;
+	char tmpbuf[20];
 
 	iwmiff_write_sz(wctx,"id=ImageMagick  version=1.0\n");
 	iwmiff_writef(wctx,"class=DirectClass  colors=0  matte=%s\n",wctx->has_alpha?"True":"False");
@@ -671,6 +699,13 @@ static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 	}
 
 	iwmiff_write_sz(wctx,"gamma=1.0\n");
+
+	if(wctx->img->has_bkgdlabel) {
+		iw_snprintf(tmpbuf,sizeof(tmpbuf),"#%04x%04x%04x",
+			wctx->img->bkgdlabel[0], wctx->img->bkgdlabel[1], wctx->img->bkgdlabel[2]);
+		iwmiff_writef(wctx,"background-color=%s\n",tmpbuf);
+	}
+
 	iwmiff_write_sz(wctx,"quantum:format={floating-point}\n");
 
 	iwmiff_write(wctx,"\x0c\x0a\x3a\x1a",4);

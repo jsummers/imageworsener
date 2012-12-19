@@ -538,7 +538,7 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 
 	case IW_FORMAT_MIFF:
 		p = IW_PROFILE_TRANSPARENCY | IW_PROFILE_GRAYSCALE | IW_PROFILE_ALWAYSLINEAR |
-		    IW_PROFILE_HDRI;
+		    IW_PROFILE_HDRI | IW_PROFILE_RGB16_BKGD;
 		break;
 
 	case IW_FORMAT_WEBP:

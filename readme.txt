@@ -444,7 +444,7 @@ Options:
    background.
 
  -usebkgdlabel
-   If the input file contains a background color label (a PNG bKGD chunk),
+   If the input file contains a background color label (e.g. a PNG bKGD chunk),
    and you used the -bkgd option, IW has to decide which of these background
    colors to prefer in the event that a background is applied to the image.
    Normally, it prefers the color from the -bkgd option. But if you use the
