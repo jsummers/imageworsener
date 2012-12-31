@@ -256,9 +256,6 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	iw_make_srgb_csdescr_2(&ctx->img2cs);
 	ctx->to_grayscale=0;
 	ctx->grayscale_formula = IW_GSF_STANDARD;
-	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
-	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
-	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
 	ctx->req.include_screen = 1;
 	ctx->req.webp_quality = -1.0;
 	ctx->req.deflatecmprlevel = 9;
@@ -405,18 +402,18 @@ IW_IMPL(void) iw_set_dither_type(struct iw_context *ctx, int channeltype, int f,
 IW_IMPL(void) iw_set_color_count(struct iw_context *ctx, int channeltype, int c)
 {
 	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
-		ctx->color_count_req[channeltype] = c;
+		ctx->req.color_count[channeltype] = c;
 	}
 
 	switch(channeltype) {
 	case IW_CHANNELTYPE_ALL:
-		ctx->color_count_req[IW_CHANNELTYPE_ALPHA] = c;
+		ctx->req.color_count[IW_CHANNELTYPE_ALPHA] = c;
 		// fall thru
 	case IW_CHANNELTYPE_NONALPHA:
-		ctx->color_count_req[IW_CHANNELTYPE_RED] = c;
-		ctx->color_count_req[IW_CHANNELTYPE_GREEN] = c;
-		ctx->color_count_req[IW_CHANNELTYPE_BLUE] = c;
-		ctx->color_count_req[IW_CHANNELTYPE_GRAY] = c;
+		ctx->req.color_count[IW_CHANNELTYPE_RED] = c;
+		ctx->req.color_count[IW_CHANNELTYPE_GREEN] = c;
+		ctx->req.color_count[IW_CHANNELTYPE_BLUE] = c;
+		ctx->req.color_count[IW_CHANNELTYPE_GRAY] = c;
 		break;
 	}
 }
@@ -445,10 +442,10 @@ IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g
 
 IW_IMPL(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double g, double b)
 {
-	ctx->req.img2_bkgd_label.c[0] = r;
-	ctx->req.img2_bkgd_label.c[1] = g;
-	ctx->req.img2_bkgd_label.c[2] = b;
-	ctx->req.img2_bkgd_label_set = 1;
+	ctx->req.output_bkgd_label.c[0] = r;
+	ctx->req.output_bkgd_label.c[1] = g;
+	ctx->req.output_bkgd_label.c[2] = b;
+	ctx->req.output_bkgd_label_valid = 1;
 }
 
 IW_IMPL(int) iw_get_input_density(struct iw_context *ctx,
@@ -515,10 +512,9 @@ IW_IMPL(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma)
 
 IW_IMPL(void) iw_set_output_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
 {
-	ctx->caller_set_output_csdescr = 1;
-	ctx->warn_invalid_output_csdescr = 1;
-	ctx->img2cs = *csdescr; // struct copy
-	optimize_csdescr(&ctx->img2cs);
+	ctx->req.output_cs = *csdescr; // struct copy
+	optimize_csdescr(&ctx->req.output_cs);
+	ctx->req.output_cs_valid = 1;
 }
 
 IW_IMPL(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_csdescr *csdescr)
@@ -529,21 +525,20 @@ IW_IMPL(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_cs
 
 IW_IMPL(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b)
 {
-	ctx->apply_bkgd=1;
-	ctx->caller_set_bkgd=1;
-	ctx->bkgd.c[IW_CHANNELTYPE_RED]=r;
-	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=g;
-	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=b;
+	ctx->req.bkgd_valid=1;
+	ctx->req.bkgd.c[IW_CHANNELTYPE_RED]=r;
+	ctx->req.bkgd.c[IW_CHANNELTYPE_GREEN]=g;
+	ctx->req.bkgd.c[IW_CHANNELTYPE_BLUE]=b;
 }
 
 IW_IMPL(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checksize,
     double r2, double g2, double b2)
 {
-	ctx->bkgd_checkerboard=1;
+	ctx->req.bkgd_checkerboard=1;
 	ctx->bkgd_check_size=checksize;
-	ctx->bkgd2.c[IW_CHANNELTYPE_RED]=r2;
-	ctx->bkgd2.c[IW_CHANNELTYPE_GREEN]=g2;
-	ctx->bkgd2.c[IW_CHANNELTYPE_BLUE]=b2;
+	ctx->req.bkgd2.c[IW_CHANNELTYPE_RED]=r2;
+	ctx->req.bkgd2.c[IW_CHANNELTYPE_GREEN]=g2;
+	ctx->req.bkgd2.c[IW_CHANNELTYPE_BLUE]=b2;
 }
 
 IW_IMPL(void) iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y)
@@ -705,7 +700,7 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->no_gamma = n;
 		break;
 	case IW_VAL_NO_CSLABEL:
-		ctx->req.suppress_writing_cslabel = n;
+		ctx->req.suppress_output_cslabel = n;
 		break;
 	case IW_VAL_INT_CLAMP:
 		ctx->intclamp = n;
@@ -771,10 +766,10 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->precision = (n<=32)?32:64;
 		break;
 	case IW_VAL_NO_BKGD_LABEL:
-		ctx->req.suppress_writing_bkgd_label = n;
+		ctx->req.suppress_output_bkgd_label = n;
 		break;
 	case IW_VAL_INTENT:
-		ctx->req.rendering_intent = n;
+		ctx->req.output_rendering_intent = n;
 		break;
 	}
 }
@@ -794,7 +789,7 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		ret = ctx->no_gamma;
 		break;
 	case IW_VAL_NO_CSLABEL:
-		ret = ctx->req.suppress_writing_cslabel;
+		ret = ctx->req.suppress_output_cslabel;
 		break;
 	case IW_VAL_INT_CLAMP:
 		ret = ctx->intclamp;
@@ -877,10 +872,10 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		ret = ctx->precision;
 		break;
 	case IW_VAL_NO_BKGD_LABEL:
-		ret = ctx->req.suppress_writing_bkgd_label;
+		ret = ctx->req.suppress_output_bkgd_label;
 		break;
 	case IW_VAL_INTENT:
-		ret = ctx->req.rendering_intent;
+		ret = ctx->req.output_rendering_intent;
 		break;
 	}
 

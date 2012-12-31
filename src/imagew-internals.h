@@ -129,22 +129,33 @@ struct iw_opt_ctx {
 // Used to help separate settings that were requested by the caller,
 // and that might not always be respected, or applicable.
 struct iw_req_struct {
-	int use_bkgd_label_from_file; // Prefer the bkgd color from the input file.
-
 	int output_depth; // Bits/sample requested by the caller.
 	int output_maxcolorcode[IW_NUM_CHANNELTYPES];
 
-	int img2_bkgd_label_set; // Is .img2_bkgd_label valid?
-	struct iw_rgb_color img2_bkgd_label; // Uses linear colorspace
-	int suppress_writing_bkgd_label;
+	// Requested color counts; 0 = "not set"
+	int color_count[IW_NUM_CHANNELTYPES]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
 
 	// Image size requested by user. The actual size to use is stored in .resize_settings.
 	int out_true_valid;
 	double out_true_width, out_true_height;
 
-	int suppress_writing_cslabel; // Disable writing of a colorspace label to the output file.
+	int output_rendering_intent;
 
-	int rendering_intent;
+	int output_cs_valid;
+	struct iw_csdescr output_cs;
+
+	int suppress_output_cslabel;
+
+	int bkgd_valid;
+	int bkgd_checkerboard; // 1=caller requested a checkerboard background
+	struct iw_rgb_color bkgd; // The requested (primary) background color (linear colorspace).
+	struct iw_rgb_color bkgd2; // The requested secondary background color.
+
+	int output_bkgd_label_valid;
+	struct iw_rgb_color output_bkgd_label; // Uses linear colorspace
+
+	int use_bkgd_label_from_file; // Prefer the bkgd color from the input file.
+	int suppress_output_bkgd_label;
 
 	// These are not used by the core library, but codecs may use them:
 	int compression; // IW_COMPRESSION_*. Suggested compression algorithm.
@@ -180,9 +191,6 @@ struct iw_context {
 	iw_float32 *intermediate32;
 	iw_float32 *intermediate_alpha32;
 	iw_float32 *final_alpha32;
-
-	int caller_set_output_csdescr;
-	int warn_invalid_output_csdescr;
 
 	struct iw_channelinfo_in img1_ci[IW_CI_COUNT];
 
@@ -220,17 +228,11 @@ struct iw_context {
 
 	int to_grayscale;
 
-	// Requested color counts; 0 = "not set"
-	int color_count_req[IW_NUM_CHANNELTYPES]; // Indexed by IW_CHANNELTYPE_[Red..Gray]
-
-	int apply_bkgd;
+	int apply_bkgd; // 1 = We will be applying a background color.
 	int apply_bkgd_strategy; // IW_BKGD_STRATEGY_*
-	int caller_set_bkgd;
-	struct iw_rgb_color bkgd; // The (primary) background color that will be applied.
 	int bkgd_checkerboard; // valid if apply_bkgd is set. 0=solid, 1=checkerboard
 	int bkgd_check_size;
 	int bkgd_check_origin[2]; // Indexed by IW_DIMENSION_*
-	struct iw_rgb_color bkgd2; // The secondary background color that will be applied.
 
 	void *userdata;
 	iw_translatefn_type translate_fn;

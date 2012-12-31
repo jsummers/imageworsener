@@ -1257,12 +1257,12 @@ static int get_output_bkgd_label_lin(struct iw_context *ctx, double *r, double *
 {
 	*r = 1.0; *g = 0.0; *b = 1.0;
 
-	if(ctx->req.suppress_writing_bkgd_label) return 0;
+	if(ctx->req.suppress_output_bkgd_label) return 0;
 
-	if(ctx->req.img2_bkgd_label_set) {
-		*r = ctx->req.img2_bkgd_label.c[0];
-		*g = ctx->req.img2_bkgd_label.c[1];
-		*b = ctx->req.img2_bkgd_label.c[2];
+	if(ctx->req.output_bkgd_label_valid) {
+		*r = ctx->req.output_bkgd_label.c[0];
+		*g = ctx->req.output_bkgd_label.c[1];
+		*b = ctx->req.output_bkgd_label.c[2];
 		return 1;
 	}
 
@@ -1544,26 +1544,25 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 
 	if(!ctx->apply_bkgd) return;
 
-	if(ctx->img1_bkgd_label_set && !ctx->caller_set_bkgd) {
-		// If the user didn't give us a background color, and the file
-		// has one, use the file's background color as the default.
-		ctx->bkgd = ctx->img1_bkgd_label_lin; // structure copy
-	}
-
-	bkgd1.c[0]=0.0; bkgd1.c[1]=0.0; bkgd1.c[2]=0.0;
+	// Start with a default background color.
+	bkgd1.c[0]=1.0; bkgd1.c[1]=0.0; bkgd1.c[2]=1.0;
 	bkgd2.c[0]=0.0; bkgd2.c[1]=0.0; bkgd2.c[2]=0.0;
 
-	if(ctx->req.use_bkgd_label_from_file && ctx->img1_bkgd_label_set) {
-		// Use the background color label from the input file.
+	if(ctx->img1_bkgd_label_set &&
+		(ctx->req.use_bkgd_label_from_file || !ctx->req.bkgd_valid))
+	{
+		// The input file has a background color label, and either we are
+		// requested to prefer it to the caller's background color, or
+		// the caller did not give us a background color.
+		// Use the color from the input file.
 		bkgd1 = ctx->img1_bkgd_label_lin; // sructure copy
 		ctx->bkgd_checkerboard = 0;
 	}
-	else {
-		// Use the background color set by the caller, or the default
-		// background color.
-		bkgd1 = ctx->bkgd;
-		if(ctx->bkgd_checkerboard) {
-			bkgd2 = ctx->bkgd2;
+	else if(ctx->req.bkgd_valid) {
+		// Use the background color given by the caller.
+		bkgd1 = ctx->req.bkgd;
+		if(ctx->req.bkgd_checkerboard) {
+			bkgd2 = ctx->req.bkgd2;
 		}
 	}
 
@@ -1717,11 +1716,19 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		return;
 	}
 
+	if(ctx->req.bkgd_valid) {
+		// Caller told us to apply a background.
+		ctx->apply_bkgd=1;
+	}
+
+	// Tentatively user the caller's checkerboard setting.
+	ctx->bkgd_checkerboard = ctx->req.bkgd_checkerboard;
+
 	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) {
-		if(!ctx->apply_bkgd) {
+		if(!ctx->req.bkgd_valid && !ctx->apply_bkgd) {
 			iw_warning(ctx,"This image may have transparency, which is incompatible with the output format. A background color will be applied.");
-			ctx->apply_bkgd=1;
 		}
+		ctx->apply_bkgd=1;
 	}
 
 	if(ctx->resize_settings[IW_DIMENSION_H].use_offset ||
@@ -1731,12 +1738,12 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		// must apply a solid color background (and we must apply it before
 		// resizing), regardless of whether the user asked for it. It's the
 		// only strategy we support.
-		if(!ctx->apply_bkgd) {
+		if(!ctx->req.bkgd_valid && !ctx->apply_bkgd) {
 			iw_warning(ctx,"This image may have transparency, which is incompatible with a channel offset. A background color will be applied.");
-			ctx->apply_bkgd=1;
 		}
+		ctx->apply_bkgd=1;
 
-		if(ctx->bkgd_checkerboard) {
+		if(ctx->req.bkgd_checkerboard) {
 			iw_warning(ctx,"Checkerboard backgrounds are not supported when using a channel offset.");
 			ctx->bkgd_checkerboard=0;
 		}
@@ -1745,8 +1752,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 	}
 
 	if(!ctx->apply_bkgd) {
-		// At this point, we won't be applying a background because
-		// the user didn't request it, and we have no other reason to.
+		// No reason to apply a background color.
 		return;
 	}
 
@@ -1902,24 +1908,25 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->input_w>(ctx->img1.width-ctx->input_start_x)) ctx->input_w=ctx->img1.width-ctx->input_start_x;
 	if(ctx->input_h>(ctx->img1.height-ctx->input_start_y)) ctx->input_h=ctx->img1.height-ctx->input_start_y;
 
-	// By default, set the output colorspace to sRGB in most cases.
-	if(!ctx->caller_set_output_csdescr) {
+	// Decide on the output colorspace.
+	if(ctx->req.output_cs_valid) {
+		// Try to use colorspace requested by caller.
+		ctx->img2cs = ctx->req.output_cs;
+
+		if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
+			if(ctx->img2cs.cstype!=IW_CSTYPE_LINEAR) {
+				iw_warning(ctx,"Forcing output colorspace to linear; required by the output format.");
+				iw_make_linear_csdescr(&ctx->img2cs);
+			}
+		}
+	}
+	else {
+		// By default, set the output colorspace to sRGB in most cases.
 		if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
 			iw_make_linear_csdescr(&ctx->img2cs);
 		}
 		else {
 			iw_make_srgb_csdescr_2(&ctx->img2cs);
-		}
-	}
-
-	// But if IW_PROFILE_ALWAYSLINEAR is set (i.e. MIFF format), only linear
-	// output is allowed.
-	if(ctx->output_profile&IW_PROFILE_ALWAYSLINEAR) {
-		if(ctx->img2cs.cstype!=IW_CSTYPE_LINEAR) {
-			if(ctx->warn_invalid_output_csdescr) {
-				iw_warning(ctx,"Forcing output colorspace to linear; required by the output format.");
-			}
-			iw_make_linear_csdescr(&ctx->img2cs);
 		}
 	}
 
@@ -2089,7 +2096,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		flag=0;
 		for(i=0;i<IW_NUM_CHANNELTYPES;i++) {
-			if(ctx->color_count_req[i]) flag=1;
+			if(ctx->req.color_count[i]) flag=1;
 		}
 		if(flag) {
 			iw_warning(ctx,"Posterization is not supported with floating point output.");
@@ -2127,7 +2134,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 	}
 
 	for(i=0;i<ctx->img2_numchannels;i++) {
-		ctx->img2_ci[i].color_count = ctx->color_count_req[ctx->img2_ci[i].channeltype];
+		ctx->img2_ci[i].color_count = ctx->req.color_count[ctx->img2_ci[i].channeltype];
 		if(ctx->img2_ci[i].color_count) {
 			iw_restrict_to_range(2,ctx->img2_ci[i].maxcolorcode_int,&ctx->img2_ci[i].color_count);
 		}
@@ -2161,12 +2168,12 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		prepare_apply_bkgd(ctx);
 	}
 
-	if(ctx->req.rendering_intent==IW_INTENT_UNKNOWN) {
+	if(ctx->req.output_rendering_intent==IW_INTENT_UNKNOWN) {
 		// User didn't request a specific intent; copy from input file.
 		ctx->img2.rendering_intent = ctx->img1.rendering_intent;
 	}
 	else {
-		ctx->img2.rendering_intent = ctx->req.rendering_intent;
+		ctx->img2.rendering_intent = ctx->req.output_rendering_intent;
 	}
 
 	if(ctx->resize_settings[IW_DIMENSION_H].family==IW_RESIZETYPE_AUTO) {
