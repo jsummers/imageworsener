@@ -1257,12 +1257,12 @@ static int get_output_bkgd_label_lin(struct iw_context *ctx, double *r, double *
 {
 	*r = 1.0; *g = 0.0; *b = 1.0;
 
-	if(ctx->suppress_bkgd_label) return 0;
+	if(ctx->req.suppress_writing_bkgd_label) return 0;
 
-	if(ctx->img2_bkgd_label_req_set) {
-		*r = ctx->img2_bkgd_label_req.c[0];
-		*g = ctx->img2_bkgd_label_req.c[1];
-		*b = ctx->img2_bkgd_label_req.c[2];
+	if(ctx->req.img2_bkgd_label_set) {
+		*r = ctx->req.img2_bkgd_label.c[0];
+		*g = ctx->req.img2_bkgd_label.c[1];
+		*b = ctx->req.img2_bkgd_label.c[2];
 		return 1;
 	}
 
@@ -1500,13 +1500,13 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		// Floating point output.
-		if(ctx->output_depth_req<=0) {
+		if(ctx->req.output_depth<=0) {
 			// An output_depth_req of 0 means the caller did not set it.
 			// The default is to use the maximum useful depth, which is the
 			// minimum of ctx->precision and the number of bits in IW_SAMPLE.
 			ctx->img2.bit_depth = (iw_get_sample_size()<=4) ? 32 : ctx->precision;
 		}
-		else if(ctx->output_depth_req>=1 && ctx->output_depth_req<=32) {
+		else if(ctx->req.output_depth>=1 && ctx->req.output_depth<=32) {
 			ctx->img2.bit_depth=32;
 		}
 		else {
@@ -1517,11 +1517,11 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 
 	// Below this point, sample type is UINT.
 
-	if(ctx->output_depth_req>8 && (ctx->output_profile&IW_PROFILE_16BPS)) {
+	if(ctx->req.output_depth>8 && (ctx->output_profile&IW_PROFILE_16BPS)) {
 		ctx->img2.bit_depth=16;
 	}
 	else {
-		if(ctx->output_depth_req>8) {
+		if(ctx->req.output_depth>8) {
 			// Caller requested a depth higher than this format can handle.
 			iw_warning(ctx,"Reducing depth to 8; required by the output format.");
 		}
@@ -1553,7 +1553,7 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	bkgd1.c[0]=0.0; bkgd1.c[1]=0.0; bkgd1.c[2]=0.0;
 	bkgd2.c[0]=0.0; bkgd2.c[1]=0.0; bkgd2.c[2]=0.0;
 
-	if(ctx->use_bkgd_label && ctx->img1_bkgd_label_set) {
+	if(ctx->req.use_bkgd_label_from_file && ctx->img1_bkgd_label_set) {
 		// Use the background color label from the input file.
 		bkgd1 = ctx->img1_bkgd_label_lin; // sructure copy
 		ctx->bkgd_checkerboard = 0;
@@ -1773,7 +1773,7 @@ static void iw_set_auto_resizetype(struct iw_context *ctx, int size1, int size2,
 	// If not changing the size, default to "null" resize if we can.
 	// (We can't do that if using a translation or channel offset.)
 	if(size2==size1 && !ctx->resize_settings[dimension].use_offset &&
-		!ctx->out_true_req_valid &&
+		!ctx->req.out_true_valid &&
 		ctx->resize_settings[dimension].translate==0.0)
 	{
 		iw_set_resize_alg(ctx, dimension, IW_RESIZETYPE_NULL, 1.0, 0.0, 0.0);
@@ -1865,9 +1865,9 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		ctx->random_seed = iwpvt_util_randomize(ctx->prng);
 	}
 
-	if(ctx->out_true_req_valid) {
-		ctx->resize_settings[IW_DIMENSION_H].out_true_size = ctx->out_true_width_req;
-		ctx->resize_settings[IW_DIMENSION_V].out_true_size = ctx->out_true_height_req;
+	if(ctx->req.out_true_valid) {
+		ctx->resize_settings[IW_DIMENSION_H].out_true_size = ctx->req.out_true_width;
+		ctx->resize_settings[IW_DIMENSION_V].out_true_size = ctx->req.out_true_height;
 	}
 	else {
 		ctx->resize_settings[IW_DIMENSION_H].out_true_size = (double)w;
@@ -2107,7 +2107,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		if((ctx->output_profile&IW_PROFILE_REDUCEDBITDEPTHS)) {
 			for(i=0;i<ctx->img2_numchannels;i++) {
 				int mccr;
-				mccr = ctx->output_maxcolorcode_req[ctx->img2_ci[i].channeltype];
+				mccr = ctx->req.output_maxcolorcode[ctx->img2_ci[i].channeltype];
 				if(mccr>0) {
 					if(mccr>output_maxcolorcode_int) mccr=output_maxcolorcode_int;
 					ctx->img2_ci[i].maxcolorcode_int = mccr;
@@ -2161,12 +2161,12 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		prepare_apply_bkgd(ctx);
 	}
 
-	if(ctx->rendering_intent_req==IW_INTENT_UNKNOWN) {
+	if(ctx->req.rendering_intent==IW_INTENT_UNKNOWN) {
 		// User didn't request a specific intent; copy from input file.
 		ctx->img2.rendering_intent = ctx->img1.rendering_intent;
 	}
 	else {
-		ctx->img2.rendering_intent = ctx->rendering_intent_req;
+		ctx->img2.rendering_intent = ctx->req.rendering_intent;
 	}
 
 	if(ctx->resize_settings[IW_DIMENSION_H].family==IW_RESIZETYPE_AUTO) {

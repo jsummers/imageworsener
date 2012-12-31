@@ -126,6 +126,41 @@ struct iw_opt_ctx {
 	unsigned int bkgdlabel[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 };
 
+// Used to help separate settings that were requested by the caller,
+// and that might not always be respected, or applicable.
+struct iw_req_struct {
+	int use_bkgd_label_from_file; // Prefer the bkgd color from the input file.
+
+	int output_depth; // Bits/sample requested by the caller.
+	int output_maxcolorcode[IW_NUM_CHANNELTYPES];
+
+	int img2_bkgd_label_set; // Is .img2_bkgd_label valid?
+	struct iw_rgb_color img2_bkgd_label; // Uses linear colorspace
+	int suppress_writing_bkgd_label;
+
+	// Image size requested by user. The actual size to use is stored in .resize_settings.
+	int out_true_valid;
+	double out_true_width, out_true_height;
+
+	int suppress_writing_cslabel; // Disable writing of a colorspace label to the output file.
+
+	int rendering_intent;
+
+	// These are not used by the core library, but codecs may use them:
+	int compression; // IW_COMPRESSION_*. Suggested compression algorithm.
+	int page_to_read;
+	int include_screen;
+	int jpeg_quality;
+	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
+	int jpeg_arith_coding; // nonzero = use arithmetic coding
+	int pngcmprlevel;
+	int deflatecmprlevel;
+	int interlaced;
+	int bmp_no_fileheader;
+	int bmp_version; // requested BMP file version to write
+	double webp_quality;
+};
+
 struct iw_context {
 	int caller_api_version;
 	int use_count;
@@ -159,15 +194,10 @@ struct iw_context {
 	int img1_numchannels_logical;
 	int img1_alpha_channel_index;
 
-	// The suggested background color stored in the input file.
+	// The suggested background color read from the input file.
 	int img1_bkgd_label_set;
 	struct iw_rgb_color img1_bkgd_label_inputcs;
 	struct iw_rgb_color img1_bkgd_label_lin; // img1.bkgd_color_*
-	int use_bkgd_label; // Prefer the bkgd color from the input file.
-
-	int img2_bkgd_label_req_set;
-	struct iw_rgb_color img2_bkgd_label_req; // Uses linear colorspace
-	int suppress_bkgd_label;
 
 	struct iw_channelinfo_intermed intermed_ci[IW_CI_COUNT];
 	int intermed_imgtype;
@@ -188,10 +218,6 @@ struct iw_context {
 	// Indexed by IW_DIMENSION_*.
 	struct iw_resize_settings resize_settings[2];
 
-	// Image size requested by user. The actual size to use is stored in .resize_settings.
-	double out_true_width_req, out_true_height_req;
-	int out_true_req_valid;
-
 	int to_grayscale;
 
 	// Requested color counts; 0 = "not set"
@@ -209,9 +235,6 @@ struct iw_context {
 	void *userdata;
 	iw_translatefn_type translate_fn;
 	iw_warningfn_type warning_fn;
-
-	int output_depth_req; // Bits/sample requested by the caller.
-	int output_maxcolorcode_req[IW_NUM_CHANNELTYPES];
 
 	int input_maxcolorcode_int;  // Based on the source image's full bitdepth
 	double input_maxcolorcode;
@@ -238,9 +261,7 @@ struct iw_context {
 	struct iw_opt_ctx optctx;
 
 	int no_gamma; // Disable gamma correction. (IW_VAL_DISABLE_GAMMA)
-	int rendering_intent_req;
 	int intclamp; // Clamp the intermediate samples to the 0.0-1.0 range.
-	int no_cslabel; // Disable writing of a colorspace label to the output file.
 	int grayscale_formula; // IW_GSF_*
 	double grayscale_weight[3];
 	int pref_units; // IW_PREF_UNITS_*
@@ -255,19 +276,7 @@ struct iw_context {
 	int canvas_width, canvas_height;
 	int input_start_x, input_start_y, input_w, input_h;
 
-	// These are not used by the core library, but codecs may use them:
-	int compression; // IW_COMPRESSION_*. Suggested compression algorithm.
-	int page_to_read;
-	int include_screen;
-	int jpeg_quality;
-	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
-	int jpeg_arith_coding; // nonzero = use arithmetic coding
-	int pngcmprlevel;
-	int deflatecmprlevel;
-	int interlaced;
-	int bmp_no_fileheader;
-	int bmp_version; // requested BMP file version to write
-	double webp_quality;
+	struct iw_req_struct req;
 
 	// Color correction tables, to improve performance.
 	double *input_color_corr_table;

@@ -259,9 +259,9 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	ctx->bkgd.c[IW_CHANNELTYPE_RED]=1.0; // Default background color
 	ctx->bkgd.c[IW_CHANNELTYPE_GREEN]=0.0;
 	ctx->bkgd.c[IW_CHANNELTYPE_BLUE]=1.0;
-	ctx->include_screen = 1;
-	ctx->webp_quality = -1.0;
-	ctx->deflatecmprlevel = 9;
+	ctx->req.include_screen = 1;
+	ctx->req.webp_quality = -1.0;
+	ctx->req.deflatecmprlevel = 9;
 	ctx->opt_grayscale = 1;
 	ctx->opt_palette = 1;
 	ctx->opt_16_to_8 = 1;
@@ -345,11 +345,11 @@ IW_IMPL(void) iw_set_output_canvas_size(struct iw_context *ctx, int w, int h)
 
 IW_IMPL(void) iw_set_output_image_size(struct iw_context *ctx, double w, double h)
 {
-	ctx->out_true_width_req = w;
-	if(ctx->out_true_width_req<0.01) ctx->out_true_width_req=0.01;
-	ctx->out_true_height_req = h;
-	if(ctx->out_true_height_req<0.01) ctx->out_true_height_req=0.01;
-	ctx->out_true_req_valid = 1;
+	ctx->req.out_true_width = w;
+	if(ctx->req.out_true_width<0.01) ctx->req.out_true_width=0.01;
+	ctx->req.out_true_height = h;
+	if(ctx->req.out_true_height<0.01) ctx->req.out_true_height=0.01;
+	ctx->req.out_true_valid = 1;
 }
 
 IW_IMPL(void) iw_set_input_crop(struct iw_context *ctx, int x, int y, int w, int h)
@@ -367,13 +367,13 @@ IW_IMPL(void) iw_set_output_profile(struct iw_context *ctx, unsigned int n)
 
 IW_IMPL(void) iw_set_output_depth(struct iw_context *ctx, int bps)
 {
-	ctx->output_depth_req = bps;
+	ctx->req.output_depth = bps;
 }
 
 IW_IMPL(void) iw_set_output_max_color_code(struct iw_context *ctx, int channeltype, int n)
 {
 	if(channeltype>=0 && channeltype<IW_NUM_CHANNELTYPES) {
-		ctx->output_maxcolorcode_req[channeltype] = n;
+		ctx->req.output_maxcolorcode[channeltype] = n;
 	}
 }
 
@@ -445,10 +445,10 @@ IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g
 
 IW_IMPL(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double g, double b)
 {
-	ctx->img2_bkgd_label_req.c[0] = r;
-	ctx->img2_bkgd_label_req.c[1] = g;
-	ctx->img2_bkgd_label_req.c[2] = b;
-	ctx->img2_bkgd_label_req_set = 1;
+	ctx->req.img2_bkgd_label.c[0] = r;
+	ctx->req.img2_bkgd_label.c[1] = g;
+	ctx->req.img2_bkgd_label.c[2] = b;
+	ctx->req.img2_bkgd_label_set = 1;
 }
 
 IW_IMPL(int) iw_get_input_density(struct iw_context *ctx,
@@ -705,7 +705,7 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->no_gamma = n;
 		break;
 	case IW_VAL_NO_CSLABEL:
-		ctx->no_cslabel = n;
+		ctx->req.suppress_writing_cslabel = n;
 		break;
 	case IW_VAL_INT_CLAMP:
 		ctx->intclamp = n;
@@ -726,40 +726,40 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->img1.native_grayscale = n;
 		break;
 	case IW_VAL_COMPRESSION:
-		ctx->compression = n;
+		ctx->req.compression = n;
 		break;
 	case IW_VAL_PAGE_TO_READ:
-		ctx->page_to_read = n;
+		ctx->req.page_to_read = n;
 		break;
 	case IW_VAL_INCLUDE_SCREEN:
-		ctx->include_screen = n;
+		ctx->req.include_screen = n;
 		break;
 	case IW_VAL_JPEG_QUALITY:
-		ctx->jpeg_quality = n;
+		ctx->req.jpeg_quality = n;
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_H:
-		ctx->jpeg_samp_factor_h = n;
+		ctx->req.jpeg_samp_factor_h = n;
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
-		ctx->jpeg_samp_factor_v = n;
+		ctx->req.jpeg_samp_factor_v = n;
 		break;
 	case IW_VAL_JPEG_ARITH_CODING:
-		ctx->jpeg_arith_coding = n;
+		ctx->req.jpeg_arith_coding = n;
 		break;
 	case IW_VAL_DEFLATE_CMPR_LEVEL:
-		ctx->deflatecmprlevel = n;
+		ctx->req.deflatecmprlevel = n;
 		break;
 	case IW_VAL_OUTPUT_INTERLACED:
-		ctx->interlaced = n;
+		ctx->req.interlaced = n;
 		break;
 	case IW_VAL_USE_BKGD_LABEL:
-		ctx->use_bkgd_label = n;
+		ctx->req.use_bkgd_label_from_file = n;
 		break;
 	case IW_VAL_BMP_NO_FILEHEADER:
-		ctx->bmp_no_fileheader = n;
+		ctx->req.bmp_no_fileheader = n;
 		break;
 	case IW_VAL_BMP_VERSION:
-		ctx->bmp_version = n;
+		ctx->req.bmp_version = n;
 		break;
 	case IW_VAL_MAX_WIDTH:
 		ctx->max_width = n;
@@ -771,10 +771,10 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->precision = (n<=32)?32:64;
 		break;
 	case IW_VAL_NO_BKGD_LABEL:
-		ctx->suppress_bkgd_label = n;
+		ctx->req.suppress_writing_bkgd_label = n;
 		break;
 	case IW_VAL_INTENT:
-		ctx->rendering_intent_req = n;
+		ctx->req.rendering_intent = n;
 		break;
 	}
 }
@@ -794,7 +794,7 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		ret = ctx->no_gamma;
 		break;
 	case IW_VAL_NO_CSLABEL:
-		ret = ctx->no_cslabel;
+		ret = ctx->req.suppress_writing_cslabel;
 		break;
 	case IW_VAL_INT_CLAMP:
 		ret = ctx->intclamp;
@@ -829,43 +829,43 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		ret = ctx->img1.bit_depth;
 		break;
 	case IW_VAL_COMPRESSION:
-		ret = ctx->compression;
+		ret = ctx->req.compression;
 		break;
 	case IW_VAL_PAGE_TO_READ:
-		ret = ctx->page_to_read;
+		ret = ctx->req.page_to_read;
 		break;
 	case IW_VAL_INCLUDE_SCREEN:
-		ret = ctx->include_screen;
+		ret = ctx->req.include_screen;
 		break;
 	case IW_VAL_JPEG_QUALITY:
-		ret = ctx->jpeg_quality;
+		ret = ctx->req.jpeg_quality;
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_H:
-		ret = ctx->jpeg_samp_factor_h;
+		ret = ctx->req.jpeg_samp_factor_h;
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
-		ret = ctx->jpeg_samp_factor_v;
+		ret = ctx->req.jpeg_samp_factor_v;
 		break;
 	case IW_VAL_JPEG_ARITH_CODING:
-		ret = ctx->jpeg_arith_coding;
+		ret = ctx->req.jpeg_arith_coding;
 		break;
 	case IW_VAL_DEFLATE_CMPR_LEVEL:
-		ret = ctx->deflatecmprlevel;
+		ret = ctx->req.deflatecmprlevel;
 		break;
 	case IW_VAL_OUTPUT_PALETTE_GRAYSCALE:
 		ret = ctx->optctx.palette_is_grayscale;
 		break;
 	case IW_VAL_OUTPUT_INTERLACED:
-		ret = ctx->interlaced;
+		ret = ctx->req.interlaced;
 		break;
 	case IW_VAL_USE_BKGD_LABEL:
-		ret = ctx->use_bkgd_label;
+		ret = ctx->req.use_bkgd_label_from_file;
 		break;
 	case IW_VAL_BMP_NO_FILEHEADER:
-		ret = ctx->bmp_no_fileheader;
+		ret = ctx->req.bmp_no_fileheader;
 		break;
 	case IW_VAL_BMP_VERSION:
-		ret = ctx->bmp_version;
+		ret = ctx->req.bmp_version;
 		break;
 	case IW_VAL_MAX_WIDTH:
 		ret = ctx->max_width;
@@ -877,10 +877,10 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		ret = ctx->precision;
 		break;
 	case IW_VAL_NO_BKGD_LABEL:
-		ret = ctx->suppress_bkgd_label;
+		ret = ctx->req.suppress_writing_bkgd_label;
 		break;
 	case IW_VAL_INTENT:
-		ret = ctx->rendering_intent_req;
+		ret = ctx->req.rendering_intent;
 		break;
 	}
 
@@ -891,7 +891,7 @@ IW_IMPL(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n)
 {
 	switch(code) {
 	case IW_VAL_WEBP_QUALITY:
-		ctx->webp_quality = n;
+		ctx->req.webp_quality = n;
 		break;
 	case IW_VAL_TRANSLATE_X:
 		ctx->resize_settings[IW_DIMENSION_H].translate = n;
@@ -908,7 +908,7 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 
 	switch(code) {
 	case IW_VAL_WEBP_QUALITY:
-		ret = ctx->webp_quality;
+		ret = ctx->req.webp_quality;
 		break;
 	case IW_VAL_TRANSLATE_X:
 		ret = ctx->resize_settings[IW_DIMENSION_H].translate;
