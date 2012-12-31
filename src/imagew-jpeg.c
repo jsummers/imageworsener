@@ -53,7 +53,7 @@ struct iwjpegrcontext {
 };
 
 struct iw_exif_state {
-	int is_le; // Flag for little endianness
+	int endian;
 	const iw_byte *d;
 	size_t d_len;
 };
@@ -66,17 +66,17 @@ static int get_exif_tag_int_value(struct iw_exif_state *e, unsigned int tag_pos,
 	unsigned int field_type;
 	unsigned int value_count;
 
-	field_type = iw_get_ui16_e(&e->d[tag_pos+2],e->is_le);
-	value_count = iw_get_ui32_e(&e->d[tag_pos+4],e->is_le);
+	field_type = iw_get_ui16_e(&e->d[tag_pos+2],e->endian);
+	value_count = iw_get_ui32_e(&e->d[tag_pos+4],e->endian);
 
 	if(value_count!=1) return 0;
 
 	if(field_type==3) { // SHORT (uint16)
-		*pv = iw_get_ui16_e(&e->d[tag_pos+8],e->is_le);
+		*pv = iw_get_ui16_e(&e->d[tag_pos+8],e->endian);
 		return 1;
 	}
 	else if(field_type==4) { // LONG (uint32)
-		*pv = iw_get_ui32_e(&e->d[tag_pos+8],e->is_le);
+		*pv = iw_get_ui32_e(&e->d[tag_pos+8],e->endian);
 		return 1;
 	}
 
@@ -93,8 +93,8 @@ static int get_exif_tag_dbl_value(struct iw_exif_state *e, unsigned int tag_pos,
 	unsigned int value_pos;
 	unsigned int numer, denom;
 
-	field_type = iw_get_ui16_e(&e->d[tag_pos+2],e->is_le);
-	value_count = iw_get_ui32_e(&e->d[tag_pos+4],e->is_le);
+	field_type = iw_get_ui16_e(&e->d[tag_pos+2],e->endian);
+	value_count = iw_get_ui32_e(&e->d[tag_pos+4],e->endian);
 
 	if(value_count!=1) return 0;
 
@@ -103,12 +103,12 @@ static int get_exif_tag_dbl_value(struct iw_exif_state *e, unsigned int tag_pos,
 	// A rational is 8 bytes. Since 8>4, it is stored indirectly. First, read
 	// the location where it is stored.
 
-	value_pos = iw_get_ui32_e(&e->d[tag_pos+8],e->is_le);
+	value_pos = iw_get_ui32_e(&e->d[tag_pos+8],e->endian);
 	if(value_pos > e->d_len-8) return 0;
 
 	// Read the actual value.
-	numer = iw_get_ui32_e(&e->d[value_pos  ],e->is_le);
-	denom = iw_get_ui32_e(&e->d[value_pos+4],e->is_le);
+	numer = iw_get_ui32_e(&e->d[value_pos  ],e->endian);
+	denom = iw_get_ui32_e(&e->d[value_pos+4],e->endian);
 	if(denom==0) return 0;
 
 	*pv = ((double)numer)/denom;
@@ -127,13 +127,13 @@ static void iwjpeg_scan_exif_ifd(struct iwjpegrcontext *rctx,
 
 	if(ifd<8 || ifd>e->d_len-18) return;
 
-	tag_count = iw_get_ui16_e(&e->d[ifd],e->is_le);
+	tag_count = iw_get_ui16_e(&e->d[ifd],e->endian);
 	if(tag_count>1000) return; // Sanity check.
 
 	for(i=0;i<tag_count;i++) {
 		tag_pos = ifd+2+i*12;
 		if(tag_pos+12 > e->d_len) return; // Avoid overruns.
-		tag_id = iw_get_ui16_e(&e->d[tag_pos],e->is_le);
+		tag_id = iw_get_ui16_e(&e->d[tag_pos],e->endian);
 
 		switch(tag_id) {
 		case 274: // 274 = Orientation
@@ -175,9 +175,9 @@ static void iwjpeg_scan_exif(struct iwjpegrcontext *rctx,
 	e.d = d;
 	e.d_len = d_len;
 
-	e.is_le = (d[0]=='I');
+	e.endian = d[0]=='I' ? IW_ENDIAN_LITTLE : IW_ENDIAN_BIG;
 
-	ifd = iw_get_ui32_e(&d[4],e.is_le);
+	ifd = iw_get_ui32_e(&d[4],e.endian);
 
 	iwjpeg_scan_exif_ifd(rctx,&e,ifd);
 }

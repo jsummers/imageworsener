@@ -749,7 +749,8 @@ IW_EXPORT(void*) iw_realloc(struct iw_context *ctx,
 // If mem is NULL, does nothing.
 IW_EXPORT(void) iw_free(struct iw_context *ctx, void *mem);
 
-// Returns 0 if running on a big-endian system, 1 for little-endian.
+#define IW_ENDIAN_BIG    0
+#define IW_ENDIAN_LITTLE 1
 IW_EXPORT(int) iw_get_host_endianness(void);
 
 IW_EXPORT(void) iw_set_ui16le(iw_byte *b, unsigned int n);
@@ -761,8 +762,8 @@ IW_EXPORT(int) iw_get_i32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32le(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui16be(const iw_byte *b);
 IW_EXPORT(unsigned int) iw_get_ui32be(const iw_byte *b);
-IW_EXPORT(unsigned int) iw_get_ui16_e(const iw_byte *b, int is_le);
-IW_EXPORT(unsigned int) iw_get_ui32_e(const iw_byte *b, int is_le);
+IW_EXPORT(unsigned int) iw_get_ui16_e(const iw_byte *b, int endian);
+IW_EXPORT(unsigned int) iw_get_ui32_e(const iw_byte *b, int endian);
 
 IW_EXPORT(int) iw_max_color_to_bitdepth(unsigned int mc);
 

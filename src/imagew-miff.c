@@ -15,7 +15,7 @@
 #include "imagew.h"
 
 struct iwmiffrcontext {
-	int host_little_endian;
+	int host_endian;
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
@@ -396,7 +396,7 @@ static void iwmiffr_convert_row32(struct iwmiffrcontext *rctx,
 	int i;
 	int k;
 
-	if(rctx->host_little_endian) {
+	if(rctx->host_endian==IW_ENDIAN_LITTLE) {
 		for(i=0;i<nsamples;i++) {
 			for(k=0;k<4;k++) {
 				dst[i*4+k] = src[i*4+3-k];
@@ -414,7 +414,7 @@ static void iwmiffr_convert_row64(struct iwmiffrcontext *rctx,
 	int i;
 	int k;
 
-	if(rctx->host_little_endian) {
+	if(rctx->host_endian==IW_ENDIAN_LITTLE) {
 		for(i=0;i<nsamples;i++) {
 			for(k=0;k<8;k++) {
 				dst[i*8+k] = src[i*8+7-k];
@@ -445,7 +445,7 @@ static void iwmiffr_convert_row64_32(struct iwmiffrcontext *rctx,
 
 	for(i=0;i<nsamples;i++) {
 		// Read 64-bit float.
-		if(rctx->host_little_endian) {
+		if(rctx->host_endian==IW_ENDIAN_LITTLE) {
 			for(k=0;k<8;k++) {
 				su64.c[k] = src[i*8+7-k];
 			}
@@ -555,7 +555,7 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	iw_zeromem(&img,sizeof(struct iw_image));
 
 	rctx.ctx = ctx;
-	rctx.host_little_endian = iw_get_host_endianness();
+	rctx.host_endian = iw_get_host_endianness();
 	rctx.iodescr = iodescr;
 	rctx.img = &img;
 	rctx.compression = IW_COMPRESSION_NONE;
@@ -605,7 +605,7 @@ done:
 
 struct iwmiffwcontext {
 	int has_alpha;
-	int host_little_endian;
+	int host_endian;
 	int compression;
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
@@ -717,7 +717,7 @@ static void iwmiffw_convert_row32(struct iwmiffwcontext *wctx,
 	int i,j;
 
 	// Binary sections of the MIFF format use big-endian byte order.
-	if(wctx->host_little_endian) {
+	if(wctx->host_endian==IW_ENDIAN_LITTLE) {
 		for(i=0;i<numsamples;i++) {
 			for(j=0;j<4;j++) {
 				dstrow[i*4+j] = srcrow[i*4+3-j];
@@ -734,7 +734,7 @@ static void iwmiffw_convert_row64(struct iwmiffwcontext *wctx,
 {
 	int i,j;
 
-	if(wctx->host_little_endian) {
+	if(wctx->host_endian==IW_ENDIAN_LITTLE) {
 		for(i=0;i<numsamples;i++) {
 			for(j=0;j<8;j++) {
 				dstrow[i*8+j] = srcrow[i*8+7-j];
@@ -894,7 +894,7 @@ IW_IMPL(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iodes
 
 	wctx.iodescr=iodescr;
 
-	wctx.host_little_endian=iw_get_host_endianness();
+	wctx.host_endian=iw_get_host_endianness();
 	wctx.zmod=iw_get_zlib_module(ctx);
 
 	iw_get_output_image(ctx,&img1);

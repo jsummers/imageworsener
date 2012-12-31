@@ -344,23 +344,12 @@ IW_IMPL(void) iw_utf8_to_ascii(const char *src, char *dst, int dstlen)
 	dst[s.dp] = '\0';
 }
 
-// Returns 0 if running on a big-endian system, 1 for little-endian.
 IW_IMPL(int) iw_get_host_endianness(void)
 {
-	// !!! Portability warning: Using a union in this way may be nonportable,
-	// and/or may violate strict-aliasing rules.
-	union en_union {
-		iw_byte c[4];
-		int ii;
-	} volatile en;
-
-	// Test the host's endianness.
-	en.c[0]=0;
-	en.ii = 1;
-	if(en.c[0]!=0) {
-		return 1;
-	}
-	return 0;
+	iw_byte b;
+	unsigned int x = 1;
+	memcpy(&b,&x,1);
+	return b==0 ? IW_ENDIAN_BIG : IW_ENDIAN_LITTLE;
 }
 
 IW_IMPL(void) iw_set_ui16le(iw_byte *b, unsigned int n)
@@ -417,16 +406,16 @@ IW_IMPL(unsigned int) iw_get_ui32be(const iw_byte *b)
 }
 
 // Accepts a flag indicating the endianness.
-IW_IMPL(unsigned int) iw_get_ui16_e(const iw_byte *b, int is_le)
+IW_IMPL(unsigned int) iw_get_ui16_e(const iw_byte *b, int endian)
 {
-	if(is_le)
+	if(endian==IW_ENDIAN_LITTLE)
 		return iw_get_ui16le(b);
 	return iw_get_ui16be(b);
 }
 
-IW_IMPL(unsigned int) iw_get_ui32_e(const iw_byte *b, int is_le)
+IW_IMPL(unsigned int) iw_get_ui32_e(const iw_byte *b, int endian)
 {
-	if(is_le)
+	if(endian==IW_ENDIAN_LITTLE)
 		return iw_get_ui32le(b);
 	return iw_get_ui32be(b);
 }
