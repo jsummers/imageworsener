@@ -1282,6 +1282,7 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 	int k;
 	struct iw_color clr;
 	double maxcolor;
+	unsigned int tmpu;
 
 	if(!(ctx->output_profile&IW_PROFILE_PNG_BKGD) &&
 		!(ctx->output_profile&IW_PROFILE_RGB8_BKGD) &&
@@ -1315,9 +1316,15 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 		return;
 	}
 
+	// Although the bkgd label is stored as floating point, we're responsible for
+	// making sure that, when scaled and rounded to a format suitable for the output
+	// format, it will be the correct color.
 	for(k=0;k<3;k++) {
-		ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, clr.c[k], &ctx->img2cs, maxcolor);
+		tmpu = calc_sample_convert_from_linear(ctx, clr.c[k], &ctx->img2cs, maxcolor);
+		ctx->img2.bkgdlabel.c[k] = ((double)tmpu)/maxcolor;
 	}
+	ctx->img2.bkgdlabel.c[3] = 1.0;
+
 	ctx->img2.has_bkgdlabel = 1;
 }
 

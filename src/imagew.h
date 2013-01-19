@@ -376,7 +376,7 @@ struct iw_image {
 	unsigned int maxcolorcode[5];  // Indexed by IW_CHANNELTYPE_[RED..GRAY]
 
 	int has_bkgdlabel; // For output images only.
-	unsigned int bkgdlabel[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
+	struct iw_color bkgdlabel;
 
 	int rendering_intent; // Valid for both input and output images.
 };
@@ -632,6 +632,9 @@ IW_EXPORT(int) iw_get_sample_size(void);
 
 IW_EXPORT(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr *csdescr);
 IW_EXPORT(double) iw_convert_sample_from_linear(double v, const struct iw_csdescr *csdescr);
+
+// Returns one component of an iw_color, as an integer scaled as requested.
+IW_EXPORT(unsigned int) iw_color_get_int_sample(struct iw_color *clr, int channel, unsigned int maxcolorcode);
 
 // Returns an integer representing the IW version.
 // For example, 0x010203 would be version 1.2.3.

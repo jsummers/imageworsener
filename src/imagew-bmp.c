@@ -1240,7 +1240,7 @@ static void iwbmp_write_palette(struct iwbmpwcontext *wctx)
 				// arbitrary high-contrast color (magenta).
 				if(wctx->img->has_bkgdlabel) {
 					for(k=0;k<3;k++) {
-						buf[k] = wctx->img->bkgdlabel[2-k];
+						buf[k] = (iw_byte)iw_color_get_int_sample(&wctx->img->bkgdlabel,2-k,255);
 					}
 				}
 				else {

@@ -1186,9 +1186,9 @@ void iwpvt_optimize_image(struct iw_context *ctx)
 	//optctx->has_color=0;
 	if(ctx->img2.has_bkgdlabel) {
 		optctx->has_bkgdlabel = ctx->img2.has_bkgdlabel;
-		optctx->bkgdlabel[0] = ctx->img2.bkgdlabel[0];
-		optctx->bkgdlabel[1] = ctx->img2.bkgdlabel[1];
-		optctx->bkgdlabel[2] = ctx->img2.bkgdlabel[2];
+		optctx->bkgdlabel[0] = iw_color_get_int_sample(&ctx->img2.bkgdlabel, 0, ctx->img2.bit_depth==8?255:65535);
+		optctx->bkgdlabel[1] = iw_color_get_int_sample(&ctx->img2.bkgdlabel, 1, ctx->img2.bit_depth==8?255:65535);
+		optctx->bkgdlabel[2] = iw_color_get_int_sample(&ctx->img2.bkgdlabel, 2, ctx->img2.bit_depth==8?255:65535);
 	}
 
 	if(ctx->img2.sampletype!=IW_SAMPLETYPE_UINT) {
@@ -1215,8 +1215,8 @@ void iwpvt_optimize_image(struct iw_context *ctx)
 		// If the background color label exists, and is non-gray,
 		// make sure we don't write a grayscale image
 		// (assuming we're writing to a PNG-like format).
-		if(optctx->bkgdlabel[0] != ctx->img2.bkgdlabel[1] ||
-			optctx->bkgdlabel[0] != ctx->img2.bkgdlabel[2])
+		if(optctx->bkgdlabel[0] != optctx->bkgdlabel[1] ||
+			optctx->bkgdlabel[0] != optctx->bkgdlabel[2])
 		{
 			optctx->has_color = 1;
 		}

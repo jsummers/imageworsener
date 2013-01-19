@@ -474,6 +474,8 @@ static void iwpng_set_bkgd_label(struct iwpngwcontext *wctx, int color_type, int
 	int i;
 	int idx;
 	int ok = 0;
+	unsigned int bkgdlabel[3];
+	int k;
 
 	if(!wctx->img->has_bkgdlabel) return;
 
@@ -481,6 +483,11 @@ static void iwpng_set_bkgd_label(struct iwpngwcontext *wctx, int color_type, int
 
 	if(color_type & PNG_COLOR_MASK_PALETTE) {
 		if(!iwpal) return;
+
+		for(k=0;k<3;k++) {
+			bkgdlabel[k] = iw_color_get_int_sample(&wctx->img->bkgdlabel,k,255);
+		}
+
 		// There should be at least one palette entry that is suitable for using
 		// as the background color. Find it.
 		idx = -1;
@@ -494,9 +501,9 @@ static void iwpng_set_bkgd_label(struct iwpngwcontext *wctx, int color_type, int
 				wctx->bkgd_pal_entry = idx;
 				break;
 			}
-			if((unsigned int)iwpal->entry[i].r == wctx->img->bkgdlabel[0] &&
-				(unsigned int)iwpal->entry[i].g == wctx->img->bkgdlabel[1] &&
-				(unsigned int)iwpal->entry[i].b == wctx->img->bkgdlabel[2])
+			if((unsigned int)iwpal->entry[i].r == bkgdlabel[0] &&
+				(unsigned int)iwpal->entry[i].g == bkgdlabel[1] &&
+				(unsigned int)iwpal->entry[i].b == bkgdlabel[2])
 			{
 				idx = i;
 				break;
@@ -510,27 +517,30 @@ static void iwpng_set_bkgd_label(struct iwpngwcontext *wctx, int color_type, int
 	}
 	else if(color_type & PNG_COLOR_MASK_COLOR) {
 		if((bit_depth==wctx->img->bit_depth) && (bit_depth==8 || bit_depth==16)) {
-			clr.red   = (png_uint_16)wctx->img->bkgdlabel[0];
-			clr.green = (png_uint_16)wctx->img->bkgdlabel[1];
-			clr.blue  = (png_uint_16)wctx->img->bkgdlabel[2];
+			for(k=0;k<3;k++) {
+				bkgdlabel[k] = iw_color_get_int_sample(&wctx->img->bkgdlabel,k,bit_depth==8?255:65535);
+			}
+			clr.red   = (png_uint_16)bkgdlabel[0];
+			clr.green = (png_uint_16)bkgdlabel[1];
+			clr.blue  = (png_uint_16)bkgdlabel[2];
 			ok = 1;
 		}
 	}
 	else { // Grayscale
 		if(bit_depth==1) {
-			clr.gray = (png_uint_16)wctx->img->bkgdlabel[0]/255;
+			clr.gray = (png_uint_16)iw_color_get_int_sample(&wctx->img->bkgdlabel,0,1);
 			ok = 1;
 		}
 		else if(bit_depth==2) {
-			clr.gray = (png_uint_16)wctx->img->bkgdlabel[0]/85;
+			clr.gray = (png_uint_16)iw_color_get_int_sample(&wctx->img->bkgdlabel,0,3);
 			ok = 1;
 		}
 		else if(bit_depth==4) {
-			clr.gray = (png_uint_16)wctx->img->bkgdlabel[0]/17;
+			clr.gray = (png_uint_16)iw_color_get_int_sample(&wctx->img->bkgdlabel,0,15);
 			ok = 1;
 		}
 		else if((bit_depth==8 || bit_depth==16) && (bit_depth==wctx->img->bit_depth)) {
-			clr.gray = (png_uint_16)wctx->img->bkgdlabel[0];
+			clr.gray = (png_uint_16)iw_color_get_int_sample(&wctx->img->bkgdlabel,0,bit_depth==8?255:65535);
 			ok = 1;
 		}
 	}
@@ -561,9 +571,9 @@ static void iwpng_set_palette(struct iwpngwcontext *wctx,
 	if(wctx->bkgd_pal_entry_valid) {
 		// Palette color #bkgd_pal_entry is presumably fully-transparent, and we
 		// want to use its RGB values for the background color label.
-		pngpal[wctx->bkgd_pal_entry].red   = (png_byte)wctx->img->bkgdlabel[0];
-		pngpal[wctx->bkgd_pal_entry].green = (png_byte)wctx->img->bkgdlabel[1];
-		pngpal[wctx->bkgd_pal_entry].blue  = (png_byte)wctx->img->bkgdlabel[2];
+		pngpal[wctx->bkgd_pal_entry].red   = (png_byte)iw_color_get_int_sample(&wctx->img->bkgdlabel,0,255);
+		pngpal[wctx->bkgd_pal_entry].green = (png_byte)iw_color_get_int_sample(&wctx->img->bkgdlabel,1,255);
+		pngpal[wctx->bkgd_pal_entry].blue  = (png_byte)iw_color_get_int_sample(&wctx->img->bkgdlabel,2,255);
 	}
 
 	png_set_PLTE(wctx->png_ptr, wctx->info_ptr, pngpal, iwpal->num_entries);

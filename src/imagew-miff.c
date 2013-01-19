@@ -702,7 +702,9 @@ static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 
 	if(wctx->img->has_bkgdlabel) {
 		iw_snprintf(tmpbuf,sizeof(tmpbuf),"#%04x%04x%04x",
-			wctx->img->bkgdlabel[0], wctx->img->bkgdlabel[1], wctx->img->bkgdlabel[2]);
+			iw_color_get_int_sample(&wctx->img->bkgdlabel,0,65535),
+			iw_color_get_int_sample(&wctx->img->bkgdlabel,1,65535),
+			iw_color_get_int_sample(&wctx->img->bkgdlabel,2,65535));
 		iwmiff_writef(wctx,"background-color=%s\n",tmpbuf);
 	}
 

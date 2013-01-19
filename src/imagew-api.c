@@ -285,6 +285,8 @@ IW_IMPL(void) iw_destroy_context(struct iw_context *ctx)
 
 IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 {
+	int k;
+
 	iw_zeromem(img,sizeof(struct iw_image));
 	img->width = ctx->optctx.width;
 	img->height = ctx->optctx.height;
@@ -297,10 +299,18 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->density_x = ctx->img2.density_x;
 	img->density_y = ctx->img2.density_y;
 	img->rendering_intent = ctx->img2.rendering_intent;
+
 	img->has_bkgdlabel = ctx->optctx.has_bkgdlabel;
-	img->bkgdlabel[0] = ctx->optctx.bkgdlabel[0];
-	img->bkgdlabel[1] = ctx->optctx.bkgdlabel[1];
-	img->bkgdlabel[2] = ctx->optctx.bkgdlabel[2];
+	for(k=0;k<3;k++) {
+		if(ctx->optctx.bit_depth==8) {
+			img->bkgdlabel.c[k] = ((double)ctx->optctx.bkgdlabel[k])/255.0;
+		}
+		else {
+			img->bkgdlabel.c[k] = ((double)ctx->optctx.bkgdlabel[k])/65535.0;
+		}
+	}
+	img->bkgdlabel.c[3] = 1.0;
+
 	img->has_colorkey_trns = ctx->optctx.has_colorkey_trns;
 	img->colorkey[0] = ctx->optctx.colorkey[0];
 	img->colorkey[1] = ctx->optctx.colorkey[1];
@@ -689,6 +699,16 @@ IW_IMPL(void) iw_set_grayscale_weights(struct iw_context *ctx,
 	ctx->grayscale_weight[0] = r/tot;
 	ctx->grayscale_weight[1] = g/tot;
 	ctx->grayscale_weight[2] = b/tot;
+}
+
+IW_IMPL(unsigned int) iw_color_get_int_sample(struct iw_color *clr, int channel,
+	unsigned int maxcolorcode)
+{
+	int n;
+	n = (int)(0.5+(clr->c[channel] * (double)maxcolorcode));
+	if(n<0) n=0;
+	else if(n>(int)maxcolorcode) n=(int)maxcolorcode;
+	return (unsigned int)n;
 }
 
 IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
