@@ -437,6 +437,7 @@ IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g
 	ctx->img1_bkgd_label_inputcs.c[0] = r;
 	ctx->img1_bkgd_label_inputcs.c[1] = g;
 	ctx->img1_bkgd_label_inputcs.c[2] = b;
+	ctx->img1_bkgd_label_inputcs.c[3] = 1.0;
 	ctx->img1_bkgd_label_set = 1;
 }
 
@@ -445,6 +446,7 @@ IW_IMPL(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double 
 	ctx->req.output_bkgd_label.c[0] = r;
 	ctx->req.output_bkgd_label.c[1] = g;
 	ctx->req.output_bkgd_label.c[2] = b;
+	ctx->req.output_bkgd_label.c[3] = 1.0;
 	ctx->req.output_bkgd_label_valid = 1;
 }
 
@@ -529,6 +531,7 @@ IW_IMPL(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, doub
 	ctx->req.bkgd.c[IW_CHANNELTYPE_RED]=r;
 	ctx->req.bkgd.c[IW_CHANNELTYPE_GREEN]=g;
 	ctx->req.bkgd.c[IW_CHANNELTYPE_BLUE]=b;
+	ctx->req.bkgd.c[IW_CHANNELTYPE_ALPHA]=1.0;
 }
 
 IW_IMPL(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checksize,
@@ -539,6 +542,7 @@ IW_IMPL(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checksize,
 	ctx->req.bkgd2.c[IW_CHANNELTYPE_RED]=r2;
 	ctx->req.bkgd2.c[IW_CHANNELTYPE_GREEN]=g2;
 	ctx->req.bkgd2.c[IW_CHANNELTYPE_BLUE]=b2;
+	ctx->req.bkgd2.c[IW_CHANNELTYPE_ALPHA]=1.0;
 }
 
 IW_IMPL(void) iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y)

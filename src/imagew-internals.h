@@ -35,10 +35,6 @@ typedef double IW_SAMPLE;
 #define IW_NUM_CHANNELTYPES 5 // 5, for R,G,B, Alpha, Gray
 #define IW_CI_COUNT 4 // Number of channelinfo structs (=4, for R, G, B, A)
 
-struct iw_rgb_color {
-	IW_SAMPLE c[3]; // Indexed by IW_CHANNELTYPE[Red..Blue]
-};
-
 struct iw_rr_ctx; // "resize rows" state; see imagew-resize.c.
 
 // "Raw" settings from the application.
@@ -148,11 +144,11 @@ struct iw_req_struct {
 
 	int bkgd_valid;
 	int bkgd_checkerboard; // 1=caller requested a checkerboard background
-	struct iw_rgb_color bkgd; // The requested (primary) background color (linear colorspace).
-	struct iw_rgb_color bkgd2; // The requested secondary background color.
+	struct iw_color bkgd; // The requested (primary) background color (linear colorspace).
+	struct iw_color bkgd2; // The requested secondary background color.
 
 	int output_bkgd_label_valid;
-	struct iw_rgb_color output_bkgd_label; // Uses linear colorspace
+	struct iw_color output_bkgd_label; // Uses linear colorspace
 
 	int use_bkgd_label_from_file; // Prefer the bkgd color from the input file.
 	int suppress_output_bkgd_label;
@@ -204,8 +200,8 @@ struct iw_context {
 
 	// The suggested background color read from the input file.
 	int img1_bkgd_label_set;
-	struct iw_rgb_color img1_bkgd_label_inputcs;
-	struct iw_rgb_color img1_bkgd_label_lin; // img1.bkgd_color_*
+	struct iw_color img1_bkgd_label_inputcs;
+	struct iw_color img1_bkgd_label_lin; // img1.bkgd_color_*
 
 	struct iw_channelinfo_intermed intermed_ci[IW_CI_COUNT];
 	int intermed_imgtype;

@@ -339,6 +339,12 @@ struct iw_csdescr {
 	double gamma; // used if CSTYPE==IW_CSTYPE_GAMMA
 };
 
+// An RGBA color. Samples normally range from 0.0 to 1.0.
+// Colorspace depends on context.
+struct iw_color {
+	double c[4]; // Indexed by IW_CHANNELTYPE[Red..Alpha]
+};
+
 // An input or output image
 struct iw_image {
 	int imgtype;  // IW_IMGTYPE_*

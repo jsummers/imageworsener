@@ -46,10 +46,6 @@
 #define IWCMD_ENCODING_UTF8   2
 #define IWCMD_ENCODING_UTF16  3
 
-struct rgb_color {
-	double s[3]; // R,G,B
-};
-
 struct resize_alg {
 	int family;
 	double param1, param2;
@@ -119,13 +115,13 @@ struct params_struct {
 	int use_bkgd_label;
 
 	int bkgd_label_set;
-	struct rgb_color bkgd_label; // Uses linear colorspace
+	struct iw_color bkgd_label; // Uses linear colorspace
 	int no_bkgd_label;
 
 	int use_crop, crop_x, crop_y, crop_w, crop_h;
 	unsigned int reorient;
-	struct rgb_color bkgd;
-	struct rgb_color bkgd2;
+	struct iw_color bkgd;
+	struct iw_color bkgd2;
 	int page_to_read;
 	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
@@ -1151,16 +1147,18 @@ static int iwcmd_run(struct params_struct *p)
 			iw_make_srgb_csdescr_2(&cs_srgb);
 
 			for(k=0;k<3;k++) {
-				p->bkgd.s[k] = iw_convert_sample_to_linear(p->bkgd.s[k],&cs_srgb);
+				p->bkgd.c[k] = iw_convert_sample_to_linear(p->bkgd.c[k],&cs_srgb);
 				if(p->bkgd_checkerboard) {
-					p->bkgd2.s[k] = iw_convert_sample_to_linear(p->bkgd2.s[k],&cs_srgb);
+					p->bkgd2.c[k] = iw_convert_sample_to_linear(p->bkgd2.c[k],&cs_srgb);
 				}
 			}
+			p->bkgd.c[IW_CHANNELTYPE_ALPHA] = 1.0;
+			p->bkgd2.c[IW_CHANNELTYPE_ALPHA] = 1.0;
 		}
 
-		iw_set_apply_bkgd(ctx,p->bkgd.s[0],p->bkgd.s[1],p->bkgd.s[2]);
+		iw_set_apply_bkgd(ctx,p->bkgd.c[0],p->bkgd.c[1],p->bkgd.c[2]);
 		if(p->bkgd_checkerboard) {
-			iw_set_bkgd_checkerboard(ctx,p->bkgd_check_size,p->bkgd2.s[0],p->bkgd2.s[1],p->bkgd2.s[2]);
+			iw_set_bkgd_checkerboard(ctx,p->bkgd_check_size,p->bkgd2.c[0],p->bkgd2.c[1],p->bkgd2.c[2]);
 			iw_set_bkgd_checkerboard_origin(ctx,p->bkgd_check_origin_x,p->bkgd_check_origin_y);
 		}
 	}
@@ -1172,7 +1170,7 @@ static int iwcmd_run(struct params_struct *p)
 		if(p->no_bkgd_label) iw_set_value(ctx,IW_VAL_NO_BKGD_LABEL,1);
 	}
 	else if(p->bkgd_label_set) {
-		iw_set_output_bkgd_label(ctx,p->bkgd_label.s[0],p->bkgd_label.s[1],p->bkgd_label.s[2]);
+		iw_set_output_bkgd_label(ctx,p->bkgd_label.c[0],p->bkgd_label.c[1],p->bkgd_label.c[2]);
 	}
 
 	p->src_width=iw_get_value(ctx,IW_VAL_INPUT_WIDTH);
@@ -1507,24 +1505,26 @@ static double hexvalue4(char d1, char d2, char d3, char d4)
 }
 
 // Allowed formats: 3 hex digits, 6 hex digits, or 12 hex digits.
-static void parse_bkgd_color(struct rgb_color *c, const char *s, size_t s_len)
+static void parse_bkgd_color(struct iw_color *clr, const char *s, size_t s_len)
 {
 	int k;
 
+	clr->c[IW_CHANNELTYPE_ALPHA] = 1.0;
+
 	if(s_len==3) {
-		for(k=0;k<3;k++) c->s[k] = hexvalue1(s[k]);
+		for(k=0;k<3;k++) clr->c[k] = hexvalue1(s[k]);
 	}
 	else if(s_len==6) {
-		for(k=0;k<3;k++) c->s[k] = hexvalue2(s[k*2],s[k*2+1]);
+		for(k=0;k<3;k++) clr->c[k] = hexvalue2(s[k*2],s[k*2+1]);
 	}
 	else if(s_len==12) {
-		for(k=0;k<3;k++) c->s[k] = hexvalue4(s[k*4],s[k*4+1],s[k*4+2],s[k*4+3]);
+		for(k=0;k<3;k++) clr->c[k] = hexvalue4(s[k*4],s[k*4+1],s[k*4+2],s[k*4+3]);
 	}
 	else {
 		// Invalid color description.
-		c->s[0] = 1.0;
-		c->s[1] = 0.0;
-		c->s[2] = 1.0;
+		clr->c[0] = 1.0;
+		clr->c[1] = 0.0;
+		clr->c[2] = 1.0;
 	}
 }
 
@@ -1551,9 +1551,10 @@ static void iwcmd_option_bkgd_label(struct params_struct *p, const char *s)
 
 	parse_bkgd_color(&p->bkgd_label,s,strlen(s));
 	iw_make_srgb_csdescr_2(&cs_srgb);
-	p->bkgd_label.s[0] = iw_convert_sample_to_linear(p->bkgd_label.s[0],&cs_srgb);
-	p->bkgd_label.s[1] = iw_convert_sample_to_linear(p->bkgd_label.s[1],&cs_srgb);
-	p->bkgd_label.s[2] = iw_convert_sample_to_linear(p->bkgd_label.s[2],&cs_srgb);
+	p->bkgd_label.c[0] = iw_convert_sample_to_linear(p->bkgd_label.c[0],&cs_srgb);
+	p->bkgd_label.c[1] = iw_convert_sample_to_linear(p->bkgd_label.c[1],&cs_srgb);
+	p->bkgd_label.c[2] = iw_convert_sample_to_linear(p->bkgd_label.c[2],&cs_srgb);
+	p->bkgd_label.c[3] = 1.0;
 }
 
 // Find where the "name" ends and the parameters (numbers) begin.

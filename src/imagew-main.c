@@ -1253,25 +1253,21 @@ static void iw_make_nearest_color_table(struct iw_context *ctx, double **ptable,
 
 // Label is returned in linear colorspace.
 // Returns 0 if no label available.
-static int get_output_bkgd_label_lin(struct iw_context *ctx, double *r, double *g, double *b)
+static int get_output_bkgd_label_lin(struct iw_context *ctx, struct iw_color *clr)
 {
-	*r = 1.0; *g = 0.0; *b = 1.0;
+	clr->c[0] = 1.0; clr->c[1] = 0.0; clr->c[2] = 1.0; clr->c[3] = 1.0;
 
 	if(ctx->req.suppress_output_bkgd_label) return 0;
 
 	if(ctx->req.output_bkgd_label_valid) {
-		*r = ctx->req.output_bkgd_label.c[0];
-		*g = ctx->req.output_bkgd_label.c[1];
-		*b = ctx->req.output_bkgd_label.c[2];
+		*clr = ctx->req.output_bkgd_label;
 		return 1;
 	}
 
 	// If the user didn't specify a label, but the input file had one, copy the
 	// input file's label.
 	if(ctx->img1_bkgd_label_set) {
-		*r = ctx->img1_bkgd_label_lin.c[0];
-		*g = ctx->img1_bkgd_label_lin.c[1];
-		*b = ctx->img1_bkgd_label_lin.c[2];
+		*clr = ctx->img1_bkgd_label_lin;
 		return 1;
 	}
 
@@ -1284,7 +1280,7 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 {
 	int ret;
 	int k;
-	double c[3];
+	struct iw_color clr;
 	double maxcolor;
 
 	if(!(ctx->output_profile&IW_PROFILE_PNG_BKGD) &&
@@ -1294,13 +1290,13 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 		return;
 	}
 
-	ret = get_output_bkgd_label_lin(ctx,&c[0],&c[1],&c[2]);
+	ret = get_output_bkgd_label_lin(ctx,&clr);
 	if(!ret) return;
 
 	if(ctx->to_grayscale) {
 		IW_SAMPLE g;
-		g = iw_color_to_grayscale(ctx, c[0], c[1], c[2]);
-		c[0] = c[1] = c[2] = g;
+		g = iw_color_to_grayscale(ctx, clr.c[0], clr.c[1], clr.c[2]);
+		clr.c[0] = clr.c[1] = clr.c[2] = g;
 	}
 
 	if(ctx->output_profile&IW_PROFILE_RGB8_BKGD) {
@@ -1320,7 +1316,7 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 	}
 
 	for(k=0;k<3;k++) {
-		ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, c[k], &ctx->img2cs, maxcolor);
+		ctx->img2.bkgdlabel[k] = calc_sample_convert_from_linear(ctx, clr.c[k], &ctx->img2cs, maxcolor);
 	}
 	ctx->img2.has_bkgdlabel = 1;
 }
@@ -1542,8 +1538,8 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 // this function.
 static void prepare_apply_bkgd(struct iw_context *ctx)
 {
-	struct iw_rgb_color bkgd1; // Main background color in linear colorspace
-	struct iw_rgb_color bkgd2; // Secondary background color ...
+	struct iw_color bkgd1; // Main background color in linear colorspace
+	struct iw_color bkgd2; // Secondary background color ...
 	int i;
 
 	if(!ctx->apply_bkgd) return;
