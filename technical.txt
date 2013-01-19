@@ -473,8 +473,9 @@ colors, and does not have partial transparency. If that's not the case, it will
 fail, and write no image at all.
 
 Transparent BMP images can have up to 256 opaque colors, but IW currently
-limits it to 255. It leaves the first palette color unused, and assigns it a
-bright color, so that it's likely to contrast with the foreground image.
+limits it to 255. It does not use the first palette color in the image, and
+instead sets it to the background label color (-bkgdlabel), or to an arbitrary
+high-contrast color if no label is available.
 
 IW is not really a good application to use to create images that are restricted
 to a certain number of colors, because it does not support generating optimized

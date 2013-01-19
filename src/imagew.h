@@ -179,7 +179,8 @@ extern "C" {
 #define IW_PROFILE_HDRI          0x4000 // Supports floating-point samples
 #define IW_PROFILE_REDUCEDBITDEPTHS 0x8000 // Supports non-default maxcolorcodes.
 #define IW_PROFILE_PNG_BKGD      0x10000 // Has PNG-style background colors
-#define IW_PROFILE_RGB16_BKGD    0x20000 // Background colors are 16-bit RGB.
+#define IW_PROFILE_RGB8_BKGD     0x20000 // Background colors are 8-bit RGB.
+#define IW_PROFILE_RGB16_BKGD    0x40000 // Background colors are 16-bit RGB.
 
 #define IW_RESIZETYPE_AUTO       0x01
 #define IW_RESIZETYPE_NULL       0x02

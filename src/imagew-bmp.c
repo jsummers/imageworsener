@@ -1221,7 +1221,7 @@ static int iwbmp_write_bitfields(struct iwbmpwcontext *wctx)
 
 static void iwbmp_write_palette(struct iwbmpwcontext *wctx)
 {
-	int i;
+	int i,k;
 	iw_byte buf[4];
 
 	if(wctx->palentries<1) return;
@@ -1235,13 +1235,19 @@ static void iwbmp_write_palette(struct iwbmpwcontext *wctx)
 				// transparent BMP images, the first palette entry may be a
 				// fully transparent color, whose index will not be used when
 				// we write the image. But many apps will interpret our
-				// "transparent" pixels as having color #0. So, set it to an
+				// "transparent" pixels as having color #0. So, set it to
+				// the background label color if available, otherwise to an
 				// arbitrary high-contrast color (magenta).
-				// If and when we support writing background color labels,
-				// that's probably what we should use here instead.
-				buf[0] = 255;
-				buf[1] = 0;
-				buf[2] = 255;
+				if(wctx->img->has_bkgdlabel) {
+					for(k=0;k<3;k++) {
+						buf[k] = wctx->img->bkgdlabel[2-k];
+					}
+				}
+				else {
+					buf[0] = 255;
+					buf[1] = 0;
+					buf[2] = 255;
+				}
 			}
 			else {
 				buf[0] = wctx->pal->entry[i].b;

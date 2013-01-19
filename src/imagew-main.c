@@ -1288,6 +1288,7 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 	double maxcolor;
 
 	if(!(ctx->output_profile&IW_PROFILE_PNG_BKGD) &&
+		!(ctx->output_profile&IW_PROFILE_RGB8_BKGD) &&
 		!(ctx->output_profile&IW_PROFILE_RGB16_BKGD))
 	{
 		return;
@@ -1302,7 +1303,10 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 		c[0] = c[1] = c[2] = g;
 	}
 
-	if(ctx->output_profile&IW_PROFILE_RGB16_BKGD) {
+	if(ctx->output_profile&IW_PROFILE_RGB8_BKGD) {
+		maxcolor=255.0;
+	}
+	else if(ctx->output_profile&IW_PROFILE_RGB16_BKGD) {
 		maxcolor=65535.0;
 	}
 	else if(ctx->img2.bit_depth==8) {

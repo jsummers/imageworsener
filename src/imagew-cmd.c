@@ -1092,7 +1092,7 @@ static int iwcmd_run(struct params_struct *p)
 		// TODO: This is part of a "temporary" hack.
 		// We support BMP transparency, but with a maximum of 255 opaque
 		// colors, instead of the full 256 that ought to be supported.
-		profile |= IW_PROFILE_PALETTETRNS|IW_PROFILE_TRANSPARENCY;
+		profile |= IW_PROFILE_PALETTETRNS|IW_PROFILE_TRANSPARENCY|IW_PROFILE_RGB8_BKGD;
 	}
 	if(p->outfmt==IW_FORMAT_BMP && p->bmp_version>=5) {
 		profile |= IW_PROFILE_TRANSPARENCY;
