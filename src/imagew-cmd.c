@@ -1152,8 +1152,6 @@ static int iwcmd_run(struct params_struct *p)
 					p->bkgd2.c[k] = iw_convert_sample_to_linear(p->bkgd2.c[k],&cs_srgb);
 				}
 			}
-			p->bkgd.c[IW_CHANNELTYPE_ALPHA] = 1.0;
-			p->bkgd2.c[IW_CHANNELTYPE_ALPHA] = 1.0;
 		}
 
 		iw_set_apply_bkgd_2(ctx,&p->bkgd);

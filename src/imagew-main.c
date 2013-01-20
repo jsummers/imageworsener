@@ -835,6 +835,19 @@ static void clamp_output_samples(struct iw_context *ctx, IW_SAMPLE *out_pix, int
 	}
 }
 
+// TODO: Maybe this should be a flag in ctx, instead of a function that is
+// called repeatedly.
+static int iw_bkgd_has_transparency(struct iw_context *ctx)
+{
+	if(!ctx->apply_bkgd) return 0;
+	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) return 0;
+	if(ctx->bkgd_checkerboard) {
+		if(ctx->req.bkgd2.c[3]<1.0) return 1;
+	}
+	if(ctx->req.bkgd.c[3]<1.0) return 1;
+	return 0;
+}
+
 // 'channel' is an intermediate channel number.
 static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	const struct iw_csdescr *in_csdescr)
@@ -957,6 +970,9 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int using_errdiffdither = 0;
 	int output_channel;
 	int is_alpha_channel;
+	int bkgd_has_transparency;
+	double tmpbkgdalpha;
+	int alt_bkgd = 0; // Nonzero if we should use bkgd2 for this sample
 	struct iw_resize_settings *rs = NULL;
 	int ditherfamily, dithersubtype;
 	struct iw_channelinfo_intermed *int_ci;
@@ -974,6 +990,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	output_channel = int_ci->corresponding_output_channel;
 	out_ci = &ctx->img2_ci[output_channel];
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
+	bkgd_has_transparency = iw_bkgd_has_transparency(ctx);
 
 	if(ctx->precision!=64) {
 		inpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_in_pix * sizeof(IW_SAMPLE));
@@ -1099,35 +1116,44 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 			tmpsamp = out_pix[i];
 
+			if(ctx->bkgd_checkerboard) {
+				alt_bkgd = (((ctx->bkgd_check_origin[IW_DIMENSION_H]+i)/ctx->bkgd_check_size)%2) !=
+					(((ctx->bkgd_check_origin[IW_DIMENSION_V]+j)/ctx->bkgd_check_size)%2);
+			}
+
+			if(bkgd_has_transparency) {
+				// TODO: Don't directly use ctx->req.* here. Maybe the background
+				// alpha sample(s) should be copied to a new field in ctx or out_ci.
+				tmpbkgdalpha = alt_bkgd ? ctx->req.bkgd2.c[3] : ctx->req.bkgd.c[3];
+			}
+
 			if(int_ci->need_unassoc_alpha_processing) {
-				// Special processing for (partially) transparent pixels.
+				// Convert color samples back to unassociated alpha.
 				if(ctx->precision==64)
 					alphasamp = ctx->final_alpha64[((size_t)j)*ctx->img2.width + i];
 				else
 					alphasamp = ctx->final_alpha32[((size_t)j)*ctx->img2.width + i];
+
 				if(alphasamp!=0.0) {
 					tmpsamp /= alphasamp;
 				}
-			}
 
-			if(int_ci->need_unassoc_alpha_processing && ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
-				// Apply a background color (or checkerboard pattern).
-				IW_SAMPLE bkcolor;
-				if(ctx->bkgd_checkerboard) {
-					if( (((ctx->bkgd_check_origin[IW_DIMENSION_H]+i)/ctx->bkgd_check_size)%2) ==
-						(((ctx->bkgd_check_origin[IW_DIMENSION_V]+j)/ctx->bkgd_check_size)%2) )
-					{
-						bkcolor = out_ci->bkgd_color_lin;
+				if(ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
+					// Apply a background color (or checkerboard pattern).
+					IW_SAMPLE bkcolor;
+					bkcolor = alt_bkgd ? out_ci->bkgd2_color_lin : out_ci->bkgd_color_lin;
+
+					if(bkgd_has_transparency) {
+						tmpsamp = tmpsamp*alphasamp + bkcolor*tmpbkgdalpha*(1.0-alphasamp);
 					}
 					else {
-						bkcolor = out_ci->bkgd2_color_lin;
+						tmpsamp = tmpsamp*alphasamp + bkcolor*(1.0-alphasamp);
 					}
 				}
-				else {
-					bkcolor = out_ci->bkgd_color_lin;
-				}
-
-				tmpsamp = (alphasamp)*(tmpsamp) + (1.0-alphasamp)*(bkcolor);
+			}
+			else if(is_alpha_channel && bkgd_has_transparency) {
+				// Composite the alpha of the foreground over the alpha of the background.
+				tmpsamp = tmpsamp + tmpbkgdalpha*(1.0-tmpsamp);
 			}
 
 			if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT)
@@ -1583,9 +1609,10 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	}
 
 	// Set up the channelinfo as needed according to the target image type
-	// (and we shouldn't be here if it's anything other than RGB or GRAY).
 
-	if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && ctx->img2.imgtype==IW_IMGTYPE_RGB) {
+	if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && (ctx->img2.imgtype==IW_IMGTYPE_RGB ||
+		ctx->img2.imgtype==IW_IMGTYPE_RGBA))
+	{
 		for(i=0;i<3;i++) {
 			ctx->img2_ci[i].bkgd_color_lin = bkgd1.c[i];
 		}
@@ -1595,7 +1622,9 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 			}
 		}
 	}
-	else if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && ctx->img2.imgtype==IW_IMGTYPE_GRAY) {
+	else if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && (ctx->img2.imgtype==IW_IMGTYPE_GRAY ||
+		ctx->img2.imgtype==IW_IMGTYPE_GRAYA))
+	{
 		ctx->img2_ci[0].bkgd_color_lin = iw_color_to_grayscale(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
 		if(ctx->bkgd_checkerboard) {
 			ctx->img2_ci[0].bkgd2_color_lin = iw_color_to_grayscale(ctx,bkgd2.c[0],bkgd2.c[1],bkgd2.c[2]);
@@ -1709,7 +1738,7 @@ static void decide_strategy(struct iw_context *ctx, int *ps1, int *ps2)
 		}
 	}
 
-	if(ctx->apply_bkgd) {
+	if(ctx->apply_bkgd && !iw_bkgd_has_transparency(ctx)) {
 		if(s2==IW_STRAT2_GA_GA) {
 			s2=IW_STRAT2_GA_G;
 		}

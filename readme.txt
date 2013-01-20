@@ -427,6 +427,11 @@ Options:
     -bkgd ffff00000000 = the same red color as above
     -bkgd 999          = medium gray
 
+   Colors with transparency may also be specified, by using 4, 8, or 16 hex
+   digits. The final component is the alpha value (0 means fully transparent).
+   The alpha value will be ignored if the image format does not support
+   transparency.
+
    Background colors are always specified in the sRGB color space. They will
    be converted to whatever colorspace is used by the image.
 

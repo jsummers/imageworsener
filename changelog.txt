@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for background colors with transparency.
  - Support for background colors in MIFF files.
  - Added -intent option, to set the rendering intent without setting the
    colorspace to sRGB.
