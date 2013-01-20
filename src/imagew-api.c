@@ -301,7 +301,7 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 	img->rendering_intent = ctx->img2.rendering_intent;
 
 	img->has_bkgdlabel = ctx->optctx.has_bkgdlabel;
-	for(k=0;k<3;k++) {
+	for(k=0;k<4;k++) {
 		if(ctx->optctx.bit_depth==8) {
 			img->bkgdlabel.c[k] = ((double)ctx->optctx.bkgdlabel[k])/255.0;
 		}
@@ -309,7 +309,6 @@ IW_IMPL(void) iw_get_output_image(struct iw_context *ctx, struct iw_image *img)
 			img->bkgdlabel.c[k] = ((double)ctx->optctx.bkgdlabel[k])/65535.0;
 		}
 	}
-	img->bkgdlabel.c[3] = 1.0;
 
 	img->has_colorkey_trns = ctx->optctx.has_colorkey_trns;
 	img->colorkey[0] = ctx->optctx.colorkey[0];

@@ -172,15 +172,21 @@ static double hexvalue4(const char *s)
 static void iwmiff_parse_bkgd_color(struct iwmiffrcontext *rctx, const char *val)
 {
 	struct iw_color clr;
+	size_t len;
 
-	// The only color format we support is #rrrrggggbbbb.
-	if(strlen(val)!=13 || val[0]!='#') {
+	len = strlen(val);
+
+	// The only color format we support is #rrrrggggbbbb[aaaa].
+	if((len!=13 && len!=17) || val[0]!='#') {
 		return;
 	}
 	clr.c[0] = hexvalue4(&val[1]);
 	clr.c[1] = hexvalue4(&val[5]);
 	clr.c[2] = hexvalue4(&val[9]);
-	clr.c[3] = 1.0;
+	if(len==17)
+		clr.c[3] = hexvalue4(&val[13]);
+	else
+		clr.c[3] = 1.0;
 	iw_set_input_bkgd_label_2(rctx->ctx, &clr);
 }
 
@@ -656,10 +662,31 @@ static void iwmiff_writef(struct iwmiffwcontext *wctx, const char *fmt, ...)
 	iwmiff_write_sz(wctx,buf);
 }
 
+static void write_bkgdlabel(struct iwmiffwcontext *wctx)
+{
+	char tmpbuf[32];
+	unsigned int bkgd[4];
+	int k;
+
+	for(k=0;k<4;k++) {
+		bkgd[k] = iw_color_get_int_sample(&wctx->img->bkgdlabel,k,65535);
+	}
+
+	if(k<=0) return;
+	if(bkgd[3]>=65535) {
+		// opaque background
+		iw_snprintf(tmpbuf,sizeof(tmpbuf),"#%04x%04x%04x",bkgd[0],bkgd[1],bkgd[2]);
+	}
+	else {
+		iw_snprintf(tmpbuf,sizeof(tmpbuf),"#%04x%04x%04x%04x",bkgd[0],bkgd[1],bkgd[2],bkgd[3]);
+	}
+
+	iwmiff_writef(wctx,"background-color=%s\n",tmpbuf);
+}
+
 static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 {
 	const char *tmps;
-	char tmpbuf[20];
 
 	iwmiff_write_sz(wctx,"id=ImageMagick  version=1.0\n");
 	iwmiff_writef(wctx,"class=DirectClass  colors=0  matte=%s\n",wctx->has_alpha?"True":"False");
@@ -706,11 +733,7 @@ static void iwmiff_write_header(struct iwmiffwcontext *wctx)
 	iwmiff_write_sz(wctx,"gamma=1.0\n");
 
 	if(wctx->img->has_bkgdlabel) {
-		iw_snprintf(tmpbuf,sizeof(tmpbuf),"#%04x%04x%04x",
-			iw_color_get_int_sample(&wctx->img->bkgdlabel,0,65535),
-			iw_color_get_int_sample(&wctx->img->bkgdlabel,1,65535),
-			iw_color_get_int_sample(&wctx->img->bkgdlabel,2,65535));
-		iwmiff_writef(wctx,"background-color=%s\n",tmpbuf);
+		write_bkgdlabel(wctx);
 	}
 
 	iwmiff_write_sz(wctx,"quantum:format={floating-point}\n");

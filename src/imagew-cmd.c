@@ -1514,11 +1514,20 @@ static void parse_bkgd_color(struct iw_color *clr, const char *s, size_t s_len)
 	if(s_len==3) {
 		for(k=0;k<3;k++) clr->c[k] = hexvalue1(s[k]);
 	}
+	else if(s_len==4) {
+		for(k=0;k<4;k++) clr->c[k] = hexvalue1(s[k]);
+	}
 	else if(s_len==6) {
 		for(k=0;k<3;k++) clr->c[k] = hexvalue2(s[k*2],s[k*2+1]);
 	}
+	else if(s_len==8) {
+		for(k=0;k<4;k++) clr->c[k] = hexvalue2(s[k*2],s[k*2+1]);
+	}
 	else if(s_len==12) {
 		for(k=0;k<3;k++) clr->c[k] = hexvalue4(s[k*4],s[k*4+1],s[k*4+2],s[k*4+3]);
+	}
+	else if(s_len==16) {
+		for(k=0;k<4;k++) clr->c[k] = hexvalue4(s[k*4],s[k*4+1],s[k*4+2],s[k*4+3]);
 	}
 	else {
 		// Invalid color description.
@@ -1554,7 +1563,6 @@ static void iwcmd_option_bkgd_label(struct params_struct *p, const char *s)
 	p->bkgd_label.c[0] = iw_convert_sample_to_linear(p->bkgd_label.c[0],&cs_srgb);
 	p->bkgd_label.c[1] = iw_convert_sample_to_linear(p->bkgd_label.c[1],&cs_srgb);
 	p->bkgd_label.c[2] = iw_convert_sample_to_linear(p->bkgd_label.c[2],&cs_srgb);
-	p->bkgd_label.c[3] = 1.0;
 }
 
 // Find where the "name" ends and the parameters (numbers) begin.

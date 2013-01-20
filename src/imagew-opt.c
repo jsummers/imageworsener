@@ -248,7 +248,7 @@ static void iw_opt_16_to_8(struct iw_context *ctx, struct iw_opt_ctx *optctx, in
 {
 	iw_byte *newpixels;
 	size_t newbpr;
-	int i,j;
+	int i,j,k;
 
 	if(!ctx->opt_16_to_8) return;
 
@@ -274,9 +274,9 @@ static void iw_opt_16_to_8(struct iw_context *ctx, struct iw_opt_ctx *optctx, in
 
 	// If there's a background color label, also reduce its precision.
 	if(optctx->has_bkgdlabel) {
-		optctx->bkgdlabel[0] >>= 8;
-		optctx->bkgdlabel[1] >>= 8;
-		optctx->bkgdlabel[2] >>= 8;
+		for(k=0;k<4;k++) {
+			optctx->bkgdlabel[k] >>= 8;
+		}
 	}
 }
 
@@ -1170,6 +1170,7 @@ static void make_transparent_pixels_black(struct iw_context *ctx, struct iw_imag
 void iwpvt_optimize_image(struct iw_context *ctx)
 {
 	struct iw_opt_ctx *optctx;
+	int k;
 
 	optctx = &ctx->optctx;
 
@@ -1186,9 +1187,10 @@ void iwpvt_optimize_image(struct iw_context *ctx)
 	//optctx->has_color=0;
 	if(ctx->img2.has_bkgdlabel) {
 		optctx->has_bkgdlabel = ctx->img2.has_bkgdlabel;
-		optctx->bkgdlabel[0] = iw_color_get_int_sample(&ctx->img2.bkgdlabel, 0, ctx->img2.bit_depth==8?255:65535);
-		optctx->bkgdlabel[1] = iw_color_get_int_sample(&ctx->img2.bkgdlabel, 1, ctx->img2.bit_depth==8?255:65535);
-		optctx->bkgdlabel[2] = iw_color_get_int_sample(&ctx->img2.bkgdlabel, 2, ctx->img2.bit_depth==8?255:65535);
+		for(k=0;k<4;k++) {
+			optctx->bkgdlabel[k] = iw_color_get_int_sample(&ctx->img2.bkgdlabel, k,
+				ctx->img2.bit_depth==8?255:65535);
+		}
 	}
 
 	if(ctx->img2.sampletype!=IW_SAMPLETYPE_UINT) {

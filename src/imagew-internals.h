@@ -119,7 +119,7 @@ struct iw_opt_ctx {
 	unsigned int colorkey[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 
 	int has_bkgdlabel;
-	unsigned int bkgdlabel[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
+	unsigned int bkgdlabel[4]; // Indexed by IW_CHANNELTYPE_[RED..ALPHA]
 };
 
 // Used to help separate settings that were requested by the caller,

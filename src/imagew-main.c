@@ -1274,6 +1274,13 @@ static int get_output_bkgd_label_lin(struct iw_context *ctx, struct iw_color *cl
 	return 0;
 }
 
+static unsigned int iw_scale_to_int(double s, unsigned int maxcolor)
+{
+	if(s<=0.0) return 0;
+	if(s>=1.0) return maxcolor;
+	return (unsigned int)(0.5+s*maxcolor);
+}
+
 // Quantize the background color label, and store in ctx->img2.bkgdlabel.
 // Also convert it to grayscale if needed.
 static void iw_process_bkgd_label(struct iw_context *ctx)
@@ -1323,7 +1330,9 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 		tmpu = calc_sample_convert_from_linear(ctx, clr.c[k], &ctx->img2cs, maxcolor);
 		ctx->img2.bkgdlabel.c[k] = ((double)tmpu)/maxcolor;
 	}
-	ctx->img2.bkgdlabel.c[3] = 1.0;
+	// Alpha sample
+	tmpu = iw_scale_to_int(clr.c[3],(unsigned int)maxcolor);
+	ctx->img2.bkgdlabel.c[3] = ((double)tmpu)/maxcolor;
 
 	ctx->img2.has_bkgdlabel = 1;
 }
@@ -2169,6 +2178,7 @@ static int iw_prepare_processing(struct iw_context *ctx, int w, int h)
 		for(i=0;i<3;i++) {
 			ctx->img1_bkgd_label_lin.c[i] = x_to_linear_sample(ctx->img1_bkgd_label_inputcs.c[i],&ctx->img1cs);
 		}
+		ctx->img1_bkgd_label_lin.c[3] = ctx->img1_bkgd_label_inputcs.c[3];
 	}
 
 	if(ctx->apply_bkgd) {
