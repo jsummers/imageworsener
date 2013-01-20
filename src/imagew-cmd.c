@@ -1156,9 +1156,9 @@ static int iwcmd_run(struct params_struct *p)
 			p->bkgd2.c[IW_CHANNELTYPE_ALPHA] = 1.0;
 		}
 
-		iw_set_apply_bkgd(ctx,p->bkgd.c[0],p->bkgd.c[1],p->bkgd.c[2]);
+		iw_set_apply_bkgd_2(ctx,&p->bkgd);
 		if(p->bkgd_checkerboard) {
-			iw_set_bkgd_checkerboard(ctx,p->bkgd_check_size,p->bkgd2.c[0],p->bkgd2.c[1],p->bkgd2.c[2]);
+			iw_set_bkgd_checkerboard_2(ctx,p->bkgd_check_size,&p->bkgd2);
 			iw_set_bkgd_checkerboard_origin(ctx,p->bkgd_check_origin_x,p->bkgd_check_origin_y);
 		}
 	}
@@ -1170,7 +1170,7 @@ static int iwcmd_run(struct params_struct *p)
 		if(p->no_bkgd_label) iw_set_value(ctx,IW_VAL_NO_BKGD_LABEL,1);
 	}
 	else if(p->bkgd_label_set) {
-		iw_set_output_bkgd_label(ctx,p->bkgd_label.c[0],p->bkgd_label.c[1],p->bkgd_label.c[2]);
+		iw_set_output_bkgd_label_2(ctx,&p->bkgd_label);
 	}
 
 	p->src_width=iw_get_value(ctx,IW_VAL_INPUT_WIDTH);

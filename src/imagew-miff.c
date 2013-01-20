@@ -171,12 +171,17 @@ static double hexvalue4(const char *s)
 
 static void iwmiff_parse_bkgd_color(struct iwmiffrcontext *rctx, const char *val)
 {
+	struct iw_color clr;
+
 	// The only color format we support is #rrrrggggbbbb.
 	if(strlen(val)!=13 || val[0]!='#') {
 		return;
 	}
-	iw_set_input_bkgd_label(rctx->ctx, hexvalue4(&val[1]), hexvalue4(&val[5]),
-		hexvalue4(&val[9]));
+	clr.c[0] = hexvalue4(&val[1]);
+	clr.c[1] = hexvalue4(&val[5]);
+	clr.c[2] = hexvalue4(&val[9]);
+	clr.c[3] = 1.0;
+	iw_set_input_bkgd_label_2(rctx->ctx, &clr);
 }
 
 // Called for each attribute in the header of a MIFF file.

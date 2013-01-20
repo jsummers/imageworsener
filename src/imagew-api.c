@@ -442,22 +442,36 @@ IW_IMPL(void) iw_set_input_max_color_code(struct iw_context *ctx, int input_chan
 	}
 }
 
+IW_IMPL(void) iw_set_input_bkgd_label_2(struct iw_context *ctx, const struct iw_color *clr)
+{
+	ctx->img1_bkgd_label_set = 1;
+	ctx->img1_bkgd_label_inputcs = *clr;
+}
+
 IW_IMPL(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b)
 {
-	ctx->img1_bkgd_label_inputcs.c[0] = r;
-	ctx->img1_bkgd_label_inputcs.c[1] = g;
-	ctx->img1_bkgd_label_inputcs.c[2] = b;
-	ctx->img1_bkgd_label_inputcs.c[3] = 1.0;
-	ctx->img1_bkgd_label_set = 1;
+	struct iw_color clr;
+	clr.c[0] = r;
+	clr.c[1] = g;
+	clr.c[2] = b;
+	clr.c[3] = 1.0;
+	iw_set_input_bkgd_label_2(ctx, &clr);
+}
+
+IW_IMPL(void) iw_set_output_bkgd_label_2(struct iw_context *ctx, const struct iw_color *clr)
+{
+	ctx->req.output_bkgd_label_valid = 1;
+	ctx->req.output_bkgd_label = *clr;
 }
 
 IW_IMPL(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double g, double b)
 {
-	ctx->req.output_bkgd_label.c[0] = r;
-	ctx->req.output_bkgd_label.c[1] = g;
-	ctx->req.output_bkgd_label.c[2] = b;
-	ctx->req.output_bkgd_label.c[3] = 1.0;
-	ctx->req.output_bkgd_label_valid = 1;
+	struct iw_color clr;
+	clr.c[0] = r;
+	clr.c[1] = g;
+	clr.c[2] = b;
+	clr.c[3] = 1.0;
+	iw_set_output_bkgd_label_2(ctx, &clr);
 }
 
 IW_IMPL(int) iw_get_input_density(struct iw_context *ctx,
@@ -535,24 +549,39 @@ IW_IMPL(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_cs
 	optimize_csdescr(&ctx->img1cs);
 }
 
-IW_IMPL(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b)
+IW_IMPL(void) iw_set_apply_bkgd_2(struct iw_context *ctx, const struct iw_color *clr)
 {
 	ctx->req.bkgd_valid=1;
-	ctx->req.bkgd.c[IW_CHANNELTYPE_RED]=r;
-	ctx->req.bkgd.c[IW_CHANNELTYPE_GREEN]=g;
-	ctx->req.bkgd.c[IW_CHANNELTYPE_BLUE]=b;
-	ctx->req.bkgd.c[IW_CHANNELTYPE_ALPHA]=1.0;
+	ctx->req.bkgd = *clr;
 }
 
-IW_IMPL(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checksize,
-    double r2, double g2, double b2)
+IW_IMPL(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b)
+{
+	struct iw_color clr;
+	clr.c[IW_CHANNELTYPE_RED]=r;
+	clr.c[IW_CHANNELTYPE_GREEN]=g;
+	clr.c[IW_CHANNELTYPE_BLUE]=b;
+	clr.c[IW_CHANNELTYPE_ALPHA]=1.0;
+	iw_set_apply_bkgd_2(ctx, &clr);
+}
+
+IW_IMPL(void) iw_set_bkgd_checkerboard_2(struct iw_context *ctx, int checkersize,
+	const struct iw_color *clr)
 {
 	ctx->req.bkgd_checkerboard=1;
-	ctx->bkgd_check_size=checksize;
-	ctx->req.bkgd2.c[IW_CHANNELTYPE_RED]=r2;
-	ctx->req.bkgd2.c[IW_CHANNELTYPE_GREEN]=g2;
-	ctx->req.bkgd2.c[IW_CHANNELTYPE_BLUE]=b2;
-	ctx->req.bkgd2.c[IW_CHANNELTYPE_ALPHA]=1.0;
+	ctx->bkgd_check_size=checkersize;
+	ctx->req.bkgd2 = *clr;
+}
+
+IW_IMPL(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checkersize,
+    double r2, double g2, double b2)
+{
+	struct iw_color clr;
+	clr.c[IW_CHANNELTYPE_RED]=r2;
+	clr.c[IW_CHANNELTYPE_GREEN]=g2;
+	clr.c[IW_CHANNELTYPE_BLUE]=b2;
+	clr.c[IW_CHANNELTYPE_ALPHA]=1.0;
+	iw_set_bkgd_checkerboard_2(ctx, checkersize, &clr);
 }
 
 IW_IMPL(void) iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y)

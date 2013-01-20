@@ -556,18 +556,22 @@ IW_EXPORT(void) iw_set_grayscale_weights(struct iw_context *ctx, double r, doubl
 
 // Color values are on a scale from 0 to 1, in the input colorspace.
 IW_EXPORT(void) iw_set_input_bkgd_label(struct iw_context *ctx, double r, double g, double b);
+IW_EXPORT(void) iw_set_input_bkgd_label_2(struct iw_context *ctx, const struct iw_color *clr);
 
 // Color values are on a scale from 0 to 1, in linear colorspace.
-IW_EXPORT(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double g, double b);
+IW_EXPORT(void) iw_set_output_bkgd_label(struct iw_context *ctx, double r, double g, double b); // deprecated
+IW_EXPORT(void) iw_set_output_bkgd_label_2(struct iw_context *ctx, const struct iw_color *clr);
 
 // The background color to apply to the image.
 // Color values are on a scale from 0 to 1, in a linear colorspace.
 // This will be overridden if IW_VAL_USE_BKGD_LABEL is set, and the input file
 // contains a background color label.
-IW_EXPORT(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b);
+IW_EXPORT(void) iw_set_apply_bkgd(struct iw_context *ctx, double r, double g, double b); // deprecated
+IW_EXPORT(void) iw_set_apply_bkgd_2(struct iw_context *ctx, const struct iw_color *clr);
 
 // Must also call iw_set_applybkgd. This sets the second bkgd color, and the checkerboard size in pixels.
-IW_EXPORT(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checkersize, double r2, double g2, double b2);
+IW_EXPORT(void) iw_set_bkgd_checkerboard(struct iw_context *ctx, int checkersize, double r2, double g2, double b2); // deprecated
+IW_EXPORT(void) iw_set_bkgd_checkerboard_2(struct iw_context *ctx, int checkersize, const struct iw_color *clr);
 IW_EXPORT(void) iw_set_bkgd_checkerboard_origin(struct iw_context *ctx, int x, int y);
 
 // Must be called *after* reading the file, or it will be overwritten.
