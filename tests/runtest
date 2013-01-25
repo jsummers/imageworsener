@@ -98,6 +98,7 @@ $IW srcimg/g4.png actual/condgray.png $DCMPR $SMALL -filter mitchell -cc 7 -ccgr
 
 $IW srcimg/g2t.png actual/bkgd.png $CMPR -width 35 -height 35 -filter catrom -bkgd e42
 $IW srcimg/rgb8a.png actual/bkgd2.png $CMPR -width 35 -height 35 -filter catrom -bkgd e42,0f5 -checkersize 6 -checkerorigin 1,3
+$IW srcimg/rgb8a.png actual/bkgd3.png $CMPR -width 35 -height 35 -filter catrom -bkgd e42d,00ff5550 -checkersize 5 -checkerorigin 2,5 -edge t -translate 4,3
 
 # Solid color gray image with transparency
 $IW srcimg/bt-gray.png actual/bt-g1.png $CMPR -width 35 -height 35 -filter lanczos
