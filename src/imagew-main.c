@@ -841,10 +841,16 @@ static int iw_bkgd_has_transparency(struct iw_context *ctx)
 {
 	if(!ctx->apply_bkgd) return 0;
 	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) return 0;
-	if(ctx->bkgd_checkerboard) {
-		if(ctx->req.bkgd2.c[3]<1.0) return 1;
+	if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY) return 0;
+	if(ctx->bkgd_color_source==IW_BKGD_COLOR_SOURCE_FILE) {
+		if(ctx->img1_bkgd_label_inputcs.c[3]<1.0) return 1;
 	}
-	if(ctx->req.bkgd.c[3]<1.0) return 1;
+	else if(ctx->bkgd_color_source==IW_BKGD_COLOR_SOURCE_REQ) {
+		if(ctx->bkgd_checkerboard) {
+			if(ctx->req.bkgd2.c[3]<1.0) return 1;
+		}
+		if(ctx->req.bkgd.c[3]<1.0) return 1;
+	}
 	return 0;
 }
 
@@ -1122,9 +1128,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 			}
 
 			if(bkgd_has_transparency) {
-				// TODO: Don't directly use ctx->req.* here. Maybe the background
-				// alpha sample(s) should be copied to a new field in ctx or out_ci.
-				tmpbkgdalpha = alt_bkgd ? ctx->req.bkgd2.c[3] : ctx->req.bkgd.c[3];
+				tmpbkgdalpha = alt_bkgd ? ctx->bkgd2alpha : ctx->bkgd1alpha;
 			}
 
 			if(int_ci->need_unassoc_alpha_processing) {
@@ -1140,8 +1144,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 				if(ctx->apply_bkgd && ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE) {
 					// Apply a background color (or checkerboard pattern).
-					IW_SAMPLE bkcolor;
-					bkcolor = alt_bkgd ? out_ci->bkgd2_color_lin : out_ci->bkgd_color_lin;
+					double bkcolor;
+					bkcolor = alt_bkgd ? out_ci->bkgd2_color_lin : out_ci->bkgd1_color_lin;
 
 					if(bkgd_has_transparency) {
 						tmpsamp = tmpsamp*alphasamp + bkcolor*tmpbkgdalpha*(1.0-alphasamp);
@@ -1583,8 +1587,8 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	if(!ctx->apply_bkgd) return;
 
 	// Start with a default background color.
-	bkgd1.c[0]=1.0; bkgd1.c[1]=0.0; bkgd1.c[2]=1.0;
-	bkgd2.c[0]=0.0; bkgd2.c[1]=0.0; bkgd2.c[2]=0.0;
+	bkgd1.c[0]=1.0; bkgd1.c[1]=0.0; bkgd1.c[2]=1.0; bkgd1.c[3]=1.0;
+	bkgd2.c[0]=0.0; bkgd2.c[1]=0.0; bkgd2.c[2]=0.0; bkgd2.c[3]=1.0;
 
 	// Possibly overwrite it with the background color from the appropriate
 	// source.
@@ -1599,14 +1603,23 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 		}
 	}
 
-	// Set up the channelinfo as needed according to the target image type, and
-	// whether we are applying the background before or after resizing.
+	// Set up the channelinfo (and ctx->bkgd*alpha) as needed according to the
+	// target image type, and whether we are applying the background before or
+	// after resizing.
+
+	if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY) {
+		ctx->bkgd1alpha = 1.0;
+	}
+	else {
+		ctx->bkgd1alpha = bkgd1.c[3];
+		ctx->bkgd2alpha = bkgd2.c[3];
+	}
 
 	if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && (ctx->img2.imgtype==IW_IMGTYPE_RGB ||
 		ctx->img2.imgtype==IW_IMGTYPE_RGBA))
 	{
 		for(i=0;i<3;i++) {
-			ctx->img2_ci[i].bkgd_color_lin = bkgd1.c[i];
+			ctx->img2_ci[i].bkgd1_color_lin = bkgd1.c[i];
 		}
 		if(ctx->bkgd_checkerboard) {
 			for(i=0;i<3;i++) {
@@ -1617,7 +1630,7 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	else if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && (ctx->img2.imgtype==IW_IMGTYPE_GRAY ||
 		ctx->img2.imgtype==IW_IMGTYPE_GRAYA))
 	{
-		ctx->img2_ci[0].bkgd_color_lin = iw_color_to_grayscale(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
+		ctx->img2_ci[0].bkgd1_color_lin = iw_color_to_grayscale(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
 		if(ctx->bkgd_checkerboard) {
 			ctx->img2_ci[0].bkgd2_color_lin = iw_color_to_grayscale(ctx,bkgd2.c[0],bkgd2.c[1],bkgd2.c[2]);
 		}

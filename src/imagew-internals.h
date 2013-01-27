@@ -67,7 +67,7 @@ struct iw_channelinfo_intermed {
 
 	int corresponding_output_channel; // Can be -1 if no such channel.
 
-	IW_SAMPLE bkgd_color_lin; // Used if ctx->apply_bkgd && bkgd_strategy==EARLY
+	double bkgd_color_lin; // Used if ctx->apply_bkgd && bkgd_strategy==EARLY
 
 	int need_unassoc_alpha_processing; // Is this a color channel in an image with transparency?
 };
@@ -86,8 +86,8 @@ struct iw_channelinfo_out {
 
 	int use_nearest_color_table;
 
-	IW_SAMPLE bkgd_color_lin; // Used if ctx->apply_bkgd
-	IW_SAMPLE bkgd2_color_lin; // Used if ctx->apply_bkgd && bkgd_checkerboard
+	double bkgd1_color_lin; // Used if ctx->apply_bkgd
+	double bkgd2_color_lin; // Used if ctx->apply_bkgd && bkgd_checkerboard
 };
 
 struct iw_prng; // Defined imagew-util.c
@@ -234,6 +234,10 @@ struct iw_context {
 #define IW_BKGD_COLOR_SOURCE_FILE 1 // Use ctx->img1_bkgd_label_lin
 #define IW_BKGD_COLOR_SOURCE_REQ  2 // Use ctx->req.bkgd
 	int bkgd_color_source; // Valid if .apply_bkgd is set.
+
+	// Background color alpha samples. (The color samples are stored in
+	// iw_channelinfo_out.)
+	double bkgd1alpha, bkgd2alpha;
 
 	void *userdata;
 	iw_translatefn_type translate_fn;
