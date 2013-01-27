@@ -230,6 +230,11 @@ struct iw_context {
 	int bkgd_check_size;
 	int bkgd_check_origin[2]; // Indexed by IW_DIMENSION_*
 
+#define IW_BKGD_COLOR_SOURCE_NONE 0 // Use a default color
+#define IW_BKGD_COLOR_SOURCE_FILE 1 // Use ctx->img1_bkgd_label_lin
+#define IW_BKGD_COLOR_SOURCE_REQ  2 // Use ctx->req.bkgd
+	int bkgd_color_source; // Valid if .apply_bkgd is set.
+
 	void *userdata;
 	iw_translatefn_type translate_fn;
 	iw_warningfn_type warning_fn;

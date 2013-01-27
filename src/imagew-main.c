@@ -971,7 +971,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int output_channel;
 	int is_alpha_channel;
 	int bkgd_has_transparency;
-	double tmpbkgdalpha;
+	double tmpbkgdalpha=0.0;
 	int alt_bkgd = 0; // Nonzero if we should use bkgd2 for this sample
 	struct iw_resize_settings *rs = NULL;
 	int ditherfamily, dithersubtype;
@@ -1571,13 +1571,9 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 	}
 }
 
-// Make a final decision about what to use for the background color.
-// TODO: Maybe some of this should be moved to the decide_how_to_apply_bkgd()
-// function, or some other refactoring should be done.
-// For example, decide_how_to_apply_bkgd() may warn you about checkerboard
-// backgrounds not being supported, even if a checkerboard background
-// would not actually have been used, because it would have been overridden in
-// this function.
+// Set the background color samples that will be used when processing the
+// image. (All the logic about how to apply a background color is in
+// decide_how_to_apply_bkgd(), not here.)
 static void prepare_apply_bkgd(struct iw_context *ctx)
 {
 	struct iw_color bkgd1; // Main background color in linear colorspace
@@ -1590,25 +1586,21 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	bkgd1.c[0]=1.0; bkgd1.c[1]=0.0; bkgd1.c[2]=1.0;
 	bkgd2.c[0]=0.0; bkgd2.c[1]=0.0; bkgd2.c[2]=0.0;
 
-	if(ctx->img1_bkgd_label_set &&
-		(ctx->req.use_bkgd_label_from_file || !ctx->req.bkgd_valid))
-	{
-		// The input file has a background color label, and either we are
-		// requested to prefer it to the caller's background color, or
-		// the caller did not give us a background color.
-		// Use the color from the input file.
+	// Possibly overwrite it with the background color from the appropriate
+	// source.
+	if(ctx->bkgd_color_source == IW_BKGD_COLOR_SOURCE_FILE) {
 		bkgd1 = ctx->img1_bkgd_label_lin; // sructure copy
 		ctx->bkgd_checkerboard = 0;
 	}
-	else if(ctx->req.bkgd_valid) {
-		// Use the background color given by the caller.
+	else if(ctx->bkgd_color_source == IW_BKGD_COLOR_SOURCE_REQ) {
 		bkgd1 = ctx->req.bkgd;
 		if(ctx->req.bkgd_checkerboard) {
 			bkgd2 = ctx->req.bkgd2;
 		}
 	}
 
-	// Set up the channelinfo as needed according to the target image type
+	// Set up the channelinfo as needed according to the target image type, and
+	// whether we are applying the background before or after resizing.
 
 	if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_LATE && (ctx->img2.imgtype==IW_IMGTYPE_RGB ||
 		ctx->img2.imgtype==IW_IMGTYPE_RGBA))
@@ -1637,10 +1629,6 @@ static void prepare_apply_bkgd(struct iw_context *ctx)
 	}
 	else if(ctx->apply_bkgd_strategy==IW_BKGD_STRATEGY_EARLY && ctx->img2.imgtype==IW_IMGTYPE_GRAY) {
 		ctx->intermed_ci[0].bkgd_color_lin = iw_color_to_grayscale(ctx,bkgd1.c[0],bkgd1.c[1],bkgd1.c[2]);
-	}
-
-	if(ctx->bkgd_checkerboard) {
-		if(ctx->bkgd_check_size<1) ctx->bkgd_check_size=1;
 	}
 }
 
@@ -1752,6 +1740,19 @@ static void decide_strategy(struct iw_context *ctx, int *ps1, int *ps2)
 }
 
 // Choose our strategy for applying a background to the image.
+// Uses:
+//   - ctx->img1_imgtype_logical (set by init_channel_info())
+//   - ctx->req.bkgd_valid (was background set by caller?)
+//   - ctx->req.bkgd_checkerboard (set by caller)
+//   - ctx->bkgd_check_size (set by caller)
+//   - ctx->resize_settings[d].use_offset
+// Sets:
+//   - ctx->apply_bkgd (flag indicating whether we'll apply a background)
+//   - ctx->apply_bkgd_strategy (flag indicating *when* we'll apply a background)
+//   - ctx->bkgd_color_source (where to get the background color)
+//   - ctx->bkgd_checkerboard
+//   - ctx->bkgd_check_size (sanitized)
+// May emit a warning if the caller's settings can't be honored.
 static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 {
 	if(!IW_IMGTYPE_HAS_ALPHA(ctx->img1_imgtype_logical)) {
@@ -1761,13 +1762,38 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		return;
 	}
 
+	// Figure out where to get the background color from, on the assumption
+	// that we'll use one.
+	if(ctx->img1_bkgd_label_set &&
+		(ctx->req.use_bkgd_label_from_file || !ctx->req.bkgd_valid))
+	{
+		// The input file has a background color label, and either we are
+		// requested to prefer it to the caller's background color, or
+		// the caller did not give us a background color.
+		// Use the color from the input file.
+		ctx->bkgd_color_source = IW_BKGD_COLOR_SOURCE_FILE;
+	}
+	else if(ctx->req.bkgd_valid) {
+		// Use the background color given by the caller.
+		ctx->bkgd_color_source = IW_BKGD_COLOR_SOURCE_REQ;
+		// Tentatively use the caller's checkerboard setting.
+		// This may be overridden if we can't support checkerboard backgrounds
+		// for some reason.
+		ctx->bkgd_checkerboard = ctx->req.bkgd_checkerboard;
+	}
+	else {
+		// No background color available. If we need one, we'll have to invent one.
+		ctx->bkgd_color_source = IW_BKGD_COLOR_SOURCE_NONE;
+	}
+
+	if(ctx->bkgd_checkerboard) {
+		if(ctx->bkgd_check_size<1) ctx->bkgd_check_size=1;
+	}
+
 	if(ctx->req.bkgd_valid) {
 		// Caller told us to apply a background.
 		ctx->apply_bkgd=1;
 	}
-
-	// Tentatively user the caller's checkerboard setting.
-	ctx->bkgd_checkerboard = ctx->req.bkgd_checkerboard;
 
 	if(!(ctx->output_profile&IW_PROFILE_TRANSPARENCY)) {
 		if(!ctx->req.bkgd_valid && !ctx->apply_bkgd) {
@@ -1788,7 +1814,7 @@ static void decide_how_to_apply_bkgd(struct iw_context *ctx)
 		}
 		ctx->apply_bkgd=1;
 
-		if(ctx->req.bkgd_checkerboard) {
+		if(ctx->bkgd_checkerboard && ctx->req.bkgd_checkerboard) {
 			iw_warning(ctx,"Checkerboard backgrounds are not supported when using a channel offset.");
 			ctx->bkgd_checkerboard=0;
 		}
