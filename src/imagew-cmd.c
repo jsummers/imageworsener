@@ -101,6 +101,7 @@ struct params_struct {
 	double offset_v[3];
 	double translate_x, translate_y;
 	int translate_src_flag; // If 1, translate_[xy] is in source pixels.
+	int translate_set;
 	double imagesize_x, imagesize_y;
 	int imagesize_set;
 	struct dither_setting dither[5]; // Indexed by IW_CHANNELTYPE_[RED..GRAY]
@@ -1191,17 +1192,30 @@ static int iwcmd_run(struct params_struct *p)
 
 	figure_out_size_and_density(p,ctx);
 
-	if(p->translate_src_flag) {
-		// Convert from dst pixels to src pixels
-		if(p->translate_x!=0.0) {
-			p->translate_x *= ((double)p->dst_width)/p->src_width;
-		}
-		if(p->translate_y!=0.0) {
-			p->translate_y *= ((double)p->dst_height)/p->src_height;
-		}
+	if((p->edge_policy_x!=IW_EDGE_POLICY_REPLICATE &&
+		p->edge_policy_x!=IW_EDGE_POLICY_TRANSPARENT) ||
+		(p->edge_policy_y!=IW_EDGE_POLICY_REPLICATE &&
+		p->edge_policy_y!=IW_EDGE_POLICY_TRANSPARENT))
+	{
+		if(p->imagesize_set)
+			iw_warning(ctx,"\xe2\x80\x9c-edge t\xe2\x80\x9d is recommended when using -imagesize");
+		else if(p->translate_set)
+			iw_warning(ctx,"\xe2\x80\x9c-edge t\xe2\x80\x9d is recommended when using -translate");
 	}
-	if(p->translate_x!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_X,p->translate_x);
-	if(p->translate_y!=0.0) iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_Y,p->translate_y);
+
+	if(p->translate_set) {
+		if(p->translate_src_flag) {
+			// Convert from dst pixels to src pixels
+			if(p->translate_x!=0.0) {
+				p->translate_x *= ((double)p->dst_width)/p->src_width;
+			}
+			if(p->translate_y!=0.0) {
+				p->translate_y *= ((double)p->dst_height)/p->src_height;
+			}
+		}
+		iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_X,p->translate_x);
+		iw_set_value_dbl(ctx,IW_VAL_TRANSLATE_Y,p->translate_y);
+	}
 
 	tmpflag = 0; // Have we displayed a "gaussian filter" warning yet?
 	if(p->resize_blur_x.is_set && !p->resize_alg_x.family) {
@@ -1247,13 +1261,6 @@ static int iwcmd_run(struct params_struct *p)
 
 	iw_set_output_canvas_size(ctx,p->dst_width,p->dst_height);
 	if(p->imagesize_set) {
-		if((p->edge_policy_x!=IW_EDGE_POLICY_REPLICATE &&
-			p->edge_policy_x!=IW_EDGE_POLICY_TRANSPARENT) ||
-			(p->edge_policy_y!=IW_EDGE_POLICY_REPLICATE &&
-			p->edge_policy_y!=IW_EDGE_POLICY_TRANSPARENT))
-		{
-			iw_warning(ctx,"\xe2\x80\x9c-edge t\xe2\x80\x9d is recommended when using -imagesize");
-		}
 		iw_set_output_image_size(ctx,p->imagesize_x,p->imagesize_y);
 	}
 	if(p->use_crop) {
@@ -2478,6 +2485,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		else {
 			iwcmd_parse_dbl_pair(v,&p->translate_x,&p->translate_y);
 		}
+		p->translate_set = 1;
 		break;
 	case PT_IMAGESIZE:
 		iwcmd_parse_dbl_pair(v,&p->imagesize_x,&p->imagesize_y);
