@@ -298,6 +298,8 @@ $IW srcimg/bmprle8t.bmp actual/bmprle8t.png $CMPR $SMALL
 $IW srcimg/bmp16-555.bmp actual/bmp16-1.png $CMPR $SCALE -density keep -reorient rotate90
 $IW srcimg/bmp16-565.bmp actual/bmp16-2.png $CMPR $SCALE -density adjust -reorient flipv
 
+$IW srcimg/test1.webp actual/webp3.png $CMPR $SMALL -precision 32
+
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
 
