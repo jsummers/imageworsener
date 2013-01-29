@@ -509,9 +509,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 			// I'm not sure what we're supposed to do.
 			iw_warning(ctx,"JPEG image has an ambiguous orientation");
 		}
-		else {
-			iw_reorient_image(ctx,exif_orient_to_transform[rctx.exif_orientation]);
-		}
+		iw_reorient_image(ctx,exif_orient_to_transform[rctx.exif_orientation]);
 	}
 
 	retval=1;
