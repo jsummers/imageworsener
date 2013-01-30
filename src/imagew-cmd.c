@@ -178,6 +178,17 @@ struct params_struct {
 #endif
 };
 
+#ifndef IW_WINDOWS
+static void iwcmd_strlcpy(char *dst, const char *src, size_t dstlen)
+{
+	size_t n;
+	n = strlen(src);
+	if(n>dstlen-1) n=dstlen-1;
+	memcpy(dst,src,n);
+	dst[n]='\0';
+}
+#endif
+
 #ifdef _UNICODE
 static char *iwcmd_utf16_to_utf8_strdup(const WCHAR *src)
 {
@@ -309,24 +320,25 @@ static void iwcmd_error(struct params_struct *p, const char *fmt, ...)
 // Wrappers for fopen()
 #if defined(IW_WINDOWS) && defined(_UNICODE)
 
-static FILE* iwcmd_fopen(const char *fn, const char *mode)
+static FILE* iwcmd_fopen(const char *fn, const char *mode, char *errmsg, size_t errmsg_len)
 {
 	FILE *f = NULL;
-	errno_t ret;
+	errno_t errcode;
 	WCHAR *fnW;
 	WCHAR *modeW;
 
 	fnW = iwcmd_utf8_to_utf16_strdup(fn);
 	modeW = iwcmd_utf8_to_utf16_strdup(mode);
 
-	ret = _wfopen_s(&f,fnW,modeW);
+	errcode = _wfopen_s(&f,fnW,modeW);
 
 	free(fnW);
 	free(modeW);
 
-	if(ret!=0) {
+	errmsg[0]='\0';
+	if(errcode!=0) {
 		// failure
-		if(f) fclose(f);
+		strerror_s(errmsg,errmsg_len,(int)errcode);
 		f=NULL;
 	}
 	return f;
@@ -334,15 +346,14 @@ static FILE* iwcmd_fopen(const char *fn, const char *mode)
 
 #elif defined(IW_WINDOWS) && !defined(_UNICODE)
 
-static FILE* iwcmd_fopen(const char *fn, const char *mode)
+static FILE* iwcmd_fopen(const char *fn, const char *mode, char *errmsg, size_t errmsg_len)
 {
 	FILE *f = NULL;
-	errno_t ret;
+	errno_t errcode;
 
-	ret = fopen_s(&f,fn,mode);
-	if(ret!=0) {
-		// failure
-		if(f) fclose(f);
+	errcode = fopen_s(&f,fn,mode);
+	if(errcode!=0) {
+		strerror_s(errmsg,errmsg_len,(int)errcode);
 		f=NULL;
 	}
 	return f;
@@ -350,9 +361,17 @@ static FILE* iwcmd_fopen(const char *fn, const char *mode)
 
 #else
 
-static FILE* iwcmd_fopen(const char *fn, const char *mode)
+static FILE* iwcmd_fopen(const char *fn, const char *mode, char *errmsg, size_t errmsg_len)
 {
-	return fopen(fn,mode);
+	FILE *f;
+	int errcode;
+
+	f=fopen(fn,mode);
+	if(!f) {
+		errcode = errno;
+		iwcmd_strlcpy(errmsg, strerror(errcode), errmsg_len);
+	}
+	return f;
 }
 
 #endif
@@ -1031,9 +1050,9 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
 		readdescr.read_fn = my_readfn;
 		readdescr.getfilesize_fn = my_getfilesizefn;
-		readdescr.fp = (void*)iwcmd_fopen(p->input_uri.filename,"rb");
+		readdescr.fp = (void*)iwcmd_fopen(p->input_uri.filename, "rb", errmsg, sizeof(errmsg));
 		if(!readdescr.fp) {
-			iw_set_errorf(ctx,"Failed to open for reading (error code=%d)",(int)errno);
+			iw_set_errorf(ctx,"Failed to open %s for reading: %s", p->input_uri.filename, errmsg);
 			goto done;
 		}
 	}
@@ -1279,9 +1298,9 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->output_uri.scheme==IWCMD_SCHEME_FILE) {
 		writedescr.write_fn = my_writefn;
 		writedescr.seek_fn = my_seekfn;
-		writedescr.fp = (void*)iwcmd_fopen(p->output_uri.filename,"wb");
+		writedescr.fp = (void*)iwcmd_fopen(p->output_uri.filename, "wb", errmsg, sizeof(errmsg));
 		if(!writedescr.fp) {
-			iw_set_errorf(ctx,"Failed to open for writing (error code=%d)",(int)errno);
+			iw_set_errorf(ctx,"Failed to open %s for writing: %s", p->output_uri.filename, errmsg);
 			goto done;
 		}
 	}
@@ -1339,7 +1358,7 @@ done:
 
 	if(ctx) {
 		if(iw_get_errorflag(ctx)) {
-			iwcmd_error(p,"imagew error: %s\n",iw_get_errormsg(ctx,errmsg,200));
+			iwcmd_error(p,"imagew error: %s\n",iw_get_errormsg(ctx,errmsg,sizeof(errmsg)));
 		}
 	}
 
