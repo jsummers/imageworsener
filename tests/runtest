@@ -235,6 +235,7 @@ $IW srcimg/rgb8x2.png actual/dens-6ns.png
 $IW srcimg/25x20.png actual/dens-ix.png -w 34 -density adjust
 $IW srcimg/25x20.png actual/dens-iy.png -h 27 -density adjust
 $IW srcimg/25x20.png actual/dens-ixy.png -w 34 -h 27 -density adjust
+$IW srcimg/25x20.png actual/dens-imgsize.png -S 34,34 -translate 1,2.5 -imagesize 31,25 -edge t -bkgd 808b -density adjust
 $IW srcimg/25x20.png actual/orient1.png -reorient transverse
 
 # Image with just 2 pixels can't have more than 2 colors. Test to see

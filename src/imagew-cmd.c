@@ -758,6 +758,8 @@ static void figure_out_size_and_density(struct params_struct *p, struct iw_conte
 	double adjusted_dens_x, adjusted_dens_y;
 	int nonsquare_pixels_flag = 0;
 	int width_specified, height_specified;
+	double newdens_x,newdens_y;
+	int imagesize_changed;
 
 	iw_get_input_density(ctx,&xdens,&ydens,&density_code);
 
@@ -849,15 +851,25 @@ static void figure_out_size_and_density(struct params_struct *p, struct iw_conte
 	if(p->dst_width<1) p->dst_width=1;
 	if(p->dst_height<1) p->dst_height=1;
 
+	imagesize_changed = 0;
+	if(p->imagesize_set) {
+		if(fabs(p->imagesize_x - (double)p->dst_width) > 0.00001) imagesize_changed=1;
+		if(fabs(p->imagesize_y - (double)p->dst_height) > 0.00001) imagesize_changed=1;
+	}
+	else {
+		if(p->dst_width!=p->src_width || p->dst_height!=p->src_height)
+			imagesize_changed = 1;
+	}
+
 	// Figure out what policy=AUTO means.
 	if(p->density_policy==IWCMD_DENSITY_POLICY_AUTO) {
 		if(density_code==IW_DENSITY_UNKNOWN) {
 			p->density_policy=IWCMD_DENSITY_POLICY_NONE;
 		}
-		else if(p->dst_width==p->src_width && p->dst_height==p->src_height) {
+		else if(!imagesize_changed) {
 			p->density_policy=IWCMD_DENSITY_POLICY_KEEP;
 		}
-		else if(!width_specified && !height_specified) {
+		else if(!width_specified && !height_specified && !p->imagesize_set) {
 			// If the user did not request the size to be changed, but we're
 			// changing it anyway (presumably due to nonsquare pixels), keep
 			// the image the same physical size.
@@ -874,15 +886,19 @@ static void figure_out_size_and_density(struct params_struct *p, struct iw_conte
 			iw_set_output_density(ctx,adjusted_dens_x,adjusted_dens_y,density_code);
 		}
 	}
+	else if(p->density_policy==IWCMD_DENSITY_POLICY_ADJUST && p->imagesize_set) {
+		if(density_code!=IW_DENSITY_UNKNOWN) {
+			newdens_x = adjusted_dens_x*(p->imagesize_x/p->adjusted_src_width);
+			newdens_y = adjusted_dens_y*(p->imagesize_y/p->adjusted_src_height);
+			iw_set_output_density(ctx,newdens_x,newdens_y,density_code);
+		}
+	}
 	else if(p->density_policy==IWCMD_DENSITY_POLICY_ADJUST) {
 		if(density_code!=IW_DENSITY_UNKNOWN) {
-			double newdens_x,newdens_y;
 			// If we don't do anything to prevent it, the "adjust" policy will
 			// tend to create images whose pixels are slightly non-square. While
 			// not *wrong*, this is usually undesirable.
-			// The ideal solution is probably to scale the dimensions by *exactly*
-			// the same factor, but we don't support that yet.
-			// In the meantime, if the source image had square pixels, fudge the
+			// So, if the source image had square pixels, fudge the
 			// density label so that the target image also has square pixels, even
 			// if that makes the label less accurate.
 			// If possible, fix it up by changing the density of the dimension whose
@@ -2530,7 +2546,8 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_IMAGESIZE:
 		iwcmd_parse_dbl_pair(v,&p->imagesize_x,&p->imagesize_y);
-		p->imagesize_set = 1;
+		if(p->imagesize_x>0.0 && p->imagesize_y>0.0)
+			p->imagesize_set = 1;
 		break;
 	case PT_COMPRESS:
 		p->compression=iwcmd_decode_compression_name(p,v);
