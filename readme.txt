@@ -196,11 +196,13 @@ Options:
     "16" is supported for PNG and TIFF formats.
     "32" and "64" are used with MIFF format (floating point).
    Other depths are supported in some special cases. Use with caution -- this
-    may not do what you expect, and may disable optimizations. Use -cc instead
-    if possible.
+    can be useful, but it may not do what you expect, and may disable
+    optimizations. Consider whether you should use -cc instead.
    With BMP format, requesting an unusual depth will cause a 16 bits/pixel
-    image to be written, so the sum total can be no more than 16. Depths
-    "5,6,5" and "5,5,5" are the most common and most portable.
+    image to be written if the total number of bits is no more than 16,
+    or a 32 bits/pixel image otherwise. The total number of bits may not be
+    more than 32, and no channel may have more than 16 bits. Depths "5,6,5"
+    and "5,5,5" are the most common and most portable.
    PNG format supports arbitrary depths (from 1 to 16), using "sBIT" chunks,
     but these are ignored by most image viewers.
    If you use a depth less than 8, consider using -dither.
@@ -209,7 +211,7 @@ Options:
    actually be used, by using the "-cc" options.
    Note that this doesn't necessarily determine the depth used in the output
    file. If the image can be encoded at a smaller depth with no loss of
-   information, IW may choose to do that.
+   information, IW may choose to do that (see also -noopt).
 
  -sampletype <type>
    Request that the output samples be written as unsigned integers (type="u"),
