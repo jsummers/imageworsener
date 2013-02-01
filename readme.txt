@@ -211,6 +211,10 @@ Options:
    file. If the image can be encoded at a smaller depth with no loss of
    information, IW may choose to do that.
 
+ -sampletype <type>
+   Request that the output samples be written as unsigned integers (type="u"),
+   or floating-point (type="f"). This option currently has no effect.
+
  -filter <name> (-filterx -filtery)
    The resizing algorithm to use. (It would be more accurate if this option
    were named "-resizealgorithm", but that's too hard to type.) Default is

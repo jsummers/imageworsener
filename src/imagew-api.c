@@ -823,6 +823,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_INTENT:
 		ctx->req.output_rendering_intent = n;
 		break;
+	case IW_VAL_OUTPUT_SAMPLE_TYPE:
+		ctx->req.output_sample_type = n;
+		break;
 	}
 }
 
@@ -928,6 +931,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_INTENT:
 		ret = ctx->req.output_rendering_intent;
+		break;
+	case IW_VAL_OUTPUT_SAMPLE_TYPE:
+		ret = ctx->req.output_sample_type;
 		break;
 	}
 

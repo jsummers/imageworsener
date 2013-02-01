@@ -126,6 +126,7 @@ struct iw_opt_ctx {
 // and that might not always be respected, or applicable.
 struct iw_req_struct {
 	int output_depth; // Bits/sample requested by the caller.
+	int output_sample_type; // Reserved for future expansion.
 	int output_maxcolorcode[IW_NUM_CHANNELTYPES];
 
 	// Requested color counts; 0 = "not set"

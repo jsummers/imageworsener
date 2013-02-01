@@ -94,6 +94,7 @@ struct params_struct {
 	int bestfit_option;
 	int precision;
 	int depth; // Overall depth
+	int sample_type;
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
 	int compression;
 	int grayscale, condgrayscale;
@@ -1028,6 +1029,7 @@ static int iwcmd_run(struct params_struct *p)
 	}
 
 	if(p->precision) iw_set_value(ctx,IW_VAL_PRECISION,p->precision);
+	if(p->sample_type>=0) iw_set_value(ctx,IW_VAL_OUTPUT_SAMPLE_TYPE,p->sample_type);
 	if(p->no_gamma) iw_set_value(ctx,IW_VAL_DISABLE_GAMMA,1);
 	if(p->intclamp) iw_set_value(ctx,IW_VAL_INT_CLAMP,1);
 	if(p->no_cslabel) iw_set_value(ctx,IW_VAL_NO_CSLABEL,1);
@@ -2051,7 +2053,7 @@ static void iwcmd_printversion(struct params_struct *p)
 }
 
 enum iwcmd_param_types {
- PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_SIZE, PT_EXACTSIZE,
+ PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_SIZE, PT_EXACTSIZE, PT_SAMPLETYPE,
  PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS, PT_INTENT,
  PT_PRECISION, PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
  PT_BLUR, PT_BLUR_X, PT_BLUR_Y,
@@ -2095,6 +2097,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"depth",PT_DEPTH,1},
 		{"depthgray",PT_DEPTHGRAY,1},
 		{"depthalpha",PT_DEPTHALPHA,1},
+		{"sampletype",PT_SAMPLETYPE,1},
 		{"inputcs",PT_INPUTCS,1},
 		{"cs",PT_CS,1},
 		{"filter",PT_RESIZETYPE,1},
@@ -2325,6 +2328,21 @@ static int iwcmd_read_cc(struct params_struct *p, const char *v)
 	return 1;
 }
 
+static int iwcmd_decode_sampletype(struct params_struct *p, const char *v)
+{
+	if(v[0]=='u') {
+		p->sample_type = IW_SAMPLETYPE_UINT;
+	}
+	else if(v[0]=='f') {
+		p->sample_type = IW_SAMPLETYPE_FLOATINGPOINT;
+	}
+	else {
+		iwcmd_error(p,"Unknown sample type \xe2\x80\x9c%s\xe2\x80\x9d\n",v);
+		return -1;
+	}
+	return 1;
+}
+
 static int process_option_arg(struct params_struct *p, struct parsestate_struct *ps, const char *v)
 {
 	int ret;
@@ -2358,6 +2376,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_DEPTHALPHA:
 		p->channel_depth[IW_CHANNELTYPE_ALPHA] = iwcmd_parse_int(v);
+		break;
+	case PT_SAMPLETYPE:
+		ret=iwcmd_decode_sampletype(p,v);
+		if(ret<0) return 0;
 		break;
 	case PT_INPUTCS:
 		ret=iwcmd_string_to_colorspace(p,&p->cs_in,v);
@@ -2848,6 +2870,7 @@ static void init_params(struct params_struct *p)
 	memset(p,0,sizeof(struct params_struct));
 	p->dst_width_req = -1;
 	p->dst_height_req = -1;
+	p->sample_type = -1;
 	p->edge_policy_x = -1;
 	p->edge_policy_y = -1;
 	p->density_policy = IWCMD_DENSITY_POLICY_AUTO;

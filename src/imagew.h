@@ -135,6 +135,8 @@ extern "C" {
 // Request the output image be labeled with this rendering intent.
 #define IW_VAL_INTENT            49 // IW_INTENT_*
 
+#define IW_VAL_OUTPUT_SAMPLE_TYPE 50 // IW_SAMPLETYPE_*
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1
