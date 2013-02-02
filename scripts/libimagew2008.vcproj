@@ -21,8 +21,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="..\LibDebug"
-			IntermediateDirectory="..\LibDebug"
+			OutputDirectory="..\Debug32\iwlib"
+			IntermediateDirectory="..\Debug32\iwlib"
 			ConfigurationType="4"
 			CharacterSet="1"
 			>
@@ -84,8 +84,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|x64"
-			OutputDirectory="..\LibDebug64"
-			IntermediateDirectory="..\LibDebug64"
+			OutputDirectory="..\Debug64\iwlib"
+			IntermediateDirectory="..\Debug64\iwlib"
 			ConfigurationType="4"
 			CharacterSet="1"
 			>
@@ -148,8 +148,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\LibRelease"
-			IntermediateDirectory="..\LibRelease"
+			OutputDirectory="..\Release32\iwlib"
+			IntermediateDirectory="..\Release32\iwlib"
 			ConfigurationType="4"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -212,8 +212,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|x64"
-			OutputDirectory="..\LibRelease64"
-			IntermediateDirectory="..\LibRelease64"
+			OutputDirectory="..\Release64\iwlib"
+			IntermediateDirectory="..\Release64\iwlib"
 			ConfigurationType="4"
 			CharacterSet="1"
 			WholeProgramOptimization="1"

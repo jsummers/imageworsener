@@ -22,7 +22,7 @@
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="..\Debug32"
-			IntermediateDirectory="..\Debug32"
+			IntermediateDirectory="..\Debug32\iwcmd"
 			ConfigurationType="1"
 			CharacterSet="1"
 			>
@@ -96,7 +96,7 @@
 		<Configuration
 			Name="Debug|x64"
 			OutputDirectory="..\Debug64"
-			IntermediateDirectory="..\Debug64"
+			IntermediateDirectory="..\Debug64\iwcmd"
 			ConfigurationType="1"
 			CharacterSet="1"
 			>
@@ -171,7 +171,7 @@
 		<Configuration
 			Name="Release|Win32"
 			OutputDirectory="..\Release32"
-			IntermediateDirectory="..\Release32"
+			IntermediateDirectory="..\Release32\iwcmd"
 			ConfigurationType="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -248,7 +248,7 @@
 		<Configuration
 			Name="Release|x64"
 			OutputDirectory="..\Release64"
-			IntermediateDirectory="..\Release64"
+			IntermediateDirectory="..\Release64\iwcmd"
 			ConfigurationType="1"
 			CharacterSet="1"
 			WholeProgramOptimization="1"

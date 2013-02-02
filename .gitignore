@@ -2,10 +2,6 @@
 /Release32
 /Debug64
 /Release64
-/LibDebug
-/LibRelease
-/LibDebug64
-/LibRelease64
 *.suo
 *.ncb
 /scripts/imagew2008.vcproj.*
