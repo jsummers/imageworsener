@@ -1,4 +1,7 @@
 Unreleased changes
+ - (none)
+
+Version 1.1.0 - 2 Feb 2013
  - Support for background colors with transparency.
  - Support for background colors in MIFF files.
  - Added -intent option, to set the rendering intent without setting the

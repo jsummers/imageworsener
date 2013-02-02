@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.0.0
+VERSION=1.1.0
 
 if [ ! -f technical.txt ]
 then
@@ -17,7 +17,7 @@ fi
 mkdir -p rel
 
 # Make the source package.
-rm -f rel/imageworsener-src-$VERSION.tar.gz
+rm -f rel/imageworsener-$VERSION.tar.gz
 
 if [ ! -f Makefile ]
 then
@@ -26,4 +26,4 @@ then
 fi
 
 make distcheck
-ln imageworsener-${VERSION}.tar.gz rel/imageworsener-src-${VERSION}.tar.gz
+mv imageworsener-${VERSION}.tar.gz rel/

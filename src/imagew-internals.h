@@ -5,7 +5,7 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-#define IW_COPYRIGHT_YEAR "2011" "\xe2\x80\x93" "2012"
+#define IW_COPYRIGHT_YEAR "2011" "\xe2\x80\x93" "2013"
 
 #ifdef IW_WINDOWS
 #define IW_INLINE __inline
