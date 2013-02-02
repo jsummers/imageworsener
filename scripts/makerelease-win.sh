@@ -27,7 +27,7 @@ make_windows_package() {
 	fi
 }
 
-make_windows_package win32 Release
+make_windows_package win32 Release32
 make_windows_package win64 Release64
 
 
