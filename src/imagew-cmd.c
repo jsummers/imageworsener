@@ -11,9 +11,12 @@
 
 #ifdef IW_WINDOWS
 #define IW_NO_LOCALE
+#ifndef UNICODE
+#define UNICODE
 #endif
-
-#ifdef IW_WINDOWS
+#ifndef _UNICODE
+#define _UNICODE
+#endif
 #include <windows.h>
 #endif
 
@@ -190,7 +193,7 @@ static void iwcmd_strlcpy(char *dst, const char *src, size_t dstlen)
 }
 #endif
 
-#ifdef _UNICODE
+#ifdef IW_WINDOWS
 static char *iwcmd_utf16_to_utf8_strdup(const WCHAR *src)
 {
 	char *dst;
@@ -247,12 +250,12 @@ static void iwcmd_utf8_to_utf16(const char *src, WCHAR *dst, int dstlen)
 static void iwcmd_puts_utf8(struct params_struct *p, const char *s)
 {
 	char buf[500];
-#ifdef _UNICODE
+#ifdef IW_WINDOWS
 	WCHAR bufW[500];
 #endif
 
 	switch(p->output_encoding) {
-#ifdef _UNICODE
+#ifdef IW_WINDOWS
 	case IWCMD_ENCODING_UTF16:
 		iwcmd_utf8_to_utf16(s,bufW,sizeof(bufW)/sizeof(WCHAR));
 		fputws(bufW,stdout);
@@ -319,7 +322,7 @@ static void iwcmd_error(struct params_struct *p, const char *fmt, ...)
 }
 
 // Wrappers for fopen()
-#if defined(IW_WINDOWS) && defined(_UNICODE)
+#ifdef IW_WINDOWS
 
 static FILE* iwcmd_fopen(const char *fn, const char *mode, char *errmsg, size_t errmsg_len)
 {
@@ -339,21 +342,6 @@ static FILE* iwcmd_fopen(const char *fn, const char *mode, char *errmsg, size_t 
 	errmsg[0]='\0';
 	if(errcode!=0) {
 		// failure
-		strerror_s(errmsg,errmsg_len,(int)errcode);
-		f=NULL;
-	}
-	return f;
-}
-
-#elif defined(IW_WINDOWS) && !defined(_UNICODE)
-
-static FILE* iwcmd_fopen(const char *fn, const char *mode, char *errmsg, size_t errmsg_len)
-{
-	FILE *f = NULL;
-	errno_t errcode;
-
-	errcode = fopen_s(&f,fn,mode);
-	if(errcode!=0) {
 		strerror_s(errmsg,errmsg_len,(int)errcode);
 		f=NULL;
 	}
@@ -2664,7 +2652,7 @@ static int read_encoding_option(struct params_struct *p, const char *v)
 	else if(!strcmp(v,"utf8")) {
 		p->output_encoding_req = IWCMD_ENCODING_UTF8;
 	}
-#ifdef _UNICODE
+#ifdef IW_WINDOWS
 	else if(!strcmp(v,"utf16")) {
 		p->output_encoding_req = IWCMD_ENCODING_UTF16;
 	}
@@ -2718,8 +2706,8 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 	}
 #endif
 
-#if defined(_UNICODE)
-	// If the user didn't set an encoding, and this is a Windows Unicode
+#ifdef IW_WINDOWS
+	// If the user didn't set an encoding, and this is a Windows
 	// build, use UTF-16 if we're writing to a real Windows console, or UTF-8
 	// otherwise (e.g. if we're redirected to a file).
 	// I think we could call _setmode(...,_O_U8TEXT) to do essentially the
@@ -2754,13 +2742,11 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 	}
 
 #ifdef IW_WINDOWS
-#ifdef _UNICODE
 	if(p->output_encoding==IWCMD_ENCODING_UTF16) {
 		// Tell the C library (e.g. fputws()) not not to translate our UTF-16
 		// text to an "ANSI" encoding, or anything else.
 		_setmode(_fileno(stdout),_O_U16TEXT);
 	}
-#endif
 #endif
 
 	return 1;
@@ -2941,7 +2927,7 @@ static int iwcmd_main(int argc, char* argv[])
 	return 1;
 }
 
-#ifdef _UNICODE
+#ifdef IW_WINDOWS
 
 int wmain(int argc, WCHAR* argvW[])
 {
