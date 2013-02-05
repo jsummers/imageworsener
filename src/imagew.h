@@ -137,6 +137,9 @@ extern "C" {
 
 #define IW_VAL_OUTPUT_SAMPLE_TYPE 50 // IW_SAMPLETYPE_*
 
+// Suggested output color type
+#define IW_VAL_OUTPUT_COLOR_TYPE 51 // IW_COLORTYPE_*
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1
@@ -218,6 +221,10 @@ extern "C" {
 #define IW_COMPRESSION_LZW      3
 #define IW_COMPRESSION_JPEG     4
 #define IW_COMPRESSION_RLE      5
+
+#define IW_COLORTYPE_DEFAULT    0
+#define IW_COLORTYPE_RGB        1
+#define IW_COLORTYPE_YCBCR      2
 
 // The CHANNELTYPE definitions must not be changed. They are used as array indices.
 #define IW_CHANNELTYPE_RED    0

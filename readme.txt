@@ -657,6 +657,15 @@ Options:
     will only be used if the number of colors is 256 or fewer.
    For all other formats, this option currently has no effect.
 
+ -colortype <name>
+   Suggest the color type type use for the output image. The behavior depends
+   on the output file format. This option is recommended for experts only.
+   Color types:
+   "rgb": If a color image is written to a JPEG file, leave it in RGB format
+    instead of converting it to YCbCr. The resulting file will likely be larger
+    and less portable.
+   "ycbcr": Convert color JPEG images to YCbCr (the default).
+
  -interlace
    Write an interlaced PNG image, or a progressive JPEG image.
 

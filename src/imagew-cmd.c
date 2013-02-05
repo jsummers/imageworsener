@@ -100,6 +100,7 @@ struct params_struct {
 	int sample_type;
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
 	int compression;
+	int color_type;
 	int grayscale, condgrayscale;
 	double offset_h[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 	double offset_v[3];
@@ -1297,6 +1298,9 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->compression>0) {
 		iw_set_value(ctx,IW_VAL_COMPRESSION,p->compression);
 	}
+	if(p->color_type>0) {
+		iw_set_value(ctx,IW_VAL_OUTPUT_COLOR_TYPE,p->color_type);
+	}
 	if(p->interlace) {
 		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
 	}
@@ -2014,6 +2018,14 @@ static int iwcmd_decode_compression_name(struct params_struct *p, const char *s)
 	return -1;
 }
 
+static int iwcmd_decode_color_type(struct params_struct *p, const char *s)
+{
+	if(!strcmp(s,"rgb")) return IW_COLORTYPE_RGB;
+	else if(!strcmp(s,"ycbcr")) return IW_COLORTYPE_YCBCR;
+	iwcmd_error(p,"Unknown color type \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
+	return -1;
+}
+
 static void usage_message(struct params_struct *p)
 {
 	iwcmd_message(p,
@@ -2067,7 +2079,7 @@ enum iwcmd_param_types {
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE, PT_IMAGESIZE,
  PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH, PT_BMPTRNS, PT_BMPVERSION,
- PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE,
+ PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE, PT_COLORTYPE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
@@ -2141,6 +2153,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"translate",PT_TRANSLATE,1},
 		{"imagesize",PT_IMAGESIZE,1},
 		{"compress",PT_COMPRESS,1},
+		{"colortype",PT_COLORTYPE,1},
 		{"page",PT_PAGETOREAD,1},
 		{"jpegquality",PT_JPEGQUALITY,1},
 		{"jpegsampling",PT_JPEGSAMPLING,1},
@@ -2540,6 +2553,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_COMPRESS:
 		p->compression=iwcmd_decode_compression_name(p,v);
 		if(p->compression<0) return 0;
+		break;
+	case PT_COLORTYPE:
+		p->color_type=iwcmd_decode_color_type(p,v);
+		if(p->color_type<0) return 0;
 		break;
 	case PT_PAGETOREAD:
 		p->page_to_read = iwcmd_parse_int(v);

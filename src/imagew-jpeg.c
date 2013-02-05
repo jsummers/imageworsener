@@ -599,7 +599,7 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	int retval=0;
 	struct jpeg_compress_struct cinfo;
 	struct my_error_mgr jerr;
-	J_COLOR_SPACE jpeg_colortype;
+	J_COLOR_SPACE in_colortype; // Color type of the data we give to libjpeg
 	int jpeg_cmpts;
 	int compress_created = 0;
 	int compress_started = 0;
@@ -609,6 +609,8 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	struct iw_image img;
 	int jpeg_quality;
 	int samp_factor_h, samp_factor_v;
+	int req_color_type;
+	int disable_subsampling = 0;
 	struct iwjpegwcontext wctx;
 
 	iw_zeromem(&cinfo,sizeof(struct jpeg_compress_struct));
@@ -630,11 +632,11 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	is_grayscale = IW_IMGTYPE_IS_GRAY(img.imgtype);
 
 	if(is_grayscale) {
-		jpeg_colortype=JCS_GRAYSCALE;
+		in_colortype=JCS_GRAYSCALE;
 		jpeg_cmpts=1;
 	}
 	else {
-		jpeg_colortype=JCS_RGB;
+		in_colortype=JCS_RGB;
 		jpeg_cmpts=3;
 	}
 
@@ -670,11 +672,17 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	cinfo.image_width = img.width;
 	cinfo.image_height = img.height;
 	cinfo.input_components = jpeg_cmpts;
-	cinfo.in_color_space = jpeg_colortype;
+	cinfo.in_color_space = in_colortype;
 
 	jpeg_set_defaults(&cinfo);
 
 	cinfo.arith_code = iw_get_value(ctx,IW_VAL_JPEG_ARITH_CODING) ? TRUE : FALSE;
+
+	req_color_type = iw_get_value(ctx,IW_VAL_OUTPUT_COLOR_TYPE);
+	if(req_color_type==IW_COLORTYPE_RGB && in_colortype==JCS_RGB) {
+		jpeg_set_colorspace(&cinfo,JCS_RGB);
+		disable_subsampling = 1;
+	}
 
 	iwjpg_set_density(ctx,&cinfo,&img);
 
@@ -683,7 +691,7 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 		jpeg_set_quality(&cinfo,jpeg_quality,0);
 	}
 
-	if(jpeg_cmpts>1) {
+	if(jpeg_cmpts>1 && !disable_subsampling) {
 		samp_factor_h = iw_get_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H);
 		samp_factor_v = iw_get_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V);
 

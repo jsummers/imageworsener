@@ -166,6 +166,7 @@ struct iw_req_struct {
 	int interlaced;
 	int bmp_no_fileheader;
 	int bmp_version; // requested BMP file version to write
+	int output_color_type;
 	double webp_quality;
 };
 
