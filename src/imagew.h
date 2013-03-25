@@ -149,6 +149,7 @@ extern "C" {
 #define IW_FORMAT_MIFF     5
 #define IW_FORMAT_WEBP     6
 #define IW_FORMAT_GIF      7
+#define IW_FORMAT_PNM      8
 
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.
@@ -694,6 +695,8 @@ IW_EXPORT(int) iw_write_miff_file(struct iw_context *ctx, struct iw_iodescr *iod
 IW_EXPORT(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_read_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(char*) iw_get_libwebp_dec_version_string(char *s, int s_len);
 IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);
 

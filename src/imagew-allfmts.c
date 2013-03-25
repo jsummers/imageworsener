@@ -69,6 +69,9 @@ IW_IMPL(int) iw_read_file_by_fmt(struct iw_context *ctx,
 	case IW_FORMAT_TIFF:
 		break;
 
+	case IW_FORMAT_PNM:
+		break;
+
 	default:
 		iw_set_errorf(ctx,"Attempt to read unknown file format (%d)",fmt);
 		goto done;
@@ -134,6 +137,9 @@ IW_IMPL(int) iw_write_file_by_fmt(struct iw_context *ctx,
 		break;
 
 	case IW_FORMAT_GIF:
+		break;
+
+	case IW_FORMAT_PNM:
 		break;
 
 	default:

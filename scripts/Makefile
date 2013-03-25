@@ -60,8 +60,8 @@ IWLIBFILE:=$(OUTLIBDIR)/libimageworsener.a
 COREIWLIBOBJS:=$(addprefix $(INTDIR)/,imagew-main.o imagew-resize.o \
  imagew-opt.o imagew-util.o imagew-api.o)
 AUXIWLIBOBJS:=$(addprefix $(INTDIR)/,imagew-png.o imagew-jpeg.o imagew-bmp.o \
- imagew-tiff.o imagew-miff.o imagew-webp.o imagew-gif.o imagew-zlib.o \
- imagew-allfmts.o)
+ imagew-tiff.o imagew-miff.o imagew-webp.o imagew-gif.o imagew-pnm.o \
+ imagew-zlib.o imagew-allfmts.o)
 ALLOBJS:=$(COREIWLIBOBJS) $(AUXIWLIBOBJS) $(INTDIR)/imagew-cmd.o
 
 $(TARGET): $(INTDIR)/imagew-cmd.o $(IWLIBFILE)

@@ -12,6 +12,7 @@ libimageworsener_la_SOURCES=src/imagew-main.c \
  src/imagew-png.c \
  src/imagew-jpeg.c \
  src/imagew-webp.c \
+ src/imagew-pnm.c \
  src/imagew-util.c
 libimageworsener_la_LIBADD=-lm
 libimageworsener_la_LDFLAGS=-version-info 1:0:0

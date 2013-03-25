@@ -387,6 +387,8 @@ static int get_fmt_from_name(const char *s)
 	if(!strcmp(s,"miff")) return IW_FORMAT_MIFF;
 	if(!strcmp(s,"webp")) return IW_FORMAT_WEBP;
 	if(!strcmp(s,"gif")) return IW_FORMAT_GIF;
+	if(!strcmp(s,"pnm")) return IW_FORMAT_PNM;
+	if(!strcmp(s,"ppm")) return IW_FORMAT_PNM;
 	return IW_FORMAT_UNKNOWN;
 }
 

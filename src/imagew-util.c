@@ -446,6 +446,8 @@ IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 	if(!iw_stricmp(s,"miff")) return IW_FORMAT_MIFF;
 	if(!iw_stricmp(s,"webp")) return IW_FORMAT_WEBP;
 	if(!iw_stricmp(s,"gif")) return IW_FORMAT_GIF;
+	if(!iw_stricmp(s,"pnm")) return IW_FORMAT_PNM;
+	if(!iw_stricmp(s,"ppm")) return IW_FORMAT_PNM;
 	return IW_FORMAT_UNKNOWN;
 }
 
@@ -461,6 +463,7 @@ IW_IMPL(const char*) iw_get_fmt_name(int fmt)
 	case IW_FORMAT_MIFF: n="MIFF"; break;
 	case IW_FORMAT_WEBP: n="WebP"; break;
 	case IW_FORMAT_GIF:  n="GIF";  break;
+	case IW_FORMAT_PNM:  n="PNM";  break;
 	}
 	return n;
 }
@@ -535,6 +538,10 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 #if IW_WEBP_SUPPORT_TRANSPARENCY
 		p |= IW_PROFILE_TRANSPARENCY;
 #endif
+		break;
+
+	case IW_FORMAT_PNM:
+		p = IW_PROFILE_ALWAYSSRGB;
 		break;
 
 	default:

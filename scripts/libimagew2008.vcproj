@@ -321,6 +321,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\imagew-pnm.c"
+				>
+			</File>
+			<File
 				RelativePath="..\src\imagew-resize.c"
 				>
 			</File>
