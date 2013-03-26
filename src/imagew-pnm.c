@@ -42,26 +42,58 @@ static int iwpnm_write_main(struct iwpnmwcontext *wctx)
 	int i,j;
 	size_t outrowsize;
 	char tmpstring[80];
+	int max_color_code;
+	int bytes_per_ppm_pixel;
 
 	img = wctx->img;
-	outrowsize = 3*img->width;
+
+	if(img->bit_depth==8) {
+		bytes_per_ppm_pixel=3;
+		max_color_code=255;
+	}
+	else if(img->bit_depth==16) {
+		bytes_per_ppm_pixel=6;
+		max_color_code=65535;
+	}
+	else {
+		goto done;
+	}
+
+	outrowsize = bytes_per_ppm_pixel*img->width;
 	wctx->rowbuf = iw_mallocz(wctx->ctx, outrowsize);
 	if(!wctx->rowbuf) goto done;
 
-	iw_snprintf(tmpstring, sizeof(tmpstring), "P6\n%d %d\n255\n", img->width, img->height);
+	iw_snprintf(tmpstring, sizeof(tmpstring), "P6\n%d %d\n%d\n", img->width,
+		img->height, max_color_code);
 	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
 
 	for(j=0;j<img->height;j++) {
 		for(i=0;i<img->width;i++) {
-			if(img->imgtype==IW_IMGTYPE_RGB) {
+			if(img->imgtype==IW_IMGTYPE_RGB && img->bit_depth==8) {
 				wctx->rowbuf[i*3+0] = img->pixels[j*img->bpr+i*3+0];
 				wctx->rowbuf[i*3+1] = img->pixels[j*img->bpr+i*3+1];
 				wctx->rowbuf[i*3+2] = img->pixels[j*img->bpr+i*3+2];
 			}
-			else { // Grayscale
+			else if(img->imgtype==IW_IMGTYPE_GRAY && img->bit_depth==8) {
 				wctx->rowbuf[i*3+0] = img->pixels[j*img->bpr+i];
 				wctx->rowbuf[i*3+1] = img->pixels[j*img->bpr+i];
 				wctx->rowbuf[i*3+2] = img->pixels[j*img->bpr+i];
+			}
+			else if(img->imgtype==IW_IMGTYPE_RGB && img->bit_depth==16) {
+				wctx->rowbuf[i*6+0] = img->pixels[j*img->bpr+6*i+0];
+				wctx->rowbuf[i*6+1] = img->pixels[j*img->bpr+6*i+1];
+				wctx->rowbuf[i*6+2] = img->pixels[j*img->bpr+6*i+2];
+				wctx->rowbuf[i*6+3] = img->pixels[j*img->bpr+6*i+3];
+				wctx->rowbuf[i*6+4] = img->pixels[j*img->bpr+6*i+4];
+				wctx->rowbuf[i*6+5] = img->pixels[j*img->bpr+6*i+5];
+			}
+			else if(img->imgtype==IW_IMGTYPE_GRAY && img->bit_depth==16) {
+				wctx->rowbuf[i*6+0] = img->pixels[j*img->bpr+2*i+0];
+				wctx->rowbuf[i*6+1] = img->pixels[j*img->bpr+2*i+1];
+				wctx->rowbuf[i*6+2] = img->pixels[j*img->bpr+2*i+0];
+				wctx->rowbuf[i*6+3] = img->pixels[j*img->bpr+2*i+1];
+				wctx->rowbuf[i*6+4] = img->pixels[j*img->bpr+2*i+0];
+				wctx->rowbuf[i*6+5] = img->pixels[j*img->bpr+2*i+1];
 			}
 		}
 		iwpnm_write(wctx, wctx->rowbuf, outrowsize);
@@ -90,8 +122,8 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	iw_get_output_image(ctx,&img1);
 	wctx->img = &img1;
 
-	if(wctx->img->bit_depth!=8 || (wctx->img->imgtype!=IW_IMGTYPE_GRAY &&
-		wctx->img->imgtype!=IW_IMGTYPE_RGB) )
+	if((wctx->img->bit_depth!=8 && wctx->img->bit_depth!=16) ||
+		(wctx->img->imgtype!=IW_IMGTYPE_GRAY && wctx->img->imgtype!=IW_IMGTYPE_RGB) )
 	{
 		iw_set_error(wctx->ctx,"Internal: Bad image type for PNM");
 		goto done;

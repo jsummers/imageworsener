@@ -137,6 +137,7 @@ IW_IMPL(int) iw_write_file_by_fmt(struct iw_context *ctx,
 		break;
 
 	case IW_FORMAT_PNM:
+	case IW_FORMAT_PPM:
 		supported=1;
 		retval = iw_write_pnm_file(ctx,writedescr);
 		break;

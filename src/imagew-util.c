@@ -433,21 +433,36 @@ IW_IMPL(int) iw_max_color_to_bitdepth(unsigned int mc)
 IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 {
 	char *s;
+	int i;
+	struct fmttable_struct {
+		const char *ext;
+		int fmt;
+	};
+	static const struct fmttable_struct fmttable[] = {
+	 {"png", IW_FORMAT_PNG},
+	 {"jpg", IW_FORMAT_JPEG},
+	 {"jpeg", IW_FORMAT_JPEG},
+	 {"bmp", IW_FORMAT_BMP},
+	 {"tif", IW_FORMAT_TIFF},
+	 {"tiff", IW_FORMAT_TIFF},
+	 {"miff", IW_FORMAT_MIFF},
+	 {"webp", IW_FORMAT_WEBP},
+	 {"gif", IW_FORMAT_GIF},
+	 {"pnm", IW_FORMAT_PNM},
+	 {"pbm", IW_FORMAT_PBM},
+	 {"pgm", IW_FORMAT_PGM},
+	 {"ppm", IW_FORMAT_PPM},
+	 {NULL, 0}
+	};
+
 	s=strrchr(fn,'.');
 	if(!s) return IW_FORMAT_UNKNOWN;
 	s++;
 
-	if(!iw_stricmp(s,"png")) return IW_FORMAT_PNG;
-	if(!iw_stricmp(s,"jpg")) return IW_FORMAT_JPEG;
-	if(!iw_stricmp(s,"jpeg")) return IW_FORMAT_JPEG;
-	if(!iw_stricmp(s,"bmp")) return IW_FORMAT_BMP;
-	if(!iw_stricmp(s,"tif")) return IW_FORMAT_TIFF;
-	if(!iw_stricmp(s,"tiff")) return IW_FORMAT_TIFF;
-	if(!iw_stricmp(s,"miff")) return IW_FORMAT_MIFF;
-	if(!iw_stricmp(s,"webp")) return IW_FORMAT_WEBP;
-	if(!iw_stricmp(s,"gif")) return IW_FORMAT_GIF;
-	if(!iw_stricmp(s,"pnm")) return IW_FORMAT_PNM;
-	if(!iw_stricmp(s,"ppm")) return IW_FORMAT_PNM;
+	for(i=0;fmttable[i].ext;i++) {
+		if(!iw_stricmp(s,fmttable[i].ext)) return fmttable[i].fmt;
+	}
+	
 	return IW_FORMAT_UNKNOWN;
 }
 
@@ -464,6 +479,9 @@ IW_IMPL(const char*) iw_get_fmt_name(int fmt)
 	case IW_FORMAT_WEBP: n="WebP"; break;
 	case IW_FORMAT_GIF:  n="GIF";  break;
 	case IW_FORMAT_PNM:  n="PNM";  break;
+	case IW_FORMAT_PBM:  n="PBM";  break;
+	case IW_FORMAT_PGM:  n="PGM";  break;
+	case IW_FORMAT_PPM:  n="PPM";  break;
 	}
 	return n;
 }
@@ -541,8 +559,9 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 		break;
 
 	case IW_FORMAT_PNM:
+	case IW_FORMAT_PPM:
 		// TODO: PNM is technically supposed to use ITU-R Rec. BT.709, not sRGB.
-		p = IW_PROFILE_ALWAYSSRGB;
+		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS;
 		break;
 
 	default:
@@ -592,6 +611,7 @@ IW_IMPL(int) iw_is_output_fmt_supported(int fmt)
 	case IW_FORMAT_TIFF:
 	case IW_FORMAT_MIFF:
 	case IW_FORMAT_PNM:
+	case IW_FORMAT_PPM:
 		return 1;
 	}
 	return 0;

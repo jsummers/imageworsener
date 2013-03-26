@@ -149,7 +149,14 @@ extern "C" {
 #define IW_FORMAT_MIFF     5
 #define IW_FORMAT_WEBP     6
 #define IW_FORMAT_GIF      7
+
+// PNM is a collective name for {PBM, PGM, PPM}.
+// When reading a file, we'll consider everything to be PNM.
+// When writing a file, we may need to distinguish between the subtypes.
 #define IW_FORMAT_PNM      8
+#define IW_FORMAT_PBM      9  // Reserved
+#define IW_FORMAT_PGM      10 // Reserved
+#define IW_FORMAT_PPM      11
 
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.
