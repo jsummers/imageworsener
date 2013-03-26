@@ -136,10 +136,12 @@ IW_IMPL(int) iw_write_file_by_fmt(struct iw_context *ctx,
 		retval = iw_write_bmp_file(ctx,writedescr);
 		break;
 
-	case IW_FORMAT_GIF:
+	case IW_FORMAT_PNM:
+		supported=1;
+		retval = iw_write_pnm_file(ctx,writedescr);
 		break;
 
-	case IW_FORMAT_PNM:
+	case IW_FORMAT_GIF:
 		break;
 
 	default:
@@ -153,6 +155,11 @@ IW_IMPL(int) iw_write_file_by_fmt(struct iw_context *ctx,
 		if(!s) s="(unknown)";
 		iw_set_errorf(ctx,"Writing %s files is not supported",s);
 	}
+
 done:
+	if(!retval) {
+		// Just in case the error hasn't been handled yet:
+		iw_set_error(ctx,"Error writing file");
+	}
 	return retval;
 }
