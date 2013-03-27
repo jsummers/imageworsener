@@ -28,6 +28,7 @@ struct iwpnmwcontext {
 	struct iw_context *ctx;
 	struct iw_image *img;
 	iw_byte *rowbuf;
+	int maxcolorcode;
 };
 
 static void iwpnm_write(struct iwpnmwcontext *wctx, const void *buf, size_t n)
@@ -42,18 +43,15 @@ static int iwpnm_write_main(struct iwpnmwcontext *wctx)
 	int i,j;
 	size_t outrowsize;
 	char tmpstring[80];
-	int max_color_code;
 	int bytes_per_ppm_pixel;
 
 	img = wctx->img;
 
 	if(img->bit_depth==8) {
 		bytes_per_ppm_pixel=3;
-		max_color_code=255;
 	}
 	else if(img->bit_depth==16) {
 		bytes_per_ppm_pixel=6;
-		max_color_code=65535;
 	}
 	else {
 		goto done;
@@ -64,7 +62,7 @@ static int iwpnm_write_main(struct iwpnmwcontext *wctx)
 	if(!wctx->rowbuf) goto done;
 
 	iw_snprintf(tmpstring, sizeof(tmpstring), "P6\n%d %d\n%d\n", img->width,
-		img->height, max_color_code);
+		img->height, wctx->maxcolorcode);
 	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
 
 	for(j=0;j<img->height;j++) {
@@ -122,9 +120,34 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	iw_get_output_image(ctx,&img1);
 	wctx->img = &img1;
 
-	if((wctx->img->bit_depth!=8 && wctx->img->bit_depth!=16) ||
-		(wctx->img->imgtype!=IW_IMGTYPE_GRAY && wctx->img->imgtype!=IW_IMGTYPE_RGB) )
-	{
+	if(wctx->img->reduced_maxcolors) {
+		wctx->maxcolorcode = wctx->img->maxcolorcode[IW_CHANNELTYPE_RED];
+		if(wctx->img->maxcolorcode[IW_CHANNELTYPE_GREEN] != wctx->maxcolorcode ||
+			wctx->img->maxcolorcode[IW_CHANNELTYPE_BLUE] != wctx->maxcolorcode)
+		{
+			iw_set_error(wctx->ctx,"PNM format requires equal bit depths");
+			goto done;
+		}
+	}
+	else {
+		if(wctx->img->bit_depth==8) {
+			wctx->maxcolorcode = 255;
+		}
+		else if(wctx->img->bit_depth==16) {
+			wctx->maxcolorcode = 65535;
+		}
+		else {
+			iw_set_error(wctx->ctx,"Internal: Bad bit depth for PNM");
+			goto done;
+		}
+	}
+
+	if(wctx->maxcolorcode<1 || wctx->maxcolorcode>65535) {
+		iw_set_error(wctx->ctx,"Unsupported PNM bit depth");
+		goto done;
+	}
+
+	if(wctx->img->imgtype!=IW_IMGTYPE_GRAY && wctx->img->imgtype!=IW_IMGTYPE_RGB) {
 		iw_set_error(wctx->ctx,"Internal: Bad image type for PNM");
 		goto done;
 	}

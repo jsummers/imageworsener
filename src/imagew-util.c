@@ -561,7 +561,7 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 	case IW_FORMAT_PNM:
 	case IW_FORMAT_PPM:
 		// TODO: PNM is technically supposed to use ITU-R Rec. BT.709, not sRGB.
-		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS;
+		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS | IW_PROFILE_REDUCEDBITDEPTHS;
 		break;
 
 	default:
