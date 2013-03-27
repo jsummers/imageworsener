@@ -247,6 +247,7 @@ extern "C" {
 #define IW_CSTYPE_SRGB      0
 #define IW_CSTYPE_LINEAR    1
 #define IW_CSTYPE_GAMMA     2
+#define IW_CSTYPE_REC709    3
 
 // These must be the same as the PNG definitions.
 #define IW_SRGB_INTENT_PERCEPTUAL 0 // Deprecated
@@ -606,6 +607,7 @@ IW_EXPORT(void) iw_set_input_colorspace(struct iw_context *ctx, const struct iw_
 IW_EXPORT(void) iw_make_linear_csdescr(struct iw_csdescr *cs);
 IW_EXPORT(void) iw_make_srgb_csdescr(struct iw_csdescr *cs, int srgb_intent); // Deprecated
 IW_EXPORT(void) iw_make_srgb_csdescr_2(struct iw_csdescr *cs);
+IW_EXPORT(void) iw_make_rec709_csdescr(struct iw_csdescr *cs);
 IW_EXPORT(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma);
 
 IW_EXPORT(int) iw_get_input_density(struct iw_context *ctx,

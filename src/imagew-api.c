@@ -525,6 +525,12 @@ IW_IMPL(void) iw_make_srgb_csdescr_2(struct iw_csdescr *cs)
 	cs->gamma = 0.0;
 }
 
+IW_IMPL(void) iw_make_rec709_csdescr(struct iw_csdescr *cs)
+{
+	cs->cstype = IW_CSTYPE_REC709;
+	cs->gamma = 0.0;
+}
+
 IW_IMPL(void) iw_make_gamma_csdescr(struct iw_csdescr *cs, double gamma)
 {
 	cs->cstype = IW_CSTYPE_GAMMA;

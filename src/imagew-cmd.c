@@ -1822,6 +1822,9 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 		}
 		iw_make_srgb_csdescr_2(cs);
 	}
+	else if(!strcmp(s,"rec709")) {
+		iw_make_rec709_csdescr(cs);
+	}
 	else {
 		iwcmd_error(p,"Unknown color space \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
 		return -1;

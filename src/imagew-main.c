@@ -35,6 +35,16 @@ static IW_INLINE IW_SAMPLE srgb_to_linear_sample(IW_SAMPLE v_srgb)
 	}
 }
 
+static IW_INLINE IW_SAMPLE rec709_to_linear_sample(IW_SAMPLE v_rec709)
+{
+	if(v_rec709 < 4.5*0.020) {
+		return v_rec709/4.5;
+	}
+	else {
+		return pow( (v_rec709+0.099)/1.099 , 1.0/0.45);
+	}
+}
+
 static IW_INLINE IW_SAMPLE gamma_to_linear_sample(IW_SAMPLE v, double gamma)
 {
 	return pow(v,gamma);
@@ -42,11 +52,15 @@ static IW_INLINE IW_SAMPLE gamma_to_linear_sample(IW_SAMPLE v, double gamma)
 
 static IW_SAMPLE x_to_linear_sample(IW_SAMPLE v, const struct iw_csdescr *csdescr)
 {
-	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
+	switch(csdescr->cstype) {
+	case IW_CSTYPE_SRGB:
+		return srgb_to_linear_sample(v);
+	case IW_CSTYPE_LINEAR:
 		return v;
-	}
-	else if(csdescr->cstype==IW_CSTYPE_GAMMA) {
+	case IW_CSTYPE_GAMMA:
 		return gamma_to_linear_sample(v,csdescr->gamma);
+	case IW_CSTYPE_REC709:
+		return rec709_to_linear_sample(v);
 	}
 	return srgb_to_linear_sample(v);
 }
@@ -63,6 +77,17 @@ static IW_INLINE IW_SAMPLE linear_to_srgb_sample(IW_SAMPLE v_linear)
 		return 12.92*v_linear;
 	}
 	return 1.055*pow(v_linear,1.0/2.4) - 0.055;
+}
+
+static IW_INLINE IW_SAMPLE linear_to_rec709_sample(IW_SAMPLE v_linear)
+{
+	// The cutoff point is supposed to be 0.018, but that doesn't make sense,
+	// because the curves don't intersect there. They intersect at almost exactly
+	// 0.020.
+	if(v_linear < 0.020) {
+		return 4.5*v_linear;
+	}
+	return 1.099*pow(v_linear,0.45) - 0.099;
 }
 
 static IW_INLINE IW_SAMPLE linear_to_gamma_sample(IW_SAMPLE v_linear, double gamma)
@@ -445,35 +470,22 @@ static void put_raw_sample_flt(struct iw_context *ctx, double s,
 static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr *csdescr)
 {
 	if(samp_lin > 0.999999999) {
-		// This check is not for optimization; it's an attempt to work around a
-		// defect in glibc's pow() function.
-		// In 64-bit builds, bases very close to (but not equal to) 1.0 can,
-		// in rare-but-not-rare-enough cases, cause pow to take about 10,000 (!)
-		// times longer to run than it normally does. Incredible as it sounds,
-		// this is not a bug. It is by design that glibc sometimes takes 2
-		// million clock cycles to perform a single elementary math operation.
-		// Here are some examples that will trigger this problem:
-		//   pow(1.0000000000000002 , 1.5  )
-		//   pow(1.00000000000002   , 1.05 )
-		//   pow(1.0000000000000004 , 0.25 )
-		//   pow(1.0000000000000004 , 1.25 )
-		//   pow(0.999999999999994  , 0.25 )
-		//   pow(0.999999999999994  , 0.41666666666666 )
-		// Note that the last exponent is 1/2.4, which is the exponent needed for
-		// conversion to sRGB. And values very close to 1.0 are inevitably
-		// produced when resizing images with many white pixels.
+		// This check is done mostly because glibc's pow() function may be
+		// very slow for some arguments near 1.
 		return 1.0;
 	}
 
-	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
-		return samp_lin;
-	}
-	else if(csdescr->cstype==IW_CSTYPE_GAMMA) {
-		return linear_to_gamma_sample(samp_lin,csdescr->gamma);
-	}
-	else { // assume IW_CSTYPE_SRGB
+	switch(csdescr->cstype) {
+	case IW_CSTYPE_SRGB:
 		return linear_to_srgb_sample(samp_lin);
+	case IW_CSTYPE_LINEAR:
+		return samp_lin;
+	case IW_CSTYPE_GAMMA:
+		return linear_to_gamma_sample(samp_lin,csdescr->gamma);
+	case IW_CSTYPE_REC709:
+		return linear_to_rec709_sample(samp_lin);
 	}
+	return linear_to_srgb_sample(samp_lin);
 }
 
 // Public version of linear_to_x_sample().

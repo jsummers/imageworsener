@@ -539,7 +539,7 @@ Options:
    an appropriate label. This is fairly safe to use when writing PNG files,
    but should be used with caution with most other formats.
 
-   <colorspace> =  linear | gamma<gamma> | srgb | srgb[prsa]
+   <colorspace> =  linear | gamma<gamma> | srgb | srgb[prsa] | rec709
 
    <gamma> = The gamma value. This is an "image gamma", like 2.2 (not a "file
     gamma" like 0.4545"). "g1.0" is the same as "linear".
@@ -547,6 +547,9 @@ Options:
    "srgb": sRGB colorspace. Can optionally be followed by a letter indicating
     the "rendering intent" (equivalent to using the -intent option):
     p=perceptual, r=relative, s=saturation, a=absolute.
+
+   "rec709": The color response curve defined by ITU-R Recommendation BT.709
+    (Rec. 709).
 
    By default IW will choose a colorspace that works with the output format;
    almost always sRGB.
