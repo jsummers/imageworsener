@@ -716,7 +716,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	else if(csdescr.cstype==IW_CSTYPE_LINEAR) {
 		png_set_gAMA(png_ptr, info_ptr, 1.0);
 	}
-	else { // Assume IW_CSTYPE_SRGB
+	else if(csdescr.cstype==IW_CSTYPE_SRGB) {
 		png_set_sRGB(png_ptr, info_ptr,
 			iw_intent_to_lpng_intent(img.rendering_intent));
 	}

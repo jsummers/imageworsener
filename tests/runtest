@@ -221,7 +221,7 @@ $IW srcimg/rgb8.png actual/pnm2.pnm -cs rec709 -width 19 -filter hann -grayscale
 $IW srcimg/rgb8.png actual/pnm3.ppm -cs rec709 -width 21 -filter lanczos2 -depth 5 -dither o
 
 # Extra pixel density tests
-$IW srcimg/rgb8x1.png actual/dens-1.png $DCMPR $SCALE -filter mix
+$IW srcimg/rgb8x1.png actual/dens-1.png $CMPR $SCALE -filter mix -cs rec709
 $IW srcimg/rgb8x2.png actual/dens-2.png $DCMPR $SCALE -filter mix
 $IW srcimg/rgb8x1.png actual/dens-1ns.png $DCMPR -noresize
 $IW srcimg/rgb8x2.png actual/dens-2ns.png $DCMPR -noresize
