@@ -835,6 +835,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_OUTPUT_COLOR_TYPE:
 		ctx->req.output_color_type = n;
 		break;
+	case IW_VAL_OUTPUT_FORMAT:
+		ctx->req.output_format = n;
+		break;
 	}
 }
 
@@ -946,6 +949,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_OUTPUT_COLOR_TYPE:
 		ret = ctx->req.output_color_type;
+		break;
+	case IW_VAL_OUTPUT_FORMAT:
+		ret = ctx->req.output_format;
 		break;
 	}
 

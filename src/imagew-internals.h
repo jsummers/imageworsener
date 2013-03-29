@@ -155,6 +155,7 @@ struct iw_req_struct {
 	int suppress_output_bkgd_label;
 
 	// These are not used by the core library, but codecs may use them:
+	int output_format;
 	int compression; // IW_COMPRESSION_*. Suggested compression algorithm.
 	int page_to_read;
 	int include_screen;

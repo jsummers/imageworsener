@@ -98,6 +98,8 @@ IW_IMPL(int) iw_write_file_by_fmt(struct iw_context *ctx,
 	iw_enable_zlib(ctx);
 #endif
 
+	iw_set_value(ctx,IW_VAL_OUTPUT_FORMAT,fmt);
+
 	switch(fmt) {
 
 	case IW_FORMAT_PNG:
@@ -138,6 +140,7 @@ IW_IMPL(int) iw_write_file_by_fmt(struct iw_context *ctx,
 
 	case IW_FORMAT_PNM:
 	case IW_FORMAT_PPM:
+	case IW_FORMAT_PGM:
 		supported=1;
 		retval = iw_write_pnm_file(ctx,writedescr);
 		break;

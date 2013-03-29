@@ -140,6 +140,10 @@ extern "C" {
 // Suggested output color type
 #define IW_VAL_OUTPUT_COLOR_TYPE 51 // IW_COLORTYPE_*
 
+// This does not actually determine the output file format, but it may be
+// needed by encoders that support multiple formats.
+#define IW_VAL_OUTPUT_FORMAT     52
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1
@@ -705,6 +709,7 @@ IW_EXPORT(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iode
 IW_EXPORT(int) iw_write_webp_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(int) iw_read_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+// The output format can be refined by setting IW_VAL_OUTPUT_FORMAT.
 IW_EXPORT(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(char*) iw_get_libwebp_dec_version_string(char *s, int s_len);
 IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);

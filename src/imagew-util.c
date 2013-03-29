@@ -559,9 +559,19 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 		break;
 
 	case IW_FORMAT_PNM:
+		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS | IW_PROFILE_REDUCEDBITDEPTHS |
+			IW_PROFILE_GRAYSCALE;
+		break;
+
 	case IW_FORMAT_PPM:
-		// TODO: PNM is technically supposed to use ITU-R Rec. BT.709, not sRGB.
 		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS | IW_PROFILE_REDUCEDBITDEPTHS;
+		break;
+
+	case IW_FORMAT_PGM:
+		// No reason to set GRAY[124], because we can't optimize for them. Each pixel
+		// uses a minimum of one byte.
+		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS | IW_PROFILE_REDUCEDBITDEPTHS |
+			IW_PROFILE_GRAYSCALE;
 		break;
 
 	default:
@@ -612,6 +622,7 @@ IW_IMPL(int) iw_is_output_fmt_supported(int fmt)
 	case IW_FORMAT_MIFF:
 	case IW_FORMAT_PNM:
 	case IW_FORMAT_PPM:
+	case IW_FORMAT_PGM:
 		return 1;
 	}
 	return 0;
