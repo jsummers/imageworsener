@@ -560,7 +560,7 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 
 	case IW_FORMAT_PNM:
 		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS | IW_PROFILE_REDUCEDBITDEPTHS |
-			IW_PROFILE_GRAYSCALE;
+			IW_PROFILE_GRAYSCALE | IW_PROFILE_GRAY1;
 		break;
 
 	case IW_FORMAT_PPM:
@@ -572,6 +572,10 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 		// uses a minimum of one byte.
 		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_16BPS | IW_PROFILE_REDUCEDBITDEPTHS |
 			IW_PROFILE_GRAYSCALE;
+		break;
+
+	case IW_FORMAT_PBM:
+		p = IW_PROFILE_ALWAYSSRGB | IW_PROFILE_GRAY1;
 		break;
 
 	default:
@@ -623,6 +627,7 @@ IW_IMPL(int) iw_is_output_fmt_supported(int fmt)
 	case IW_FORMAT_PNM:
 	case IW_FORMAT_PPM:
 	case IW_FORMAT_PGM:
+	case IW_FORMAT_PBM:
 		return 1;
 	}
 	return 0;

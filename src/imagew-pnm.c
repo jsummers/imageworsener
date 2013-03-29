@@ -27,8 +27,10 @@ struct iwpnmwcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
+	const struct iw_palette *iwpal;
 	iw_byte *rowbuf;
-	int output_format;
+	int requested_output_format;
+	int actual_output_format;
 	int maxcolorcode;
 };
 
@@ -152,6 +154,41 @@ done:
 	return retval;
 }
 
+static int iwpnm_write_pbm_main(struct iwpnmwcontext *wctx)
+{
+	struct iw_image *img;
+	int retval = 0;
+	int i,j;
+	size_t outrowsize;
+	char tmpstring[80];
+
+	img = wctx->img;
+
+
+	outrowsize = (img->width+7)/8;
+	wctx->rowbuf = iw_mallocz(wctx->ctx, outrowsize);
+	if(!wctx->rowbuf) goto done;
+
+	iw_snprintf(tmpstring, sizeof(tmpstring), "P4\n%d %d\n", img->width,
+		img->height);
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+
+	for(j=0;j<img->height;j++) {
+		memset(wctx->rowbuf, 0, outrowsize);
+		for(i=0;i<img->width;i++) {
+			if(img->pixels[j*img->bpr+i]==0) {
+				wctx->rowbuf[i/8] |= 1<<(7-i%8);
+			}
+		}
+		iwpnm_write(wctx, wctx->rowbuf, outrowsize);
+	}
+
+	retval = 1;
+
+done:
+	return retval;
+}
+
 IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
 	struct iwpnmwcontext *wctx = NULL;
@@ -170,16 +207,48 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	iw_get_output_image(ctx,&img1);
 	wctx->img = &img1;
 
-	wctx->output_format = iw_get_value(ctx,IW_VAL_OUTPUT_FORMAT);
+	wctx->requested_output_format = iw_get_value(ctx,IW_VAL_OUTPUT_FORMAT);
 
-	if(wctx->img->imgtype!=IW_IMGTYPE_GRAY && wctx->img->imgtype!=IW_IMGTYPE_RGB) {
-		iw_set_error(wctx->ctx,"Internal: Bad image type for PNM");
-		goto done;
+	if(wctx->requested_output_format == IW_FORMAT_PNM) {
+		if(wctx->img->imgtype==IW_IMGTYPE_PALETTE) {
+			wctx->actual_output_format = IW_FORMAT_PBM;
+		}
+		else if(wctx->img->imgtype==IW_IMGTYPE_GRAY) {
+			wctx->actual_output_format = IW_FORMAT_PGM;
+		}
+		else if(wctx->img->imgtype==IW_IMGTYPE_RGB) {
+			wctx->actual_output_format = IW_FORMAT_PPM;
+		}
+		else {
+			iw_set_error(wctx->ctx,"Internal: Bad image type for PNM");
+			goto done;
+		}
+	}
+	else {
+		wctx->actual_output_format = wctx->requested_output_format;
 	}
 
-	if(wctx->output_format==IW_FORMAT_PGM && wctx->img->imgtype!=IW_IMGTYPE_GRAY) {
-		iw_set_error(wctx->ctx,"Cannot write non-grayscale image to PGM file");
-		goto done;
+	if(wctx->actual_output_format==IW_FORMAT_PGM) {
+		if(wctx->img->imgtype!=IW_IMGTYPE_GRAY) {
+			iw_set_error(wctx->ctx,"Cannot write non-grayscale image to PGM file");
+			goto done;
+		}
+	}
+
+	if(wctx->actual_output_format==IW_FORMAT_PBM) {
+		if(wctx->img->imgtype!=IW_IMGTYPE_PALETTE) {
+			iw_set_error(ctx,"Cannot write this image type to PBM file");
+			goto done;
+		}
+		if(!iw_get_value(ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE)) {
+			iw_set_error(ctx,"Cannot write this image type to PBM file");
+			goto done;
+		}
+		wctx->iwpal = iw_get_output_palette(ctx);
+		if(wctx->iwpal->num_entries != 2) {
+			iw_set_error(ctx,"Cannot write this image type to PBM file");
+			goto done;
+		}
 	}
 
 	if(wctx->img->reduced_maxcolors) {
@@ -192,8 +261,12 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 				goto done;
 			}
 		}
-		else { // IW_IMGTYPE_GRAY
+		else if(wctx->img->imgtype==IW_IMGTYPE_GRAY) {
 			wctx->maxcolorcode = wctx->img->maxcolorcode[IW_CHANNELTYPE_GRAY];
+		}
+		else {
+			iw_set_error(wctx->ctx,"Requested bit depth not supported with this file format");
+			goto done;
 		}
 	}
 	else {
@@ -214,17 +287,22 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		goto done;
 	}
 
-	if(wctx->output_format==IW_FORMAT_PPM) {
-		// If caller specifically requested PPM, write PPM.
+	ret=0;
+	switch(wctx->actual_output_format) {
+	case IW_FORMAT_PPM:
 		ret = iwpnm_write_ppm_main(wctx);
-	}
-	else if(wctx->img->imgtype==IW_IMGTYPE_GRAY) {
-		// Else write a PGM (grayscale) file if possible.
+		break;
+	case IW_FORMAT_PGM:
 		ret = iwpnm_write_pgm_main(wctx);
+		break;
+	case IW_FORMAT_PBM:
+		ret = iwpnm_write_pbm_main(wctx);
+		break;
+	default:
+		iw_set_error(wctx->ctx,"Internal: Bad image type for PNM");
+		goto done;
 	}
-	else {
-		ret = iwpnm_write_ppm_main(wctx);
-	}
+
 	if(!ret) {
 		goto done;
 	}
