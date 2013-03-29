@@ -1147,10 +1147,20 @@ static int iwcmd_run(struct params_struct *p)
 		if(p->dither[k].family>=0) iw_set_dither_type(ctx,k,p->dither[k].family,p->dither[k].subtype);
 	}
 
+	// Force bi-level formats to use 2 colors.
+	if(p->outfmt==IW_FORMAT_PBM) {
+		p->color_count_all = 2;
+	}
+
 	if(p->color_count_all) iw_set_color_count  (ctx,IW_CHANNELTYPE_ALL  ,p->color_count_all);
 	if(p->color_count_nonalpha) iw_set_color_count(ctx,IW_CHANNELTYPE_NONALPHA,p->color_count_nonalpha);
 	for(k=0;k<5;k++) {
 		if(p->color_count[k])   iw_set_color_count(ctx,k,p->color_count[k]);
+	}
+
+	// Force graysale if the format only supports grayscale.
+	if(p->outfmt==IW_FORMAT_PGM || p->outfmt==IW_FORMAT_PBM) {
+		p->grayscale = 1;
 	}
 
 	if(p->condgrayscale) {

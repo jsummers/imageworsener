@@ -195,6 +195,7 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	int retval=0;
 	struct iw_image img1;
 	int ret;
+	int ok;
 
 	iw_zeromem(&img1,sizeof(struct iw_image));
 
@@ -236,17 +237,17 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	}
 
 	if(wctx->actual_output_format==IW_FORMAT_PBM) {
-		if(wctx->img->imgtype!=IW_IMGTYPE_PALETTE) {
-			iw_set_error(ctx,"Cannot write this image type to PBM file");
-			goto done;
+		ok=0;
+		if(wctx->img->imgtype==IW_IMGTYPE_PALETTE) {
+			if(iw_get_value(ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE)) {
+				wctx->iwpal = iw_get_output_palette(ctx);
+				if(wctx->iwpal->num_entries == 2) {
+					ok=1;
+				}
+			}
 		}
-		if(!iw_get_value(ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE)) {
-			iw_set_error(ctx,"Cannot write this image type to PBM file");
-			goto done;
-		}
-		wctx->iwpal = iw_get_output_palette(ctx);
-		if(wctx->iwpal->num_entries != 2) {
-			iw_set_error(ctx,"Cannot write this image type to PBM file");
+		if(!ok) {
+			iw_set_error(ctx,"Cannot write this image type to a PBM file");
 			goto done;
 		}
 	}
