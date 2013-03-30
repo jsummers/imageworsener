@@ -183,7 +183,7 @@ extern "C" {
 #define IW_PROFILE_16BPS         0x0040
 
 // ALWAYSSRGB means we don't know how to write colorspace labels for this
-// format, and we assume images are sRGB. (Currently unused.)
+// format, and we assume images are sRGB. (unused, deprecated)
 #define IW_PROFILE_ALWAYSSRGB    0x0080
 #define IW_PROFILE_BINARYTRNS    0x0100 // Supports color-keyed transparency
 
