@@ -98,7 +98,7 @@ relatively slow. Among the things it (hopefully) does right:
 
 Other information:
  - The command-line utility fully supports PNG, JPEG, BMP, and WebP files, and
-   has partial support for GIF, TIFF, and MIFF.
+   has partial support for GIF, TIFF, MIFF, and PPM/PGM/PBM.
  - The library is (more or less) not specific to a particular file format.
  - Full support for high color depth (16 bits per sample).
  - Some options can be set differently for the different dimensions
@@ -187,6 +187,7 @@ Options:
      gif: GIF (-infmt only)
      tiff, tif: TIFF (-outfmt only)
      miff: MIFF (experimental; limited support)
+     pnm, ppm, pgm, pbm: Netpbm formats (-outfmt only)
 
  -depth <n>  (-depthgray, -depthalpha)
  -depth <r>,<g>,<b>[,<a>]
@@ -205,6 +206,7 @@ Options:
     and "5,5,5" are the most common and most portable.
    PNG format supports arbitrary depths (from 1 to 16), using "sBIT" chunks,
     but these are ignored by most image viewers.
+   The PPM and PGM formats support any bit depth from 1 to 16.
    If you use a depth less than 8, consider using -dither.
 
    Within the overall depth, you can reduce the number of colors that will

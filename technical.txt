@@ -246,6 +246,11 @@ It does this even if the file format predates the invention of sRGB, and/or
 the file format specification says that, by default, colors have a gamma of
 2.2 (which is similar, but not identical, to sRGB).
 
+The Netpbm formats (PNM/PPM/PGM/PBM) are technically supposed to use the
+Rec. 709 colorspace, but IW assumes they use sRGB, because that's more than
+likely what you really want. If you do want Rec. 709, use "-cs rec709" (when
+writing such a file).
+
 IW does not support ICC color profiles. Full or partial support for them may
 be added in a future version.
 
