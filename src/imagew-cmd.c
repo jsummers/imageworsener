@@ -1161,6 +1161,7 @@ static int iwcmd_run(struct params_struct *p)
 	// Force graysale if the format only supports grayscale.
 	if(p->outfmt==IW_FORMAT_PGM || p->outfmt==IW_FORMAT_PBM) {
 		p->grayscale = 1;
+		p->condgrayscale = 0;
 	}
 
 	if(p->condgrayscale) {
