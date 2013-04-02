@@ -515,6 +515,9 @@ IW_IMPL(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
 	{
 		fmt=IW_FORMAT_WEBP;
 	}
+	else if(buf[0]=='P' && (buf[1]>='1' && buf[1]<='7')) {
+		return IW_FORMAT_PNM;
+	}
 
 	return fmt;
 }
@@ -603,6 +606,7 @@ IW_IMPL(int) iw_is_input_fmt_supported(int fmt)
 	case IW_FORMAT_MIFF:
 	case IW_FORMAT_GIF:
 	case IW_FORMAT_BMP:
+	case IW_FORMAT_PNM:
 		return 1;
 	}
 	return 0;

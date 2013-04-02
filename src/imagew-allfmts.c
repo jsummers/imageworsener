@@ -70,6 +70,8 @@ IW_IMPL(int) iw_read_file_by_fmt(struct iw_context *ctx,
 		break;
 
 	case IW_FORMAT_PNM:
+		supported=1;
+		retval = iw_read_pnm_file(ctx,readdescr);
 		break;
 
 	default:

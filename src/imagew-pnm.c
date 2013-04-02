@@ -11,16 +11,216 @@
 #define IW_INCLUDE_UTIL_FUNCTIONS
 #include "imagew.h"
 
-struct iwpnmcontext {
+struct iwpnmrcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
+	int file_format_code;
+	int file_format;
+	int color_count;
 };
+
+static int iwpnm_read_byte(struct iwpnmrcontext *rctx, iw_byte *b)
+{
+	iw_byte buf[1];
+	int ret;
+	size_t bytesread = 0;
+
+	ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
+		buf,1,&bytesread);
+	if(!ret || bytesread!=1) {
+		*b = 0;
+		return 0;
+	}
+
+	*b = buf[0];
+	return 1;
+}
+
+static int iwpnm_read(struct iwpnmrcontext *rctx,
+	iw_byte *buf, size_t buflen)
+{
+	int ret;
+	size_t bytesread = 0;
+
+	ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
+		buf,buflen,&bytesread);
+	if(!ret || bytesread!=buflen) {
+		return 0;
+	}
+	return 1;
+}
+
+static int iwpnm_is_whitespace(iw_byte b)
+{
+	return (b==9 || b==10 || b==13 || b==32);
+}
+
+static int iwpnm_read_next_token(struct iwpnmrcontext *rctx,
+	char *tokenbuf, int tokenbuflen)
+{
+	iw_byte b;
+	int ret;
+	int token_len = 0;
+	int in_comment = 0;
+
+	token_len = 0;
+	while(1) {
+		if(token_len >= tokenbuflen) {
+			// Token too long.
+			return 0;
+		}
+
+		ret = iwpnm_read_byte(rctx, &b);
+		if(!ret) return 0;
+
+		if(in_comment) {
+			if(b==10) {
+				in_comment = 0;
+			}
+			continue;
+		}
+		else if(b=='#') {
+			in_comment = 1;
+			continue;
+		}
+		else if(iwpnm_is_whitespace(b)) {
+			if(token_len>0) {
+				tokenbuf[token_len] = '\0';
+				return 1;
+			}
+			else {
+				// Skip leading whitespace.
+				continue;
+			}
+		}
+		else {
+			// Append the character to the token.
+			tokenbuf[token_len] = b;
+			token_len++;
+		}
+	}
+
+	return 0;
+}
+
+static int iwpnm_read_pgm_bitmap(struct iwpnmrcontext *rctx)
+{
+	int j;
+	int pnm_bytesperpix;
+	int pnm_bpr;
+	int retval = 0;
+
+	if(rctx->color_count!=255) {
+		// TODO: Allow any color_count.
+		iw_set_error(rctx->ctx,"Reading this PGM file is not supported");
+		goto done;
+	}
+
+	pnm_bytesperpix = (rctx->color_count>=256) ? 2 : 1;
+	pnm_bpr = pnm_bytesperpix * rctx->img->width;
+
+	rctx->img->imgtype = IW_IMGTYPE_GRAY;
+	rctx->img->native_grayscale = 1;
+	rctx->img->bit_depth = 8;
+	rctx->img->bpr = rctx->img->width;
+
+	rctx->img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx,rctx->img->bpr,rctx->img->height);
+	if(!rctx->img->pixels) goto done;
+
+	if(pnm_bpr != rctx->img->bpr) goto done;
+
+	for(j=0;j<rctx->img->height;j++) {
+		// PGM bitmap is identical to our internal format, so we can read it
+		// directly.
+		if(!iwpnm_read(rctx, &rctx->img->pixels[j*rctx->img->bpr], pnm_bpr)) {
+			goto done;
+		}
+	}
+
+	retval = 1;
+done:
+	return retval;
+}
+
+static int iwpnm_read_header(struct iwpnmrcontext *rctx)
+{
+	char tokenbuf[100];
+	int ret;
+	int retval = 0;
+
+	// Read file signature
+	ret = iwpnm_read_next_token(rctx, tokenbuf, sizeof(tokenbuf));
+	if(!ret) return 0;
+	if(strlen(tokenbuf)!=2 || tokenbuf[0]!='P' || 
+		(tokenbuf[1]<'1' || tokenbuf[1]>'7'))
+	{
+		iw_set_error(rctx->ctx,"Not a PNM file");
+		goto done;
+	}
+
+	rctx->file_format_code = tokenbuf[1] - '0';
+
+	if(rctx->file_format_code != 5) {
+		iw_set_error(rctx->ctx,"Reading this PNM format is not supported");
+		goto done;
+	}
+
+	// Read width
+	ret = iwpnm_read_next_token(rctx, tokenbuf, sizeof(tokenbuf));
+	if(!ret) goto done;
+	rctx->img->width = atoi(tokenbuf);
+
+	// Read height
+	ret = iwpnm_read_next_token(rctx, tokenbuf, sizeof(tokenbuf));
+	if(!ret) goto done;
+	rctx->img->height = atoi(tokenbuf);
+
+	// Read bit depth (number of color shades)
+	ret = iwpnm_read_next_token(rctx, tokenbuf, sizeof(tokenbuf));
+	if(!ret) goto done;
+	rctx->color_count = atoi(tokenbuf);
+
+	retval = 1;
+done:
+	return retval;
+}
 
 IW_IMPL(int) iw_read_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
 {
-	iw_set_error(ctx,"PNM reading not implemented");
-	return 0;
+	struct iwpnmrcontext *rctx = NULL;
+	struct iw_image *img = NULL;
+	int retval = 0;
+
+	rctx = iw_mallocz(ctx, sizeof(struct iwpnmrcontext));
+	if(!rctx) goto done;
+	img = iw_mallocz(ctx, sizeof(struct iw_image));
+	if(!img) goto done;
+
+	rctx->ctx = ctx;
+	rctx->img = img;
+	rctx->iodescr = iodescr;
+
+	if(!iwpnm_read_header(rctx)) goto done;
+
+	if(!iw_check_image_dimensions(rctx->ctx,rctx->img->width,rctx->img->height))
+		goto done;
+
+	switch(rctx->file_format_code) {
+	case 5:
+		if(!iwpnm_read_pgm_bitmap(rctx)) goto done;
+		break;
+	default:
+		goto done;
+	}
+
+	iw_set_input_image(ctx, img);
+	retval = 1;
+
+done:
+	if(img) iw_free(ctx, img);
+	if(rctx) iw_free(ctx, rctx);
+	return retval;
 }
 
 struct iwpnmwcontext {
