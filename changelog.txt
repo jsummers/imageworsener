@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for reading binary PPM, PGM, and PBM (Netpbm) formats.
  - Fixed -condgrayscale to work when reading MIFF format.
  - Support for writing the PPM, PGM, and PBM (Netpbm) formats.
  - Added "rec709" as a colorspace option.

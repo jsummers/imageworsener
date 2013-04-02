@@ -187,7 +187,8 @@ Options:
      gif: GIF (-infmt only)
      tiff, tif: TIFF (-outfmt only)
      miff: MIFF (experimental; limited support)
-     pnm, ppm, pgm, pbm: Netpbm formats (-outfmt only)
+     pnm, ppm, pgm, pbm: Netpbm formats (only the binary formats are supported,
+       not the rare "plain"/ASCII variants)
 
  -depth <n>  (-depthgray, -depthalpha)
  -depth <r>,<g>,<b>[,<a>]
