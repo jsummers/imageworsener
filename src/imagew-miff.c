@@ -584,10 +584,13 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	if(!iw_check_image_dimensions(rctx.ctx,img.width,img.height))
 		goto done;
 
-	if(rctx.is_grayscale)
+	if(rctx.is_grayscale) {
 		img.imgtype = rctx.has_alpha ? IW_IMGTYPE_GRAYA : IW_IMGTYPE_GRAY;
-	else
+		img.native_grayscale = 1;
+	}
+	else {
 		img.imgtype = rctx.has_alpha ? IW_IMGTYPE_RGBA : IW_IMGTYPE_RGB;
+	}
 
 	if(rctx.density_known && rctx.density_units==1) {
 		img.density_x = rctx.density_x*100.0;
