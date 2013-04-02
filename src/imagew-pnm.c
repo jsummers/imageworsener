@@ -104,14 +104,21 @@ static int iwpnm_read_next_token(struct iwpnmrcontext *rctx,
 	return 0;
 }
 
-static int iwpnm_read_pgm_or_ppm_bitmap(struct iwpnmrcontext *rctx)
+// Read a binary PBM/PGM/PPM bitmap.
+static int iwpnm_read_pnm_bitmap(struct iwpnmrcontext *rctx)
 {
-	int j;
+	int i,j;
 	int pnm_bytesperpix;
 	int pnm_bpr;
 	int retval = 0;
 
-	if(rctx->file_format_code==5) { // PGM
+	if(rctx->file_format_code==4) { // PBM
+		rctx->img->imgtype = IW_IMGTYPE_GRAY;
+		rctx->img->native_grayscale = 1;
+		rctx->img->bit_depth = 1;
+		pnm_bpr = (rctx->img->width+7)/8;
+	}
+	else if(rctx->file_format_code==5) { // PGM
 		rctx->img->imgtype = IW_IMGTYPE_GRAY;
 		rctx->img->native_grayscale = 1;
 		if(rctx->color_count>=256) {
@@ -122,6 +129,7 @@ static int iwpnm_read_pgm_or_ppm_bitmap(struct iwpnmrcontext *rctx)
 			rctx->img->bit_depth = 8;
 			pnm_bytesperpix = 1;
 		}
+		pnm_bpr = pnm_bytesperpix * rctx->img->width;
 		if(rctx->color_count!=255 && rctx->color_count!=65535) {
 			iw_set_input_max_color_code(rctx->ctx, 0, rctx->color_count);
 		}
@@ -136,6 +144,7 @@ static int iwpnm_read_pgm_or_ppm_bitmap(struct iwpnmrcontext *rctx)
 			rctx->img->bit_depth = 8;
 			pnm_bytesperpix = 3;
 		}
+		pnm_bpr = pnm_bytesperpix * rctx->img->width;
 		if(rctx->color_count!=255 && rctx->color_count!=65535) {
 			iw_set_input_max_color_code(rctx->ctx, 0, rctx->color_count);
 			iw_set_input_max_color_code(rctx->ctx, 1, rctx->color_count);
@@ -146,20 +155,22 @@ static int iwpnm_read_pgm_or_ppm_bitmap(struct iwpnmrcontext *rctx)
 		goto done;
 	}
 
-	pnm_bpr = pnm_bytesperpix * rctx->img->width;
-
-	rctx->img->bpr = rctx->img->width * pnm_bytesperpix;
+	rctx->img->bpr = pnm_bpr;
 
 	rctx->img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx,rctx->img->bpr,rctx->img->height);
 	if(!rctx->img->pixels) goto done;
 
-	if(pnm_bpr != rctx->img->bpr) goto done;
-
 	for(j=0;j<rctx->img->height;j++) {
-		// PGM/PPM bitmaps are identical to our internal format, so we can read them
-		// directly.
+		// Binary PNM files are identical or very similar to our internal format,
+		// so we can read them directly.
 		if(!iwpnm_read(rctx, &rctx->img->pixels[j*rctx->img->bpr], pnm_bpr)) {
 			goto done;
+		}
+		if(rctx->file_format_code==4) {
+			// PBM images need to be inverted.
+			for(i=0;i<pnm_bpr;i++) {
+				rctx->img->pixels[j*rctx->img->bpr+i] = 255-rctx->img->pixels[j*rctx->img->bpr+i];
+			}
 		}
 	}
 
@@ -191,7 +202,7 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 		goto done;
 	}
 
-	if(rctx->file_format_code!=5 && rctx->file_format_code!=6) {
+	if(rctx->file_format_code!=4 && rctx->file_format_code!=5 && rctx->file_format_code!=6) {
 		iw_set_error(rctx->ctx,"Reading this PNM format is not supported");
 		goto done;
 	}
@@ -246,13 +257,7 @@ IW_IMPL(int) iw_read_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	if(!iw_check_image_dimensions(rctx->ctx,rctx->img->width,rctx->img->height))
 		goto done;
 
-	switch(rctx->file_format_code) {
-	case 5: case 6:
-		if(!iwpnm_read_pgm_or_ppm_bitmap(rctx)) goto done;
-		break;
-	default:
-		goto done;
-	}
+	if(!iwpnm_read_pnm_bitmap(rctx)) goto done;
 
 	iw_set_input_image(ctx, img);
 	retval = 1;
