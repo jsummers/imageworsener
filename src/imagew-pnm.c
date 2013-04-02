@@ -111,19 +111,15 @@ static int iwpnm_read_pgm_bitmap(struct iwpnmrcontext *rctx)
 	int pnm_bpr;
 	int retval = 0;
 
-	if(rctx->color_count!=255) {
-		// TODO: Allow any color_count.
-		iw_set_error(rctx->ctx,"Reading this PGM file is not supported");
-		goto done;
-	}
+	iw_set_input_max_color_code(rctx->ctx, 0, rctx->color_count);
 
 	pnm_bytesperpix = (rctx->color_count>=256) ? 2 : 1;
 	pnm_bpr = pnm_bytesperpix * rctx->img->width;
 
 	rctx->img->imgtype = IW_IMGTYPE_GRAY;
 	rctx->img->native_grayscale = 1;
-	rctx->img->bit_depth = 8;
-	rctx->img->bpr = rctx->img->width;
+	rctx->img->bit_depth = 8 * pnm_bytesperpix;
+	rctx->img->bpr = rctx->img->width * pnm_bytesperpix;
 
 	rctx->img->pixels = (iw_byte*)iw_malloc_large(rctx->ctx,rctx->img->bpr,rctx->img->height);
 	if(!rctx->img->pixels) goto done;
@@ -161,6 +157,11 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 
 	rctx->file_format_code = tokenbuf[1] - '0';
 
+	if(rctx->file_format_code == 7) {
+		iw_set_error(rctx->ctx,"PAM format is not supported");
+		goto done;
+	}
+
 	if(rctx->file_format_code != 5) {
 		iw_set_error(rctx->ctx,"Reading this PNM format is not supported");
 		goto done;
@@ -176,10 +177,20 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 	if(!ret) goto done;
 	rctx->img->height = atoi(tokenbuf);
 
+	if(rctx->file_format_code==1 || rctx->file_format_code==4) {
+		// PBM files don't have a max-color-value token.
+		retval = 1;
+		goto done;
+	}
+
 	// Read bit depth (number of color shades)
 	ret = iwpnm_read_next_token(rctx, tokenbuf, sizeof(tokenbuf));
 	if(!ret) goto done;
 	rctx->color_count = atoi(tokenbuf);
+	if(rctx->color_count<1 || rctx->color_count>65535) {
+		iw_set_errorf(rctx->ctx, "Invalid max color value (%d)\n", rctx->color_count);
+		goto done;
+	}
 
 	retval = 1;
 done:
