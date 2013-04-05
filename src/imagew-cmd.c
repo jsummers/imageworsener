@@ -99,6 +99,7 @@ struct params_struct {
 	int depth; // Overall depth
 	int sample_type;
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
+	int depthcc;
 	int compression;
 	int color_type;
 	int grayscale, condgrayscale;
@@ -928,6 +929,17 @@ static void iwcmd_set_bitdepth(struct params_struct *p, struct iw_context *ctx)
 
 	// Make a copy of p->depth, so we can mess with it.
 	overall_depth = p->depth;
+
+	// -depthcc overrides other settings
+	if(p->depthcc>=2) {
+		while(1<<overall_depth < p->depthcc) {
+			overall_depth++;
+		}
+		for(k=0;k<5;k++) {
+			iw_set_output_max_color_code(ctx,k,p->depthcc-1);
+		}
+		return;
+	}
 
 	// Make sure overall_depth is at least the max depth of any channel
 	for(k=0;k<5;k++) {
@@ -2088,7 +2100,7 @@ static void iwcmd_printversion(struct params_struct *p)
 
 enum iwcmd_param_types {
  PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_SIZE, PT_EXACTSIZE, PT_SAMPLETYPE,
- PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_INPUTCS, PT_CS, PT_INTENT,
+ PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_DEPTHCC, PT_INPUTCS, PT_CS, PT_INTENT,
  PT_PRECISION, PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
  PT_BLUR, PT_BLUR_X, PT_BLUR_Y,
  PT_DITHER, PT_DITHERCOLOR, PT_DITHERALPHA, PT_DITHERRED, PT_DITHERGREEN, PT_DITHERBLUE, PT_DITHERGRAY,
@@ -2129,6 +2141,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"S",PT_EXACTSIZE,1},
 		{"precision",PT_PRECISION,1},
 		{"depth",PT_DEPTH,1},
+		{"depthcc",PT_DEPTHCC,1},
 		{"depthgray",PT_DEPTHGRAY,1},
 		{"depthalpha",PT_DEPTHALPHA,1},
 		{"sampletype",PT_SAMPLETYPE,1},
@@ -2405,6 +2418,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 	case PT_DEPTH:
 		ret=iwcmd_read_depth(p,v);
 		if(ret<0) return 0;
+		break;
+	case PT_DEPTHCC:
+		p->depthcc = iwcmd_parse_int(v);
 		break;
 	case PT_DEPTHGRAY:
 		p->channel_depth[IW_CHANNELTYPE_GRAY] = iwcmd_parse_int(v);

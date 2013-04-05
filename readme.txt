@@ -192,6 +192,7 @@ Options:
 
  -depth <n>  (-depthgray, -depthalpha)
  -depth <r>,<g>,<b>[,<a>]
+ -depthcc <cc>
    The general number of bits of precision used per color channel in the
    output image. Valid values for <n>:
     "8" is the default for most formats.
@@ -215,6 +216,12 @@ Options:
    Note that this doesn't necessarily determine the depth used in the output
    file. If the image can be encoded at a smaller depth with no loss of
    information, IW may choose to do that (see also -noopt).
+
+   The -depthcc option sets the depth based on the number of color levels,
+   instead of the number of bits used to represent a color level. For example,
+   "-depthcc 32" is equivalent to "-depth 5". This allows for greater
+   flexibility, if the output format supports it. Currently, it's only useful
+   with PNM and PGM formats.
 
  -sampletype <type>
    Request that the output samples be written as unsigned integers (type="u"),
