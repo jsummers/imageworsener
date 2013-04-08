@@ -147,9 +147,12 @@ static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 	if(nplanes!=1) return 0;
 
 	rctx->bitcount = iw_get_ui16le(&buf[14]);
-	if(rctx->bitcount!=1 && rctx->bitcount!=4 && rctx->bitcount!=8 &&
-		rctx->bitcount!=16 && rctx->bitcount!=24 && rctx->bitcount!=32)
+	// We allow bitcount=2 because it's legal in Windows CE BMPs.
+	if(rctx->bitcount!=1 && rctx->bitcount!=2 && rctx->bitcount!=4 &&
+		rctx->bitcount!=8 && rctx->bitcount!=16 && rctx->bitcount!=24 &&
+		rctx->bitcount!=32)
 	{
+		iw_set_errorf(rctx->ctx,"Bad or unsupported bit count (%d)",(int)rctx->bitcount);
 		return 0;
 	}
 	rctx->compression = iw_get_ui32le(&buf[16]);
@@ -539,6 +542,19 @@ static void bmpr_convert_row_4(struct iwbmprcontext *rctx,const iw_byte *src, si
 	}
 }
 
+static void bmpr_convert_row_2(struct iwbmprcontext *rctx,const iw_byte *src, size_t row)
+{
+	int i;
+	int pal_index;
+
+	for(i=0;i<rctx->width;i++) {
+		pal_index = (src[i/4]>>(2*(3-i%4)))&0x03;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 0] = rctx->palette.entry[pal_index].r;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 1] = rctx->palette.entry[pal_index].g;
+		rctx->img->pixels[row*rctx->img->bpr + i*3 + 2] = rctx->palette.entry[pal_index].b;
+	}
+}
+
 static void bmpr_convert_row_1(struct iwbmprcontext *rctx,const iw_byte *src, size_t row)
 {
 	int i;
@@ -596,6 +612,9 @@ static int bmpr_read_uncompressed(struct iwbmprcontext *rctx)
 			break;
 		case 4:
 			bmpr_convert_row_4(rctx,rowbuf,j);
+			break;
+		case 2:
+			bmpr_convert_row_2(rctx,rowbuf,j);
 			break;
 		case 1:
 			bmpr_convert_row_1(rctx,rowbuf,j);
