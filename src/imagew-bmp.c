@@ -109,6 +109,7 @@ static int iwbmp_read_file_header(struct iwbmprcontext *rctx)
 	return 1;
 }
 
+// Read the 12-byte header of a Windows v2 BMP (also known as OS/2 v1 BMP).
 static int decode_v2_header(struct iwbmprcontext *rctx, const iw_byte *buf)
 {
 	unsigned int nplanes;
@@ -123,8 +124,20 @@ static int decode_v2_header(struct iwbmprcontext *rctx, const iw_byte *buf)
 		return 0;
 	}
 	if(rctx->bitcount<=8) {
+		size_t palette_start, palette_end;
+
 		rctx->palette_entries = 1<<rctx->bitcount;
 		rctx->palette_nbytes = 3*rctx->palette_entries;
+
+		// Since v2 BMPs have no direct way to indicate that the palette is not
+		// full-sized, assume the palette ends no later than the start of the
+		// bitmap bits.
+		palette_start = rctx->fileheader_size + rctx->infoheader_size;
+		palette_end = palette_start + rctx->palette_nbytes;
+		if(rctx->bfOffBits >= palette_start+3 && rctx->bfOffBits < palette_end) {
+			rctx->palette_entries = (unsigned int)((rctx->bfOffBits - palette_start)/3);
+			rctx->palette_nbytes = 3*rctx->palette_entries;
+		}
 	}
 	return 1;
 }
