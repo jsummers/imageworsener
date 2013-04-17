@@ -2794,7 +2794,7 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 
 #ifdef IW_WINDOWS
 	if(p->output_encoding==IWCMD_ENCODING_UTF16) {
-		// Tell the C library (e.g. fputws()) not not to translate our UTF-16
+		// Tell the C library (e.g. fputws()) not to translate our UTF-16
 		// text to an "ANSI" encoding, or anything else.
 		_setmode(_fileno(stdout),_O_U16TEXT);
 	}
