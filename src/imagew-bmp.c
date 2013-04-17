@@ -170,7 +170,12 @@ static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 	}
 	rctx->compression = iw_get_ui32le(&buf[16]);
 	if(rctx->compression==IWBMP_BI_BITFIELDS) {
-		if(rctx->bitcount!=16 && rctx->bitcount!=32) {
+		if(rctx->bitcount==1) {
+			iw_set_error(rctx->ctx,"Huffman 1D compression not supported");
+			return 0;
+		}
+		else if(rctx->bitcount!=16 && rctx->bitcount!=32) {
+			iw_set_error(rctx->ctx,"Bad or unsupported image type");
 			return 0;
 		}
 
@@ -343,7 +348,7 @@ static int iwbmp_read_info_header(struct iwbmprcontext *rctx)
 		rctx->bmpversion=2;
 		if(!decode_v2_header(rctx,buf)) goto done;
 	}
-	else if(rctx->infoheader_size==40) {
+	else if(rctx->infoheader_size==40 || rctx->infoheader_size==64) {
 		rctx->bmpversion=3;
 		if(!decode_v3_header_fields(rctx,buf)) goto done;
 	}
@@ -853,7 +858,7 @@ static int iwbmp_read_bits(struct iwbmprcontext *rctx)
 		if(!bmpr_read_rle(rctx)) goto done;
 	}
 	else {
-		iw_set_errorf(rctx->ctx,"Unsupported BMP compression type (%d)",(int)rctx->compression);
+		iw_set_errorf(rctx->ctx,"Unsupported BMP compression or image type (%d)",(int)rctx->compression);
 		goto done;
 	}
 
