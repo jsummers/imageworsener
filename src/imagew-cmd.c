@@ -504,6 +504,8 @@ static int iwcmd_open_clipboard_for_read(struct params_struct *p, struct iw_cont
 {
 	BOOL b;
 	HANDLE hClip = NULL;
+	int use_dibv5 = 0;
+	UINT tmpfmt = 0;
 
 	b=OpenClipboard(GetConsoleWindow());
 	if(!b) {
@@ -513,7 +515,21 @@ static int iwcmd_open_clipboard_for_read(struct params_struct *p, struct iw_cont
 
 	p->cb_r_clipboard_is_open = 1;
 
-	p->cb_r_data_handle = GetClipboardData(CF_DIB);
+	// Window can convert CF_DIB <--> CF_DIBV5, but we'd like to avoid that if
+	// possible.
+	// Enumerate the available clipboard formats. If we see CF_DIBV5 before
+	// CF_DIB, that probably means the image originated in CF_DIBV5 format, so
+	// that's the format we'll request.
+	while(1) {
+		tmpfmt = EnumClipboardFormats(tmpfmt);
+		if(tmpfmt==0 || tmpfmt==CF_DIB) break;
+		if(tmpfmt==CF_DIBV5) {
+			use_dibv5 = 1;
+			break;
+		}
+	}
+
+	p->cb_r_data_handle = GetClipboardData(use_dibv5 ? CF_DIBV5 : CF_DIB);
 	if(!p->cb_r_data_handle) {
 		iw_set_error(ctx,"Can\xe2\x80\x99t find an image on the clipboard");
 		iwcmd_close_clipboard_r(p,ctx);
@@ -688,7 +704,7 @@ static int finish_clipboard_write(struct params_struct *p, struct iw_context *ct
 		goto done;
 	}
 
-	if(!SetClipboardData(CF_DIB,cb_data_handle)) {
+	if(!SetClipboardData(p->bmp_version>=5 ? CF_DIBV5 : CF_DIB, cb_data_handle)) {
 		goto done;
 	}
 
