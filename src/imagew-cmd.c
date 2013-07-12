@@ -80,6 +80,10 @@ struct uri_struct {
 struct params_struct {
 	struct uri_struct input_uri;
 	struct uri_struct output_uri;
+#define IWCMD_MSGS_TO_STDOUT 1
+#define IWCMD_MSGS_TO_STDERR 2
+	int msgsdest; // IWCMD_MSGS_TO_*
+	FILE *msgsfile;
 	int nowarn;
 	int noinfo;
 	int src_width, src_height;
@@ -260,15 +264,15 @@ static void iwcmd_puts_utf8(struct params_struct *p, const char *s)
 #ifdef IW_WINDOWS
 	case IWCMD_ENCODING_UTF16:
 		iwcmd_utf8_to_utf16(s,bufW,sizeof(bufW)/sizeof(WCHAR));
-		fputws(bufW,stdout);
+		fputws(bufW,p->msgsfile);
 		break;
 #endif
 	case IWCMD_ENCODING_UTF8:
-		fputs(s,stdout);
+		fputs(s,p->msgsfile);
 		break;
 	default:
 		iw_utf8_to_ascii(s,buf,sizeof(buf));
-		fputs(buf,stdout);
+		fputs(buf,p->msgsfile);
 	}
 }
 
@@ -2131,6 +2135,7 @@ enum iwcmd_param_types {
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
  PT_BESTFIT, PT_NOBESTFIT, PT_NORESIZE, PT_GRAYSCALE, PT_CONDGRAYSCALE, PT_NOGAMMA,
  PT_INTCLAMP, PT_NOCSLABEL, PT_NOOPT, PT_USEBKGDLABEL, PT_BKGDLABEL, PT_NOBKGDLABEL,
+ PT_MSGSTOSTDOUT, PT_MSGSTOSTDERR,
  PT_QUIET, PT_NOWARN, PT_NOINFO, PT_VERSION, PT_HELP, PT_ENCODING
 };
 
@@ -2238,6 +2243,8 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"quiet",PT_QUIET,0},
 		{"nowarn",PT_NOWARN,0},
 		{"noinfo",PT_NOINFO,0},
+		{"msgstostdout",PT_MSGSTOSTDOUT,0},
+		{"msgstostderr",PT_MSGSTOSTDERR,0},
 		{"version",PT_VERSION,0},
 		{"help",PT_HELP,0},
 		{NULL,PT_NONE,0}
@@ -2318,6 +2325,10 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		break;
 	case PT_NOINFO:
 		p->noinfo=1;
+		break;
+	case PT_MSGSTOSTDOUT:
+	case PT_MSGSTOSTDERR:
+		// Already handled.
 		break;
 	case PT_VERSION:
 		ps->printversion=1;
@@ -2757,7 +2768,9 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 	p->output_encoding = p->output_encoding_req; // Initial default
 
 #ifdef IW_WINDOWS
-	b=GetConsoleMode(GetStdHandle(STD_OUTPUT_HANDLE),&consolemode);
+	b=GetConsoleMode(
+		GetStdHandle(p->msgsdest==IWCMD_MSGS_TO_STDERR?STD_ERROR_HANDLE:STD_OUTPUT_HANDLE),
+		&consolemode);
 	// According to the documentation of WriteConsole(), if GetConsoleMode()
 	// succeeds, we've got a real console.
 	if(b) is_windows_console = 1;
@@ -2769,7 +2782,7 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 		// This is mostly for the benefit of mintty users.
 		// It's overkill, but we print so little text that it shouldn't be a
 		// problem.
-		setvbuf(stdout,0,_IONBF,0);
+		setvbuf(p->msgsfile,0,_IONBF,0);
 	}
 #endif
 
@@ -2812,7 +2825,7 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 	if(p->output_encoding==IWCMD_ENCODING_UTF16) {
 		// Tell the C library (e.g. fputws()) not to translate our UTF-16
 		// text to an "ANSI" encoding, or anything else.
-		_setmode(_fileno(stdout),_O_U16TEXT);
+		_setmode(_fileno(p->msgsfile),_O_U16TEXT);
 	}
 #endif
 
@@ -2884,6 +2897,18 @@ static int iwcmd_read_commandline(struct params_struct *p, int argc, char* argv[
 	ps.printversion=0;
 	ps.showhelp=0;
 
+	// Pre-scan command line to figure out where to print error messages.
+	for(i=1;i<argc;i++) {
+		if(!strcmp(argv[i],"-msgstostdout")) {
+			p->msgsdest = IWCMD_MSGS_TO_STDOUT;
+			p->msgsfile = stdout;
+		}
+		else if(!strcmp(argv[i],"-msgstostderr")) {
+			p->msgsdest = IWCMD_MSGS_TO_STDERR;
+			p->msgsfile = stderr;
+		}
+	}
+
 	if(!handle_encoding(p,argc,argv)) {
 		return IWCMD_ACTION_EXIT_FAIL;
 	}
@@ -2938,6 +2963,8 @@ static void init_params(struct params_struct *p)
 {
 	int k;
 	memset(p,0,sizeof(struct params_struct));
+	p->msgsdest = IWCMD_MSGS_TO_STDERR;
+	p->msgsfile = stderr;
 	p->dst_width_req = -1;
 	p->dst_height_req = -1;
 	p->sample_type = -1;
