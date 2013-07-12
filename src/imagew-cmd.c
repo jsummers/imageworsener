@@ -68,6 +68,7 @@ struct dither_setting {
 struct uri_struct {
 #define IWCMD_SCHEME_FILE       1
 #define IWCMD_SCHEME_CLIPBOARD  2
+#define IWCMD_SCHEME_STDOUT     3
 	int scheme;
 	const char *uri;
 
@@ -1360,6 +1361,13 @@ static int iwcmd_run(struct params_struct *p)
 			iw_set_errorf(ctx,"Failed to open %s for writing: %s", p->output_uri.filename, errmsg);
 			goto done;
 		}
+	}
+	else if(p->output_uri.scheme==IWCMD_SCHEME_STDOUT) {
+#ifdef IW_WINDOWS
+		_setmode(_fileno(stdout),_O_BINARY);
+#endif
+		writedescr.write_fn = my_writefn;
+		writedescr.fp = (void*)stdout;
 	}
 #ifdef IW_WINDOWS
 	else if(p->output_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
@@ -2864,6 +2872,10 @@ static int parse_uri(struct params_struct *p, struct uri_struct *u)
 		else if(!strncmp("clip:",u->uri,5)) {
 			u->scheme = IWCMD_SCHEME_CLIPBOARD;
 			u->filename = "[clipboard]";
+		}
+		else if(!strncmp("stdout:",u->uri,7)) {
+			u->scheme = IWCMD_SCHEME_STDOUT;
+			u->filename = "[stdout]";
 		}
 		else {
 			iwcmd_error(p,"Don\xe2\x80\x99t understand \xe2\x80\x9c%s\xe2\x80\x9d; try \xe2\x80\x9c"
