@@ -1101,6 +1101,13 @@ static int iwcmd_run(struct params_struct *p)
 			goto done;
 		}
 	}
+	else if(p->input_uri.scheme==IWCMD_SCHEME_STDIN) {
+#ifdef IW_WINDOWS
+		_setmode(_fileno(stdin),_O_BINARY);
+#endif
+		readdescr.read_fn = my_readfn;
+		readdescr.fp = (void*)stdin;
+	}
 #ifdef IW_WINDOWS
 	else if(p->input_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
 		if(!iwcmd_open_clipboard_for_read(p,ctx)) goto done;
@@ -1118,6 +1125,10 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->infmt==IW_FORMAT_UNKNOWN) {
 		if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
 			p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
+		}
+		else if(p->input_uri.scheme==IWCMD_SCHEME_STDIN) {
+			iw_set_error(ctx,"Unknown output format; use -infmt.");
+			goto done;
 		}
 		else if(p->input_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
 			p->infmt=IW_FORMAT_BMP;
