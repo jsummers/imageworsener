@@ -133,8 +133,11 @@ The order of the options usually does not matter.
 <input-file> and <output-file> can be prefixed with a "scheme" and a colon, so
 that resources other than regular files can be supported. If your filename may
 contain a colon, prefix it with "file:". In the Windows version, you can use
-"clip:" to refer to the clipboard. A scheme of "stdout:" means the standard
-output stream (this may not be supported for all formats).
+"clip:" to refer to the clipboard.
+
+A scheme of "stdin:" or "stdout:" means the standard input or output stream
+(this may not be supported for all formats). As a shortcut, a file name of
+"-" may be used instead.
 
 Numbers on the command line may be specified as rational numbers, using a
 slash. For example, instead of "-w x0.666666666", you can use "-w x2/3".

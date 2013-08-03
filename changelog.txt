@@ -1,4 +1,5 @@
 Unreleased changes
+ - Allow a filename of "-" to mean "stdin:" or "stdout:".
  - Partial support for writing files to stdout.
  - Print text output to stderr instead of stdout.
  - Added -depthcc option.

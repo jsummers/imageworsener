@@ -68,7 +68,8 @@ struct dither_setting {
 struct uri_struct {
 #define IWCMD_SCHEME_FILE       1
 #define IWCMD_SCHEME_CLIPBOARD  2
-#define IWCMD_SCHEME_STDOUT     3
+#define IWCMD_SCHEME_STDIN      3
+#define IWCMD_SCHEME_STDOUT     4
 	int scheme;
 	const char *uri;
 
@@ -2860,7 +2861,7 @@ static int uri_has_scheme(const char *s)
 }
 
 // Sets the other fields in u, based on u->uri.
-static int parse_uri(struct params_struct *p, struct uri_struct *u)
+static int parse_uri(struct params_struct *p, struct uri_struct *u, unsigned int is_output)
 {
 	u->filename = u->uri; // By default, point filename to the start of uri.
 
@@ -2873,6 +2874,10 @@ static int parse_uri(struct params_struct *p, struct uri_struct *u)
 			u->scheme = IWCMD_SCHEME_CLIPBOARD;
 			u->filename = "[clipboard]";
 		}
+		else if(!strncmp("stdin:",u->uri,6)) {
+			u->scheme = IWCMD_SCHEME_STDIN;
+			u->filename = "[stdin]";
+		}
 		else if(!strncmp("stdout:",u->uri,7)) {
 			u->scheme = IWCMD_SCHEME_STDOUT;
 			u->filename = "[stdout]";
@@ -2884,8 +2889,20 @@ static int parse_uri(struct params_struct *p, struct uri_struct *u)
 		}
 	}
 	else {
-		// No scheme. Default to "file".
-		u->scheme = IWCMD_SCHEME_FILE;
+		// No scheme. Default to "file", unless name is "-".
+		if(!strcmp(u->uri,"-")) {
+			if(is_output) {
+				u->scheme = IWCMD_SCHEME_STDOUT;
+				u->filename = "[stdout]";
+			}
+			else {
+				u->scheme = IWCMD_SCHEME_STDIN;
+				u->filename = "[stdin]";
+			}
+		}
+		else {
+			u->scheme = IWCMD_SCHEME_FILE;
+		}
 	}
 	return 1;
 }
@@ -2926,7 +2943,7 @@ static int iwcmd_read_commandline(struct params_struct *p, int argc, char* argv[
 	}
 
 	for(i=1;i<argc;i++) {
-		if(argv[i][0]=='-' && ps.param_type==PT_NONE) {
+		if(ps.param_type==PT_NONE && argv[i][0]=='-' && argv[i][1]!='\0') {
 			optname = &argv[i][1];
 			// If the second char is also a '-', ignore it.
 			if(argv[i][1]=='-')
@@ -2958,10 +2975,10 @@ static int iwcmd_read_commandline(struct params_struct *p, int argc, char* argv[
 		return IWCMD_ACTION_USAGE_FAIL;
 	}
 
-	if(!parse_uri(p,&p->input_uri)) {
+	if(!parse_uri(p,&p->input_uri,0)) {
 		return IWCMD_ACTION_EXIT_FAIL;
 	}
-	if(!parse_uri(p,&p->output_uri)) {
+	if(!parse_uri(p,&p->output_uri,1)) {
 		return IWCMD_ACTION_EXIT_FAIL;
 	}
 
