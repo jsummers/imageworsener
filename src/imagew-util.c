@@ -235,6 +235,7 @@ IW_IMPL(int) iw_file_to_memory(struct iw_context *ctx, struct iw_iodescr *iodesc
 	if(!iodescr->getfilesize_fn) return 0;
 
 	ret = (*iodescr->getfilesize_fn)(ctx,iodescr,psize);
+	// TODO: Don't require a getfilesize function.
 	if(!ret) return 0;
 
 	*pmem = iw_malloc(ctx,(size_t)*psize);

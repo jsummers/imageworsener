@@ -188,6 +188,10 @@ struct params_struct {
 	size_t cb_w_data_high_water_mark; // Current "file size"
 	size_t cb_w_predicted_filesize;
 #endif
+
+	unsigned char input_initial_bytes[12];
+	size_t input_initial_bytes_stored;
+	size_t input_initial_bytes_consumed;
 };
 
 #ifndef IW_WINDOWS
@@ -402,19 +406,16 @@ static int get_fmt_from_name(const char *s)
 }
 
 // Reads the first few bytes in the file to try to figure out
-// the file format. Then sets the file pointer back to the
-// beginning of the file.
-static int detect_fmt_of_file(FILE *fp)
+// the file format.
+// Records the bytes that were read, so they can be reused without seeking.
+static int detect_fmt_of_file(struct params_struct *p, FILE *fp)
 {
-	unsigned char buf[12];
-	size_t n;
-
-	n=fread(buf,1,12,fp);
+	p->input_initial_bytes_consumed = 0;
+	p->input_initial_bytes_stored=fread(p->input_initial_bytes,1,12,fp);
 	clearerr(fp);
-	fseek(fp,0,SEEK_SET);
-	if(n<2) return IW_FORMAT_UNKNOWN;
+	if(p->input_initial_bytes_stored<2) return IW_FORMAT_UNKNOWN;
 
-	return iw_detect_fmt_of_file((const iw_byte*)buf,n);
+	return iw_detect_fmt_of_file((const iw_byte*)p->input_initial_bytes,p->input_initial_bytes_stored);
 }
 
 // Updates p->dst_width and p->dst_height.
@@ -457,6 +458,34 @@ static void iwcmd_set_resize(struct iw_context *ctx, int dimension,
 static int my_readfn(struct iw_context *ctx, struct iw_iodescr *iodescr, void *buf, size_t nbytes,
    size_t *pbytesread)
 {
+	size_t recorded_bytes_remaining;
+	struct params_struct *p = (struct params_struct *)iw_get_userdata(ctx);
+
+	recorded_bytes_remaining = p->input_initial_bytes_stored - p->input_initial_bytes_consumed;
+	if(recorded_bytes_remaining > 0) {
+		if(recorded_bytes_remaining >= nbytes) {
+			// The read can be satisfied from the recorded bytes.
+			memcpy(buf,&p->input_initial_bytes[p->input_initial_bytes_consumed],nbytes);
+			p->input_initial_bytes_consumed += nbytes;
+			*pbytesread = nbytes;
+			return 1;
+		}
+		else {
+			size_t bytes_to_read_from_file;
+			size_t bytes_read_from_file;
+
+			// Need to use some recorded bytes ...
+			memcpy(buf,&p->input_initial_bytes[p->input_initial_bytes_consumed],recorded_bytes_remaining);
+			p->input_initial_bytes_consumed += recorded_bytes_remaining;
+
+			// ... and read the rest from the file.
+			bytes_to_read_from_file = nbytes - recorded_bytes_remaining;
+			bytes_read_from_file = fread(&((unsigned char*)buf)[recorded_bytes_remaining],1,bytes_to_read_from_file,(FILE*)iodescr->fp);
+			*pbytesread = recorded_bytes_remaining + bytes_read_from_file;
+			return 1;
+		}
+	}
+
 	*pbytesread = fread(buf,1,nbytes,(FILE*)iodescr->fp);
 	return 1;
 }
@@ -465,6 +494,8 @@ static int my_getfilesizefn(struct iw_context *ctx, struct iw_iodescr *iodescr, 
 {
 	int ret;
 	long lret;
+	struct params_struct *p = (struct params_struct *)iw_get_userdata(ctx);
+
 	FILE *fp = (FILE*)iodescr->fp;
 
 	// TODO: Rewrite this to support >4GB file sizes.
@@ -473,7 +504,7 @@ static int my_getfilesizefn(struct iw_context *ctx, struct iw_iodescr *iodescr, 
 	lret=ftell(fp);
 	if(lret<0) return 0;
 	*pfilesize = (iw_int64)lret;
-	fseek(fp,0,SEEK_SET);
+	fseek(fp,(long)p->input_initial_bytes_stored,SEEK_SET);
 	return 1;
 }
 
@@ -1123,14 +1154,12 @@ static int iwcmd_run(struct params_struct *p)
 
 	// Decide on the input format.
 	if(p->infmt==IW_FORMAT_UNKNOWN) {
-		if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
-			p->infmt=detect_fmt_of_file((FILE*)readdescr.fp);
-		}
-		else if(p->input_uri.scheme==IWCMD_SCHEME_STDIN) {
-			iw_set_error(ctx,"Unknown output format; use -infmt.");
-			goto done;
-		}
-		else if(p->input_uri.scheme==IWCMD_SCHEME_CLIPBOARD) {
+		switch(p->input_uri.scheme) {
+		case IWCMD_SCHEME_FILE:
+		case IWCMD_SCHEME_STDIN:
+			p->infmt=detect_fmt_of_file(p,(FILE*)readdescr.fp);
+			break;
+		case IWCMD_SCHEME_CLIPBOARD:
 			p->infmt=IW_FORMAT_BMP;
 		}
 	}

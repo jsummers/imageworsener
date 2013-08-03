@@ -454,6 +454,10 @@ static int iwwebp_read_main(struct iwwebprcontext *rctx)
 
 	// Read the whole WebP file into a memory block.
 	if(!iw_file_to_memory(rctx->ctx, rctx->iodescr, &webpimage, &webpimage_size)) {
+		if(rctx->iodescr->getfilesize_fn==NULL) {
+			// Assume this was the problem.
+			iw_set_errorf(rctx->ctx,"Failed to read WebP file: Seekable stream required");
+		}
 		goto done;
 	}
 
