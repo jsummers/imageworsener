@@ -402,6 +402,70 @@ done:
 	return retval;
 }
 
+// Write a PAM-RGB_ALPHA file.
+static int iwpnm_write_rgba_main(struct iwpnmwcontext *wctx)
+{
+	struct iw_image *img;
+	int retval = 0;
+	int j;
+	size_t outrowsize;
+	int bytes_per_ppm_pixel;
+
+	img = wctx->img;
+
+	if(img->imgtype!=IW_IMGTYPE_RGBA) goto done;
+
+	if(img->bit_depth==8) {
+		bytes_per_ppm_pixel=4;
+		wctx->maxcolorcode = 255;
+	}
+	else if(img->bit_depth==16) {
+		bytes_per_ppm_pixel=8;
+		wctx->maxcolorcode = 65535;
+	}
+	else {
+		goto done;
+	}
+
+	if(wctx->img->reduced_maxcolors) {
+		wctx->maxcolorcode = wctx->img->maxcolorcode[IW_CHANNELTYPE_RED];
+		if(wctx->img->maxcolorcode[IW_CHANNELTYPE_GREEN] != wctx->maxcolorcode ||
+			wctx->img->maxcolorcode[IW_CHANNELTYPE_BLUE] != wctx->maxcolorcode ||
+			wctx->img->maxcolorcode[IW_CHANNELTYPE_ALPHA] != wctx->maxcolorcode)
+		{
+			iw_set_error(wctx->ctx,"PAM format requires equal bit depths");
+			goto done;
+		}
+	}
+
+	if(wctx->maxcolorcode<1 || wctx->maxcolorcode>65535) {
+		iw_set_error(wctx->ctx,"Unsupported PAM bit depth");
+		goto done;
+	}
+
+	outrowsize = bytes_per_ppm_pixel*img->width;
+	wctx->rowbuf = iw_mallocz(wctx->ctx, outrowsize);
+	if(!wctx->rowbuf) goto done;
+
+	write_pam_header(wctx, 4, wctx->maxcolorcode, "RGB_ALPHA");
+
+	for(j=0;j<img->height;j++) {
+		if(img->bit_depth==8) {
+			memcpy(wctx->rowbuf, &img->pixels[j*img->bpr], outrowsize);
+		}
+		else if(img->bit_depth==16) {
+			memcpy(wctx->rowbuf, &img->pixels[j*img->bpr], outrowsize);
+		}
+
+		iwpnm_write(wctx, wctx->rowbuf, outrowsize);
+	}
+
+	retval = 1;
+
+done:
+	return retval;
+}
+
 // Returns 1 if the image is paletted, and has a grayscale palette with
 // exactly 2 entries.
 static int has_bw_palette(struct iwpnmwcontext *wctx, struct iw_image *img)
@@ -468,7 +532,7 @@ static int iwpnm_write_gray_main(struct iwpnmwcontext *wctx)
 	if(!wctx->rowbuf) goto done;
 
 	if(wctx->requested_output_format==IW_FORMAT_PAM) {
-		if(is_bilevel) {
+		if(wctx->maxcolorcode==1) {
 			write_pam_header(wctx, 1, 1, "BLACKANDWHITE");
 		}
 		else {
@@ -479,6 +543,69 @@ static int iwpnm_write_gray_main(struct iwpnmwcontext *wctx)
 		iw_snprintf(tmpstring, sizeof(tmpstring), "P5\n%d %d\n%d\n", img->width,
 			img->height, wctx->maxcolorcode);
 		iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	}
+
+	for(j=0;j<img->height;j++) {
+		iwpnm_write(wctx, &img->pixels[j*img->bpr], outrowsize);
+	}
+
+	retval = 1;
+
+done:
+	return retval;
+}
+
+// Write a PAM-GRAYSCALE_ALPHA file.
+static int iwpnm_write_graya_main(struct iwpnmwcontext *wctx)
+{
+	struct iw_image *img;
+	int retval = 0;
+	int j;
+	size_t outrowsize;
+	int bytes_per_pam_pixel;
+	int is_bilevel = 0;
+
+	img = wctx->img;
+
+	if(img->imgtype!=IW_IMGTYPE_GRAYA) goto done;
+
+	if(img->bit_depth==8) {
+		bytes_per_pam_pixel=2;
+		wctx->maxcolorcode = 255;
+	}
+	else if(img->bit_depth==16) {
+		bytes_per_pam_pixel=4;
+		wctx->maxcolorcode = 65535;
+	}
+	else {
+		goto done;
+	}
+
+	if(wctx->img->reduced_maxcolors) {
+		wctx->maxcolorcode = wctx->img->maxcolorcode[IW_CHANNELTYPE_GRAY];
+		if(wctx->img->maxcolorcode[IW_CHANNELTYPE_ALPHA] != wctx->maxcolorcode)
+		{
+			iw_set_error(wctx->ctx,"PAM format requires equal bit depths");
+			goto done;
+		}
+	}
+
+	if(wctx->maxcolorcode<1 || wctx->maxcolorcode>65535) {
+		iw_set_error(wctx->ctx,"Unsupported PAM bit depth");
+		goto done;
+	}
+
+	outrowsize = bytes_per_pam_pixel*img->width;
+	wctx->rowbuf = iw_mallocz(wctx->ctx, outrowsize);
+	if(!wctx->rowbuf) goto done;
+
+	// GRAYSCALE and BLACKANDWHITE seem to be identical, except that for
+	// BLACKANDWHITE, MAXVAL can only be 1.
+	if(wctx->maxcolorcode==1) {
+		write_pam_header(wctx, 2, wctx->maxcolorcode, "BLACKANDWHITE_ALPHA");
+	}
+	else {
+		write_pam_header(wctx, 2, wctx->maxcolorcode, "GRAYSCALE_ALPHA");
 	}
 
 	for(j=0;j<img->height;j++) {
@@ -583,7 +710,13 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		ret = iwpnm_write_pbm_main(wctx);
 		break;
 	case IW_FORMAT_PAM:
-		if(wctx->img->imgtype==IW_IMGTYPE_RGB) {
+		if(wctx->img->imgtype==IW_IMGTYPE_RGBA) {
+			ret = iwpnm_write_rgba_main(wctx);
+		}
+		else if(wctx->img->imgtype==IW_IMGTYPE_GRAYA) {
+			ret = iwpnm_write_graya_main(wctx);
+		}
+		else if(wctx->img->imgtype==IW_IMGTYPE_RGB) {
 			ret = iwpnm_write_rgb_main(wctx);
 		}
 		else if(wctx->img->imgtype==IW_IMGTYPE_GRAY || wctx->img->imgtype==IW_IMGTYPE_PALETTE) {
