@@ -268,11 +268,15 @@ done:
 	return retval;
 }
 
+IW_IMPL(int) iw_read_pam_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+{
+	return iw_read_pnm_file(ctx, iodescr);
+}
+
 struct iwpnmwcontext {
 	struct iw_iodescr *iodescr;
 	struct iw_context *ctx;
 	struct iw_image *img;
-	const struct iw_palette *iwpal;
 	iw_byte *rowbuf;
 	int requested_output_format;
 	int actual_output_format;
@@ -284,7 +288,31 @@ static void iwpnm_write(struct iwpnmwcontext *wctx, const void *buf, size_t n)
 	(*wctx->iodescr->write_fn)(wctx->ctx,wctx->iodescr,buf,n);
 }
 
-static int iwpnm_write_ppm_main(struct iwpnmwcontext *wctx)
+static int write_pam_header(struct iwpnmwcontext *wctx, int numchannels,
+	int maxcolorcode, const char *tupltype)
+{
+	char tmpstring[80];
+
+	iw_snprintf(tmpstring, sizeof(tmpstring), "P7\n");
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	iw_snprintf(tmpstring, sizeof(tmpstring), "WIDTH %d\n", wctx->img->width);
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	iw_snprintf(tmpstring, sizeof(tmpstring), "HEIGHT %d\n", wctx->img->height);
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	iw_snprintf(tmpstring, sizeof(tmpstring), "DEPTH %d\n", numchannels);
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	iw_snprintf(tmpstring, sizeof(tmpstring), "MAXVAL %d\n", maxcolorcode);
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	iw_snprintf(tmpstring, sizeof(tmpstring), "TUPLTYPE %s\n", tupltype);
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	iw_snprintf(tmpstring, sizeof(tmpstring), "ENDHDR\n");
+	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+
+	return 1;
+}
+
+// Write a PPM or PAM-RGB file.
+static int iwpnm_write_rgb_main(struct iwpnmwcontext *wctx)
 {
 	struct iw_image *img;
 	int retval = 0;
@@ -316,14 +344,14 @@ static int iwpnm_write_ppm_main(struct iwpnmwcontext *wctx)
 			if(wctx->img->maxcolorcode[IW_CHANNELTYPE_GREEN] != wctx->maxcolorcode ||
 				wctx->img->maxcolorcode[IW_CHANNELTYPE_BLUE] != wctx->maxcolorcode)
 			{
-				iw_set_error(wctx->ctx,"PNM/PPM format requires equal bit depths");
+				iw_set_error(wctx->ctx,"PNM/PPM/PAM format requires equal bit depths");
 				goto done;
 			}
 		}
 	}
 
 	if(wctx->maxcolorcode<1 || wctx->maxcolorcode>65535) {
-		iw_set_error(wctx->ctx,"Unsupported PPM bit depth");
+		iw_set_error(wctx->ctx,"Unsupported PPM/PAM bit depth");
 		goto done;
 	}
 
@@ -331,9 +359,14 @@ static int iwpnm_write_ppm_main(struct iwpnmwcontext *wctx)
 	wctx->rowbuf = iw_mallocz(wctx->ctx, outrowsize);
 	if(!wctx->rowbuf) goto done;
 
-	iw_snprintf(tmpstring, sizeof(tmpstring), "P6\n%d %d\n%d\n", img->width,
-		img->height, wctx->maxcolorcode);
-	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	if(wctx->requested_output_format==IW_FORMAT_PAM) {
+		write_pam_header(wctx, 3, wctx->maxcolorcode, "RGB");
+	}
+	else {
+		iw_snprintf(tmpstring, sizeof(tmpstring), "P6\n%d %d\n%d\n", img->width,
+			img->height, wctx->maxcolorcode);
+		iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	}
 
 	for(j=0;j<img->height;j++) {
 		if(img->imgtype==IW_IMGTYPE_RGB && img->bit_depth==8) {
@@ -369,7 +402,23 @@ done:
 	return retval;
 }
 
-static int iwpnm_write_pgm_main(struct iwpnmwcontext *wctx)
+// Returns 1 if the image is paletted, and has a grayscale palette with
+// exactly 2 entries.
+static int has_bw_palette(struct iwpnmwcontext *wctx, struct iw_image *img)
+{
+	const struct iw_palette *iwpal;
+
+	if(img->imgtype!=IW_IMGTYPE_PALETTE) return 0;
+	if(!iw_get_value(wctx->ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE)) return 0;
+
+	iwpal = iw_get_output_palette(wctx->ctx);
+	if(iwpal->num_entries != 2) return 0;
+
+	return 1;
+}
+
+// Write a PGM or PAM-GRAYSCALE or PAM-BLACKANDWHITE file.
+static int iwpnm_write_gray_main(struct iwpnmwcontext *wctx)
 {
 	struct iw_image *img;
 	int retval = 0;
@@ -377,15 +426,23 @@ static int iwpnm_write_pgm_main(struct iwpnmwcontext *wctx)
 	size_t outrowsize;
 	char tmpstring[80];
 	int bytes_per_ppm_pixel;
+	int is_bilevel = 0;
 
 	img = wctx->img;
 
-	if(img->imgtype!=IW_IMGTYPE_GRAY) {
+	if(has_bw_palette(wctx, img)) {
+		is_bilevel = 1;
+	}
+	else if(img->imgtype!=IW_IMGTYPE_GRAY) {
 		iw_set_error(wctx->ctx,"Cannot write non-grayscale image to PGM file");
 		goto done;
 	}
 
-	if(img->bit_depth==8) {
+	if(is_bilevel) {
+		bytes_per_ppm_pixel=1;
+		wctx->maxcolorcode = 1;
+	}
+	else if(img->bit_depth==8) {
 		bytes_per_ppm_pixel=1;
 		wctx->maxcolorcode = 255;
 	}
@@ -410,9 +467,19 @@ static int iwpnm_write_pgm_main(struct iwpnmwcontext *wctx)
 	wctx->rowbuf = iw_mallocz(wctx->ctx, outrowsize);
 	if(!wctx->rowbuf) goto done;
 
-	iw_snprintf(tmpstring, sizeof(tmpstring), "P5\n%d %d\n%d\n", img->width,
-		img->height, wctx->maxcolorcode);
-	iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	if(wctx->requested_output_format==IW_FORMAT_PAM) {
+		if(is_bilevel) {
+			write_pam_header(wctx, 1, 1, "BLACKANDWHITE");
+		}
+		else {
+			write_pam_header(wctx, 1, wctx->maxcolorcode, "GRAYSCALE");
+		}
+	}
+	else {
+		iw_snprintf(tmpstring, sizeof(tmpstring), "P5\n%d %d\n%d\n", img->width,
+			img->height, wctx->maxcolorcode);
+		iwpnm_write(wctx, tmpstring, strlen(tmpstring));
+	}
 
 	for(j=0;j<img->height;j++) {
 		iwpnm_write(wctx, &img->pixels[j*img->bpr], outrowsize);
@@ -429,24 +496,12 @@ static int iwpnm_write_pbm_main(struct iwpnmwcontext *wctx)
 	struct iw_image *img;
 	int retval = 0;
 	int i,j;
-	int ok;
 	size_t outrowsize;
 	char tmpstring[80];
 
 	img = wctx->img;
 
-	// Make sure the image is paletted, and has a grayscale palette with
-	// exactly 2 entries.
-	ok=0;
-	if(img->imgtype==IW_IMGTYPE_PALETTE) {
-		if(iw_get_value(wctx->ctx,IW_VAL_OUTPUT_PALETTE_GRAYSCALE)) {
-			wctx->iwpal = iw_get_output_palette(wctx->ctx);
-			if(wctx->iwpal->num_entries == 2) {
-				ok=1;
-			}
-		}
-	}
-	if(!ok) {
+	if(!has_bw_palette(wctx, img)) {
 		iw_set_error(wctx->ctx,"Cannot write this image type to a PBM file");
 		goto done;
 	}
@@ -519,13 +574,25 @@ IW_IMPL(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	ret=0;
 	switch(wctx->actual_output_format) {
 	case IW_FORMAT_PPM:
-		ret = iwpnm_write_ppm_main(wctx);
+		ret = iwpnm_write_rgb_main(wctx);
 		break;
 	case IW_FORMAT_PGM:
-		ret = iwpnm_write_pgm_main(wctx);
+		ret = iwpnm_write_gray_main(wctx);
 		break;
 	case IW_FORMAT_PBM:
 		ret = iwpnm_write_pbm_main(wctx);
+		break;
+	case IW_FORMAT_PAM:
+		if(wctx->img->imgtype==IW_IMGTYPE_RGB) {
+			ret = iwpnm_write_rgb_main(wctx);
+		}
+		else if(wctx->img->imgtype==IW_IMGTYPE_GRAY || wctx->img->imgtype==IW_IMGTYPE_PALETTE) {
+			ret = iwpnm_write_gray_main(wctx);
+		}
+		else {
+			iw_set_error(wctx->ctx,"Unsupported image type for PAM");
+			goto done;
+		}
 		break;
 	default:
 		iw_set_error(wctx->ctx,"Internal: Bad image type for PNM");
@@ -543,4 +610,9 @@ done:
 		iw_free(ctx,wctx);
 	}
 	return retval;
+}
+
+IW_IMPL(int) iw_write_pam_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+{
+	return iw_write_pnm_file(ctx, iodescr);
 }

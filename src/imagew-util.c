@@ -453,6 +453,7 @@ IW_IMPL(int) iw_detect_fmt_from_filename(const char *fn)
 	 {"pbm", IW_FORMAT_PBM},
 	 {"pgm", IW_FORMAT_PGM},
 	 {"ppm", IW_FORMAT_PPM},
+	 {"pam", IW_FORMAT_PAM},
 	 {NULL, 0}
 	};
 
@@ -483,6 +484,7 @@ IW_IMPL(const char*) iw_get_fmt_name(int fmt)
 	case IW_FORMAT_PBM:  n="PBM";  break;
 	case IW_FORMAT_PGM:  n="PGM";  break;
 	case IW_FORMAT_PPM:  n="PPM";  break;
+	case IW_FORMAT_PAM:  n="PAM";  break;
 	}
 	return n;
 }
@@ -516,8 +518,11 @@ IW_IMPL(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
 	{
 		fmt=IW_FORMAT_WEBP;
 	}
-	else if(buf[0]=='P' && (buf[1]>='1' && buf[1]<='7')) {
+	else if(buf[0]=='P' && (buf[1]>='1' && buf[1]<='6')) {
 		return IW_FORMAT_PNM;
+	}
+	else if(buf[0]=='P' && (buf[1]=='7' && buf[2]==0x0a)) {
+		return IW_FORMAT_PAM;
 	}
 
 	return fmt;
@@ -560,6 +565,11 @@ IW_IMPL(unsigned int) iw_get_profile_by_fmt(int fmt)
 #if IW_WEBP_SUPPORT_TRANSPARENCY
 		p |= IW_PROFILE_TRANSPARENCY;
 #endif
+		break;
+
+	case IW_FORMAT_PAM:
+		p = IW_PROFILE_16BPS | IW_PROFILE_REDUCEDBITDEPTHS | IW_PROFILE_GRAYSCALE |
+			IW_PROFILE_GRAY1 | IW_PROFILE_TRANSPARENCY;
 		break;
 
 	case IW_FORMAT_PNM:
@@ -608,6 +618,7 @@ IW_IMPL(int) iw_is_input_fmt_supported(int fmt)
 	case IW_FORMAT_GIF:
 	case IW_FORMAT_BMP:
 	case IW_FORMAT_PNM:
+	case IW_FORMAT_PAM:
 		return 1;
 	}
 	return 0;
@@ -632,6 +643,7 @@ IW_IMPL(int) iw_is_output_fmt_supported(int fmt)
 	case IW_FORMAT_PPM:
 	case IW_FORMAT_PGM:
 	case IW_FORMAT_PBM:
+	case IW_FORMAT_PAM:
 		return 1;
 	}
 	return 0;

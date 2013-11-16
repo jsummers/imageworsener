@@ -158,9 +158,10 @@ extern "C" {
 // When reading a file, we'll consider everything to be PNM.
 // When writing a file, we may need to distinguish between the subtypes.
 #define IW_FORMAT_PNM      8
-#define IW_FORMAT_PBM      9  // Reserved
-#define IW_FORMAT_PGM      10 // Reserved
+#define IW_FORMAT_PBM      9
+#define IW_FORMAT_PGM      10
 #define IW_FORMAT_PPM      11
+#define IW_FORMAT_PAM      12
 
 // These codes are used tell IW about the capabilities of the output format,
 // so that it can make good decisions about what to do.
@@ -711,6 +712,8 @@ IW_EXPORT(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodes
 IW_EXPORT(int) iw_read_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 // The output format can be refined by setting IW_VAL_OUTPUT_FORMAT.
 IW_EXPORT(int) iw_write_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_read_pam_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
+IW_EXPORT(int) iw_write_pam_file(struct iw_context *ctx, struct iw_iodescr *iodescr);
 IW_EXPORT(char*) iw_get_libwebp_dec_version_string(char *s, int s_len);
 IW_EXPORT(char*) iw_get_libwebp_enc_version_string(char *s, int s_len);
 

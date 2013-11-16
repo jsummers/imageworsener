@@ -402,6 +402,7 @@ static int get_fmt_from_name(const char *s)
 	if(!strcmp(s,"ppm")) return IW_FORMAT_PPM;
 	if(!strcmp(s,"pgm")) return IW_FORMAT_PGM;
 	if(!strcmp(s,"pbm")) return IW_FORMAT_PBM;
+	if(!strcmp(s,"pam")) return IW_FORMAT_PAM;
 	return IW_FORMAT_UNKNOWN;
 }
 
