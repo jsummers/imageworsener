@@ -179,23 +179,12 @@ done:
 	return retval;
 }
 
-static int iwpnm_read_header(struct iwpnmrcontext *rctx)
+// Read the header (following the first 3 bytes) of a PNM (not PAM) file.
+static int iwpnm_read_pnm_header(struct iwpnmrcontext *rctx)
 {
 	char tokenbuf[100];
 	int ret;
 	int retval = 0;
-
-	// Read file signature
-	ret = iwpnm_read_next_token(rctx, tokenbuf, sizeof(tokenbuf));
-	if(!ret) return 0;
-	if(strlen(tokenbuf)!=2 || tokenbuf[0]!='P' || 
-		(tokenbuf[1]<'1' || tokenbuf[1]>'7'))
-	{
-		iw_set_error(rctx->ctx,"Not a PNM file");
-		goto done;
-	}
-
-	rctx->file_format_code = tokenbuf[1] - '0';
 
 	if(rctx->file_format_code == 7) {
 		iw_set_error(rctx->ctx,"PAM format is not supported");
@@ -233,6 +222,45 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 	}
 
 	retval = 1;
+done:
+	return retval;
+}
+
+// Read the header of a PNM or PAM file.
+static int iwpnm_read_header(struct iwpnmrcontext *rctx)
+{
+	int ret;
+	int retval = 0;
+	char sig[3];
+	int isvalid;
+
+	// Read the file signature.
+	ret = iwpnm_read(rctx, sig, 3);
+	if(!ret) goto done;
+
+	isvalid = 0;
+	if(sig[0]!='P') {
+		isvalid=0;
+	}
+	else if(sig[1]=='7' && sig[2]==0x0a) {
+		isvalid=1;
+	}
+	else if(sig[1]>='1' && sig[1]<='6' && iwpnm_is_whitespace(sig[1])) {
+		isvalid=1;
+	}
+	else {
+		isvalid=0;
+	}
+
+	if(!isvalid) {
+		iw_set_error(rctx->ctx,"Not a PNM/PAM file");
+		goto done;
+	}
+
+	rctx->file_format_code = sig[1] - '0';
+
+	retval = iwpnm_read_pnm_header(rctx);
+
 done:
 	return retval;
 }
