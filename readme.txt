@@ -98,7 +98,7 @@ relatively slow. Among the things it (hopefully) does right:
 
 Other information:
  - The command-line utility fully supports PNG, JPEG, BMP, and WebP files, and
-   has partial support for GIF, TIFF, MIFF, and PPM/PGM/PBM.
+   has partial support for GIF, TIFF, MIFF, and PPM/PGM/PBM/PAM.
  - The library is (more or less) not specific to a particular file format.
  - Full support for high color depth (16 bits per sample).
  - Some options can be set differently for the different dimensions

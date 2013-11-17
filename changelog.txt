@@ -1,4 +1,5 @@
 Unreleased changes
+ - Support for reading and writing Netpbm PAM format.
  - Partial support for reading files from stdin.
  - Allow a filename of "-" to mean "stdin:" or "stdout:".
  - Partial support for writing files to stdout.

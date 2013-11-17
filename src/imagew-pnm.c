@@ -18,6 +18,7 @@ struct iwpnmrcontext {
 	int file_format_code;
 	int file_format;
 	int color_count;
+	int num_channels_pam;
 };
 
 static int iwpnm_read_byte(struct iwpnmrcontext *rctx, iw_byte *b)
@@ -104,7 +105,7 @@ static int iwpnm_read_next_token(struct iwpnmrcontext *rctx,
 	return 0;
 }
 
-// Read a binary PBM/PGM/PPM bitmap.
+// Read a binary PBM/PGM/PPM/PAM bitmap.
 static int iwpnm_read_pnm_bitmap(struct iwpnmrcontext *rctx)
 {
 	int i,j;
@@ -118,7 +119,9 @@ static int iwpnm_read_pnm_bitmap(struct iwpnmrcontext *rctx)
 		rctx->img->bit_depth = 1;
 		pnm_bpr = (rctx->img->width+7)/8;
 	}
-	else if(rctx->file_format_code==5) { // PGM
+	else if(rctx->file_format_code==5 ||
+		(rctx->file_format_code==7 && rctx->num_channels_pam==1))  // PGM or PAM-GRAYSCALE
+	{
 		rctx->img->imgtype = IW_IMGTYPE_GRAY;
 		rctx->img->native_grayscale = 1;
 		if(rctx->color_count>=256) {
@@ -134,7 +137,9 @@ static int iwpnm_read_pnm_bitmap(struct iwpnmrcontext *rctx)
 			iw_set_input_max_color_code(rctx->ctx, 0, rctx->color_count);
 		}
 	}
-	else if(rctx->file_format_code==6) { // PPM
+	else if(rctx->file_format_code==6 ||
+		(rctx->file_format_code==7 && rctx->num_channels_pam==3)) // PPM or PAM-RGB
+	{
 		rctx->img->imgtype = IW_IMGTYPE_RGB;
 		if(rctx->color_count>=256) {
 			rctx->img->bit_depth = 16;
@@ -151,7 +156,43 @@ static int iwpnm_read_pnm_bitmap(struct iwpnmrcontext *rctx)
 			iw_set_input_max_color_code(rctx->ctx, 2, rctx->color_count);
 		}
 	}
+	else if(rctx->file_format_code==7 && rctx->num_channels_pam==2) { // PAM-GRAYSCALE_ALPHA
+		rctx->img->imgtype = IW_IMGTYPE_GRAYA;
+		if(rctx->color_count>=256) {
+			rctx->img->bit_depth = 16;
+			pnm_bytesperpix = 4;
+		}
+		else {
+			rctx->img->bit_depth = 8;
+			pnm_bytesperpix = 2;
+		}
+		pnm_bpr = pnm_bytesperpix * rctx->img->width;
+		if(rctx->color_count!=255 && rctx->color_count!=65535) {
+			iw_set_input_max_color_code(rctx->ctx, 0, rctx->color_count);
+			iw_set_input_max_color_code(rctx->ctx, 1, rctx->color_count);
+		}
+	}
+	else if(rctx->file_format_code==7 && rctx->num_channels_pam==4) { // PAM-RGB_ALPHA
+		rctx->img->imgtype = IW_IMGTYPE_RGBA;
+		if(rctx->color_count>=256) {
+			rctx->img->bit_depth = 16;
+			pnm_bytesperpix = 8;
+		}
+		else {
+			rctx->img->bit_depth = 8;
+			pnm_bytesperpix = 4;
+		}
+		pnm_bpr = pnm_bytesperpix * rctx->img->width;
+		if(rctx->color_count!=255 && rctx->color_count!=65535) {
+			iw_set_input_max_color_code(rctx->ctx, 0, rctx->color_count);
+			iw_set_input_max_color_code(rctx->ctx, 1, rctx->color_count);
+			iw_set_input_max_color_code(rctx->ctx, 2, rctx->color_count);
+			iw_set_input_max_color_code(rctx->ctx, 3, rctx->color_count);
+		}
+	}
+
 	else {
+		iw_set_error(rctx->ctx,"Unsupported PNM/PAM image type");
 		goto done;
 	}
 
@@ -186,11 +227,6 @@ static int iwpnm_read_pnm_header(struct iwpnmrcontext *rctx)
 	int ret;
 	int retval = 0;
 
-	if(rctx->file_format_code == 7) {
-		iw_set_error(rctx->ctx,"PAM format is not supported");
-		goto done;
-	}
-
 	if(rctx->file_format_code!=4 && rctx->file_format_code!=5 && rctx->file_format_code!=6) {
 		iw_set_error(rctx->ctx,"Reading this PNM format is not supported");
 		goto done;
@@ -216,6 +252,130 @@ static int iwpnm_read_pnm_header(struct iwpnmrcontext *rctx)
 	ret = iwpnm_read_next_token(rctx, tokenbuf, sizeof(tokenbuf));
 	if(!ret) goto done;
 	rctx->color_count = atoi(tokenbuf);
+	if(rctx->color_count<1 || rctx->color_count>65535) {
+		iw_set_errorf(rctx->ctx, "Invalid max color value (%d)\n", rctx->color_count);
+		goto done;
+	}
+
+	retval = 1;
+done:
+	return retval;
+}
+
+// Read a token from a NUL-terminated string.
+static int read_next_pam_token(struct iwpnmrcontext *rctx,
+	const char *linebuf, char *tokenbuf, int tokenbuflen, int *curpos)
+{
+	iw_byte b;
+	int token_len = 0;
+	int linepos;
+
+	token_len = 0;
+
+	linepos = *curpos;
+	while(1) {
+		if(token_len >= tokenbuflen) {
+			// Token too long.
+			return 0;
+		}
+
+		b = linebuf[linepos++];
+		if(b==0) break; // End of line
+
+		if(iwpnm_is_whitespace(b)) {
+			if(token_len>0) {
+				break;
+			}
+			else {
+				// Skip leading whitespace.
+				continue;
+			}
+		}
+		else {
+			// Append the character to the token.
+			tokenbuf[token_len] = b;
+			token_len++;
+		}
+	}
+
+	tokenbuf[token_len] = '\0';
+	*curpos = linepos;
+	return 1;
+}
+
+static int read_pam_header_line(struct iwpnmrcontext *rctx, char *line, int linesize)
+{
+	iw_byte b;
+	int retval = 0;
+	int linepos = 0;
+
+	while(1) {
+		if(!iwpnm_read_byte(rctx, &b)) goto done;
+
+		if(b==0x0a) { // end of line
+			break;
+		}
+
+		if(linepos < linesize-1) {
+			line[linepos++] = (char)b;
+		}
+
+	}
+	retval = 1;
+done:
+	line[linepos] = '\0';
+	return retval;
+}
+
+// Read the header (following the first 3 bytes) PAM file.
+static int iwpnm_read_pam_header(struct iwpnmrcontext *rctx)
+{
+	char linebuf[100];
+	char tokenbuf[100];
+	char token2buf[100];
+	int retval = 0;
+	int curpos = 0;
+
+	while(1) {
+		// Read a header line
+		if(!read_pam_header_line(rctx, linebuf, sizeof(linebuf))) goto done;
+		if(linebuf[0]=='#') {
+			// Comment line.
+			continue;
+		}
+
+		// Read first token in that header line
+		curpos = 0;
+		if(!read_next_pam_token(rctx, linebuf, tokenbuf, sizeof(tokenbuf), &curpos)) goto done;
+
+		if(!strcmp(tokenbuf,"ENDHDR")) {
+			break;
+		}
+
+		if(!strcmp(tokenbuf,"")) {
+			// Blank or whitespace-only lines are allowed.
+			continue;
+		}
+
+		// Read second token
+		if(!read_next_pam_token(rctx, linebuf, token2buf, sizeof(token2buf), &curpos)) goto done;
+		if(!strcmp(tokenbuf,"WIDTH")) {
+			rctx->img->width = atoi(token2buf);
+		}
+		else if(!strcmp(tokenbuf,"HEIGHT")) {
+			rctx->img->height = atoi(token2buf);
+		}
+		else if(!strcmp(tokenbuf,"DEPTH")) {
+			rctx->num_channels_pam = atoi(token2buf);
+		}
+		else if(!strcmp(tokenbuf,"MAXVAL")) {
+			rctx->color_count = atoi(token2buf);
+		}
+		else if(!strcmp(tokenbuf,"TUPLTYPE")) {
+			// TODO
+		}
+	}
+
 	if(rctx->color_count<1 || rctx->color_count>65535) {
 		iw_set_errorf(rctx->ctx, "Invalid max color value (%d)\n", rctx->color_count);
 		goto done;
@@ -259,7 +419,10 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 
 	rctx->file_format_code = sig[1] - '0';
 
-	retval = iwpnm_read_pnm_header(rctx);
+	if(rctx->file_format_code == 7)
+		retval = iwpnm_read_pam_header(rctx);
+	else
+		retval = iwpnm_read_pnm_header(rctx);
 
 done:
 	return retval;
