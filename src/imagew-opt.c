@@ -43,13 +43,13 @@ done:
 static void iw_opt_scanpixels_ga8(struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	iw_byte gray,a;
+	iw_byte a;
 	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
 		for(i=0;i<optctx->width;i++) {
 			ptr = &optctx->pixelsptr[j*optctx->bpr+i*2];
-			gray=ptr[0]; a=ptr[1];
+			a=ptr[1];
 
 			// Check transparency
 			if(a<255) {
@@ -105,7 +105,6 @@ done:
 static void iw_opt_scanpixels_g16(struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	unsigned int gray;
 	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
@@ -117,8 +116,6 @@ static void iw_opt_scanpixels_g16(struct iw_opt_ctx *optctx)
 			{
 				optctx->has_16bit_precision=1;
 			}
-
-			gray=(((unsigned int)ptr[0])<<8) | ptr[1];
 
 			if(optctx->has_16bit_precision) {
 				// No optimizations possible. Stop the scan
@@ -133,7 +130,7 @@ done:
 static void iw_opt_scanpixels_ga16(struct iw_opt_ctx *optctx)
 {
 	int i,j;
-	unsigned int gray, a;
+	unsigned int a;
 	const iw_byte *ptr;
 
 	for(j=0;j<optctx->height;j++) {
@@ -146,7 +143,6 @@ static void iw_opt_scanpixels_ga16(struct iw_opt_ctx *optctx)
 				optctx->has_16bit_precision=1;
 			}
 
-			gray=(((unsigned int)ptr[0])<<8) | ptr[1];
 			a=(((unsigned int)ptr[2])<<8) | ptr[3];
 
 			// Check transparency

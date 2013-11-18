@@ -202,7 +202,7 @@ static void iwgif_record_pixel(struct iwgifrcontext *rctx, unsigned int coloridx
 	unsigned int r,g,b,a;
 	size_t pixnum;
 	size_t xi,yi; // position in image coordinates
-	size_t xs,ys; // position in screen coordinates
+	size_t xs /*,ys*/; // position in screen coordinates
 	iw_byte *ptr;
 
 	img = rctx->img;
@@ -213,7 +213,7 @@ static void iwgif_record_pixel(struct iwgifrcontext *rctx, unsigned int coloridx
 	xi = pixnum%rctx->image_width;
 	yi = pixnum/rctx->image_width;
 	xs = rctx->image_left + xi;
-	ys = rctx->image_top + yi;
+	// ys = rctx->image_top + yi;
 
 	// Check if the x-coordinate is on the screen.
 	if(xs>=(size_t)rctx->screen_width) return;
@@ -598,13 +598,10 @@ static int iwgif_read_image(struct iwgifrcontext *rctx)
 	int retval=0;
 	struct lzwdeccontext d;
 	size_t subblocksize;
-	struct iw_image *img;
 	int has_local_ct;
 	int local_ct_size;
 
 	unsigned int root_codesize;
-
-	img = rctx->img;
 
 	// Read image header information
 	if(!iwgif_read(rctx,rctx->rbuf,9)) goto done;

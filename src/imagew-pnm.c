@@ -395,7 +395,7 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 	int isvalid;
 
 	// Read the file signature.
-	ret = iwpnm_read(rctx, sig, 3);
+	ret = iwpnm_read(rctx, (iw_byte*)sig, 3);
 	if(!ret) goto done;
 
 	isvalid = 0;
@@ -754,7 +754,6 @@ static int iwpnm_write_graya_main(struct iwpnmwcontext *wctx)
 	int j;
 	size_t outrowsize;
 	int bytes_per_pam_pixel;
-	int is_bilevel = 0;
 
 	img = wctx->img;
 

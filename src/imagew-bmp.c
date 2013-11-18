@@ -127,6 +127,7 @@ static int decode_v2_header(struct iwbmprcontext *rctx, const iw_byte *buf)
 	rctx->width = iw_get_ui16le(&buf[4]);
 	rctx->height = iw_get_ui16le(&buf[6]);
 	nplanes = iw_get_ui16le(&buf[8]);
+	if(nplanes!=1) return 0;
 	rctx->bitcount = iw_get_ui16le(&buf[10]);
 	if(rctx->bitcount!=1 && rctx->bitcount!=4 &&
 		rctx->bitcount!=8 && rctx->bitcount!=24)
@@ -157,7 +158,7 @@ static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 	unsigned int nplanes;
 	int biXPelsPerMeter, biYPelsPerMeter;
 	unsigned int biClrUsed;
-	unsigned int biSizeImage;
+	//unsigned int biSizeImage;
 
 	rctx->width = iw_get_i32le(&buf[4]);
 	rctx->height = iw_get_i32le(&buf[8]);
@@ -208,7 +209,7 @@ static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 		rctx->compression=IWBMP_BI_RGB;
 	}
 
-	biSizeImage = iw_get_ui32le(&buf[20]);
+	//biSizeImage = iw_get_ui32le(&buf[20]);
 	biXPelsPerMeter = iw_get_i32le(&buf[24]);
 	biYPelsPerMeter = iw_get_i32le(&buf[28]);
 
@@ -1026,6 +1027,8 @@ static void bmpw_convert_row_16_32(struct iwbmpwcontext *wctx, const iw_byte *sr
 	unsigned int v;
 	int num_src_samples;
 	unsigned int src_sample[4];
+
+	for(k=0;k<4;k++) src_sample[k]=0;
 
 	num_src_samples = iw_imgtype_num_channels(wctx->img->imgtype);
 

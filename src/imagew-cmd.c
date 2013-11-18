@@ -1042,7 +1042,7 @@ static int iwcmd_run(struct params_struct *p)
 {
 	int retval = 0;
 	struct iw_context *ctx = NULL;
-	int imgtype_read;
+	//int imgtype_read;
 	struct iw_iodescr readdescr;
 	struct iw_iodescr writedescr;
 	char errmsg[200];
@@ -1185,7 +1185,7 @@ static int iwcmd_run(struct params_struct *p)
 		iw_reorient_image(ctx,p->reorient);
 	}
 
-	imgtype_read = iw_get_value(ctx,IW_VAL_INPUT_IMAGE_TYPE);
+	// imgtype_read = iw_get_value(ctx,IW_VAL_INPUT_IMAGE_TYPE);
 
 	// We have to tell the library the output format, so it can know what
 	// kinds of images are allowed (e.g. whether transparency is allowed).
@@ -2141,11 +2141,9 @@ static void iwcmd_printversion(struct params_struct *p)
 {
 	char buf[200];
 	int buflen;
-	int ver;
 
 	buflen = (int)(sizeof(buf)/sizeof(char));
 
-	ver = iw_get_version_int();
 	iwcmd_message(p,"ImageWorsener version %s\n",iw_get_version_string(NULL,buf,buflen));
 	iwcmd_message(p,"%s\n",iw_get_copyright_string(NULL,buf,buflen));
 	iwcmd_message(p,"Features: %d-bit",(int)(8*sizeof(void*)));
