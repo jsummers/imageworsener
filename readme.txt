@@ -225,7 +225,7 @@ Options:
    instead of the number of bits used to represent a color level. For example,
    "-depthcc 32" is equivalent to "-depth 5". This allows for greater
    flexibility, if the output format supports it. Currently, it's only useful
-   with PNM and PGM formats.
+   with PPM, PGM, and PAM formats.
 
  -sampletype <type>
    Request that the output samples be written as unsigned integers (type="u"),
