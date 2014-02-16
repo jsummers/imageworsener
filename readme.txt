@@ -98,12 +98,14 @@ Other information:
    files for Visual Studio 2008.
 
 
-Documentation for the ImageWorsener C library
----------------------------------------------
+The ImageWorsener C library
+---------------------------
 
-There is no documentation for the library at this time, aside from the
-comments in the imagew.h header file. Improving the documentation is a high
-priority.
+Unfortunately, there is no documentation for the library, aside from the
+comments in the imagew.h header file. The original idea was to have a well-
+designed, stable, and documented library, but that hasn't worked out very well.
+The API won't be broken for no reason, but I can't make promises about
+compatibility between versions.
 
 
 Documentation for the "imagew" command line utility
