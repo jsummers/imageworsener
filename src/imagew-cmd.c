@@ -2132,7 +2132,6 @@ static void usage_message(struct params_struct *p)
 		"Usage: imagew [-w <width>] [-h <height>] [options] <in-file> <out-file>\n"
 		"Options include -filter, -grayscale, -depth, -cc, -dither, -bkgd, -cs,\n"
 		" -crop, -quiet, -version.\n"
-		"This program is free software, distributed under the terms of the GNU GPL v3.\n"
 		"See the ImageWorsener documentation for more information.\n"
 	);
 }

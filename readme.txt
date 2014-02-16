@@ -1,5 +1,5 @@
 ImageWorsener is a raster image scaling and processing utility.
-Version 1.1.0
+Version 1.1.0+
 Copyright (c) 2011-2013 Jason Summers  <jason1@pobox.com>
 
 Web site: http://entropymine.com/imageworsener/
@@ -10,24 +10,10 @@ little as possible.
 
 ===========================================================================
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation; either version 3 of the License, or
-(at your option) any later version.
+This program is distributed under an MIT-style license. Refer to the
+included COYPING.txt file for more information.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program; if not, write to the Free Software
-Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
-
-===========================================================================
-
-A copy of the GNU General Public License is included in the file
-COPYING.txt.
+Versions up to 1.1.0 used the GPLv3+ license.
 
 If source code is not included in this package, it may be downloaded from
 the web site at <http://entropymine.com/imageworsener/>.
