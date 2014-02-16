@@ -1,4 +1,7 @@
 Unreleased changes
+ - (none)
+
+Version 1.2.0 - 16 Feb 2014
  - Switched to MIT-style license.
  - Support for reading and writing Netpbm PAM format.
  - Partial support for reading files from stdin.
