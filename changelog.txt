@@ -1,5 +1,5 @@
 Unreleased changes
- - (none)
+ - Discontinued 64-bit floating point precision support.
 
 Version 1.2.0 - 16 Feb 2014
  - Switched to MIT-style license.

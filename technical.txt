@@ -173,25 +173,6 @@ If you write a script that uses the imagew utility, it's good practice to
 prefix all filenames with "file:". Otherwise, you can run into problems with
 pathological filenames like "clip:.jpg".
 
-Double-precision floating point?
---------------------------------
-
-IW normally uses double-precision floating point for almost everything, even
-though that's probably overkill. I used double-precision while developing it,
-because I didn't want to place any artificial restrictions on accuracy, and
-never found a compelling reason to change it.
-
-The "-precision 32" option can be used to make IW conserve memory by using
-single-precision when storing large arrays of samples in memory. It will still
-use double-precision when doing the calculations: it will converts a row to
-double-precision, resize it, then convert it back to single-precision to store
-it.
-
-Technically-oriented persons may compile a custom copy of IW that uses single-
-precision (or any available floating-point type) almost everywhere, by defining
-the IW_SAMPLE_TYPE macro to "float" (e.g. use a compiler flag of
-"-DIW_SAMPLE_TYPE=float").
-
 Unicode
 -------
 

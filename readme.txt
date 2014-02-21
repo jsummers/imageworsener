@@ -189,7 +189,7 @@ Options:
    output image. Valid values for <n>:
     "8" is the default for most formats.
     "16" is supported for PNG and TIFF formats.
-    "32" and "64" are used with MIFF format (floating point).
+    "32" is used with MIFF format (floating point).
    Other depths are supported in some special cases. Use with caution -- this
     can be useful, but it may not do what you expect, and may disable
     optimizations. Consider whether you should use -cc instead.
@@ -735,15 +735,6 @@ Options:
  -webpquality <n>
    WebP-style quality setting to use if a WebP file is written. This is on a
    scale from 0 to 100. Default is 80.
-
- -precision <n>
-   The minimum size, in bits, of a floating point number used to represent a
-   sample. Default is 64. Setting this to 32 will save memory, with minimal
-   reduction in accuracy. The effect on performance is not clear.
-
-   Generally speaking, 64-bit floating point will be used for all calculations,
-   regardless of the -precision setting. If -precision is set to 32, 32-bit
-   floating point will be used when storing large amounts of data in memory.
 
  -encoding <encoding>
    Set the encoding used for text output (informational and error messages).

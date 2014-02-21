@@ -50,6 +50,7 @@ extern "C" {
 // This value can also be set via the iw_create_context() function.
 #define IW_VAL_API_VERSION       1
 
+// Obosolete
 #define IW_VAL_PRECISION         10
 
 // If ==1, convert to grayscale.

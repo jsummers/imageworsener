@@ -101,7 +101,6 @@ struct params_struct {
 	struct resize_blur resize_blur_y;
 	int bestfit;
 	int bestfit_option;
-	int precision;
 	int depth; // Overall depth
 	int sample_type;
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
@@ -1103,7 +1102,6 @@ static int iwcmd_run(struct params_struct *p)
 		iw_set_random_seed(ctx,p->randomize, p->random_seed);
 	}
 
-	if(p->precision) iw_set_value(ctx,IW_VAL_PRECISION,p->precision);
 	if(p->sample_type>=0) iw_set_value(ctx,IW_VAL_OUTPUT_SAMPLE_TYPE,p->sample_type);
 	if(p->no_gamma) iw_set_value(ctx,IW_VAL_DISABLE_GAMMA,1);
 	if(p->intclamp) iw_set_value(ctx,IW_VAL_INT_CLAMP,1);
@@ -2487,7 +2485,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(ret<0) return 0;
 		break;
 	case PT_PRECISION:
-		p->precision = iwcmd_parse_int(v);
+		// This option is obsolete.
 		break;
 	case PT_DEPTH:
 		ret=iwcmd_read_depth(p,v);

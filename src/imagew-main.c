@@ -266,9 +266,7 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	if(ctx->img1.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		int rx, ry;
 		translate_coords(ctx,x,y,&rx,&ry);
-		if(ctx->img1.bit_depth==64) {
-			return get_raw_sample_flt64(ctx,rx,ry,channel);
-		}
+		if(ctx->img1.bit_depth!=32) return 0.0;
 		return get_raw_sample_flt32(ctx,rx,ry,channel);
 	}
 
@@ -434,36 +432,6 @@ static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
 
 	for(i=0;i<4;i++) {
 		ctx->img2.pixels[pos+i] = su.c[i];
-	}
-}
-
-// s is from 0.0 to 1.0
-static IW_INLINE void put_raw_sample_flt64(struct iw_context *ctx, double s,
-	   int x, int y, int channel)
-{
-	// !!! Portability warning: Using a union in this way may be nonportable,
-	// and/or may violate strict-aliasing rules.
-	union su_union {
-		iw_byte c[8];
-		iw_float64 f;
-	} volatile su;
-	int i;
-	size_t pos;
-
-	su.f = (iw_float32)s;
-	pos = y*ctx->img2.bpr + (ctx->img2_numchannels*x + channel)*8;
-
-	for(i=0;i<8;i++) {
-		ctx->img2.pixels[pos+i] = su.c[i];
-	}
-}
-
-static void put_raw_sample_flt(struct iw_context *ctx, double s,
-	   int x, int y, int channel)
-{
-	switch(ctx->img2.bit_depth) {
-	case 32: put_raw_sample_flt32(ctx,s,x,y,channel); break;
-	case 64: put_raw_sample_flt64(ctx,s,x,y,channel); break;
 	}
 }
 
@@ -671,7 +639,7 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 static void put_sample_convert_from_linear_flt(struct iw_context *ctx, IW_SAMPLE samp_lin,
 	   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
-	put_raw_sample_flt(ctx,(double)samp_lin,x,y,channel);
+	put_raw_sample_flt32(ctx,(double)samp_lin,x,y,channel);
 }
 
 static double get_final_sample_using_nc_tbl(struct iw_context *ctx, IW_SAMPLE samp_lin)
@@ -943,16 +911,10 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 		// The intermediate pixels are in ctx->out_pix. Copy them to the intermediate array.
 		for(j=0;j<ctx->intermed_canvas_height;j++) {
 			if(is_alpha_channel) {
-				if(ctx->precision==64)
-					ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_canvas_width + i] = out_pix[j];
-				else
-					ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_canvas_width + i] = (iw_float32)out_pix[j];
+				ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_canvas_width + i] = (iw_float32)out_pix[j];
 			}
 			else {
-				if(ctx->precision==64)
-					ctx->intermediate64[((size_t)j)*ctx->intermed_canvas_width + i] = out_pix[j];
-				else
-					ctx->intermediate32[((size_t)j)*ctx->intermed_canvas_width + i] = (iw_float32)out_pix[j];
+				ctx->intermediate32[((size_t)j)*ctx->intermed_canvas_width + i] = (iw_float32)out_pix[j];
 			}
 		}
 	}
@@ -1010,18 +972,13 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 	bkgd_has_transparency = iw_bkgd_has_transparency(ctx);
 
-	if(ctx->precision!=64) {
-		inpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_in_pix * sizeof(IW_SAMPLE));
-		in_pix = inpix_tofree;
-	}
+	inpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_in_pix * sizeof(IW_SAMPLE));
+	in_pix = inpix_tofree;
 
-	if(!is_alpha_channel || ctx->precision!=64) {
-		// We need an output buffer, except if this is a 64-bit alpha channel.
-		// (For 64-bit alpha samples, we'll use ctx->final_alpha directly.)
-		outpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_out_pix * sizeof(IW_SAMPLE));
-		if(!outpix_tofree) goto done;
-		out_pix = outpix_tofree;
-	}
+	// We need an output buffer.
+	outpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_out_pix * sizeof(IW_SAMPLE));
+	if(!outpix_tofree) goto done;
+	out_pix = outpix_tofree;
 
 	// Decide if the 'nearest color table' optimization can be used
 	if(ctx->nearest_color_table && !is_alpha_channel &&
@@ -1075,31 +1032,14 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 		// ctx->in_pix already points to), or point ctx->in_pix directly to the
 		// intermediate data.
 		if(is_alpha_channel) {
-			if(inpix_tofree) {
-				// This will only happen if the precision is 32
-				for(i=0;i<num_in_pix;i++) {
-					inpix_tofree[i] = ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_canvas_width+i];
-				}
-			}
-			else {
-				in_pix = &ctx->intermediate_alpha64[((size_t)j)*ctx->intermed_canvas_width];
+			for(i=0;i<num_in_pix;i++) {
+				inpix_tofree[i] = ctx->intermediate_alpha32[((size_t)j)*ctx->intermed_canvas_width+i];
 			}
 		}
 		else {
-			if(inpix_tofree) {
-				for(i=0;i<num_in_pix;i++) {
-					inpix_tofree[i] = ctx->intermediate32[((size_t)j)*ctx->intermed_canvas_width+i];
-				}
+			for(i=0;i<num_in_pix;i++) {
+				inpix_tofree[i] = ctx->intermediate32[((size_t)j)*ctx->intermed_canvas_width+i];
 			}
-			else {
-				in_pix = &ctx->intermediate64[((size_t)j)*ctx->intermed_canvas_width];
-			}
-		}
-
-		// If needed, point ctx->out_pix to the right place in the output data.
-		// (Otherwise, it's already pointing the temporary "outpix" buffer.)
-		if(!outpix_tofree) {
-			out_pix = &ctx->final_alpha64[((size_t)j)*ctx->img2.width];
 		}
 
 		// Resize ctx->in_pix to ctx->out_pix.
@@ -1145,10 +1085,7 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 
 			if(int_ci->need_unassoc_alpha_processing) {
 				// Convert color samples back to unassociated alpha.
-				if(ctx->precision==64)
-					alphasamp = ctx->final_alpha64[((size_t)j)*ctx->img2.width + i];
-				else
-					alphasamp = ctx->final_alpha32[((size_t)j)*ctx->img2.width + i];
+				alphasamp = ctx->final_alpha32[((size_t)j)*ctx->img2.width + i];
 
 				if(alphasamp!=0.0) {
 					tmpsamp /= alphasamp;
@@ -1388,9 +1325,6 @@ static int iw_process_internal(struct iw_context *ctx)
 	// A linear color-correction descriptor to use with alpha channels.
 	struct iw_csdescr csdescr_linear;
 
-	ctx->intermediate64=NULL;
-	ctx->intermediate_alpha64=NULL;
-	ctx->final_alpha64=NULL;
 	ctx->intermediate32=NULL;
 	ctx->intermediate_alpha32=NULL;
 	ctx->final_alpha32=NULL;
@@ -1406,17 +1340,9 @@ static int iw_process_internal(struct iw_context *ctx)
 		goto done;
 	}
 
-	if(ctx->precision==64) {
-		ctx->intermediate64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(IW_SAMPLE));
-		if(!ctx->intermediate64) {
-			goto done;
-		}
-	}
-	else {
-		ctx->intermediate32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(iw_float32));
-		if(!ctx->intermediate32) {
-			goto done;
-		}
+	ctx->intermediate32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(iw_float32));
+	if(!ctx->intermediate32) {
+		goto done;
 	}
 
 	if(ctx->uses_errdiffdither) {
@@ -1434,25 +1360,13 @@ static int iw_process_internal(struct iw_context *ctx)
 
 	// If an alpha channel is present, we have to process it first.
 	if(IW_IMGTYPE_HAS_ALPHA(ctx->intermed_imgtype)) {
-		if(ctx->precision==64) {
-			ctx->intermediate_alpha64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(IW_SAMPLE));
-			if(!ctx->intermediate_alpha64) {
-				goto done;
-			}
-			ctx->final_alpha64 = (IW_SAMPLE*)iw_malloc_large(ctx, ctx->img2.width * ctx->img2.height, sizeof(IW_SAMPLE));
-			if(!ctx->final_alpha64) {
-				goto done;
-			}
+		ctx->intermediate_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(iw_float32));
+		if(!ctx->intermediate_alpha32) {
+			goto done;
 		}
-		else {
-			ctx->intermediate_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->intermed_canvas_width * ctx->intermed_canvas_height, sizeof(iw_float32));
-			if(!ctx->intermediate_alpha32) {
-				goto done;
-			}
-			ctx->final_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->img2.width * ctx->img2.height, sizeof(iw_float32));
-			if(!ctx->final_alpha32) {
-				goto done;
-			}
+		ctx->final_alpha32 = (iw_float32*)iw_malloc_large(ctx, ctx->img2.width * ctx->img2.height, sizeof(iw_float32));
+		if(!ctx->final_alpha32) {
+			goto done;
 		}
 
 		if(!iw_process_one_channel(ctx,ctx->intermed_alpha_channel_index,&csdescr_linear,&csdescr_linear)) goto done;
@@ -1476,9 +1390,6 @@ static int iw_process_internal(struct iw_context *ctx)
 	retval=1;
 
 done:
-	if(ctx->intermediate64) { iw_free(ctx,ctx->intermediate64); ctx->intermediate64=NULL; }
-	if(ctx->intermediate_alpha64) { iw_free(ctx,ctx->intermediate_alpha64); ctx->intermediate_alpha64=NULL; }
-	if(ctx->final_alpha64) { iw_free(ctx,ctx->final_alpha64); ctx->final_alpha64=NULL; }
 	if(ctx->intermediate32) { iw_free(ctx,ctx->intermediate32); ctx->intermediate32=NULL; }
 	if(ctx->intermediate_alpha32) { iw_free(ctx,ctx->intermediate_alpha32); ctx->intermediate_alpha32=NULL; }
 	if(ctx->final_alpha32) { iw_free(ctx,ctx->final_alpha32); ctx->final_alpha32=NULL; }
@@ -1558,18 +1469,7 @@ static void decide_output_bit_depth(struct iw_context *ctx)
 
 	if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
 		// Floating point output.
-		if(ctx->req.output_depth<=0) {
-			// An output_depth_req of 0 means the caller did not set it.
-			// The default is to use the maximum useful depth, which is the
-			// minimum of ctx->precision and the number of bits in IW_SAMPLE.
-			ctx->img2.bit_depth = (iw_get_sample_size()<=4) ? 32 : ctx->precision;
-		}
-		else if(ctx->req.output_depth>=1 && ctx->req.output_depth<=32) {
-			ctx->img2.bit_depth=32;
-		}
-		else {
-			ctx->img2.bit_depth=64;
-		}
+		ctx->img2.bit_depth=32;
 		return;
 	}
 

@@ -246,7 +246,6 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	}
 
 	ctx->max_malloc = IW_DEFAULT_MAX_MALLOC;
-	ctx->precision = 64;
 	ctx->max_width = ctx->max_height = IW_DEFAULT_MAX_DIMENSION;
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_H]);
 	default_resize_settings(&ctx->resize_settings[IW_DIMENSION_V]);
@@ -820,9 +819,6 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_MAX_HEIGHT:
 		ctx->max_height = n;
 		break;
-	case IW_VAL_PRECISION:
-		ctx->precision = (n<=32)?32:64;
-		break;
 	case IW_VAL_NO_BKGD_LABEL:
 		ctx->req.suppress_output_bkgd_label = n;
 		break;
@@ -936,7 +932,7 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		ret = ctx->max_height;
 		break;
 	case IW_VAL_PRECISION:
-		ret = ctx->precision;
+		ret = 32;
 		break;
 	case IW_VAL_NO_BKGD_LABEL:
 		ret = ctx->req.suppress_output_bkgd_label;

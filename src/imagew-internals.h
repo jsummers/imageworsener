@@ -176,16 +176,8 @@ struct iw_context {
 	int use_count;
 	unsigned int output_profile;
 
-	// Precision of intermediate samples, 32 (=32) or 64 (=whatever IW_SAMPLE is)
-	int precision;
-
 	iw_mallocfn_type mallocfn;
 	iw_freefn_type freefn;
-
-	// The "64" data is only actually only 64-bit if IW_SAMPLE is 64-bit.
-	IW_SAMPLE *intermediate64;
-	IW_SAMPLE *intermediate_alpha64;
-	IW_SAMPLE *final_alpha64;
 
 	iw_float32 *intermediate32;
 	iw_float32 *intermediate_alpha32;
