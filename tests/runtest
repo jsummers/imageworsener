@@ -310,6 +310,8 @@ $IW srcimg/bmp16-565.bmp actual/bmp16-2.png $CMPR $SCALE -density adjust -reorie
 
 $IW srcimg/test1.webp actual/webp3.png $CMPR $SMALL -precision 32
 
+$IW srcimg/g8.pgm actual/pgm1.png $CMPR $SMALL
+
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
 

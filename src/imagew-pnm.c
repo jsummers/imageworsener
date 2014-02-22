@@ -405,7 +405,7 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 	else if(sig[1]=='7' && sig[2]==0x0a) {
 		isvalid=1;
 	}
-	else if(sig[1]>='1' && sig[1]<='6' && iwpnm_is_whitespace(sig[1])) {
+	else if(sig[1]>='1' && sig[1]<='6' && iwpnm_is_whitespace(sig[2])) {
 		isvalid=1;
 	}
 	else {
