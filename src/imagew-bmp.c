@@ -153,11 +153,12 @@ static int decode_v2_header(struct iwbmprcontext *rctx, const iw_byte *buf)
 	return 1;
 }
 
+// Read a Windows v3 or OS/2 v2 header.
 static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *buf)
 {
 	unsigned int nplanes;
 	int biXPelsPerMeter, biYPelsPerMeter;
-	unsigned int biClrUsed;
+	unsigned int biClrUsed = 0;
 	//unsigned int biSizeImage;
 
 	rctx->width = iw_get_i32le(&buf[4]);
@@ -179,6 +180,11 @@ static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 		iw_set_errorf(rctx->ctx,"Bad or unsupported bit count (%d)",(int)rctx->bitcount);
 		return 0;
 	}
+
+	if(rctx->infoheader_size<=16) {
+		goto infoheaderdone;
+	}
+
 	rctx->compression = iw_get_ui32le(&buf[16]);
 	if(rctx->compression==IWBMP_BI_BITFIELDS) {
 		if(rctx->bitcount==1) {
@@ -222,6 +228,8 @@ static int decode_v3_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 
 	biClrUsed = iw_get_ui32le(&buf[32]);
 	if(biClrUsed>100000) return 0;
+
+infoheaderdone:
 	// The documentation of the biClrUsed field is not very clear.
 	// I'm going to assume that if biClrUsed is 0 and bitcount<=8, then
 	// the number of palette colors is the maximum that would be useful
@@ -355,11 +363,14 @@ static int iwbmp_read_info_header(struct iwbmprcontext *rctx)
 	if(!iwbmp_read(rctx,&buf[4],n-4)) goto done;
 
 	if(rctx->infoheader_size==12) {
-		// This is a rare old-style "OS/2" bitmap.
+		// This is a "Windows BMP v2" or "OS/2 BMP v1" bitmap.
 		rctx->bmpversion=2;
 		if(!decode_v2_header(rctx,buf)) goto done;
 	}
-	else if(rctx->infoheader_size==40 || rctx->infoheader_size==64) {
+	else if(rctx->infoheader_size==16 || rctx->infoheader_size==40 || rctx->infoheader_size==64) {
+		// A Windows v3 or OS/2 v2 BMP.
+		// OS/2 v2 BMPs can technically have other header sizes between 16 and 64,
+		// but it's not clear if such files actually exist.
 		rctx->bmpversion=3;
 		if(!decode_v3_header_fields(rctx,buf)) goto done;
 	}
