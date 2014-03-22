@@ -2052,10 +2052,16 @@ static int iwbmp_write_main(struct iwbmpwcontext *wctx)
 	int cmpr_req;
 	int retval = 0;
 	int x;
+	const char *s;
 
 	img = wctx->img;
 
-	wctx->bmpversion = iw_get_value(wctx->ctx,IW_VAL_BMP_VERSION);
+	wctx->bmpversion = 0;
+	s = iw_get_option(wctx->ctx, "bmp:version");
+	if(s) {
+		wctx->bmpversion = iw_parse_int(s);
+	}
+
 	if(wctx->bmpversion==0) wctx->bmpversion=3;
 	if(wctx->bmpversion==4) {
 		iw_warning(wctx->ctx,"Writing BMP v4 is not supported; using v3 instead");

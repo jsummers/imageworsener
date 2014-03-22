@@ -199,7 +199,7 @@ $IW srcimg/rgb16.png actual/bmp4.bmp $SMALL -depth 3,4,6 -dither o
 $IW srcimg/rgb16.png actual/bmp5.bmp $SMALL -depth 5 -grayscale
 
 $IW srcimg/rgb16.png actual/bmp6.bmp $SMALL -depth 11,11,10
-$IW srcimg/rgb8a.png actual/bmp7.bmp $SMALL -bmpversion 5
+$IW srcimg/rgb8a.png actual/bmp7.bmp $SMALL -opt bmp:version=5
 $IW srcimg/rgb8a.png actual/bmp8.bmp $SMALL -bmpversion 5 -depth 4,4,4,4 -dither o
 $IW srcimg/rgb8a.png actual/bmp9.bmp $SMALL -bmptrns -cc 6,7,6,2 -dither f -bkgdlabel 38e
 

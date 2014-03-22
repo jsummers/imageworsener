@@ -695,6 +695,16 @@ Options:
    Currently, this only works with GIF files. It does not play through the GIF
    animation, so you might only get a partial image.
 
+ -opt <format>:<option-name>=<value>
+   Set a format-specific option. The syntax may be slightly inconvenient, but
+   it allows for a large number of options to exist, without much trouble.
+   Note that you will not get any warnings if you use an unrecognized option.
+   Options:
+    "bmp:version": The BMP file version to write. Currently supports "2"
+      (Windows BMP v2, also known as OS/2 BMP v1), and "3" (the default; the
+      standard version that's compatible with almost everything), and "5"
+      (supports transparency).
+
  -includescreen
  -noincludescreen
    By default, a GIF image will be painted onto the GIF "screen". Use
@@ -724,9 +734,7 @@ Options:
    support JPEG files with arithmetic coding.
 
  -bmpversion <n>
-   The BMP file version to write. Currently supports "2" (Windows BMP v2, also
-   known as OS/2 BMP v1), and "3" (the default; the standard version that's
-   compatible with almost everything), and "5" (supports transparency).
+   Obsolete. Same as "-opt bmp:version=<n>".
 
  -bmptrns
    Attempt to write a BMP image with transparency. Refer to technical.txt for

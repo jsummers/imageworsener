@@ -148,6 +148,13 @@ IW_IMPL(char*) iw_strdup(struct iw_context *ctx, const char *s)
 	return s2;
 }
 
+char* iwpvt_strdup_dbl(struct iw_context *ctx, double n)
+{
+	char buf[100];
+	iw_snprintf(buf, sizeof(buf), "%.20f", n);
+	return iw_strdup(ctx, buf);
+}
+
 IW_IMPL(void) iw_strlcpy(char *dst, const char *src, size_t dstlen)
 {
 	size_t n;

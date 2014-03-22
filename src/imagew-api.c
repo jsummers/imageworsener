@@ -819,7 +819,8 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->req.bmp_no_fileheader = n;
 		break;
 	case IW_VAL_BMP_VERSION:
-		ctx->req.bmp_version = n;
+		// For backward compatibility only.
+		iw_set_option(ctx, "bmp:version", iwpvt_strdup_dbl(ctx, (double)n));
 		break;
 	case IW_VAL_MAX_WIDTH:
 		ctx->max_width = n;
@@ -929,9 +930,6 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_BMP_NO_FILEHEADER:
 		ret = ctx->req.bmp_no_fileheader;
-		break;
-	case IW_VAL_BMP_VERSION:
-		ret = ctx->req.bmp_version;
 		break;
 	case IW_VAL_MAX_WIDTH:
 		ret = ctx->max_width;

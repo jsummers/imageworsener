@@ -171,7 +171,6 @@ struct iw_req_struct {
 	int deflatecmprlevel;
 	int interlaced;
 	int bmp_no_fileheader;
-	int bmp_version; // requested BMP file version to write
 	int output_color_type;
 	double webp_quality;
 
@@ -309,6 +308,7 @@ iw_uint32 iwpvt_prng_rand(struct iw_prng *prng); // Returns a pseudorandom numbe
 int iwpvt_util_randomize(struct iw_prng *prng); // Returns the random seed that was used.
 void* iwpvt_default_malloc(void *userdata, unsigned int flags, size_t n);
 void iwpvt_default_free(void *userdata, void *mem);
+char* iwpvt_strdup_dbl(struct iw_context *ctx, double n);
 
 // Defined in imagew-resize.c
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,

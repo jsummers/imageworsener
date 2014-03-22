@@ -1111,6 +1111,12 @@ static int iwcmd_run(struct params_struct *p)
 
 	for(i=0; i<p->options_count; i++) {
 		iw_set_option(ctx, p->options[i].name, p->options[i].val);
+
+		if(!strcmp(p->options[i].name, "bmp:version")) {
+			// A hack, but we need to know the BMP version to know
+			// whether to enable transparency.
+			p->bmp_version = iw_parse_int(p->options[i].val);
+		}
 	}
 
 	if(p->random_seed!=0 || p->randomize) {
@@ -1449,10 +1455,6 @@ static int iwcmd_run(struct params_struct *p)
 	}
 	else if(p->outfmt==IW_FORMAT_WEBP) {
 		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
-	}
-	else if(p->outfmt==IW_FORMAT_BMP) {
-		if(p->bmp_version>0)
-			iw_set_value(ctx,IW_VAL_BMP_VERSION,p->bmp_version);
 	}
 
 	if(!iw_write_file_by_fmt(ctx,&writedescr,p->outfmt)) goto done;
@@ -2661,7 +2663,6 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->zipcmprlevel_set=1;
 		break;
 	case PT_BMPVERSION:
-		p->bmp_version=iw_parse_int(v);
 		add_opt(p, "bmp:version", v);
 		break;
 	case PT_RANDSEED:

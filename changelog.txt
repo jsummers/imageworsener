@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added -opt option, for format-specific options.
  - Discontinued 64-bit floating point precision support.
 
 Version 1.2.0 - 16 Feb 2014
