@@ -80,6 +80,11 @@ struct uri_struct {
 	const char *filename;
 };
 
+struct iw_option_struct {
+	char *name;
+	char *val;
+};
+
 struct params_struct {
 	struct uri_struct input_uri;
 	struct uri_struct output_uri;
@@ -192,6 +197,10 @@ struct params_struct {
 	unsigned char input_initial_bytes[12];
 	size_t input_initial_bytes_stored;
 	size_t input_initial_bytes_consumed;
+
+#define IWCMD_MAX_OPTIONS 32
+	struct iw_option_struct options[IWCMD_MAX_OPTIONS];
+	int options_count;
 };
 
 #ifndef IW_WINDOWS
@@ -1049,6 +1058,7 @@ static int iwcmd_run(struct params_struct *p)
 	struct iw_init_params init_params;
 	const char *s;
 	unsigned int profile;
+	int i;
 	int k;
 	int tmpflag;
 
@@ -1097,6 +1107,10 @@ static int iwcmd_run(struct params_struct *p)
 			iw_set_error(ctx,"Only BMP images can be copied to the clipboard");
 			goto done;
 		}
+	}
+
+	for(i=0; i<p->options_count; i++) {
+		iw_set_option(ctx, p->options[i].name, p->options[i].val);
 	}
 
 	if(p->random_seed!=0 || p->randomize) {
@@ -1469,6 +1483,13 @@ done:
 	}
 
 	iw_destroy_context(ctx);
+
+	for(i=0; i<p->options_count; i++) {
+		free(p->options[i].name);
+		free(p->options[i].val);
+	}
+	p->options_count=0;
+
 	return retval;
 }
 
@@ -2070,7 +2091,7 @@ static void iwcmd_printversion(struct params_struct *p)
 }
 
 enum iwcmd_param_types {
- PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_SIZE, PT_EXACTSIZE, PT_SAMPLETYPE,
+ PT_NONE=0, PT_WIDTH, PT_HEIGHT, PT_SIZE, PT_EXACTSIZE, PT_OPT, PT_SAMPLETYPE,
  PT_DEPTH, PT_DEPTHGRAY, PT_DEPTHALPHA, PT_DEPTHCC, PT_INPUTCS, PT_CS, PT_INTENT,
  PT_PRECISION, PT_RESIZETYPE, PT_RESIZETYPE_X, PT_RESIZETYPE_Y,
  PT_BLUR, PT_BLUR_X, PT_BLUR_Y,
@@ -2111,6 +2132,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"height",PT_HEIGHT,1},
 		{"s",PT_SIZE,1},
 		{"S",PT_EXACTSIZE,1},
+		{"opt",PT_OPT,1},
 		{"precision",PT_PRECISION,1},
 		{"depth",PT_DEPTH,1},
 		{"depthcc",PT_DEPTHCC,1},
@@ -2369,6 +2391,53 @@ static int iwcmd_decode_sampletype(struct params_struct *p, const char *v)
 	return 1;
 }
 
+static void add_opt(struct params_struct *p, const char *name, const char *val)
+{
+	size_t nlen, vlen;
+
+	if(p->options_count>=IWCMD_MAX_OPTIONS) return;
+
+	nlen = strlen(name);
+	p->options[p->options_count].name = malloc(nlen+1);
+	memcpy(p->options[p->options_count].name, name, nlen+1);
+
+	vlen = strlen(val);
+	p->options[p->options_count].val = malloc(vlen+1);
+	memcpy(p->options[p->options_count].val, val, vlen+1);
+
+	p->options_count++;
+}
+
+// v is in "name=value" format.
+static void add_opt_raw(struct params_struct *p, const char *v)
+{
+	char *eq;
+	size_t nlen, vlen;
+
+	if(p->options_count>=IWCMD_MAX_OPTIONS) return;
+	eq = strchr(v, '=');
+	if(eq==NULL) {
+		// No "value". Add an option whose value is an empty string.
+		nlen = strlen(v);
+		p->options[p->options_count].name = malloc(nlen+1);
+		memcpy(p->options[p->options_count].name, v, nlen+1);
+		p->options[p->options_count].val = malloc(1);
+		p->options[p->options_count].val[0] = '\0';
+	}
+	else {
+		nlen = eq - v; // pointer arithmetic
+		p->options[p->options_count].name = malloc(nlen+1);
+		memcpy(p->options[p->options_count].name, v, nlen);
+		p->options[p->options_count].name[nlen] = '\0';
+
+		vlen = strlen(eq+1);
+		p->options[p->options_count].val = malloc(vlen+1);
+		memcpy(p->options[p->options_count].val, eq+1, vlen+1);
+	}
+
+	p->options_count++;
+}
+
 static int process_option_arg(struct params_struct *p, struct parsestate_struct *ps, const char *v)
 {
 	int ret;
@@ -2389,6 +2458,9 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		ret=iwcmd_decode_size(p,v);
 		p->bestfit=0;
 		if(ret<0) return 0;
+		break;
+	case PT_OPT:
+		add_opt_raw(p, v);
 		break;
 	case PT_PRECISION:
 		// This option is obsolete.
@@ -2590,6 +2662,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		break;
 	case PT_BMPVERSION:
 		p->bmp_version=iw_parse_int(v);
+		add_opt(p, "bmp:version", v);
 		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {

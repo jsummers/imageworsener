@@ -269,7 +269,15 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 
 IW_IMPL(void) iw_destroy_context(struct iw_context *ctx)
 {
+	int i;
 	if(!ctx) return;
+	if(ctx->req.options) {
+		for(i=0; i<=ctx->req.options_count; i++) {
+			iw_free(ctx, ctx->req.options[i].name);
+			iw_free(ctx, ctx->req.options[i].val);
+		}
+		iw_free(ctx, ctx->req.options);
+	}
 	if(ctx->img1.pixels) iw_free(ctx,ctx->img1.pixels);
 	if(ctx->img2.pixels) iw_free(ctx,ctx->img2.pixels);
 	if(ctx->error_msg) iw_free(ctx,ctx->error_msg);
@@ -986,4 +994,32 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 	}
 
 	return ret;
+}
+
+IW_IMPL(void) iw_set_option(struct iw_context *ctx, const char *name, const char *val)
+{
+#define IW_MAX_OPTIONS 32
+	if(!ctx->req.options) {
+		ctx->req.options = iw_mallocz(ctx, IW_MAX_OPTIONS*sizeof(struct iw_option_struct));
+		if(!ctx->req.options) return;
+		ctx->req.options_numalloc = IW_MAX_OPTIONS;
+		ctx->req.options_count = 0;
+	}
+	if(ctx->req.options_count>=IW_MAX_OPTIONS) return;
+	ctx->req.options[ctx->req.options_count].name = iw_strdup(ctx, name);
+	ctx->req.options[ctx->req.options_count].val = iw_strdup(ctx, val);
+	ctx->req.options_count++;
+}
+
+// Return the value of the first option with the given name.
+// Return NULL if not found.
+IW_IMPL(const char*) iw_get_option(struct iw_context *ctx, const char *name)
+{
+	int i;
+	for(i=0; i<ctx->req.options_count; i++) {
+		if(ctx->req.options[i].name && !strcmp(ctx->req.options[i].name, name)) {
+			return ctx->req.options[i].val;
+		}
+	}
+	return NULL;
 }

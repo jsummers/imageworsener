@@ -648,6 +648,9 @@ IW_EXPORT(int) iw_get_value(struct iw_context *ctx, int code);
 IW_EXPORT(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n);
 IW_EXPORT(double) iw_get_value_dbl(struct iw_context *ctx, int code);
 
+IW_EXPORT(void) iw_set_option(struct iw_context *ctx, const char *name, const char *val);
+IW_EXPORT(const char*) iw_get_option(struct iw_context *ctx, const char *name);
+
 IW_EXPORT(void) iw_set_error(struct iw_context *ctx, const char *s);
 IW_EXPORT(void) iw_set_errorf(struct iw_context *ctx, const char *fmt, ...)
   iw_gnuc_attribute ((format (printf, 2, 3)));
@@ -788,6 +791,7 @@ IW_EXPORT(void*) iw_realloc_ex(struct iw_context *ctx, unsigned int flags,
 	void *m, size_t oldn, size_t n);
 IW_EXPORT(void*) iw_realloc(struct iw_context *ctx,
 	void *m, size_t oldn, size_t n);
+IW_EXPORT(char*) iw_strdup(struct iw_context *ctx, const char *s);
 
 // Free memory allocated by an iw_malloc* function.
 // If mem is NULL, does nothing.

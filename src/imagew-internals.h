@@ -122,6 +122,11 @@ struct iw_opt_ctx {
 	unsigned int bkgdlabel[4]; // Indexed by IW_CHANNELTYPE_[RED..ALPHA]
 };
 
+struct iw_option_struct {
+	char *name;
+	char *val;
+};
+
 // Used to help separate settings that were requested by the caller,
 // and that might not always be respected, or applicable.
 struct iw_req_struct {
@@ -169,6 +174,10 @@ struct iw_req_struct {
 	int bmp_version; // requested BMP file version to write
 	int output_color_type;
 	double webp_quality;
+
+	struct iw_option_struct *options;
+	int options_count;
+	int options_numalloc;
 };
 
 struct iw_context {
