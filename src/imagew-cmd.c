@@ -38,6 +38,7 @@
 #include <langinfo.h>
 #endif
 
+#define IW_INCLUDE_UTIL_FUNCTIONS // Needed for iw_parse_number(), etc.
 #include "imagew.h"
 
 #ifdef IW_WINDOWS
@@ -1471,103 +1472,6 @@ done:
 	return retval;
 }
 
-
-// Find where a number ends (at a comma, or the end of string),
-// and record if it contained a slash.
-static int iwcmd_get_number_len(const char *s, int *pslash_pos)
-{
-	int i;
-	for(i=0;s[i];i++) {
-		if(s[i]=='/') {
-			*pslash_pos = i;
-		}
-		if(s[i]!=',') continue;
-		return i;
-	}
-	return i;
-}
-
-// Returns 0 if no valid number found.
-static int iwcmd_parse_number_internal(const char *s,
-		   double *presult, int *pcharsread)
-{
-	int len;
-	int slash_pos = -1;
-
-	*presult = 0.0;
-	*pcharsread = 0;
-
-	len = iwcmd_get_number_len(s,&slash_pos);
-	if(len<1) return 0;
-	*pcharsread = len;
-
-	if(slash_pos>=0) {
-		// a rational number
-		double numer, denom;
-		numer = atof(s);
-		denom = atof(s+slash_pos+1);
-		if(denom==0.0)
-			*presult = 0.0;
-		else
-			*presult = numer/denom;
-	}
-	else {
-		*presult = atof(s);
-	}
-	return 1;
-}
-
-static void iwcmd_parse_number_list(const char *s,
-	int max_numbers, // max number of numbers to parse
-	double *results, // array of doubles to hold the results
-	int *pnumresults) // number of numbers parsed
-{
-	int n;
-	int charsread;
-	int curpos=0;
-	int ret;
-
-	*pnumresults = 0;
-	for(n=0;n<max_numbers;n++) {
-		results[n]=0.0;
-	}
-
-	for(n=0;n<max_numbers;n++) {
-		ret=iwcmd_parse_number_internal(&s[curpos], &results[n], &charsread);
-		if(!ret) return;
-		(*pnumresults)++;
-		curpos+=charsread;
-		if(s[curpos]==',') {
-			curpos++;
-		}
-		else {
-			return;
-		}
-	}
-}
-
-static double iwcmd_parse_dbl(const char *s)
-{
-	double result;
-	int charsread;
-	iwcmd_parse_number_internal(s, &result, &charsread);
-	return result;
-}
-
-static int iwcmd_round_to_int(double x)
-{
-	if(x<0.0) return -(int)(0.5-x);
-	return (int)(0.5+x);
-}
-
-static int iwcmd_parse_int(const char *s)
-{
-	double result;
-	int charsread;
-	iwcmd_parse_number_internal(s, &result, &charsread);
-	return iwcmd_round_to_int(result);
-}
-
 // Parse two numbers separated by a comma.
 // If the string doesn't contain enough numbers, some parameters will be
 // left unchanged.
@@ -1576,7 +1480,7 @@ static void iwcmd_parse_dbl_pair(const char *s, double *n1, double *n2)
 	double nums[2];
 	int count;
 
-	iwcmd_parse_number_list(s,2,nums,&count);
+	count = iw_parse_number_list(s,2,nums);
 	if(count>=1) *n1 = nums[0];
 	if(count>=2) *n2 = nums[1];
 }
@@ -1589,9 +1493,9 @@ static void iwcmd_parse_int_pair(const char *s, int *i1, int *i2)
 	double nums[2];
 	int count;
 
-	iwcmd_parse_number_list(s,2,nums,&count);
-	if(count>=1) *i1 = iwcmd_round_to_int(nums[0]);
-	if(count>=2) *i2 = iwcmd_round_to_int(nums[1]);
+	count = iw_parse_number_list(s,2,nums);
+	if(count>=1) *i1 = iw_round_to_int(nums[0]);
+	if(count>=2) *i2 = iw_round_to_int(nums[1]);
 }
 
 // Parse up to four integers separated by commas.
@@ -1602,11 +1506,11 @@ static void iwcmd_parse_int_4(const char *s, int *i1, int *i2, int *i3, int *i4)
 	double nums[4];
 	int count;
 
-	iwcmd_parse_number_list(s,4,nums,&count);
-	if(count>=1) *i1 = iwcmd_round_to_int(nums[0]);
-	if(count>=2) *i2 = iwcmd_round_to_int(nums[1]);
-	if(count>=3) *i3 = iwcmd_round_to_int(nums[2]);
-	if(count>=4) *i4 = iwcmd_round_to_int(nums[3]);
+	count = iw_parse_number_list(s,4,nums);
+	if(count>=1) *i1 = iw_round_to_int(nums[0]);
+	if(count>=2) *i2 = iw_round_to_int(nums[1]);
+	if(count>=3) *i3 = iw_round_to_int(nums[2]);
+	if(count>=4) *i4 = iw_round_to_int(nums[3]);
 }
 
 static int hexdigit_value(char d)
@@ -1750,7 +1654,7 @@ static int iwcmd_decode_resizetype(struct params_struct *p,
 
 	if(namelen==7 && !strncmp(s,"lanczos",namelen)) {
 		if(len>namelen)
-			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
+			alg->param1 = iw_parse_number(&s[namelen]);
 		else
 			alg->param1 = 3.0;
 		alg->family = IW_RESIZETYPE_LANCZOS;
@@ -1760,7 +1664,7 @@ static int iwcmd_decode_resizetype(struct params_struct *p,
 		    (namelen==7 && !strncmp(s,"hanning",namelen)) )
 	{
 		if(len>namelen)
-			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
+			alg->param1 = iw_parse_number(&s[namelen]);
 		else
 			alg->param1 = 4.0;
 		alg->family = IW_RESIZETYPE_HANNING;
@@ -1768,7 +1672,7 @@ static int iwcmd_decode_resizetype(struct params_struct *p,
 	}
 	else if(namelen==8 && !strncmp(s,"blackman",namelen)) {
 		if(len>namelen)
-			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
+			alg->param1 = iw_parse_number(&s[namelen]);
 		else
 			alg->param1 = 4.0;
 		alg->family = IW_RESIZETYPE_BLACKMAN;
@@ -1776,7 +1680,7 @@ static int iwcmd_decode_resizetype(struct params_struct *p,
 	}
 	else if(namelen==4 && !strncmp(s,"sinc",namelen)) {
 		if(len>namelen)
-			alg->param1 = iwcmd_parse_dbl(&s[namelen]);
+			alg->param1 = iw_parse_number(&s[namelen]);
 		else
 			alg->param1 = 4.0;
 		alg->family = IW_RESIZETYPE_SINC;
@@ -1803,15 +1707,15 @@ static int iwcmd_decode_resizetype(struct params_struct *p,
 		if(len < namelen+3) goto done; // error
 		cpos = strchr(s,',');
 		if(!cpos) goto done;
-		alg->param1 = iwcmd_parse_dbl(&s[namelen]);
-		alg->param2 = iwcmd_parse_dbl(cpos+1);
+		alg->param1 = iw_parse_number(&s[namelen]);
+		alg->param2 = iw_parse_number(cpos+1);
 		alg->family = IW_RESIZETYPE_CUBIC;
 		return 1;
 	}
 	else if(namelen==4 && !strncmp(s,"keys",namelen)) {
 		// Format is "keys<alpha>"
 		if(len>namelen)
-			alg->param2 = iwcmd_parse_dbl(&s[namelen]);
+			alg->param2 = iw_parse_number(&s[namelen]);
 		else
 			alg->param2 = 0.5;
 		alg->param1 = 1.0-2.0*alg->param2;
@@ -1838,12 +1742,12 @@ static int iwcmd_decode_blur_option(struct params_struct *p,
 		if(strlen(s)==1)
 			rblur->blur = 1.0;
 		else
-			rblur->blur = iwcmd_parse_dbl(&s[namelen]);
+			rblur->blur = iw_parse_number(&s[namelen]);
 		return 1;
 	}
 
 	rblur->interpolate = 0;
-	rblur->blur = iwcmd_parse_dbl(s);
+	rblur->blur = iw_parse_number(s);
 	return 1;
 }
 
@@ -1900,7 +1804,7 @@ static int iwcmd_string_to_colorspace(struct params_struct *p,
 
 	if(namelen==5 && len>5 && !strncmp(s,"gamma",namelen)) {
 		double g;
-		g = iwcmd_parse_dbl(&s[namelen]);
+		g = iw_parse_number(&s[namelen]);
 		iw_make_gamma_csdescr(cs,g);
 	}
 	else if(!strcmp(s,"linear")) {
@@ -1962,7 +1866,9 @@ static void iwcmd_option_forced_density(struct params_struct *p, const char *s)
 	double nums[2];
 	int count;
 
-	iwcmd_parse_number_list(&s[1],2,nums,&count);
+	nums[0] = 0.0;
+	nums[1] = 0.0;
+	count = iw_parse_number_list(&s[1],2,nums);
 	if(count<1) return;
 
 	p->density_policy = IWCMD_DENSITY_POLICY_FORCED;
@@ -2034,7 +1940,7 @@ static int iwcmd_option_gsf(struct params_struct *p, const char *s)
 	if(!strcmp(s,"s")) p->grayscale_formula=IW_GSF_STANDARD;
 	else if(!strcmp(s,"c")) p->grayscale_formula=IW_GSF_COMPATIBLE;
 	else if(namelen==1 && !strncmp(s,"w",1)) {
-		iwcmd_parse_number_list(&s[1],3,p->grayscale_weight,&count);
+		count = iw_parse_number_list(&s[1],3,p->grayscale_weight);
 		if(count!=3) {
 			iwcmd_error(p,"Invalid grayscale formula\n");
 			return 0;
@@ -2042,7 +1948,7 @@ static int iwcmd_option_gsf(struct params_struct *p, const char *s)
 		p->grayscale_formula=IW_GSF_WEIGHTED;
 	}
 	else if(namelen==1 && !strncmp(s,"v",1)) {
-		iwcmd_parse_number_list(&s[1],3,p->grayscale_weight,&count);
+		count = iw_parse_number_list(&s[1],3,p->grayscale_weight);
 		if(count<1) {
 			iwcmd_error(p,"Invalid grayscale formula\n");
 			return 0;
@@ -2087,7 +1993,7 @@ static int iwcmd_option_intent(struct params_struct *p, const char *s)
 static int iwcmd_option_reorient(struct params_struct *p, const char *s)
 {
 	if(s[0]>='0' && s[0]<='9') {
-		p->reorient = (unsigned int)iwcmd_parse_int(s);
+		p->reorient = (unsigned int)iw_parse_int(s);
 		return 1;
 	}
 
@@ -2395,11 +2301,11 @@ static void iwcmd_read_w_or_h(struct params_struct *p, const char *v,
 	if(v[0]=='x') {
 		// This is a relative size like "x1.5".
 		*rel_flag = 1;
-		*new_rel_d = iwcmd_parse_dbl(&v[1]);
+		*new_rel_d = iw_parse_number(&v[1]);
 	}
 	else {
 		// This is a number of pixels.
-		*new_d = iwcmd_parse_int(v);
+		*new_d = iw_parse_int(v);
 		return;
 	}
 }
@@ -2428,7 +2334,7 @@ static int iwcmd_read_depth(struct params_struct *p, const char *v)
 			&p->channel_depth[IW_CHANNELTYPE_ALPHA]);
 	}
 	else {
-		p->depth=iwcmd_parse_int(v);
+		p->depth=iw_parse_int(v);
 	}
 	return 1;
 }
@@ -2443,7 +2349,7 @@ static int iwcmd_read_cc(struct params_struct *p, const char *v)
 			&p->color_count[IW_CHANNELTYPE_ALPHA]);
 	}
 	else {
-		p->color_count_all=iwcmd_parse_int(v);
+		p->color_count_all=iw_parse_int(v);
 	}
 	return 1;
 }
@@ -2492,13 +2398,13 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(ret<0) return 0;
 		break;
 	case PT_DEPTHCC:
-		p->depthcc = iwcmd_parse_int(v);
+		p->depthcc = iw_parse_int(v);
 		break;
 	case PT_DEPTHGRAY:
-		p->channel_depth[IW_CHANNELTYPE_GRAY] = iwcmd_parse_int(v);
+		p->channel_depth[IW_CHANNELTYPE_GRAY] = iw_parse_int(v);
 		break;
 	case PT_DEPTHALPHA:
-		p->channel_depth[IW_CHANNELTYPE_ALPHA] = iwcmd_parse_int(v);
+		p->channel_depth[IW_CHANNELTYPE_ALPHA] = iw_parse_int(v);
 		break;
 	case PT_SAMPLETYPE:
 		ret=iwcmd_decode_sampletype(p,v);
@@ -2572,22 +2478,22 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		iwcmd_read_cc(p,v);
 		break;
 	case PT_CCCOLOR:
-		p->color_count_nonalpha=iwcmd_parse_int(v);
+		p->color_count_nonalpha=iw_parse_int(v);
 		break;
 	case PT_CCRED:
-		p->color_count[IW_CHANNELTYPE_RED]=iwcmd_parse_int(v);
+		p->color_count[IW_CHANNELTYPE_RED]=iw_parse_int(v);
 		break;
 	case PT_CCGREEN:
-		p->color_count[IW_CHANNELTYPE_GREEN]=iwcmd_parse_int(v);
+		p->color_count[IW_CHANNELTYPE_GREEN]=iw_parse_int(v);
 		break;
 	case PT_CCBLUE:
-		p->color_count[IW_CHANNELTYPE_BLUE]=iwcmd_parse_int(v);
+		p->color_count[IW_CHANNELTYPE_BLUE]=iw_parse_int(v);
 		break;
 	case PT_CCGRAY:
-		p->color_count[IW_CHANNELTYPE_GRAY]=iwcmd_parse_int(v);
+		p->color_count[IW_CHANNELTYPE_GRAY]=iw_parse_int(v);
 		break;
 	case PT_CCALPHA:
-		p->color_count[IW_CHANNELTYPE_ALPHA]=iwcmd_parse_int(v);
+		p->color_count[IW_CHANNELTYPE_ALPHA]=iw_parse_int(v);
 		break;
 	case PT_BKGD:
 		p->apply_bkgd=1;
@@ -2598,7 +2504,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		iwcmd_option_bkgd_label(p,v);
 		break;
 	case PT_CHECKERSIZE:
-		p->bkgd_check_size=iwcmd_parse_int(v);
+		p->bkgd_check_size=iw_parse_int(v);
 		break;
 	case PT_CHECKERORG:
 		iwcmd_parse_int_pair(v,&p->bkgd_check_origin_x,&p->bkgd_check_origin_y);
@@ -2614,31 +2520,31 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 			return 0;
 		break;
 	case PT_OFFSET_R_H:
-		p->offset_h[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_RED]=iw_parse_number(v);
 		break;
 	case PT_OFFSET_G_H:
-		p->offset_h[IW_CHANNELTYPE_GREEN]=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_GREEN]=iw_parse_number(v);
 		break;
 	case PT_OFFSET_B_H:
-		p->offset_h[IW_CHANNELTYPE_BLUE]=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_BLUE]=iw_parse_number(v);
 		break;
 	case PT_OFFSET_R_V:
-		p->offset_v[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_RED]=iw_parse_number(v);
 		break;
 	case PT_OFFSET_G_V:
-		p->offset_v[IW_CHANNELTYPE_GREEN]=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_GREEN]=iw_parse_number(v);
 		break;
 	case PT_OFFSET_B_V:
-		p->offset_v[IW_CHANNELTYPE_BLUE]=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_BLUE]=iw_parse_number(v);
 		break;
 	case PT_OFFSET_RB_H:
 		// Shortcut for shifting red and blue in opposite directions.
-		p->offset_h[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
+		p->offset_h[IW_CHANNELTYPE_RED]=iw_parse_number(v);
 		p->offset_h[IW_CHANNELTYPE_BLUE]= -p->offset_h[IW_CHANNELTYPE_RED];
 		break;
 	case PT_OFFSET_RB_V:
 		// Shortcut for shifting red and blue vertically in opposite directions.
-		p->offset_v[IW_CHANNELTYPE_RED]=iwcmd_parse_dbl(v);
+		p->offset_v[IW_CHANNELTYPE_RED]=iw_parse_number(v);
 		p->offset_v[IW_CHANNELTYPE_BLUE]= -p->offset_v[IW_CHANNELTYPE_RED];
 		break;
 	case PT_TRANSLATE:
@@ -2665,10 +2571,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(p->color_type<0) return 0;
 		break;
 	case PT_PAGETOREAD:
-		p->page_to_read = iwcmd_parse_int(v);
+		p->page_to_read = iw_parse_int(v);
 		break;
 	case PT_JPEGQUALITY:
-		p->jpeg_quality=iwcmd_parse_int(v);
+		p->jpeg_quality=iw_parse_int(v);
 		break;
 	case PT_JPEGSAMPLING:
 		p->jpeg_samp_factor_h = 1;
@@ -2676,21 +2582,21 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
 		break;
 	case PT_WEBPQUALITY:
-		p->webp_quality=iwcmd_parse_dbl(v);
+		p->webp_quality=iw_parse_number(v);
 		break;
 	case PT_ZIPCMPRLEVEL:
-		p->zipcmprlevel=iwcmd_parse_int(v);
+		p->zipcmprlevel=iw_parse_int(v);
 		p->zipcmprlevel_set=1;
 		break;
 	case PT_BMPVERSION:
-		p->bmp_version=iwcmd_parse_int(v);
+		p->bmp_version=iw_parse_int(v);
 		break;
 	case PT_RANDSEED:
 		if(v[0]=='r') {
 			p->randomize = 1;
 		}
 		else {
-			p->random_seed=iwcmd_parse_int(v);
+			p->random_seed=iw_parse_int(v);
 		}
 		break;
 	case PT_INFMT:

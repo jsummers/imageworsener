@@ -648,3 +648,97 @@ IW_IMPL(int) iw_is_output_fmt_supported(int fmt)
 	}
 	return 0;
 }
+
+// Find where a number ends (at a comma, or the end of string),
+// and record if it contained a slash.
+static int iw_get_number_len(const char *s, int *pslash_pos)
+{
+	int i;
+	for(i=0;s[i];i++) {
+		if(s[i]=='/') {
+			*pslash_pos = i;
+		}
+		if(s[i]!=',') continue;
+		return i;
+	}
+	return i;
+}
+
+// Returns 0 if no valid number found.
+static int iw_parse_number_internal(const char *s,
+		   double *presult, int *pcharsread)
+{
+	int len;
+	int slash_pos = -1;
+
+	*presult = 0.0;
+	*pcharsread = 0;
+
+	len = iw_get_number_len(s,&slash_pos);
+	if(len<1) return 0;
+	*pcharsread = len;
+
+	if(slash_pos>=0) {
+		// a rational number
+		double numer, denom;
+		numer = atof(s);
+		denom = atof(s+slash_pos+1);
+		if(denom==0.0)
+			*presult = 0.0;
+		else
+			*presult = numer/denom;
+	}
+	else {
+		*presult = atof(s);
+	}
+	return 1;
+}
+
+// Returns number of numbers parsed.
+// If there are not enough numbers, leaves some contents of 'results' unchanged.
+IW_IMPL(int) iw_parse_number_list(const char *s,
+	int max_numbers, // max number of numbers to parse
+	double *results) // array of doubles to hold the results
+{
+	int n;
+	int charsread;
+	int curpos=0;
+	int ret;
+	int numresults = 0;
+
+	for(n=0;n<max_numbers;n++) {
+		ret=iw_parse_number_internal(&s[curpos], &results[n], &charsread);
+		if(!ret) break;
+		numresults++;
+		curpos+=charsread;
+		if(s[curpos]==',') {
+			curpos++;
+		}
+		else {
+			break;
+		}
+	}
+	return numresults;
+}
+
+IW_IMPL(double) iw_parse_number(const char *s)
+{
+	double result;
+	int charsread;
+	iw_parse_number_internal(s, &result, &charsread);
+	return result;
+}
+
+IW_IMPL(int) iw_round_to_int(double x)
+{
+	if(x<0.0) return -(int)(0.5-x);
+	return (int)(0.5+x);
+}
+
+IW_IMPL(int) iw_parse_int(const char *s)
+{
+	double result;
+	int charsread;
+	iw_parse_number_internal(s, &result, &charsread);
+	return iw_round_to_int(result);
+}

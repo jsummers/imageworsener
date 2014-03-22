@@ -811,6 +811,11 @@ IW_EXPORT(unsigned int) iw_get_ui32_e(const iw_byte *b, int endian);
 
 IW_EXPORT(int) iw_max_color_to_bitdepth(unsigned int mc);
 
+IW_EXPORT(int) iw_parse_number_list(const char *s, int max_numbers, double *results);
+IW_EXPORT(double) iw_parse_number(const char *s);
+IW_EXPORT(int) iw_parse_int(const char *s);
+IW_EXPORT(int) iw_round_to_int(double x);
+
 struct iw_zlib_context;
 
 typedef struct iw_zlib_context* (*iw_zlib_inflate_init_type)(struct iw_context *ctx);
