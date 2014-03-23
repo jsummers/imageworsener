@@ -704,11 +704,19 @@ Options:
       (Windows BMP v2, also known as OS/2 BMP v1), and "3" (the default; the
       standard version that's compatible with almost everything), and "5"
       (supports transparency).
+    "deflate:cmprlevel=<n>": zlib-style compression level setting for
+      zip/deflate/zlib compression. This applies to all PNG files, and to MIFF
+      files that use zip compression.
+      Values range from 0 (no compression) to 9 (best, slowest).
+      "-1" can be used to mean "default", but the exact meaning of this is not
+      well-defined.
     "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
       written. Default is (probably) 75.
-    "jpeg:arith":  When writing a JPEG file, use arithmetic coding instead of
+    "jpeg:arith": When writing a JPEG file, use arithmetic coding instead of
       Huffman coding. This reduces the file size by about 5 to 10% for free,
       but many image viewers don't support JPEG files with arithmetic coding.
+    "webp:quality": WebP-style quality setting to use if a WebP file is
+      written. This is on a scale from 0 to 100. Default is 80.
 
  -includescreen
  -noincludescreen
@@ -716,11 +724,7 @@ Options:
    -noincludescreen to extract just the individual image.
 
  -zipcmprlevel <n>
-   zlib-style compression level setting for zip/deflate/zlib compression.
-   This applies to all PNG files, and to MIFF files that use zip compression.
-   Values range from 0 (no compression) to 9 (best, slowest).
-   "-1" can be used to mean "default", but the exact meaning of this is not
-   well-defined.
+   Deprecated. Same as "-opt deflate:cmprlevel=<n>".
 
  -jpegquality <n>
    Obsolete. Same as "-opt jpeg:quality=<n>".
@@ -743,8 +747,7 @@ Options:
    more information.
 
  -webpquality <n>
-   WebP-style quality setting to use if a WebP file is written. This is on a
-   scale from 0 to 100. Default is 80.
+   Obsolete. Same as "-opt webp:quality=<n>".
 
  -encoding <encoding>
    Set the encoding used for text output (informational and error messages).

@@ -256,8 +256,6 @@ IW_IMPL(struct iw_context*) iw_create_context(struct iw_init_params *params)
 	ctx->to_grayscale=0;
 	ctx->grayscale_formula = IW_GSF_STANDARD;
 	ctx->req.include_screen = 1;
-	ctx->req.webp_quality = -1.0;
-	ctx->req.deflatecmprlevel = 9;
 	ctx->opt_grayscale = 1;
 	ctx->opt_palette = 1;
 	ctx->opt_16_to_8 = 1;
@@ -810,7 +808,8 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 			iw_set_option(ctx, "jpeg:arith", "");
 		break;
 	case IW_VAL_DEFLATE_CMPR_LEVEL:
-		ctx->req.deflatecmprlevel = n;
+		// For backward compatibility only.
+		iw_set_option(ctx, "deflate:cmprlevel", iwpvt_strdup_dbl(ctx, (double)n)); 
 		break;
 	case IW_VAL_OUTPUT_INTERLACED:
 		ctx->req.interlaced = n;
@@ -913,9 +912,6 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
 		ret = ctx->req.jpeg_samp_factor_v;
 		break;
-	case IW_VAL_DEFLATE_CMPR_LEVEL:
-		ret = ctx->req.deflatecmprlevel;
-		break;
 	case IW_VAL_OUTPUT_PALETTE_GRAYSCALE:
 		ret = ctx->optctx.palette_is_grayscale;
 		break;
@@ -961,7 +957,8 @@ IW_IMPL(void) iw_set_value_dbl(struct iw_context *ctx, int code, double n)
 {
 	switch(code) {
 	case IW_VAL_WEBP_QUALITY:
-		ctx->req.webp_quality = n;
+		// For backward compatibility only.
+		iw_set_option(ctx, "webp:quality", iwpvt_strdup_dbl(ctx, n)); 
 		break;
 	case IW_VAL_TRANSLATE_X:
 		ctx->resize_settings[IW_DIMENSION_H].translate = n;
@@ -977,9 +974,6 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 	double ret = 0.0;
 
 	switch(code) {
-	case IW_VAL_WEBP_QUALITY:
-		ret = ctx->req.webp_quality;
-		break;
 	case IW_VAL_TRANSLATE_X:
 		ret = ctx->resize_settings[IW_DIMENSION_H].translate;
 		break;

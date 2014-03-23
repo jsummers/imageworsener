@@ -92,7 +92,7 @@ extern "C" {
 #define IW_VAL_JPEG_QUALITY      30 // OBSOLETE. Use iw_set_option("jpeg:quality").
 #define IW_VAL_JPEG_SAMP_FACTOR_H  31
 #define IW_VAL_JPEG_SAMP_FACTOR_V  32
-#define IW_VAL_DEFLATE_CMPR_LEVEL  33
+#define IW_VAL_DEFLATE_CMPR_LEVEL  33 // OBSOLETE. Use iw_set_option("deflate:cmprlevel").
 
 // Nonzero if the palette is a fully-populated and sorted 1-, 2-, 4-,
 // or 8-bit grayscale palette.
@@ -104,7 +104,7 @@ extern "C" {
 // a suggested background color, use the suggested color.
 #define IW_VAL_USE_BKGD_LABEL    37
 
-#define IW_VAL_WEBP_QUALITY      38
+#define IW_VAL_WEBP_QUALITY      38 // OBSOLETE. Use iw_set_option("webp:quality").
 
 // The page ("image", "frame", whatever) to read from a multi-page file.
 // The first page is 1. 0=default.

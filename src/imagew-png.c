@@ -624,6 +624,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	int palette_is_gray;
 	int cmprlevel;
 	struct iwpngwcontext wctx;
+	const char *optv;
 
 	iw_zeromem(&wctx,sizeof(struct iwpngwcontext));
 
@@ -643,10 +644,15 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		(void*)ctx, my_png_malloc_fn, my_png_free_fn);
 	if(!png_ptr) goto done;
 
-	cmprlevel = iw_get_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL);
+	cmprlevel = 9;
+	optv = iw_get_option(ctx, "deflate:cmprlevel");
+	if(optv) {
+		cmprlevel = iw_parse_int(optv);
+	}
 	if(cmprlevel >= 0) {
 		png_set_compression_level(png_ptr, cmprlevel);
 	}
+
 	png_set_compression_buffer_size(png_ptr, 1048576);
 
 	info_ptr = png_create_info_struct(png_ptr);

@@ -606,10 +606,15 @@ static int iwwebp_write_main(struct iwwebpwcontext *wctx)
 	uint8_t *cmpr_webp_data = NULL;
 	int retval=0;
 	double quality;
+	const char *optv;
 
 	img = wctx->img;
 
-	quality = iw_get_value_dbl(wctx->ctx,IW_VAL_WEBP_QUALITY);
+	quality = -1.0;
+	optv = iw_get_option(wctx->ctx, "webp:quality");
+	if(optv) {
+		quality = iw_parse_number(optv);
+	}
 	if(quality<0.0) {
 		quality=80.0; // Default quality.
 	}

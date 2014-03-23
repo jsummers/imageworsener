@@ -256,8 +256,8 @@ $IW srcimg/rgb8a.png actual/opt-20col.png $DCMPR -width 5 -height 4 -filter mix
 
 $IW srcimg/p8t.png actual/crop-1.png $DCMPR -width 20 -crop 3,12,18,9
 
-# Test input sBIT support, and -zipcmprlevel
-$IW srcimg/rgb8a-sbit.png actual/sbit1.png -zipcmprlevel 3
+# Test input sBIT support, and deflate:cmprlevel
+$IW srcimg/rgb8a-sbit.png actual/sbit1.png -opt deflate:cmprlevel=3
 $IW srcimg/p8-sbit.png actual/sbit2.png $CMPR
 
 # Test sBIT writing

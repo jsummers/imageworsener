@@ -165,12 +165,9 @@ struct iw_req_struct {
 	int page_to_read;
 	int include_screen;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
-	int pngcmprlevel;
-	int deflatecmprlevel;
 	int interlaced;
 	int bmp_no_fileheader;
 	int output_color_type;
-	double webp_quality;
 
 	struct iw_option_struct *options;
 	int options_count;

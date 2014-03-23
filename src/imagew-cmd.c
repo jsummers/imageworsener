@@ -144,9 +144,6 @@ struct params_struct {
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	int bmp_version;
 	int bmp_trns;
-	double webp_quality;
-	int zipcmprlevel;
-	int zipcmprlevel_set;
 	int interlace;
 	int randomize;
 	int random_seed;
@@ -1439,17 +1436,11 @@ static int iwcmd_run(struct params_struct *p)
 		goto done;
 	}
 
-	if(p->zipcmprlevel_set)
-		iw_set_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL,p->zipcmprlevel);
-
 	if(p->outfmt==IW_FORMAT_JPEG) {
 		if(p->jpeg_samp_factor_h>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
 		if(p->jpeg_samp_factor_v>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
-	}
-	else if(p->outfmt==IW_FORMAT_WEBP) {
-		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
 	}
 
 	if(!iw_write_file_by_fmt(ctx,&writedescr,p->outfmt)) goto done;
@@ -2653,11 +2644,10 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
 		break;
 	case PT_WEBPQUALITY:
-		p->webp_quality=iw_parse_number(v);
+		add_opt(p, "webp:quality", v);
 		break;
 	case PT_ZIPCMPRLEVEL:
-		p->zipcmprlevel=iw_parse_int(v);
-		p->zipcmprlevel_set=1;
+		add_opt(p, "deflate:cmprlevel", v);
 		break;
 	case PT_BMPVERSION:
 		add_opt(p, "bmp:version", v);
@@ -3027,7 +3017,6 @@ static void init_params(struct params_struct *p)
 	p->output_encoding_req=IWCMD_ENCODING_AUTO;
 	p->resize_blur_x.blur = 1.0;
 	p->resize_blur_y.blur = 1.0;
-	p->webp_quality = -1.0;
 	p->include_screen = -1;
 	for(k=0;k<5;k++) p->dither[k].family = -1;
 	p->dither_all.family = p->dither_nonalpha.family = -1;

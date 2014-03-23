@@ -2052,14 +2052,14 @@ static int iwbmp_write_main(struct iwbmpwcontext *wctx)
 	int cmpr_req;
 	int retval = 0;
 	int x;
-	const char *s;
+	const char *optv;
 
 	img = wctx->img;
 
 	wctx->bmpversion = 0;
-	s = iw_get_option(wctx->ctx, "bmp:version");
-	if(s) {
-		wctx->bmpversion = iw_parse_int(s);
+	optv = iw_get_option(wctx->ctx, "bmp:version");
+	if(optv) {
+		wctx->bmpversion = iw_parse_int(optv);
 	}
 
 	if(wctx->bmpversion==0) wctx->bmpversion=3;

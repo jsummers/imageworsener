@@ -96,6 +96,7 @@ static struct iw_zlib_context* iw_zlib_deflate_init(struct iw_context *ctx)
 	struct iw_zlib_context *zctx;
 	int ret;
 	int cmprlevel;
+	const char *optv;
 
 	zctx = iw_mallocz(ctx,sizeof(struct iw_zlib_context));
 	if(!zctx) return NULL;
@@ -105,7 +106,11 @@ static struct iw_zlib_context* iw_zlib_deflate_init(struct iw_context *ctx)
 	zctx->strm.zalloc = my_zlib_malloc;
 	zctx->strm.zfree = my_zlib_free;
 
-	cmprlevel = iw_get_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL);
+	cmprlevel = 9;
+	optv = iw_get_option(ctx, "deflate:cmprlevel");
+	if(optv) {
+		cmprlevel = iw_parse_int(optv);
+	}
 
 	ret = deflateInit(&zctx->strm,cmprlevel);
 	if(ret!=Z_OK) {
