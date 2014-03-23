@@ -612,6 +612,7 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	int req_color_type;
 	int disable_subsampling = 0;
 	struct iwjpegwcontext wctx;
+	const char *optv;
 
 	iw_zeromem(&cinfo,sizeof(struct jpeg_compress_struct));
 	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
@@ -676,7 +677,8 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 	jpeg_set_defaults(&cinfo);
 
-	cinfo.arith_code = iw_get_value(ctx,IW_VAL_JPEG_ARITH_CODING) ? TRUE : FALSE;
+	optv = iw_get_option(ctx, "jpeg:arith");
+	cinfo.arith_code = optv ? TRUE : FALSE;
 
 	req_color_type = iw_get_value(ctx,IW_VAL_OUTPUT_COLOR_TYPE);
 	if(req_color_type==IW_COLORTYPE_RGB && in_colortype==JCS_RGB) {
@@ -686,7 +688,12 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 	iwjpg_set_density(ctx,&cinfo,&img);
 
-	jpeg_quality = iw_get_value(ctx,IW_VAL_JPEG_QUALITY);
+	optv = iw_get_option(ctx, "jpeg:quality");
+	if(optv)
+		jpeg_quality = iw_parse_int(optv);
+	else
+		jpeg_quality = 0;
+
 	if(jpeg_quality>0) {
 		jpeg_set_quality(&cinfo,jpeg_quality,0);
 	}

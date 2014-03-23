@@ -141,9 +141,7 @@ struct params_struct {
 	struct iw_color bkgd;
 	struct iw_color bkgd2;
 	int page_to_read;
-	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v;
-	int jpeg_arith_coding;
 	int bmp_version;
 	int bmp_trns;
 	double webp_quality;
@@ -1445,13 +1443,10 @@ static int iwcmd_run(struct params_struct *p)
 		iw_set_value(ctx,IW_VAL_DEFLATE_CMPR_LEVEL,p->zipcmprlevel);
 
 	if(p->outfmt==IW_FORMAT_JPEG) {
-		if(p->jpeg_quality>0) iw_set_value(ctx,IW_VAL_JPEG_QUALITY,p->jpeg_quality);
 		if(p->jpeg_samp_factor_h>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
 		if(p->jpeg_samp_factor_v>0)
 			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
-		if(p->jpeg_arith_coding)
-			iw_set_value(ctx,IW_VAL_JPEG_ARITH_CODING,1);
 	}
 	else if(p->outfmt==IW_FORMAT_WEBP) {
 		if(p->webp_quality>=0) iw_set_value_dbl(ctx,IW_VAL_WEBP_QUALITY,p->webp_quality);
@@ -2120,6 +2115,8 @@ struct parsestate_struct {
 	int showhelp;
 };
 
+static void add_opt(struct params_struct *p, const char *name, const char *val);
+
 static int process_option_name(struct params_struct *p, struct parsestate_struct *ps, const char *n)
 {
 	struct opt_struct {
@@ -2285,7 +2282,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		p->interlace=1;
 		break;
 	case PT_JPEGARITH:
-		p->jpeg_arith_coding=1;
+		add_opt(p, "jpeg:arith", "");
 		break;
 	case PT_BMPTRNS:
 		p->bmp_trns=1;
@@ -2648,7 +2645,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		p->page_to_read = iw_parse_int(v);
 		break;
 	case PT_JPEGQUALITY:
-		p->jpeg_quality=iw_parse_int(v);
+		add_opt(p, "jpeg:quality", v);
 		break;
 	case PT_JPEGSAMPLING:
 		p->jpeg_samp_factor_h = 1;

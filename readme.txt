@@ -700,10 +700,15 @@ Options:
    it allows for a large number of options to exist, without much trouble.
    Note that you will not get any warnings if you use an unrecognized option.
    Options:
-    "bmp:version": The BMP file version to write. Currently supports "2"
+    "bmp:version=<n>": The BMP file version to write. Currently supports "2"
       (Windows BMP v2, also known as OS/2 BMP v1), and "3" (the default; the
       standard version that's compatible with almost everything), and "5"
       (supports transparency).
+    "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
+      written. Default is (probably) 75.
+    "jpeg:arith":  When writing a JPEG file, use arithmetic coding instead of
+      Huffman coding. This reduces the file size by about 5 to 10% for free,
+      but many image viewers don't support JPEG files with arithmetic coding.
 
  -includescreen
  -noincludescreen
@@ -718,8 +723,7 @@ Options:
    well-defined.
 
  -jpegquality <n>
-   libjpeg-style quality setting to use if a JPEG file is written. Default is
-   (probably) 75.
+   Obsolete. Same as "-opt jpeg:quality=<n>".
 
  -jpegsampling <x>,<y>
    The sampling factors to use if a color JPEG file is written. For example, 2
@@ -729,9 +733,7 @@ Options:
    reasons unknown to the author of IW.
 
  -jpegarith
-   When writing a JPEG file, use arithmetic coding instead of Huffman coding.
-   This reduces the file size by about 10%, but many image viewers don't
-   support JPEG files with arithmetic coding.
+   Obsolete. Same as "-opt jpeg:arith".
 
  -bmpversion <n>
    Obsolete. Same as "-opt bmp:version=<n>".

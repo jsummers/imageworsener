@@ -164,9 +164,7 @@ struct iw_req_struct {
 	int compression; // IW_COMPRESSION_*. Suggested compression algorithm.
 	int page_to_read;
 	int include_screen;
-	int jpeg_quality;
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
-	int jpeg_arith_coding; // nonzero = use arithmetic coding
 	int pngcmprlevel;
 	int deflatecmprlevel;
 	int interlaced;

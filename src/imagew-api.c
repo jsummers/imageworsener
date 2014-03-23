@@ -795,7 +795,8 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->req.include_screen = n;
 		break;
 	case IW_VAL_JPEG_QUALITY:
-		ctx->req.jpeg_quality = n;
+		// For backward compatibility only.
+		iw_set_option(ctx, "jpeg:quality", iwpvt_strdup_dbl(ctx, (double)n));
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_H:
 		ctx->req.jpeg_samp_factor_h = n;
@@ -804,7 +805,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->req.jpeg_samp_factor_v = n;
 		break;
 	case IW_VAL_JPEG_ARITH_CODING:
-		ctx->req.jpeg_arith_coding = n;
+		// For backward compatibility only.
+		if(n)
+			iw_set_option(ctx, "jpeg:arith", "");
 		break;
 	case IW_VAL_DEFLATE_CMPR_LEVEL:
 		ctx->req.deflatecmprlevel = n;
@@ -904,17 +907,11 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_INCLUDE_SCREEN:
 		ret = ctx->req.include_screen;
 		break;
-	case IW_VAL_JPEG_QUALITY:
-		ret = ctx->req.jpeg_quality;
-		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_H:
 		ret = ctx->req.jpeg_samp_factor_h;
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
 		ret = ctx->req.jpeg_samp_factor_v;
-		break;
-	case IW_VAL_JPEG_ARITH_CODING:
-		ret = ctx->req.jpeg_arith_coding;
 		break;
 	case IW_VAL_DEFLATE_CMPR_LEVEL:
 		ret = ctx->req.deflatecmprlevel;
@@ -997,12 +994,24 @@ IW_IMPL(double) iw_get_value_dbl(struct iw_context *ctx, int code)
 IW_IMPL(void) iw_set_option(struct iw_context *ctx, const char *name, const char *val)
 {
 #define IW_MAX_OPTIONS 32
+	int i;
+
 	if(!ctx->req.options) {
 		ctx->req.options = iw_mallocz(ctx, IW_MAX_OPTIONS*sizeof(struct iw_option_struct));
 		if(!ctx->req.options) return;
 		ctx->req.options_numalloc = IW_MAX_OPTIONS;
 		ctx->req.options_count = 0;
 	}
+
+	// If option already exists, replace it.
+	for(i=0; i<ctx->req.options_count; i++) {
+		if(ctx->req.options[i].name && !strcmp(ctx->req.options[i].name, name)) {
+			iw_free(ctx, ctx->req.options[i].val);
+			ctx->req.options[i].val = iw_strdup(ctx, val);
+			return;
+		}
+	}
+
 	if(ctx->req.options_count>=IW_MAX_OPTIONS) return;
 	ctx->req.options[ctx->req.options_count].name = iw_strdup(ctx, name);
 	ctx->req.options[ctx->req.options_count].val = iw_strdup(ctx, val);
