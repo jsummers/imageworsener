@@ -677,6 +677,19 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 	jpeg_set_defaults(&cinfo);
 
+	optv = iw_get_option(ctx, "jpeg:block");
+	if(optv) {
+#if (JPEG_LIB_VERSION_MAJOR>=9 || \
+	(JPEG_LIB_VERSION_MAJOR==8 && JPEG_LIB_VERSION_MINOR>=3))
+		// Note: This might not work if DCT_SCALING_SUPPORTED was not defined when
+		// libjpeg was compiled, but that symbol is not normally exposed to
+		// applications.
+		cinfo.block_size = iw_parse_int(optv);
+#else
+		iw_warning(ctx, "Setting block size is not supported by this version of libjpeg");
+#endif
+	}
+
 	optv = iw_get_option(ctx, "jpeg:arith");
 	if(optv)
 		cinfo.arith_code = iw_parse_int(optv) ? TRUE : FALSE;
@@ -702,6 +715,16 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 				disable_subsampling = 1;
 			}
 		}
+	}
+
+	optv = iw_get_option(ctx, "jpeg:bgycc");
+	if(optv && iw_parse_int(optv)) {
+#if (JPEG_LIB_VERSION_MAJOR>9 || \
+	(JPEG_LIB_VERSION_MAJOR==9 && JPEG_LIB_VERSION_MINOR>=1))
+		jpeg_set_colorspace(&cinfo, JCS_BG_YCC);
+#else
+		iw_warning(ctx, "Big gamut YCC is not supported by this version of libjpeg");
+#endif
 	}
 
 	iwjpg_set_density(ctx,&cinfo,&img);

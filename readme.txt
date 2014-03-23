@@ -707,6 +707,10 @@ Options:
     "jpeg:arith": When writing a JPEG file, use arithmetic coding instead of
       Huffman coding. This reduces the file size by about 5 to 10% for free,
       but many image viewers don't support JPEG files with arithmetic coding.
+    "jpeg:bgycc": Enable libjpeg's "big gamut YCC" mode. (For experimental use
+      only.)
+    "jpeg:block=<n>": Set the DCT block size. Valid values are 1 to 16. (For
+      experimental use only.)
     "jpeg:colortype=<name>": Suggest the color type to use for the output
       image. This option is recommended for experts only.
       JPEG color types:
