@@ -167,7 +167,6 @@ struct iw_req_struct {
 	int jpeg_samp_factor_h, jpeg_samp_factor_v; // 0 means default
 	int interlaced;
 	int bmp_no_fileheader;
-	int output_color_type;
 
 	struct iw_option_struct *options;
 	int options_count;

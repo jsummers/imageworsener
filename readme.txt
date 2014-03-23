@@ -663,13 +663,7 @@ Options:
    For all other formats, this option currently has no effect.
 
  -colortype <name>
-   Suggest the color type type use for the output image. The behavior depends
-   on the output file format. This option is recommended for experts only.
-   Color types:
-   "rgb": If a color image is written to a JPEG file, leave it in RGB format
-    instead of converting it to YCbCr. The resulting file will likely be larger
-    and less portable.
-   "ycbcr": Convert color JPEG images to YCbCr (the default).
+   Deprecated. Use "-opt jpeg:colortype=<name>".
 
  -interlace
    Write an interlaced PNG image, or a progressive JPEG image.
@@ -713,6 +707,13 @@ Options:
     "jpeg:arith": When writing a JPEG file, use arithmetic coding instead of
       Huffman coding. This reduces the file size by about 5 to 10% for free,
       but many image viewers don't support JPEG files with arithmetic coding.
+    "jpeg:colortype=<name>": Suggest the color type to use for the output
+      image. This option is recommended for experts only.
+      JPEG color types:
+       "rgb": If a color image is written to a JPEG file, leave it in RGB
+         format instead of converting it to YCbCr. The resulting file will
+         likely be larger and less portable.
+       "ycbcr": Convert color JPEG images to YCbCr (the default).
     "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
       written. Default is (probably) 75.
     "jpeg:sampling=<x>,<y>": The sampling factors to use if a color JPEG file

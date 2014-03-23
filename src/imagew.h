@@ -139,7 +139,7 @@ extern "C" {
 #define IW_VAL_OUTPUT_SAMPLE_TYPE 50 // IW_SAMPLETYPE_*
 
 // Suggested output color type
-#define IW_VAL_OUTPUT_COLOR_TYPE 51 // IW_COLORTYPE_*
+#define IW_VAL_OUTPUT_COLOR_TYPE 51 // OBSOLETE. Use iw_set_option("jpeg:colortype").
 
 // This does not actually determine the output file format, but it may be
 // needed by encoders that support multiple formats.
@@ -236,6 +236,7 @@ extern "C" {
 #define IW_COMPRESSION_JPEG     4
 #define IW_COMPRESSION_RLE      5
 
+// The IW_COLORTYPE symbols are obsolete.
 #define IW_COLORTYPE_DEFAULT    0
 #define IW_COLORTYPE_RGB        1
 #define IW_COLORTYPE_YCBCR      2

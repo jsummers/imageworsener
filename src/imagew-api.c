@@ -841,7 +841,10 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		ctx->req.output_sample_type = n;
 		break;
 	case IW_VAL_OUTPUT_COLOR_TYPE:
-		ctx->req.output_color_type = n;
+		// For backward compatibility only.
+		if(n==IW_COLORTYPE_RGB) {
+			iw_set_option(ctx, "deflate:colortype", "rgb"); 
+		}
 		break;
 	case IW_VAL_OUTPUT_FORMAT:
 		ctx->req.output_format = n;
@@ -936,9 +939,6 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_OUTPUT_SAMPLE_TYPE:
 		ret = ctx->req.output_sample_type;
-		break;
-	case IW_VAL_OUTPUT_COLOR_TYPE:
-		ret = ctx->req.output_color_type;
 		break;
 	case IW_VAL_OUTPUT_FORMAT:
 		ret = ctx->req.output_format;

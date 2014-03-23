@@ -609,7 +609,6 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	struct iw_image img;
 	int jpeg_quality;
 	int samp_factor_h, samp_factor_v;
-	int req_color_type;
 	int disable_subsampling = 0;
 	struct iwjpegwcontext wctx;
 	const char *optv;
@@ -684,10 +683,14 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	else
 		cinfo.arith_code = FALSE;
 
-	req_color_type = iw_get_value(ctx,IW_VAL_OUTPUT_COLOR_TYPE);
-	if(req_color_type==IW_COLORTYPE_RGB && in_colortype==JCS_RGB) {
-		jpeg_set_colorspace(&cinfo,JCS_RGB);
-		disable_subsampling = 1;
+	optv = iw_get_option(ctx, "jpeg:colortype");
+	if(optv) {
+		if(!strcmp(optv,"rgb")) {
+			if(in_colortype==JCS_RGB) {
+				jpeg_set_colorspace(&cinfo,JCS_RGB);
+				disable_subsampling = 1;
+			}
+		}
 	}
 
 	iwjpg_set_density(ctx,&cinfo,&img);

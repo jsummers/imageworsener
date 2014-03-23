@@ -112,7 +112,6 @@ struct params_struct {
 	int channel_depth[5]; // Per-channeltype depth, indexed by IW_CHANNELTYPE
 	int depthcc;
 	int compression;
-	int color_type;
 	int grayscale, condgrayscale;
 	double offset_h[3]; // Indexed by IW_CHANNELTYPE_[RED..BLUE]
 	double offset_v[3];
@@ -1401,9 +1400,6 @@ static int iwcmd_run(struct params_struct *p)
 	if(p->compression>0) {
 		iw_set_value(ctx,IW_VAL_COMPRESSION,p->compression);
 	}
-	if(p->color_type>0) {
-		iw_set_value(ctx,IW_VAL_OUTPUT_COLOR_TYPE,p->color_type);
-	}
 	if(p->interlace) {
 		iw_set_value(ctx,IW_VAL_OUTPUT_INTERLACED,1);
 	}
@@ -2023,14 +2019,6 @@ static int iwcmd_decode_compression_name(struct params_struct *p, const char *s)
 	return -1;
 }
 
-static int iwcmd_decode_color_type(struct params_struct *p, const char *s)
-{
-	if(!strcmp(s,"rgb")) return IW_COLORTYPE_RGB;
-	else if(!strcmp(s,"ycbcr")) return IW_COLORTYPE_YCBCR;
-	iwcmd_error(p,"Unknown color type \xe2\x80\x9c%s\xe2\x80\x9d\n",s);
-	return -1;
-}
-
 static void usage_message(struct params_struct *p)
 {
 	iwcmd_message(p,
@@ -2621,8 +2609,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		if(p->compression<0) return 0;
 		break;
 	case PT_COLORTYPE:
-		p->color_type=iwcmd_decode_color_type(p,v);
-		if(p->color_type<0) return 0;
+		add_opt(p, "jpeg:colortype", v);
 		break;
 	case PT_PAGETOREAD:
 		p->page_to_read = iw_parse_int(v);
