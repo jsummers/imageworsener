@@ -1,5 +1,5 @@
 ImageWorsener is a raster image scaling and processing utility.
-Version 1.2.0
+Version 1.2.0+
 Copyright (c) 2011-2014 Jason Summers  <jason1@pobox.com>
 
 Web site: http://entropymine.com/imageworsener/
@@ -713,6 +713,8 @@ Options:
        "rgb": If a color image is written to a JPEG file, leave it in RGB
          format instead of converting it to YCbCr. The resulting file will
          likely be larger and less portable.
+       "rgb1": Use libjpeg's "reversible color transform" feature. (For
+         experimental use only.)
        "ycbcr": Convert color JPEG images to YCbCr (the default).
     "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
       written. Default is (probably) 75.

@@ -685,8 +685,19 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 	optv = iw_get_option(ctx, "jpeg:colortype");
 	if(optv) {
-		if(!strcmp(optv,"rgb")) {
+		if(!strcmp(optv, "rgb")) {
 			if(in_colortype==JCS_RGB) {
+				jpeg_set_colorspace(&cinfo,JCS_RGB);
+				disable_subsampling = 1;
+			}
+		}
+		else if(!strcmp(optv, "rgb1")) {
+			if(in_colortype==JCS_RGB) {
+#if JPEG_LIB_VERSION_MAJOR >= 9
+				cinfo.color_transform = JCT_SUBTRACT_GREEN;
+#else
+				iw_warning(ctx, "Color type rgb1 is not supported by this version of libjpeg");
+#endif
 				jpeg_set_colorspace(&cinfo,JCS_RGB);
 				disable_subsampling = 1;
 			}
