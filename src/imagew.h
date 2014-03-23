@@ -90,8 +90,8 @@ extern "C" {
 #define IW_VAL_PREF_UNITS        26
 
 #define IW_VAL_JPEG_QUALITY      30 // OBSOLETE. Use iw_set_option("jpeg:quality").
-#define IW_VAL_JPEG_SAMP_FACTOR_H  31
-#define IW_VAL_JPEG_SAMP_FACTOR_V  32
+#define IW_VAL_JPEG_SAMP_FACTOR_H  31 // OBSOLETE. Use iw_set_option("jpeg:sampling").
+#define IW_VAL_JPEG_SAMP_FACTOR_V  32 // OBSOLETE. Use iw_set_option("jpeg:sampling").
 #define IW_VAL_DEFLATE_CMPR_LEVEL  33 // OBSOLETE. Use iw_set_option("deflate:cmprlevel").
 
 // Nonzero if the palette is a fully-populated and sorted 1-, 2-, 4-,

@@ -797,15 +797,16 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 		iw_set_option(ctx, "jpeg:quality", iwpvt_strdup_dbl(ctx, (double)n));
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_H:
-		ctx->req.jpeg_samp_factor_h = n;
+		// For backward compatibility only.
+		iw_set_option(ctx, "jpeg:sampling-x", iwpvt_strdup_dbl(ctx, (double)n));
 		break;
 	case IW_VAL_JPEG_SAMP_FACTOR_V:
-		ctx->req.jpeg_samp_factor_v = n;
+		// For backward compatibility only.
+		iw_set_option(ctx, "jpeg:sampling-y", iwpvt_strdup_dbl(ctx, (double)n));
 		break;
 	case IW_VAL_JPEG_ARITH_CODING:
 		// For backward compatibility only.
-		if(n)
-			iw_set_option(ctx, "jpeg:arith", "");
+		iw_set_option(ctx, "jpeg:arith", iwpvt_strdup_dbl(ctx, (double)n));
 		break;
 	case IW_VAL_DEFLATE_CMPR_LEVEL:
 		// For backward compatibility only.
@@ -906,12 +907,6 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 	case IW_VAL_INCLUDE_SCREEN:
 		ret = ctx->req.include_screen;
 		break;
-	case IW_VAL_JPEG_SAMP_FACTOR_H:
-		ret = ctx->req.jpeg_samp_factor_h;
-		break;
-	case IW_VAL_JPEG_SAMP_FACTOR_V:
-		ret = ctx->req.jpeg_samp_factor_v;
-		break;
 	case IW_VAL_OUTPUT_PALETTE_GRAYSCALE:
 		ret = ctx->optctx.palette_is_grayscale;
 		break;
@@ -990,6 +985,13 @@ IW_IMPL(void) iw_set_option(struct iw_context *ctx, const char *name, const char
 #define IW_MAX_OPTIONS 32
 	int i;
 
+	if(val==NULL || val[0]=='\0') {
+		// An empty value can be used to mean "turn on this option".
+		// To make that easier, set such values to "1".
+		val = "1";
+	}
+
+	// Allocate req.options if that hasn't been done yet.
 	if(!ctx->req.options) {
 		ctx->req.options = iw_mallocz(ctx, IW_MAX_OPTIONS*sizeof(struct iw_option_struct));
 		if(!ctx->req.options) return;
@@ -1006,6 +1008,7 @@ IW_IMPL(void) iw_set_option(struct iw_context *ctx, const char *name, const char
 		}
 	}
 
+	// Add the new option.
 	if(ctx->req.options_count>=IW_MAX_OPTIONS) return;
 	ctx->req.options[ctx->req.options_count].name = iw_strdup(ctx, name);
 	ctx->req.options[ctx->req.options_count].val = iw_strdup(ctx, val);

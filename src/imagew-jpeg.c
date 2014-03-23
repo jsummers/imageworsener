@@ -613,6 +613,7 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	int disable_subsampling = 0;
 	struct iwjpegwcontext wctx;
 	const char *optv;
+	int ret;
 
 	iw_zeromem(&cinfo,sizeof(struct jpeg_compress_struct));
 	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
@@ -678,7 +679,10 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	jpeg_set_defaults(&cinfo);
 
 	optv = iw_get_option(ctx, "jpeg:arith");
-	cinfo.arith_code = optv ? TRUE : FALSE;
+	if(optv)
+		cinfo.arith_code = iw_parse_int(optv) ? TRUE : FALSE;
+	else
+		cinfo.arith_code = FALSE;
 
 	req_color_type = iw_get_value(ctx,IW_VAL_OUTPUT_COLOR_TYPE);
 	if(req_color_type==IW_COLORTYPE_RGB && in_colortype==JCS_RGB) {
@@ -699,8 +703,33 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	}
 
 	if(jpeg_cmpts>1 && !disable_subsampling) {
-		samp_factor_h = iw_get_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H);
-		samp_factor_v = iw_get_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V);
+		samp_factor_h = 0;
+		samp_factor_v = 0;
+
+		// sampling-x and sampling-y are for backward compatibility, and should
+		// not be used.
+		optv = iw_get_option(ctx, "jpeg:sampling-x");
+		if(optv)
+			samp_factor_h = iw_parse_int(optv);
+		optv = iw_get_option(ctx, "jpeg:sampling-y");
+		if(optv)
+			samp_factor_v = iw_parse_int(optv);
+
+		optv = iw_get_option(ctx, "jpeg:sampling");
+		if(optv) {
+			double tmpsamp[2];
+			tmpsamp[0] = 1.0;
+			tmpsamp[1] = 1.0;
+			ret = iw_parse_number_list(optv, 2, tmpsamp);
+			samp_factor_h = iw_round_to_int(tmpsamp[0]);
+			if(ret==1) {
+				// If only one value was given, use it for both factors.
+				samp_factor_v = samp_factor_h;
+			}
+			else {
+				samp_factor_v = iw_round_to_int(tmpsamp[1]);
+			}
+		}
 
 		if(samp_factor_h>0) {
 			if(samp_factor_h>4) samp_factor_h=4;

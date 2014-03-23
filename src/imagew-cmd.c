@@ -141,7 +141,6 @@ struct params_struct {
 	struct iw_color bkgd;
 	struct iw_color bkgd2;
 	int page_to_read;
-	int jpeg_samp_factor_h, jpeg_samp_factor_v;
 	int bmp_version;
 	int bmp_trns;
 	int interlace;
@@ -1436,13 +1435,6 @@ static int iwcmd_run(struct params_struct *p)
 		goto done;
 	}
 
-	if(p->outfmt==IW_FORMAT_JPEG) {
-		if(p->jpeg_samp_factor_h>0)
-			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_H,p->jpeg_samp_factor_h);
-		if(p->jpeg_samp_factor_v>0)
-			iw_set_value(ctx,IW_VAL_JPEG_SAMP_FACTOR_V,p->jpeg_samp_factor_v);
-	}
-
 	if(!iw_write_file_by_fmt(ctx,&writedescr,p->outfmt)) goto done;
 
 	if(p->output_uri.scheme==IWCMD_SCHEME_FILE) {
@@ -2639,9 +2631,7 @@ static int process_option_arg(struct params_struct *p, struct parsestate_struct 
 		add_opt(p, "jpeg:quality", v);
 		break;
 	case PT_JPEGSAMPLING:
-		p->jpeg_samp_factor_h = 1;
-		p->jpeg_samp_factor_v = 1;
-		iwcmd_parse_int_pair(v,&p->jpeg_samp_factor_h,&p->jpeg_samp_factor_v);
+		add_opt(p, "jpeg:sampling", v);
 		break;
 	case PT_WEBPQUALITY:
 		add_opt(p, "webp:quality", v);

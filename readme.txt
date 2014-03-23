@@ -710,11 +710,16 @@ Options:
       Values range from 0 (no compression) to 9 (best, slowest).
       "-1" can be used to mean "default", but the exact meaning of this is not
       well-defined.
-    "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
-      written. Default is (probably) 75.
     "jpeg:arith": When writing a JPEG file, use arithmetic coding instead of
       Huffman coding. This reduces the file size by about 5 to 10% for free,
       but many image viewers don't support JPEG files with arithmetic coding.
+    "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
+      written. Default is (probably) 75.
+    "jpeg:sampling=<x>,<y>": The sampling factors to use if a color JPEG file
+      is written. For example, 2 means the chroma channels will have 1/2 as
+      many samples as the luma channel. For highest quality, use "1,1". The
+      default depends on the "jpeg:quality" setting. Each factor must be
+      between 1 and 4. Not all combinations are allowed.
     "webp:quality": WebP-style quality setting to use if a WebP file is
       written. This is on a scale from 0 to 100. Default is 80.
 
@@ -727,27 +732,23 @@ Options:
    Deprecated. Same as "-opt deflate:cmprlevel=<n>".
 
  -jpegquality <n>
-   Obsolete. Same as "-opt jpeg:quality=<n>".
+   Deprecated. Same as "-opt jpeg:quality=<n>".
 
  -jpegsampling <x>,<y>
-   The sampling factors to use if a color JPEG file is written. For example, 2
-   means the chroma channels will have 1/2 as many samples as the luma
-   channel. For highest quality, use "1,1". Default is (probably) "2,2".
-   Each factor must be between 1 and 4. Not all combinations are allowed, for
-   reasons unknown to the author of IW.
+   Deprecated. Same as "-opt jpeg:sampling=<x>,<y>".
 
  -jpegarith
-   Obsolete. Same as "-opt jpeg:arith".
+   Deprecated. Same as "-opt jpeg:arith".
 
  -bmpversion <n>
-   Obsolete. Same as "-opt bmp:version=<n>".
+   Deprecated. Same as "-opt bmp:version=<n>".
 
  -bmptrns
    Attempt to write a BMP image with transparency. Refer to technical.txt for
    more information.
 
  -webpquality <n>
-   Obsolete. Same as "-opt webp:quality=<n>".
+   Deprecated. Same as "-opt webp:quality=<n>".
 
  -encoding <encoding>
    Set the encoding used for text output (informational and error messages).
