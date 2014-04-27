@@ -130,6 +130,7 @@ struct params_struct {
 	int bkgd_check_size;
 	int bkgd_check_origin_x, bkgd_check_origin_y;
 	int use_bkgd_label;
+	int negate;
 
 	int bkgd_label_set;
 	struct iw_color bkgd_label; // Uses linear colorspace
@@ -1135,6 +1136,7 @@ static int iwcmd_run(struct params_struct *p)
 	}
 	if(p->page_to_read>0) iw_set_value(ctx,IW_VAL_PAGE_TO_READ,p->page_to_read);
 	if(p->include_screen>=0) iw_set_value(ctx,IW_VAL_INCLUDE_SCREEN,p->include_screen);
+	if(p->negate) iw_set_value(ctx,IW_VAL_NEGATE_TARGET,1);
 
 	if(p->input_uri.scheme==IWCMD_SCHEME_FILE) {
 		readdescr.read_fn = my_readfn;
@@ -2069,7 +2071,7 @@ enum iwcmd_param_types {
  PT_OFFSET_R_H, PT_OFFSET_G_H, PT_OFFSET_B_H, PT_OFFSET_R_V, PT_OFFSET_G_V,
  PT_OFFSET_B_V, PT_OFFSET_RB_H, PT_OFFSET_RB_V, PT_TRANSLATE, PT_IMAGESIZE,
  PT_COMPRESS, PT_JPEGQUALITY, PT_JPEGSAMPLING, PT_JPEGARITH, PT_BMPTRNS, PT_BMPVERSION,
- PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE, PT_COLORTYPE,
+ PT_WEBPQUALITY, PT_ZIPCMPRLEVEL, PT_INTERLACE, PT_COLORTYPE, PT_NEGATE,
  PT_RANDSEED, PT_INFMT, PT_OUTFMT, PT_EDGE_POLICY, PT_EDGE_POLICY_X,
  PT_EDGE_POLICY_Y, PT_GRAYSCALEFORMULA,
  PT_DENSITY_POLICY, PT_PAGETOREAD, PT_INCLUDESCREEN, PT_NOINCLUDESCREEN,
@@ -2183,6 +2185,7 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 		{"noincludescreen",PT_NOINCLUDESCREEN,0},
 		{"jpegarith",PT_JPEGARITH,0},
 		{"bmptrns",PT_BMPTRNS,0},
+		{"negate",PT_NEGATE,0},
 		{"quiet",PT_QUIET,0},
 		{"nowarn",PT_NOWARN,0},
 		{"noinfo",PT_NOINFO,0},
@@ -2258,6 +2261,9 @@ static int process_option_name(struct params_struct *p, struct parsestate_struct
 	case PT_BMPTRNS:
 		p->bmp_trns=1;
 		p->compression=IW_COMPRESSION_RLE;
+		break;
+	case PT_NEGATE:
+		p->negate=1;
 		break;
 	case PT_QUIET:
 		p->nowarn=1;

@@ -145,6 +145,9 @@ extern "C" {
 // needed by encoders that support multiple formats.
 #define IW_VAL_OUTPUT_FORMAT     52
 
+// Make a negative image (in target colorspace).
+#define IW_VAL_NEGATE_TARGET     53
+
 // File formats.
 #define IW_FORMAT_UNKNOWN  0
 #define IW_FORMAT_PNG      1

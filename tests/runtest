@@ -290,6 +290,8 @@ $IW srcimg/256col.png actual/bkgdlabel10.png $CMPR
 $IW srcimg/256col.png actual/bkgdlabel11.png $CMPR -nobkgdlabel
 $IW srcimg/256col.png actual/bkgdlabel12.png $CMPR -grayscale -cc 2 -dither f
 
+$IW srcimg/rgb8a.png actual/neg1.png $SMALL $CMPR -negate
+
 # More GIF tests
 
 # Page 2 has a local color table.

@@ -256,6 +256,14 @@ I understand this viewpoint, but for the time being I reject it. It causes way
 more problems than it solves. Only experts need grayscale to be special, and
 experts are capable of arranging for that to happen.
 
+Negative image
+--------------
+
+The -negate option makes a negative image, in the target colorspace. This is
+not a very scientifically meaningful thing to do. It would make at least some
+sense to do it in a linear colorspace, but that tends to make images look way
+too bright.
+
 TIFF output support
 -------------------
 

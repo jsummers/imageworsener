@@ -424,6 +424,12 @@ Options:
      "v1,0,0" and "v0.5,0,0.5" have been suggested as grayscale conversion
      formulas, though they should be used with caution.
 
+ -negate
+   Negate the image's colors. The operation is performed in the output
+   colorspace. If a background color is applied to the image, it happens before
+   negation, so the background will be negated. If a background color label is
+   written to the file, it is not affected by -negate.
+
  -bkgd <color1>[,<color2>]
    Apply a background color to the transparent and partially-transparent parts
    of the image. This is the only way to remove transparency from an image.
@@ -538,8 +544,9 @@ Options:
    *look* about the same regardless of what colorspace you choose. But it
    might not if your viewer doesn't support color correction, or the image
    format doesn't support colorspace labels, or IW doesn't know how to write
-   an appropriate label. This is fairly safe to use when writing PNG files,
-   but should be used with caution with most other formats.
+   an appropriate label, or you use the -negate option. This is fairly safe to
+   use when writing PNG files, but should be used with caution with most other
+   formats.
 
    <colorspace> =  linear | gamma<gamma> | srgb | srgb[prsa] | rec709
 

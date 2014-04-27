@@ -147,6 +147,7 @@ struct iw_req_struct {
 	struct iw_csdescr output_cs;
 
 	int suppress_output_cslabel;
+	int negate_target;
 
 	int bkgd_valid;
 	int bkgd_checkerboard; // 1=caller requested a checkerboard background

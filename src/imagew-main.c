@@ -95,42 +95,43 @@ static IW_INLINE IW_SAMPLE linear_to_gamma_sample(IW_SAMPLE v_linear, double gam
 	return pow(v_linear,1.0/gamma);
 }
 
-static IW_INLINE IW_SAMPLE get_raw_sample_flt64(struct iw_context *ctx,
-	   int x, int y, int channel)
+static iw_float32 iw_get_float32(const iw_byte *m)
 {
-	size_t z;
 	int k;
-	// !!! Portability warning: Using a union in this way may be nonportable,
-	// and/or may violate strict-aliasing rules.
-	union su_union {
-		iw_byte c[8];
-		iw_float64 f;
-	} volatile su;
-
-	z = y*ctx->img1.bpr + (ctx->img1_numchannels_physical*x + channel)*8;
-	for(k=0;k<8;k++) {
-		su.c[k]=ctx->img1.pixels[z+k];
-	}
-	return (IW_SAMPLE)su.f;
-}
-
-static IW_INLINE IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
-	   int x, int y, int channel)
-{
-	size_t z;
-	int k;
-	// !!! Portability warning: Using a union in this way may be nonportable,
-	// and/or may violate strict-aliasing rules.
+	// !!! Portability warning: Using a union in this way may be nonportable.
 	union su_union {
 		iw_byte c[4];
 		iw_float32 f;
 	} volatile su;
 
-	z = y*ctx->img1.bpr + (ctx->img1_numchannels_physical*x + channel)*4;
 	for(k=0;k<4;k++) {
-		su.c[k]=ctx->img1.pixels[z+k];
+		su.c[k] = m[k];
 	}
-	return (IW_SAMPLE)su.f;
+	return su.f;
+}
+
+static void iw_put_float32(iw_byte *m, iw_float32 s)
+{
+	int k;
+	// !!! Portability warning: Using a union in this way may be nonportable.
+	union su_union {
+		iw_byte c[4];
+		iw_float32 f;
+	} volatile su;
+
+	su.f = s;
+
+	for(k=0;k<4;k++) {
+		m[k] = su.c[k];
+	}
+}
+
+static IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
+	   int x, int y, int channel)
+{
+	size_t z;
+	z = y*ctx->img1.bpr + (ctx->img1_numchannels_physical*x + channel)*4;
+	return (IW_SAMPLE)iw_get_float32(&ctx->img1.pixels[z]);
 }
 
 static IW_INLINE unsigned int get_raw_sample_16(struct iw_context *ctx,
@@ -415,24 +416,12 @@ static void put_raw_sample(struct iw_context *ctx, double s,
 }
 
 // s is from 0.0 to 1.0
-static IW_INLINE void put_raw_sample_flt32(struct iw_context *ctx, double s,
+static void put_raw_sample_flt32(struct iw_context *ctx, double s,
 	   int x, int y, int channel)
 {
-	// !!! Portability warning: Using a union in this way may be nonportable,
-	// and/or may violate strict-aliasing rules.
-	union su_union {
-		iw_byte c[4];
-		iw_float32 f;
-	} volatile su;
-	int i;
 	size_t pos;
-
-	su.f = (iw_float32)s;
 	pos = y*ctx->img2.bpr + (ctx->img2_numchannels*x + channel)*4;
-
-	for(i=0;i<4;i++) {
-		ctx->img2.pixels[pos+i] = su.c[i];
-	}
+	iw_put_float32(&ctx->img2.pixels[pos], (iw_float32)s);
 }
 
 static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr *csdescr)
@@ -1316,6 +1305,50 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 	ctx->img2.has_bkgdlabel = 1;
 }
 
+static void negate_target_image(struct iw_context *ctx)
+{
+	int channel;
+	struct iw_channelinfo_out *ci;
+	int i,j;
+	size_t pos;
+	iw_float32 s;
+	unsigned int n;
+
+	for(channel=0; channel<ctx->img2_numchannels; channel++) {
+		ci = &ctx->img2_ci[channel];
+		if(ci->channeltype == IW_CHANNELTYPE_ALPHA) continue; // Don't negate alpha channels
+
+		if(ctx->img2.sampletype==IW_SAMPLETYPE_FLOATINGPOINT) {
+			for(j=0; j<ctx->img2.height; j++) {
+				for(i=0; i<ctx->img2.width; i++) {
+					pos = j*ctx->img2.bpr + ctx->img2_numchannels*i*4 + channel*4;
+					s = iw_get_float32(&ctx->img2.pixels[pos]);
+					iw_put_float32(&ctx->img2.pixels[pos], ((iw_float32)1.0)-s);
+				}
+			}
+		}
+		else if(ctx->img2.bit_depth==8) {
+			for(j=0; j<ctx->img2.height; j++) {
+				for(i=0; i<ctx->img2.width; i++) {
+					pos = j*ctx->img2.bpr + ctx->img2_numchannels*i + channel;
+					ctx->img2.pixels[pos] = ci->maxcolorcode_int-ctx->img2.pixels[pos];
+				}
+			}
+		}
+		else if(ctx->img2.bit_depth==16) {
+			for(j=0; j<ctx->img2.height; j++) {
+				for(i=0; i<ctx->img2.width; i++) {
+					pos = j*ctx->img2.bpr + ctx->img2_numchannels*i*2 + channel*2;
+					n = ctx->img2.pixels[pos]*256 + ctx->img2.pixels[pos+1];
+					n = ci->maxcolorcode_int - n;
+					ctx->img2.pixels[pos] = (n&0xff00)>>8;
+					ctx->img2.pixels[pos+1] = n&0x00ff;
+				}
+			}
+		}
+	}
+}
+
 static int iw_process_internal(struct iw_context *ctx)
 {
 	int channel;
@@ -1386,6 +1419,10 @@ static int iw_process_internal(struct iw_context *ctx)
 	}
 
 	iw_process_bkgd_label(ctx);
+
+	if(ctx->req.negate_target) {
+		negate_target_image(ctx);
+	}
 
 	retval=1;
 

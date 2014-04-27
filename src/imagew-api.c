@@ -849,6 +849,9 @@ IW_IMPL(void) iw_set_value(struct iw_context *ctx, int code, int n)
 	case IW_VAL_OUTPUT_FORMAT:
 		ctx->req.output_format = n;
 		break;
+	case IW_VAL_NEGATE_TARGET:
+		ctx->req.negate_target = n;
+		break;
 	}
 }
 
@@ -942,6 +945,9 @@ IW_IMPL(int) iw_get_value(struct iw_context *ctx, int code)
 		break;
 	case IW_VAL_OUTPUT_FORMAT:
 		ret = ctx->req.output_format;
+		break;
+	case IW_VAL_NEGATE_TARGET:
+		ret = ctx->req.negate_target;
 		break;
 	}
 
