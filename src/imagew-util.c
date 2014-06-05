@@ -523,7 +523,10 @@ IW_IMPL(int) iw_detect_fmt_of_file(const iw_byte *buf, size_t n)
 	else if(buf[0]==0xff && buf[1]==0xd8) {
 		fmt=IW_FORMAT_JPEG;
 	}
-	else if(buf[0]==0x42 && buf[1]==0x4d) {
+	else if(buf[0]=='B' && buf[1]=='M') {
+		fmt=IW_FORMAT_BMP;
+	}
+	else if(buf[0]=='B' && buf[1]=='A') {
 		fmt=IW_FORMAT_BMP;
 	}
 	else if((buf[0]==0x49 || buf[0]==0x4d) && buf[1]==buf[0]) {

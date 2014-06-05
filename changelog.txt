@@ -1,4 +1,5 @@
 Unreleased changes
+ - Partial support for OS/2 Bitmap Array BMP files.
  - Added -negate option.
  - Added -opt option, for format-specific options.
  - Discontinued 64-bit floating point precision support.
