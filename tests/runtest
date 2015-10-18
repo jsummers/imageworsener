@@ -307,6 +307,7 @@ $IW srcimg/ani1.gif actual/gif3.png $CMPR -page 4 -noincludescreen -nobkgdlabel
 $IW srcimg/bmp24.bmp actual/bmp24.png $CMPR $SMALL
 $IW srcimg/bmpp4.bmp actual/bmpp4.png $CMPR $SMALL
 $IW srcimg/bmprle8t.bmp actual/bmprle8t.png $CMPR $SMALL
+$IW srcimg/bmp32-x.bmp actual/bmp32-x.png $CMPR $SMALL
 $IW srcimg/bmp16-555.bmp actual/bmp16-1.png $CMPR $SCALE -density keep -reorient rotate90
 $IW srcimg/bmp16-565.bmp actual/bmp16-2.png $CMPR $SCALE -density adjust -reorient flipv
 
