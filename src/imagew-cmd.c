@@ -2041,7 +2041,6 @@ static void iwcmd_printversion(struct params_struct *p)
 	iwcmd_message(p,"ImageWorsener version %s\n",iw_get_version_string(NULL,buf,buflen));
 	iwcmd_message(p,"%s\n",iw_get_copyright_string(NULL,buf,buflen));
 	iwcmd_message(p,"Features: %d-bit",(int)(8*sizeof(void*)));
-	iwcmd_message(p,", %d bits/sample",8*iw_get_sample_size());
 	iwcmd_message(p,"\n");
 
 #if IW_SUPPORT_JPEG == 1

@@ -678,7 +678,7 @@ IW_IMPL(void) iw_reorient_image(struct iw_context *ctx, unsigned int x)
 
 IW_IMPL(int) iw_get_sample_size(void)
 {
-	return (int)sizeof(IW_SAMPLE);
+	return (int)sizeof(iw_float32);
 }
 
 IW_IMPL(int) iw_get_version_int(void)

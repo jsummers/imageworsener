@@ -30,8 +30,8 @@ struct iw_rr_ctx {
 
 	int num_in_pix;
 	int num_out_pix;
-	IW_SAMPLE *in_pix; // A single row of source samples to resample.
-	IW_SAMPLE *out_pix; // The resulting resampled row.
+	iw_tmpsample *in_pix; // A single row of source samples to resample.
+	iw_tmpsample *out_pix; // The resulting resampled row.
 
 	// int family; // Oddly, we don't need this field at all.
 	double radius; // (Does not take .blur_factor into account.)
@@ -562,7 +562,7 @@ void iwpvt_resize_rows_done(struct iw_rr_ctx *rrctx)
 	iw_free(rrctx->ctx,rrctx);
 }
 
-void iwpvt_resize_row_main(struct iw_rr_ctx *rrctx, IW_SAMPLE *in_pix, IW_SAMPLE *out_pix)
+void iwpvt_resize_row_main(struct iw_rr_ctx *rrctx, iw_tmpsample *in_pix, iw_tmpsample *out_pix)
 {
 	if(!rrctx || !rrctx->resizerow_fn) return;
 	rrctx->in_pix = in_pix;

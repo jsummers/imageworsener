@@ -15,11 +15,8 @@
 
 #define IW_MSG_MAX 200 // The usual max length of error messages, etc.
 
-#ifdef IW_SAMPLE_TYPE
-typedef IW_SAMPLE_TYPE IW_SAMPLE;
-#else
-typedef double IW_SAMPLE;
-#endif
+// Data type used for samples during some internal calculations
+typedef double iw_tmpsample;
 
 #ifdef IW_64BIT
 #define IW_DEFAULT_MAX_DIMENSION 1000000
@@ -252,7 +249,7 @@ struct iw_context {
 	// Max number of rows for error-diffusion dithering, including current row.
 #define IW_DITHER_MAXROWS 3
 	// Error accumulators for error-diffusion dithering.
-	IW_SAMPLE *dither_errors[IW_DITHER_MAXROWS]; // 0 is the current row.
+	double *dither_errors[IW_DITHER_MAXROWS]; // 0 is the current row.
 
 	int randomize; // 0 to use random_seed, nonzero to use a different seed every time.
 	int random_seed;
@@ -309,7 +306,7 @@ char* iwpvt_strdup_dbl(struct iw_context *ctx, double n);
 struct iw_rr_ctx *iwpvt_resize_rows_init(struct iw_context *ctx,
   struct iw_resize_settings *rs, int channeltype, int num_in_pix, int num_out_pix);
 void iwpvt_resize_rows_done(struct iw_rr_ctx *rrctx);
-void iwpvt_resize_row_main(struct iw_rr_ctx *rrctx, IW_SAMPLE *in_pix, IW_SAMPLE *out_pix);
+void iwpvt_resize_row_main(struct iw_rr_ctx *rrctx, iw_tmpsample *in_pix, iw_tmpsample *out_pix);
 
 // Defined in imagew-opt.c
 void iwpvt_optimize_image(struct iw_context *ctx);

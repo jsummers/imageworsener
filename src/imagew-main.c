@@ -25,7 +25,7 @@ static int iw_imgtype_alpha_channel_index(int t)
 	return 0;
 }
 
-static IW_INLINE IW_SAMPLE srgb_to_linear_sample(IW_SAMPLE v_srgb)
+static IW_INLINE iw_tmpsample srgb_to_linear_sample(iw_tmpsample v_srgb)
 {
 	if(v_srgb<=0.04045) {
 		return v_srgb/12.92;
@@ -35,7 +35,7 @@ static IW_INLINE IW_SAMPLE srgb_to_linear_sample(IW_SAMPLE v_srgb)
 	}
 }
 
-static IW_INLINE IW_SAMPLE rec709_to_linear_sample(IW_SAMPLE v_rec709)
+static IW_INLINE iw_tmpsample rec709_to_linear_sample(iw_tmpsample v_rec709)
 {
 	if(v_rec709 < 4.5*0.020) {
 		return v_rec709/4.5;
@@ -45,12 +45,12 @@ static IW_INLINE IW_SAMPLE rec709_to_linear_sample(IW_SAMPLE v_rec709)
 	}
 }
 
-static IW_INLINE IW_SAMPLE gamma_to_linear_sample(IW_SAMPLE v, double gamma)
+static IW_INLINE iw_tmpsample gamma_to_linear_sample(iw_tmpsample v, double gamma)
 {
 	return pow(v,gamma);
 }
 
-static IW_SAMPLE x_to_linear_sample(IW_SAMPLE v, const struct iw_csdescr *csdescr)
+static iw_tmpsample x_to_linear_sample(iw_tmpsample v, const struct iw_csdescr *csdescr)
 {
 	switch(csdescr->cstype) {
 	case IW_CSTYPE_SRGB:
@@ -71,7 +71,7 @@ IW_IMPL(double) iw_convert_sample_to_linear(double v, const struct iw_csdescr *c
 	return (double)x_to_linear_sample(v,csdescr);
 }
 
-static IW_INLINE IW_SAMPLE linear_to_srgb_sample(IW_SAMPLE v_linear)
+static IW_INLINE iw_tmpsample linear_to_srgb_sample(iw_tmpsample v_linear)
 {
 	if(v_linear <= 0.0031308) {
 		return 12.92*v_linear;
@@ -79,7 +79,7 @@ static IW_INLINE IW_SAMPLE linear_to_srgb_sample(IW_SAMPLE v_linear)
 	return 1.055*pow(v_linear,1.0/2.4) - 0.055;
 }
 
-static IW_INLINE IW_SAMPLE linear_to_rec709_sample(IW_SAMPLE v_linear)
+static IW_INLINE iw_tmpsample linear_to_rec709_sample(iw_tmpsample v_linear)
 {
 	// The cutoff point is supposed to be 0.018, but that doesn't make sense,
 	// because the curves don't intersect there. They intersect at almost exactly
@@ -90,7 +90,7 @@ static IW_INLINE IW_SAMPLE linear_to_rec709_sample(IW_SAMPLE v_linear)
 	return 1.099*pow(v_linear,0.45) - 0.099;
 }
 
-static IW_INLINE IW_SAMPLE linear_to_gamma_sample(IW_SAMPLE v_linear, double gamma)
+static IW_INLINE iw_tmpsample linear_to_gamma_sample(iw_tmpsample v_linear, double gamma)
 {
 	return pow(v_linear,1.0/gamma);
 }
@@ -126,12 +126,12 @@ static void iw_put_float32(iw_byte *m, iw_float32 s)
 	}
 }
 
-static IW_SAMPLE get_raw_sample_flt32(struct iw_context *ctx,
+static iw_tmpsample get_raw_sample_flt32(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	size_t z;
 	z = y*ctx->img1.bpr + (ctx->img1_numchannels_physical*x + channel)*4;
-	return (IW_SAMPLE)iw_get_float32(&ctx->img1.pixels[z]);
+	return (iw_tmpsample)iw_get_float32(&ctx->img1.pixels[z]);
 }
 
 static IW_INLINE unsigned int get_raw_sample_16(struct iw_context *ctx,
@@ -254,7 +254,7 @@ static unsigned int get_raw_sample_int(struct iw_context *ctx,
 
 // Channel is the input channel number.
 // x and y are logical coordinates.
-static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
+static iw_tmpsample get_raw_sample(struct iw_context *ctx,
 	   int x, int y, int channel)
 {
 	unsigned int v;
@@ -275,10 +275,10 @@ static IW_SAMPLE get_raw_sample(struct iw_context *ctx,
 	return ((double)v) / ctx->img1_ci[channel].maxcolorcode_dbl;
 }
 
-static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
-	IW_SAMPLE r, IW_SAMPLE g, IW_SAMPLE b)
+static iw_tmpsample iw_color_to_grayscale(struct iw_context *ctx,
+	iw_tmpsample r, iw_tmpsample g, iw_tmpsample b)
 {
-	IW_SAMPLE v0,v1,v2;
+	iw_tmpsample v0,v1,v2;
 
 	switch(ctx->grayscale_formula) {
 	case IW_GSF_WEIGHTED:
@@ -306,10 +306,10 @@ static IW_INLINE IW_SAMPLE iw_color_to_grayscale(struct iw_context *ctx,
 
 // Based on color depth of the input image.
 // Assumes this channel's maxcolorcode == ctx->input_maxcolorcode
-static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
+static iw_tmpsample cvt_int_sample_to_linear(struct iw_context *ctx,
 	unsigned int v, const struct iw_csdescr *csdescr)
 {
-	IW_SAMPLE s;
+	iw_tmpsample s;
 
 	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
 		// Sort of a hack: This is not just an optimization for linear colorspaces,
@@ -327,10 +327,10 @@ static IW_SAMPLE cvt_int_sample_to_linear(struct iw_context *ctx,
 }
 
 // Based on color depth of the output image.
-static IW_SAMPLE cvt_int_sample_to_linear_output(struct iw_context *ctx,
+static iw_tmpsample cvt_int_sample_to_linear_output(struct iw_context *ctx,
 	unsigned int v, const struct iw_csdescr *csdescr, double overall_maxcolorcode)
 {
-	IW_SAMPLE s;
+	iw_tmpsample s;
 
 	if(csdescr->cstype==IW_CSTYPE_LINEAR) {
 		return ((double)v) / overall_maxcolorcode;
@@ -345,11 +345,11 @@ static IW_SAMPLE cvt_int_sample_to_linear_output(struct iw_context *ctx,
 
 // Return a sample, converted to a linear colorspace if it isn't already in one.
 // Channel is the output channel number.
-static IW_SAMPLE get_sample_cvt_to_linear(struct iw_context *ctx,
+static iw_tmpsample get_sample_cvt_to_linear(struct iw_context *ctx,
 	   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
 	unsigned int v1,v2,v3;
-	IW_SAMPLE r,g,b;
+	iw_tmpsample r,g,b;
 	int ch;
 
 	ch = ctx->intermed_ci[channel].corresponding_input_channel;
@@ -424,7 +424,7 @@ static void put_raw_sample_flt32(struct iw_context *ctx, double s,
 	iw_put_float32(&ctx->img2.pixels[pos], (iw_float32)s);
 }
 
-static IW_SAMPLE linear_to_x_sample(IW_SAMPLE samp_lin, const struct iw_csdescr *csdescr)
+static iw_tmpsample linear_to_x_sample(iw_tmpsample samp_lin, const struct iw_csdescr *csdescr)
 {
 	if(samp_lin > 0.999999999) {
 		// This check is done mostly because glibc's pow() function may be
@@ -563,13 +563,13 @@ static void iw_errdiff_dither(struct iw_context *ctx,int dithersubtype,
 }
 
 // 'channel' is the output channel.
-static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
+static int get_nearest_valid_colors(struct iw_context *ctx, iw_tmpsample samp_lin,
 		const struct iw_csdescr *csdescr,
 		double *s_lin_floor_1, double *s_lin_ceil_1,
 		double *s_cvt_floor_full, double *s_cvt_ceil_full,
 		double overall_maxcolorcode, int color_count)
 {
-	IW_SAMPLE samp_cvt;
+	iw_tmpsample samp_cvt;
 	double samp_cvt_expanded;
 	unsigned int floor_int, ceil_int;
 
@@ -625,13 +625,13 @@ static int get_nearest_valid_colors(struct iw_context *ctx, IW_SAMPLE samp_lin,
 }
 
 // channel is the output channel
-static void put_sample_convert_from_linear_flt(struct iw_context *ctx, IW_SAMPLE samp_lin,
+static void put_sample_convert_from_linear_flt(struct iw_context *ctx, iw_tmpsample samp_lin,
 	   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
 	put_raw_sample_flt32(ctx,(double)samp_lin,x,y,channel);
 }
 
-static double get_final_sample_using_nc_tbl(struct iw_context *ctx, IW_SAMPLE samp_lin)
+static double get_final_sample_using_nc_tbl(struct iw_context *ctx, iw_tmpsample samp_lin)
 {
 	unsigned int x;
 	unsigned int d;
@@ -662,7 +662,7 @@ static double get_final_sample_using_nc_tbl(struct iw_context *ctx, IW_SAMPLE sa
 }
 
 // channel is the output channel
-static void put_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE samp_lin,
+static void put_sample_convert_from_linear(struct iw_context *ctx, iw_tmpsample samp_lin,
 	   int x, int y, int channel, const struct iw_csdescr *csdescr)
 {
 	double s_lin_floor_1, s_lin_ceil_1;
@@ -762,7 +762,7 @@ okay:
 
 // A stripped-down version of put_sample_convert_from_linear(),
 // intended for use with background colors.
-static unsigned int calc_sample_convert_from_linear(struct iw_context *ctx, IW_SAMPLE samp_lin,
+static unsigned int calc_sample_convert_from_linear(struct iw_context *ctx, iw_tmpsample samp_lin,
 	   const struct iw_csdescr *csdescr, double overall_maxcolorcode)
 {
 	double s_lin_floor_1, s_lin_ceil_1;
@@ -794,7 +794,7 @@ okay:
 	return (unsigned int)(0.5+s_full);
 }
 
-static void clamp_output_samples(struct iw_context *ctx, IW_SAMPLE *out_pix, int num_out_pix)
+static void clamp_output_samples(struct iw_context *ctx, iw_tmpsample *out_pix, int num_out_pix)
 {
 	int i;
 
@@ -829,15 +829,15 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 {
 	int i,j;
 	int retval=0;
-	IW_SAMPLE tmp_alpha;
-	IW_SAMPLE *inpix_tofree = NULL;
-	IW_SAMPLE *outpix_tofree = NULL;
+	iw_tmpsample tmp_alpha;
+	iw_tmpsample *inpix_tofree = NULL;
+	iw_tmpsample *outpix_tofree = NULL;
 	int is_alpha_channel;
 	struct iw_resize_settings *rs = NULL;
 	struct iw_channelinfo_intermed *int_ci;
 
-	IW_SAMPLE *in_pix;
-	IW_SAMPLE *out_pix;
+	iw_tmpsample *in_pix;
+	iw_tmpsample *out_pix;
 	int num_in_pix;
 	int num_out_pix;
 
@@ -845,12 +845,12 @@ static int iw_process_cols_to_intermediate(struct iw_context *ctx, int channel,
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 
 	num_in_pix = ctx->input_h;
-	inpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_in_pix * sizeof(IW_SAMPLE));
+	inpix_tofree = (iw_tmpsample*)iw_malloc(ctx, num_in_pix * sizeof(iw_tmpsample));
 	if(!inpix_tofree) goto done;
 	in_pix = inpix_tofree;
 
 	num_out_pix = ctx->intermed_canvas_height;
-	outpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_out_pix * sizeof(IW_SAMPLE));
+	outpix_tofree = (iw_tmpsample*)iw_malloc(ctx, num_out_pix * sizeof(iw_tmpsample));
 	if(!outpix_tofree) goto done;
 	out_pix = outpix_tofree;
 
@@ -931,10 +931,10 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	int z;
 	int k;
 	int retval=0;
-	IW_SAMPLE tmpsamp;
-	IW_SAMPLE alphasamp = 0.0;
-	IW_SAMPLE *inpix_tofree = NULL; // Used if we need a separate temp buffer for input samples
-	IW_SAMPLE *outpix_tofree = NULL; // Used if we need a separate temp buffer for output samples
+	iw_tmpsample tmpsamp;
+	iw_tmpsample alphasamp = 0.0;
+	iw_tmpsample *inpix_tofree = NULL; // Used if we need a separate temp buffer for input samples
+	iw_tmpsample *outpix_tofree = NULL; // Used if we need a separate temp buffer for output samples
 	// Do any of the output channels use error-diffusion dithering?
 	int using_errdiffdither = 0;
 	int output_channel;
@@ -947,8 +947,8 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	struct iw_channelinfo_intermed *int_ci;
 	struct iw_channelinfo_out *out_ci;
 
-	IW_SAMPLE *in_pix = NULL;
-	IW_SAMPLE *out_pix = NULL;
+	iw_tmpsample *in_pix = NULL;
+	iw_tmpsample *out_pix = NULL;
 	int num_in_pix;
 	int num_out_pix;
 
@@ -961,11 +961,11 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 	bkgd_has_transparency = iw_bkgd_has_transparency(ctx);
 
-	inpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_in_pix * sizeof(IW_SAMPLE));
+	inpix_tofree = (iw_tmpsample*)iw_malloc(ctx, num_in_pix * sizeof(iw_tmpsample));
 	in_pix = inpix_tofree;
 
 	// We need an output buffer.
-	outpix_tofree = (IW_SAMPLE*)iw_malloc(ctx, num_out_pix * sizeof(IW_SAMPLE));
+	outpix_tofree = (iw_tmpsample*)iw_malloc(ctx, num_out_pix * sizeof(iw_tmpsample));
 	if(!outpix_tofree) goto done;
 	out_pix = outpix_tofree;
 
@@ -1270,7 +1270,7 @@ static void iw_process_bkgd_label(struct iw_context *ctx)
 	if(!ret) return;
 
 	if(ctx->to_grayscale) {
-		IW_SAMPLE g;
+		iw_tmpsample g;
 		g = iw_color_to_grayscale(ctx, clr.c[0], clr.c[1], clr.c[2]);
 		clr.c[0] = clr.c[1] = clr.c[2] = g;
 	}
@@ -1380,7 +1380,7 @@ static int iw_process_internal(struct iw_context *ctx)
 
 	if(ctx->uses_errdiffdither) {
 		for(k=0;k<IW_DITHER_MAXROWS;k++) {
-			ctx->dither_errors[k] = (IW_SAMPLE*)iw_malloc(ctx, ctx->img2.width * sizeof(IW_SAMPLE));
+			ctx->dither_errors[k] = (double*)iw_malloc(ctx, ctx->img2.width * sizeof(double));
 			if(!ctx->dither_errors[k]) goto done;
 		}
 	}
