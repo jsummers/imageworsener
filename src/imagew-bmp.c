@@ -450,11 +450,12 @@ static int process_bf_mask(struct iwbmprcontext *rctx, int k)
 	if(rctx->bf_high_bit[k] > (int)(rctx->bitcount-1)) return 0;
 
 	if(rctx->bf_bits_count[k]>16) {
-		iw_set_errorf(rctx->ctx,"BMP bits per channel >16 (%d) not supported",
-			rctx->bf_bits_count[k]);
-		return 0;
+		// We only support up to 16 bits. Ignore any bits after the 16th.
+		rctx->bf_low_bit[k] = rctx->bf_high_bit[k]-15;
+		rctx->bf_bits_count[k] = 16;
 	}
-	else if(rctx->bf_bits_count[k]>8) {
+
+	if(rctx->bf_bits_count[k]>8) {
 		rctx->need_16bit = 1;
 	}
 
