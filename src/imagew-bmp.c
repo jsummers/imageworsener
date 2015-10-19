@@ -265,6 +265,10 @@ static int decode_v4_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 	if(rctx->uses_bitfields) {
 		// Set the bitfields masks here, instead of in iwbmp_read_bitfields().
 		for(k=0;k<4;k++) {
+			rctx->bf_mask[k] = 0;
+		}
+		for(k=0;k<4;k++) {
+			if(rctx->infoheader_size < 40+k*4+4) break;
 			rctx->bf_mask[k] = iw_get_ui32le(&buf[40+k*4]);
 			if(!process_bf_mask(rctx,k)) return 0;
 		}
@@ -285,6 +289,8 @@ static int decode_v4_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 			rctx->has_alpha_channel = 1;
 		}
 	}
+
+	if(rctx->infoheader_size < 108) return 1;
 
 	cstype = iw_get_ui32le(&buf[56]);
 	switch(cstype) {
@@ -383,7 +389,11 @@ static int iwbmp_read_info_header(struct iwbmprcontext *rctx)
 		rctx->bmpversion=3;
 		if(!decode_v3_header_fields(rctx,buf)) goto done;
 	}
-	else if(rctx->infoheader_size==108) {
+	else if(rctx->infoheader_size==108 || rctx->infoheader_size==52 || rctx->infoheader_size==56) {
+		// We assume a a 52- or 56-byte header is for BITMAPV2INFOHEADER/BITMAPV3INFOHEADER,
+		// and not OS/2v2 format. But if it OS/2v2, it will probably either work (because
+		// the formats are similar enough), or fail due to an unsupported combination of
+		// compression and bits/pixel.
 		rctx->bmpversion=4;
 		if(!decode_v3_header_fields(rctx,buf)) goto done;
 		if(!decode_v4_header_fields(rctx,buf)) goto done;
