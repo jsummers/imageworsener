@@ -1,4 +1,7 @@
 Unreleased changes
+ - (None)
+
+Version 1.3.0 - 4 Nov 2015
  - Partial support for OS/2 Bitmap Array BMP files.
  - Added -negate option.
  - Added -opt option, for format-specific options.

@@ -1,7 +1,7 @@
 
 dnl TODO: Figure out the actual minimum version that will work.
 AC_PREREQ([2.63])
-AC_INIT([imageworsener], [1.2.0])
+AC_INIT([imageworsener], [1.3.0])
 dnl AC_CONFIG_SRCDIR is just any unique file: a sanity check
 AC_CONFIG_SRCDIR([src/imagew.h])
 AM_CONFIG_HEADER([config.h])
