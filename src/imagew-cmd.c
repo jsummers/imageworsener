@@ -2313,8 +2313,8 @@ static int iwcmd_decode_size(struct params_struct *p, const char *v)
 
 	cpos = strchr(v,',');
 	if(!cpos) {
-		iwcmd_error(p,"Bad size option");
-		return 0;
+		iwcmd_error(p,"Bad size option\n");
+		return -1;
 	}
 	iwcmd_read_w_or_h(p,v,     &p->dst_width_req,&p->rel_width_flag,&p->rel_width);
 	iwcmd_read_w_or_h(p,cpos+1,&p->dst_height_req,&p->rel_height_flag,&p->rel_height);
