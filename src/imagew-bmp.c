@@ -268,7 +268,7 @@ static int decode_v4_header_fields(struct iwbmprcontext *rctx, const iw_byte *bu
 			rctx->bf_mask[k] = 0;
 		}
 		for(k=0;k<4;k++) {
-			if(rctx->infoheader_size < 40+k*4+4) break;
+			if(rctx->infoheader_size < (size_t)(40+k*4+4)) break;
 			rctx->bf_mask[k] = iw_get_ui32le(&buf[40+k*4]);
 			if(!process_bf_mask(rctx,k)) return 0;
 		}
