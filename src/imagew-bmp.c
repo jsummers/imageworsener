@@ -371,6 +371,7 @@ static int iwbmp_read_info_header(struct iwbmprcontext *rctx)
 	// structure, and identifies the BMP version.
 	if(!iwbmp_read(rctx,buf,4)) goto done;
 	rctx->infoheader_size = iw_get_ui32le(&buf[0]);
+	if(rctx->infoheader_size<12) goto done;
 
 	// Read the rest of the header.
 	n = rctx->infoheader_size;
