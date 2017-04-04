@@ -202,7 +202,7 @@ static void iwgif_record_pixel(struct iwgifrcontext *rctx, unsigned int coloridx
 	unsigned int r,g,b,a;
 	size_t pixnum;
 	size_t xi,yi; // position in image coordinates
-	size_t xs /*,ys*/; // position in screen coordinates
+	size_t xs,ys; // position in screen coordinates
 	iw_byte *ptr;
 
 	img = rctx->img;
@@ -213,10 +213,12 @@ static void iwgif_record_pixel(struct iwgifrcontext *rctx, unsigned int coloridx
 	xi = pixnum%rctx->image_width;
 	yi = pixnum/rctx->image_width;
 	xs = rctx->image_left + xi;
-	// ys = rctx->image_top + yi;
+	ys = rctx->image_top + yi;
 
-	// Check if the x-coordinate is on the screen.
+	// Make sure the coordinate is within the image, and on the screen.
+	if(yi>=(size_t)rctx->image_height) return;
 	if(xs>=(size_t)rctx->screen_width) return;
+	if(ys>=(size_t)rctx->screen_height) return;
 
 	// Because of how we de-interlace, it's not obvious whether the Y coordinate
 	// is on the screen. The easiest way is to check if the row pointer is NULL.
@@ -651,7 +653,7 @@ static int iwgif_read_image(struct iwgifrcontext *rctx)
 	// (And if !rctx->include_screen, to wait until we know the size of the image.)
 	if(!iwgif_init_screen(rctx)) goto done;
 
-	rctx->total_npixels = rctx->image_width * rctx->image_height;
+	rctx->total_npixels = (size_t)rctx->image_width * (size_t)rctx->image_height;
 
 	if(!iwgif_make_row_pointers(rctx)) goto done;
 
