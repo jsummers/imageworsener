@@ -507,7 +507,7 @@ static int iwmiff_read_pixels(struct iwmiffrcontext *rctx)
 		if(rctx->miff_bitdepth==64) {
 			iwmiffr_convert_row64_32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
 		}
-		else {
+		else if(rctx->miff_bitdepth==32) {
 			iwmiffr_convert_row32(rctx,tmprow,&img->pixels[j*img->bpr],samples_per_row);
 		}
 	}
@@ -550,6 +550,12 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 
 	if(!iwmiff_read_header(&rctx))
 		goto done;
+
+	if(img.bit_depth!=32 && img.bit_depth!=64) {
+		iw_set_error(ctx, "MIFF: Unsupported or unset bit depth");
+		goto done;
+
+	}
 
 	if(!iw_check_image_dimensions(rctx.ctx,img.width,img.height))
 		goto done;
