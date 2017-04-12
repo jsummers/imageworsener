@@ -264,7 +264,8 @@ done:
 
 // Read a token from a NUL-terminated string.
 static int read_next_pam_token(struct iwpnmrcontext *rctx,
-	const char *linebuf, char *tokenbuf, int tokenbuflen, int *curpos)
+	const char *linebuf, int linebuflen,
+	char *tokenbuf, int tokenbuflen, int *curpos)
 {
 	iw_byte b;
 	int token_len = 0;
@@ -279,6 +280,9 @@ static int read_next_pam_token(struct iwpnmrcontext *rctx,
 			return 0;
 		}
 
+		if(linepos>=linebuflen) {
+			return 0;
+		}
 		b = linebuf[linepos++];
 		if(b==0) break; // End of line
 
@@ -346,7 +350,11 @@ static int iwpnm_read_pam_header(struct iwpnmrcontext *rctx)
 
 		// Read first token in that header line
 		curpos = 0;
-		if(!read_next_pam_token(rctx, linebuf, tokenbuf, sizeof(tokenbuf), &curpos)) goto done;
+		if(!read_next_pam_token(rctx, linebuf, (int)sizeof(linebuf),
+			tokenbuf, (int)sizeof(tokenbuf), &curpos))
+		{
+			goto done;
+		}
 
 		if(!strcmp(tokenbuf,"ENDHDR")) {
 			break;
@@ -358,7 +366,11 @@ static int iwpnm_read_pam_header(struct iwpnmrcontext *rctx)
 		}
 
 		// Read second token
-		if(!read_next_pam_token(rctx, linebuf, token2buf, sizeof(token2buf), &curpos)) goto done;
+		if(!read_next_pam_token(rctx, linebuf, (int)sizeof(linebuf),
+			token2buf, (int)sizeof(token2buf), &curpos))
+		{
+			goto done;
+		}
 		if(!strcmp(tokenbuf,"WIDTH")) {
 			rctx->img->width = atoi(token2buf);
 		}
@@ -443,7 +455,10 @@ IW_IMPL(int) iw_read_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	rctx->img = img;
 	rctx->iodescr = iodescr;
 
-	if(!iwpnm_read_header(rctx)) goto done;
+	if(!iwpnm_read_header(rctx)) {
+		iw_set_error(ctx, "Error parsing header");
+		goto done;
+	}
 
 	if(!iw_check_image_dimensions(rctx->ctx,rctx->img->width,rctx->img->height))
 		goto done;
