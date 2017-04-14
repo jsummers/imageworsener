@@ -614,6 +614,10 @@ static int iwgif_read_image(struct iwgifrcontext *rctx)
 
 	rctx->image_width = (int)iw_get_ui16le(&rctx->rbuf[4]);
 	rctx->image_height = (int)iw_get_ui16le(&rctx->rbuf[6]);
+	if(rctx->image_width<1 || rctx->image_height<1) {
+		iw_set_error(rctx->ctx, "Invalid image dimensions");
+		goto done;
+	}
 
 	rctx->interlaced = (int)((rctx->rbuf[8]>>6)&0x01);
 
