@@ -788,6 +788,9 @@ IW_IMPL(int) iw_read_gif_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 done:
 	if(!retval) {
 		iw_set_error(ctx,"Failed to read GIF file");
+		// If we didn't call iw_set_input_image, 'img' still belongs to us,
+		// so free its contents.
+		iw_free(ctx, img.pixels);
 	}
 
 	if(rctx) {
