@@ -589,6 +589,7 @@ IW_IMPL(int) iw_read_miff_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 done:
 	if(!retval) {
 		iw_set_error(ctx,"Failed to read MIFF file");
+		iw_free(ctx, img.pixels);
 	}
 	return retval;
 }

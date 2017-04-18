@@ -496,6 +496,8 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	handle_exif_density(&rctx, &img);
 
 	iw_set_input_image(ctx, &img);
+	// The contents of img no longer belong to us.
+	img.pixels = NULL;
 
 	if(rctx.exif_orientation>=2 && rctx.exif_orientation<=8) {
 		static const unsigned int exif_orient_to_transform[9] =
@@ -515,6 +517,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	retval=1;
 
 done:
+	iw_free(ctx, img.pixels);
 	if(cinfo_valid) jpeg_destroy_decompress(&cinfo);
 	if(rctx.buffer) iw_free(ctx,rctx.buffer);
 	if(tmprow) iw_free(ctx,tmprow);

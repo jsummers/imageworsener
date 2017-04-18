@@ -556,6 +556,7 @@ IW_IMPL(int) iw_read_webp_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 done:
 	if(!retval) {
 		iw_set_error(ctx,"Failed to read WebP file");
+		iw_free(ctx, img.pixels);
 	}
 	return retval;
 }

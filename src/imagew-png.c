@@ -408,6 +408,7 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 done:
 	if(!retval) {
 		iw_set_error(ctx,"Read failed");
+		iw_free(ctx, img.pixels);
 	}
 	if(png_ptr) {
 		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);

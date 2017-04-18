@@ -466,10 +466,16 @@ IW_IMPL(int) iw_read_pnm_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 	if(!iwpnm_read_pnm_bitmap(rctx)) goto done;
 
 	iw_set_input_image(ctx, img);
+	// The contents of img no longer belong to us.
+	img->pixels = NULL;
+
 	retval = 1;
 
 done:
-	if(img) iw_free(ctx, img);
+	if(img) {
+		iw_free(ctx, img->pixels);
+		iw_free(ctx, img);
+	}
 	if(rctx) iw_free(ctx, rctx);
 	return retval;
 }
