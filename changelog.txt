@@ -1,6 +1,9 @@
 Unreleased changes
  - (None)
 
+Version 1.3.1 - 24 Apr 2017
+ - Security and stability fixes
+
 Version 1.3.0 - 4 Nov 2015
  - Partial support for OS/2 Bitmap Array BMP files.
  - Added -negate option.

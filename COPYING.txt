@@ -1,6 +1,6 @@
 ImageWorsener v1.2.0+ is distributed under an MIT-style license.
 
-Copyright (c) 2011-2015 Jason Summers
+Copyright (c) 2011-2017 Jason Summers
 <jason1@pobox.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
