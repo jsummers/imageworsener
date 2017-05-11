@@ -847,11 +847,13 @@ static int bmpr_read_rle(struct iwbmprcontext *rctx)
 		!(rctx->compression==IWBMP_BI_RLE4 && rctx->bitcount==4))
 	{
 		iw_set_error(rctx->ctx,"Compression type incompatible with image type");
+		goto done;
 	}
 
 	if(rctx->topdown) {
 		// The documentation says that top-down images may not be compressed.
 		iw_set_error(rctx->ctx,"Compression not allowed with top-down images");
+		goto done;
 	}
 
 	// RLE-compressed BMP images don't have to assign a color to every pixel,

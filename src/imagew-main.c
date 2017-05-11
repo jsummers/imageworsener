@@ -922,8 +922,6 @@ done:
 	return retval;
 }
 
-// 'handle_alpha_flag' must be set if an alpha channel exists and this is not
-// the alpha channel.
 static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int intermed_channel,
 	const struct iw_csdescr *out_csdescr)
 {
@@ -951,13 +949,27 @@ static int iw_process_rows_intermediate_to_final(struct iw_context *ctx, int int
 	iw_tmpsample *out_pix = NULL;
 	int num_in_pix;
 	int num_out_pix;
+	struct iw_channelinfo_out default_ci_out;
 
 	num_in_pix = ctx->intermed_canvas_width;
 	num_out_pix = ctx->img2.width;
 
 	int_ci = &ctx->intermed_ci[intermed_channel];
 	output_channel = int_ci->corresponding_output_channel;
-	out_ci = &ctx->img2_ci[output_channel];
+	if(output_channel>=0) {
+		out_ci = &ctx->img2_ci[output_channel];
+	}
+	else {
+		// If there is no output channelinfo struct, create a temporary one to
+		// use.
+		// TODO: This is admittedly ugly, but we use these settings for a few
+		// things even when there is no corresponding output channel, and I
+		// don't remember exactly why.
+		iw_zeromem(&default_ci_out, sizeof(struct iw_channelinfo_out));
+		default_ci_out.channeltype = IW_CHANNELTYPE_NONALPHA;
+		out_ci = &default_ci_out;
+	}
+
 	is_alpha_channel = (int_ci->channeltype==IW_CHANNELTYPE_ALPHA);
 	bkgd_has_transparency = iw_bkgd_has_transparency(ctx);
 
