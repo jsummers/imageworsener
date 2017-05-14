@@ -302,49 +302,57 @@ static boolean my_fill_input_buffer_fn(j_decompress_ptr cinfo)
 
 	ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
 		rctx->buffer,rctx->buffer_len,&bytesread);
-	if(!ret) return FALSE;
-
+	if((!ret) || (bytesread<1)) {
+		iw_set_error(rctx->ctx, "Unexpected end of file");
+		// Return a fake EOI marker.
+		rctx->buffer[0] = 0xffU;
+		rctx->buffer[1] = 0xd9U;
+		rctx->pub.bytes_in_buffer = 2;
+	}
+	else {
+		rctx->pub.bytes_in_buffer = bytesread;
+	}
 	rctx->pub.next_input_byte = rctx->buffer;
-	rctx->pub.bytes_in_buffer = bytesread;
 
-	if(bytesread<1) return FALSE;
 	return TRUE;
 }
 
-static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes)
+static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes_to_skip)
 {
 	struct iwjpegrcontext *rctx = (struct iwjpegrcontext*)cinfo->src;
 	size_t bytes_still_to_skip;
-	size_t nbytes;
 	int ret;
 	size_t bytesread;
 
-	if(num_bytes<=0) return;
-	bytes_still_to_skip = (size_t)num_bytes;
+	// If the skip would leave some valid bytes in the buffer, ...
+	if(num_bytes_to_skip < (long)rctx->pub.bytes_in_buffer) {
+		// ... just move the pointer.
+		rctx->pub.next_input_byte += num_bytes_to_skip;
+		rctx->pub.bytes_in_buffer -= num_bytes_to_skip;
+		return;
+	}
 
+	// Otherwise, mark the buffer as empty ...
+	rctx->pub.next_input_byte = rctx->buffer;
+	rctx->pub.bytes_in_buffer = 0;
+
+	// ... and read + throw away the requested number of bytes
+	bytes_still_to_skip = (size_t)num_bytes_to_skip;
 	while(bytes_still_to_skip>0) {
-		if(rctx->pub.bytes_in_buffer>0) {
-			// There are some bytes in the buffer. Skip up to
-			// 'bytes_still_to_skip' of them.
-			nbytes = rctx->pub.bytes_in_buffer;
-			if(nbytes>bytes_still_to_skip)
-				nbytes = bytes_still_to_skip;
 
-			rctx->pub.bytes_in_buffer -= nbytes;
-			rctx->pub.next_input_byte += nbytes;
-			bytes_still_to_skip -= nbytes;
-		}
-
-		if(bytes_still_to_skip<1) return;
-
-		// Need to read from the file (or do a seek, but we currently don't
+		// Read from the file (coud do a seek instead, but we currently don't
 		// support seeking).
 		ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
 			rctx->buffer,rctx->buffer_len,&bytesread);
 		if(!ret) bytesread=0;
+		if(bytesread==0 || bytesread>bytes_still_to_skip) {
+			// If we couldn't read any data, stop.
+			// (We don't attempt to robustly support input streams for which
+			// not all the data is available yet.)
+			break;
+		}
 
-		rctx->pub.next_input_byte = rctx->buffer;
-		rctx->pub.bytes_in_buffer = bytesread;
+		bytes_still_to_skip -= bytesread;
 	}
 }
 
@@ -389,6 +397,7 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	struct iwjpegrcontext rctx;
 	JSAMPLE *tmprow = NULL;
 	int cmyk_flag = 0;
+	int ret;
 
 	iw_zeromem(&img,sizeof(struct iw_image));
 	iw_zeromem(&cinfo,sizeof(struct jpeg_decompress_struct));
@@ -433,7 +442,14 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	// requirements.
 	jpeg_save_markers(&cinfo, 0xe1, 65535);
 
-	jpeg_read_header(&cinfo, TRUE);
+	ret = jpeg_read_header(&cinfo, TRUE);
+	if(ret != JPEG_HEADER_OK) {
+		// I don't think this is supposed to be possible, assuming the second
+		// param to jpeg_read_header is TRUE, and our fill_input_buffer
+		// function always returns TRUE.
+		iw_set_error(ctx, "Unexpected libjpeg error");
+		goto done;
+	}
 
 	rctx.is_jfif = cinfo.saw_JFIF_marker;
 
