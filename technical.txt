@@ -11,7 +11,7 @@ Acknowledgments
 
 Some of the inspiration for this project came from these web pages:
   "Gamma error in picture scaling"
-    http://www.4p8.com/eric.brasseur/gamma.html
+    http://www.ericbrasseur.org/gamma.html
   "How to make a resampler that doesn't suck"
     http://www.virtualdub.org/blog/pivot/entry.php?id=86
 
