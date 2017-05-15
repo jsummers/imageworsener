@@ -332,18 +332,20 @@ static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes_to_skip
 		return;
 	}
 
-	// Otherwise, mark the buffer as empty ...
-	rctx->pub.next_input_byte = rctx->buffer;
-	rctx->pub.bytes_in_buffer = 0;
-
-	// ... and read + throw away the requested number of bytes
-	bytes_still_to_skip = (size_t)num_bytes_to_skip;
+	// Otherwise, read + throw away the necessary number of bytes ...
+	bytes_still_to_skip = (size_t)num_bytes_to_skip - rctx->pub.bytes_in_buffer;
 	while(bytes_still_to_skip>0) {
+		size_t bytes_to_read;
 
-		// Read from the file (coud do a seek instead, but we currently don't
+		bytes_to_read = rctx->buffer_len;
+		if(bytes_to_read > bytes_still_to_skip) {
+			bytes_to_read = bytes_still_to_skip;
+		}
+
+		// Read from the file (could do a seek instead, but we currently don't
 		// support seeking).
 		ret = (*rctx->iodescr->read_fn)(rctx->ctx,rctx->iodescr,
-			rctx->buffer,rctx->buffer_len,&bytesread);
+			rctx->buffer,bytes_to_read,&bytesread);
 		if(!ret) bytesread=0;
 		if(bytesread==0 || bytesread>bytes_still_to_skip) {
 			// If we couldn't read any data, stop.
@@ -354,6 +356,10 @@ static void my_skip_input_data_fn(j_decompress_ptr cinfo, long num_bytes_to_skip
 
 		bytes_still_to_skip -= bytesread;
 	}
+
+	// ... and mark the buffer as empty.
+	rctx->pub.next_input_byte = rctx->buffer;
+	rctx->pub.bytes_in_buffer = 0;
 }
 
 static void my_term_source_fn(j_decompress_ptr cinfo)
