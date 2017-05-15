@@ -483,13 +483,20 @@ IW_IMPL(int) iw_get_input_density(struct iw_context *ctx,
 {
 	*px = 1.0;
 	*py = 1.0;
-	*pcode = ctx->img1.density_code;
-	if(ctx->img1.density_code!=IW_DENSITY_UNKNOWN) {
-		*px = ctx->img1.density_x;
-		*py = ctx->img1.density_y;
-		return 1;
+	*pcode = IW_DENSITY_UNKNOWN;
+
+	if(ctx->img1.density_code==IW_DENSITY_UNKNOWN) {
+		return 0;
 	}
-	return 0;
+	if(!iw_is_valid_density(ctx->img1.density_x, ctx->img1.density_y,
+		ctx->img1.density_code))
+	{
+		return 0;
+	}
+	*px = ctx->img1.density_x;
+	*py = ctx->img1.density_y;
+	*pcode = ctx->img1.density_code;
+	return 1;
 }
 
 IW_IMPL(void) iw_set_output_density(struct iw_context *ctx,
