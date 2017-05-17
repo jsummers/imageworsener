@@ -324,8 +324,9 @@ static void lzw_emit_code(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
 
 // Add a code to the dictionary.
 // Sets d->last_code_added to the position where it was added.
-// Returns 1 if successful, 0 if table is full.
-static int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, iw_byte val)
+// Returns 1 if successful, 2 if table is full, 0 on error.
+static int lzw_add_to_dict(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
+	unsigned int oldcode, iw_byte val)
 {
 	static const unsigned int last_code_of_size[] = {
 		// The first 3 values are unused.
@@ -335,10 +336,16 @@ static int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, iw_byt
 
 	if(d->ct_used>=4096) {
 		d->last_code_added = 0;
-		return 0;
+		return 2;
 	}
 
 	newpos = d->ct_used;
+
+	if(oldcode >= newpos) {
+		iw_set_error(rctx->ctx, "GIF decoding error");
+		return 0;
+	}
+
 	d->ct_used++;
 
 	d->ct[newpos].parent = (iw_uint16)oldcode;
@@ -361,6 +368,8 @@ static int lzw_add_to_dict(struct lzwdeccontext *d, unsigned int oldcode, iw_byt
 static int lzw_process_code(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
 		unsigned int code)
 {
+	int ret;
+
 	if(code==d->eoi_code) {
 		d->eoi_flag=1;
 		return 1;
@@ -387,7 +396,8 @@ static int lzw_process_code(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
 
 		// Let k = the first character of the translation of the code.
 		// Add <oldcode>k to the dictionary.
-		lzw_add_to_dict(d,d->oldcode,d->ct[code].firstchar);
+		ret = lzw_add_to_dict(rctx,d,d->oldcode,d->ct[code].firstchar);
+		if(ret==0) return 0;
 	}
 	else {
 		// No, code is not in table.
@@ -398,7 +408,9 @@ static int lzw_process_code(struct iwgifrcontext *rctx, struct lzwdeccontext *d,
 
 		// Let k = the first char of the translation of oldcode.
 		// Add <oldcode>k to the dictionary.
-		if(lzw_add_to_dict(d,d->oldcode,d->ct[d->oldcode].firstchar)) {
+		ret = lzw_add_to_dict(rctx,d,d->oldcode,d->ct[d->oldcode].firstchar);
+		if(ret==0) return 0;
+		if(ret==1) {
 			// Write <oldcode>k to the output stream.
 			lzw_emit_code(rctx,d,d->last_code_added);
 		}
