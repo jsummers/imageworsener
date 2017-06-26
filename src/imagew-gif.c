@@ -145,7 +145,7 @@ static int iwgif_skip_subblocks(struct iwgifrcontext *rctx)
 // extensions.
 static int iwgif_read_graphic_control_ext(struct iwgifrcontext *rctx)
 {
-	int retval;
+	int retval=0;
 
 	// Read 6 bytes:
 	//  The first is the subblock size, which must be 4.
@@ -153,6 +153,8 @@ static int iwgif_read_graphic_control_ext(struct iwgifrcontext *rctx)
 	//  The middle 4 contain the actual data.
 	if(!iwgif_read(rctx,rctx->rbuf,6)) goto done;
 
+	// TODO: A well-formed extension with bad data should probably result in a
+	// warning, not a fatal error.
 	if(rctx->rbuf[0]!=4) goto done;
 	if(rctx->rbuf[5]!=0) goto done;
 	rctx->has_transparency = (int)((rctx->rbuf[1])&0x01);
