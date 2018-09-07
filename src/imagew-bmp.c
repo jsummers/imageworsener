@@ -708,7 +708,7 @@ static int bmpr_read_rle_internal(struct iwbmprcontext *rctx)
 {
 	int retval = 0;
 	int pos_x, pos_y;
-	iw_byte buf[255];
+	iw_byte buf[256];
 	size_t n_pix;
 	size_t n_bytes;
 	size_t i;
@@ -759,6 +759,7 @@ static int bmpr_read_rle_internal(struct iwbmprcontext *rctx)
 				else {
 					n_bytes = ((n_pix+1)/2)*2;
 				}
+				if(n_bytes>sizeof(buf)) goto done;
 				if(!iwbmp_read(rctx,buf,n_bytes)) goto done;
 				for(i=0;i<n_pix;i++) {
 					if(pos_x<rctx->img->width) {
