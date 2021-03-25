@@ -2,7 +2,7 @@ ImageWorsener is a raster image scaling and processing utility.
 Version 1.3.3
 Copyright (c) 2011-2018 Jason Summers  <jason1@pobox.com>
 
-Web site: http://entropymine.com/imageworsener/
+Web site: https://entropymine.com/imageworsener/
 
 All nontrivial automated image processing causes a loss of information.
 While ImageWorsener will degrade your images, its goal is to degrade them as
@@ -16,7 +16,7 @@ included COYPING.txt file for more information.
 Versions up to 1.1.0 used the GPLv3+ license.
 
 If source code is not included in this package, it may be downloaded from
-the web site at <http://entropymine.com/imageworsener/>.
+the web site at <https://entropymine.com/imageworsener/>.
 
 ===========================================================================
 
