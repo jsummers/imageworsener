@@ -95,7 +95,7 @@ Other information:
  - The package includes a simple regression testing script. The script
    requires a Unix-ish environment.
  - Intended to be compatible with Windows, Linux, and Cygwin. Includes project
-   files for Visual Studio 2008.
+   files for Visual Studio 2019.
 
 
 The ImageWorsener C library
