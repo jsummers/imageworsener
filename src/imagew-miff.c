@@ -339,7 +339,6 @@ static int iwmiff_read_header(struct iwmiffrcontext *rctx)
 		if(st==STATE_READING_NAME) {
 			if(namelen==0 && b==':') {
 				// End of header section
-				st=STATE_NEUTRAL;
 				break;
 			}
 

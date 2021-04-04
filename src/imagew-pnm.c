@@ -411,17 +411,13 @@ static int iwpnm_read_header(struct iwpnmrcontext *rctx)
 	if(!ret) goto done;
 
 	isvalid = 0;
-	if(sig[0]!='P') {
-		isvalid=0;
-	}
-	else if(sig[1]=='7' && sig[2]==0x0a) {
-		isvalid=1;
-	}
-	else if(sig[1]>='1' && sig[1]<='6' && iwpnm_is_whitespace(sig[2])) {
-		isvalid=1;
-	}
-	else {
-		isvalid=0;
+	if(sig[0]=='P') {
+		if(sig[1]=='7' && sig[2]==0x0a) {
+			isvalid=1;
+		}
+		else if(sig[1]>='1' && sig[1]<='6' && iwpnm_is_whitespace(sig[2])) {
+			isvalid=1;
+		}
 	}
 
 	if(!isvalid) {
@@ -553,8 +549,8 @@ static int iwpnm_write_rgb_main(struct iwpnmwcontext *wctx)
 		}
 		else {
 			wctx->maxcolorcode = wctx->img->maxcolorcode[IW_CHANNELTYPE_RED];
-			if(wctx->img->maxcolorcode[IW_CHANNELTYPE_GREEN] != wctx->maxcolorcode ||
-				wctx->img->maxcolorcode[IW_CHANNELTYPE_BLUE] != wctx->maxcolorcode)
+			if(wctx->img->maxcolorcode[IW_CHANNELTYPE_GREEN] != (unsigned int)wctx->maxcolorcode ||
+				wctx->img->maxcolorcode[IW_CHANNELTYPE_BLUE] != (unsigned int)wctx->maxcolorcode)
 			{
 				iw_set_error(wctx->ctx,"PNM/PPM/PAM format requires equal bit depths");
 				goto done;
@@ -641,9 +637,9 @@ static int iwpnm_write_rgba_main(struct iwpnmwcontext *wctx)
 
 	if(wctx->img->reduced_maxcolors) {
 		wctx->maxcolorcode = wctx->img->maxcolorcode[IW_CHANNELTYPE_RED];
-		if(wctx->img->maxcolorcode[IW_CHANNELTYPE_GREEN] != wctx->maxcolorcode ||
-			wctx->img->maxcolorcode[IW_CHANNELTYPE_BLUE] != wctx->maxcolorcode ||
-			wctx->img->maxcolorcode[IW_CHANNELTYPE_ALPHA] != wctx->maxcolorcode)
+		if(wctx->img->maxcolorcode[IW_CHANNELTYPE_GREEN] != (unsigned int)wctx->maxcolorcode ||
+			wctx->img->maxcolorcode[IW_CHANNELTYPE_BLUE] != (unsigned int)wctx->maxcolorcode ||
+			wctx->img->maxcolorcode[IW_CHANNELTYPE_ALPHA] != (unsigned int)wctx->maxcolorcode)
 		{
 			iw_set_error(wctx->ctx,"PAM format requires equal bit depths");
 			goto done;
@@ -794,7 +790,7 @@ static int iwpnm_write_graya_main(struct iwpnmwcontext *wctx)
 
 	if(wctx->img->reduced_maxcolors) {
 		wctx->maxcolorcode = wctx->img->maxcolorcode[IW_CHANNELTYPE_GRAY];
-		if(wctx->img->maxcolorcode[IW_CHANNELTYPE_ALPHA] != wctx->maxcolorcode)
+		if(wctx->img->maxcolorcode[IW_CHANNELTYPE_ALPHA] != (unsigned int)wctx->maxcolorcode)
 		{
 			iw_set_error(wctx->ctx,"PAM format requires equal bit depths");
 			goto done;

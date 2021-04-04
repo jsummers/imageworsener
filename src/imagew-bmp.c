@@ -554,7 +554,7 @@ static int iwbmp_read_palette(struct iwbmprcontext *rctx)
 static void bmpr_convert_row_32_16(struct iwbmprcontext *rctx, const iw_byte *src, size_t row)
 {
 	int i,k;
-	unsigned int v,x;
+	unsigned int x;
 	int numchannels;
 
 	numchannels = rctx->has_alpha_channel ? 4 : 3;
@@ -567,8 +567,10 @@ static void bmpr_convert_row_32_16(struct iwbmprcontext *rctx, const iw_byte *sr
 		else { // 16
 			x = ((unsigned int)src[i*2+0]) | ((unsigned int)src[i*2+1])<<8;
 		}
-		v = 0;
+
 		for(k=0;k<numchannels;k++) { // For red, green, blue [, alpha]:
+			unsigned int v;
+
 			v = x & rctx->bf_mask[k];
 			if(rctx->bf_low_bit[k]>0)
 				v >>= rctx->bf_low_bit[k];
@@ -1282,6 +1284,8 @@ static int iwbmp_calc_bitfields_masks(struct iwbmpwcontext *wctx, int num_masks)
 	int bits[4]; // R, G, B, A
 	int tot_bits = 0;
 
+	iw_zeromem(bits, sizeof(bits));
+	if(num_masks>4) return 0;
 	for(k=0;k<num_masks;k++) {
 		bits[k] = iw_max_color_to_bitdepth(wctx->maxcolor[k]);
 		tot_bits += bits[k];
@@ -1943,7 +1947,7 @@ static int rle_patch_file_size(struct iwbmpwcontext *wctx,size_t rlesize)
 	}
 
 	// Patch the "bits" size
-	ret=(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,fileheader_size+20,SEEK_SET);
+	ret=(*wctx->iodescr->seek_fn)(wctx->ctx,wctx->iodescr,(iw_int64)fileheader_size+20,SEEK_SET);
 	if(!ret) return 0;
 	iw_set_ui32le(buf,(unsigned int)rlesize);
 	iwbmp_write(wctx,buf,4);

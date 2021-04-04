@@ -694,7 +694,7 @@ static int my_clipboard_writefn(struct iw_context *ctx, struct iw_iodescr *iodes
 		p->cb_w_data_high_water_mark = p->cb_w_data_pos;
 	}
 
-	if(read_14th_byte) {
+	if(read_14th_byte && p->cb_w_data_alloc>=6) {
 		// If we've read the whole fileheader, look at it to figure out the file size
 		p->cb_w_predicted_filesize = 
 			p->cb_w_data[2] | (p->cb_w_data[3]<<8) |
@@ -1149,7 +1149,7 @@ static int iwcmd_run(struct params_struct *p)
 	}
 	else if(p->input_uri.scheme==IWCMD_SCHEME_STDIN) {
 #ifdef IW_WINDOWS
-		_setmode(_fileno(stdin),_O_BINARY);
+		(void)_setmode(_fileno(stdin),_O_BINARY);
 #endif
 		readdescr.read_fn = my_readfn;
 		readdescr.fp = (void*)stdin;
@@ -1417,7 +1417,7 @@ static int iwcmd_run(struct params_struct *p)
 	}
 	else if(p->output_uri.scheme==IWCMD_SCHEME_STDOUT) {
 #ifdef IW_WINDOWS
-		_setmode(_fileno(stdout),_O_BINARY);
+		(void)_setmode(_fileno(stdout),_O_BINARY);
 #endif
 		writedescr.write_fn = my_writefn;
 		writedescr.fp = (void*)stdout;
@@ -2374,10 +2374,17 @@ static void add_opt(struct params_struct *p, const char *name, const char *val)
 
 	nlen = strlen(name);
 	p->options[p->options_count].name = malloc(nlen+1);
+	if(!p->options[p->options_count].name) {
+		return;
+	}
 	memcpy(p->options[p->options_count].name, name, nlen+1);
 
 	vlen = strlen(val);
 	p->options[p->options_count].val = malloc(vlen+1);
+	if(!p->options[p->options_count].val) {
+		free(p->options[p->options_count].name);
+		return;
+	}
 	memcpy(p->options[p->options_count].val, val, vlen+1);
 
 	p->options_count++;
@@ -2395,18 +2402,32 @@ static void add_opt_raw(struct params_struct *p, const char *v)
 		// No "value". Add an option whose value is an empty string.
 		nlen = strlen(v);
 		p->options[p->options_count].name = malloc(nlen+1);
+		if(!p->options[p->options_count].name) {
+			return;
+		}
 		memcpy(p->options[p->options_count].name, v, nlen+1);
 		p->options[p->options_count].val = malloc(1);
+		if(!p->options[p->options_count].val) {
+			free(p->options[p->options_count].name);
+			return;
+		}
 		p->options[p->options_count].val[0] = '\0';
 	}
 	else {
 		nlen = eq - v; // pointer arithmetic
 		p->options[p->options_count].name = malloc(nlen+1);
+		if(!p->options[p->options_count].name) {
+			return;
+		}
 		memcpy(p->options[p->options_count].name, v, nlen);
 		p->options[p->options_count].name[nlen] = '\0';
 
 		vlen = strlen(eq+1);
 		p->options[p->options_count].val = malloc(vlen+1);
+		if(!p->options[p->options_count].val) {
+			free(p->options[p->options_count].name);
+			return;
+		}
 		memcpy(p->options[p->options_count].val, eq+1, vlen+1);
 	}
 
@@ -2819,7 +2840,7 @@ static int handle_encoding(struct params_struct *p, int argc, char* argv[])
 	if(p->output_encoding==IWCMD_ENCODING_UTF16) {
 		// Tell the C library (e.g. fputws()) not to translate our UTF-16
 		// text to an "ANSI" encoding, or anything else.
-		_setmode(_fileno(p->msgsfile),_O_U16TEXT);
+		(void)_setmode(_fileno(p->msgsfile),_O_U16TEXT);
 	}
 #endif
 
