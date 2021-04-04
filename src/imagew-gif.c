@@ -612,7 +612,7 @@ done:
 static int iwgif_read_image(struct iwgifrcontext *rctx)
 {
 	int retval=0;
-	struct lzwdeccontext d;
+	struct lzwdeccontext *d = NULL;
 	size_t subblocksize;
 	int has_local_ct;
 	int local_ct_size;
@@ -675,8 +675,10 @@ static int iwgif_read_image(struct iwgifrcontext *rctx)
 
 	if(!iwgif_make_row_pointers(rctx)) goto done;
 
-	lzw_init(&d,root_codesize);
-	lzw_clear(&d);
+	d = iw_mallocz(rctx->ctx, sizeof(struct lzwdeccontext));
+	if(!d) goto done;
+	lzw_init(d, root_codesize);
+	lzw_clear(d);
 
 	while(1) {
 		// Read size of next subblock
@@ -686,9 +688,9 @@ static int iwgif_read_image(struct iwgifrcontext *rctx)
 
 		// Read next subblock
 		if(!iwgif_read(rctx,rctx->rbuf,subblocksize)) goto done;
-		if(!lzw_process_bytes(rctx,&d,rctx->rbuf,subblocksize)) goto done;
+		if(!lzw_process_bytes(rctx,d,rctx->rbuf,subblocksize)) goto done;
 
-		if(d.eoi_flag) break;
+		if(d->eoi_flag) break;
 
 		// Stop if we reached the end of the image. We don't care if we've read an
 		// EOI code or not.
@@ -698,6 +700,7 @@ static int iwgif_read_image(struct iwgifrcontext *rctx)
 	retval=1;
 
 done:
+	iw_free(rctx->ctx, d);
 	return retval;
 }
 
