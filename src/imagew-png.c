@@ -29,9 +29,21 @@ struct iwpngrcontext {
 };
 
 struct errstruct {
-	jmp_buf *jbufp;
 	struct iw_context *ctx;
 	int write_flag; // So we can tell if we're reading, or writing.
+	jmp_buf jbuf;
+};
+
+// TODO?: Combine iwpngrcontext and pr_rsrc_struct into one struct (or something).
+struct pr_rsrc_struct {
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+	png_structp png_ptr;
+	png_infop  info_ptr;
+	iw_byte **row_pointers;
+	struct iwpngrcontext rctx;
+	struct iw_image img;
+	struct errstruct errinfo;
 };
 
 #if PNG_LIBPNG_VER < 10400
@@ -53,11 +65,9 @@ static void my_png_free_fn(png_structp png_ptr, png_voidp mem)
 static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 {
 	struct errstruct *errinfop;
-	jmp_buf *j;
 	struct iw_context *ctx;
 
 	errinfop = (struct errstruct *)png_get_error_ptr(png_ptr);
-	j = errinfop->jbufp;
 	ctx = errinfop->ctx;
 
 	if(errinfop->write_flag) {
@@ -67,7 +77,7 @@ static void my_png_error_fn(png_structp png_ptr, const char *err_msg)
 		iw_set_errorf(ctx,"libpng reports read error: %s",err_msg);
 	}
 
-	longjmp(*j, -1);
+	longjmp(errinfop->jbuf, 1);
 }
 
 static void my_png_warning_fn(png_structp png_ptr, const char *warn_msg)
@@ -253,53 +263,40 @@ static void iw_read_ancillary_data(struct iwpngrcontext *rctx)
 	iwpng_read_bkgd(rctx);
 }
 
-IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+static int iw_read_png_file3(struct pr_rsrc_struct *pr)
 {
+	struct iw_context *ctx = pr->ctx;
+	struct iw_iodescr *iodescr = pr->iodescr;
 	png_uint_32 width, height;
 	int interlace_type;
-	iw_byte **row_pointers = NULL;
 	int i;
-	jmp_buf jbuf;
-	struct errstruct errinfo;
 	int is_supported;
 	int has_trns;
 	int need_update_info;
 	int numchannels=0;
-	struct iw_image img;
 	int retval=0;
-	png_structp png_ptr = NULL;
-	png_infop  info_ptr = NULL;
-	struct iwpngrcontext rctx;
 
-	iw_zeromem(&rctx,sizeof(struct iwpngrcontext));
-	iw_zeromem(&img,sizeof(struct iw_image));
+	pr->errinfo.ctx = ctx;
+	pr->errinfo.write_flag=0;
 
-	errinfo.jbufp = &jbuf;
-	errinfo.ctx = ctx;
-	errinfo.write_flag=0;
-
-	if(setjmp(jbuf)) {
-		goto done;
-	}
-
-	png_ptr = png_create_read_struct_2(PNG_LIBPNG_VER_STRING,
-		(void*)(&errinfo), my_png_error_fn, my_png_warning_fn,
+	pr->png_ptr = png_create_read_struct_2(PNG_LIBPNG_VER_STRING,
+		(void*)(&pr->errinfo), my_png_error_fn, my_png_warning_fn,
 		(void*)ctx, my_png_malloc_fn, my_png_free_fn);
-	if(!png_ptr) goto done;
+	if(!pr->png_ptr) goto done;
 
-	info_ptr = png_create_info_struct(png_ptr);
-	if(!info_ptr) goto done;
+	pr->info_ptr = png_create_info_struct(pr->png_ptr);
+	if(!pr->info_ptr) goto done;
 
-	rctx.ctx = ctx;
-	rctx.iodescr = iodescr;
-	rctx.png_ptr = png_ptr;
-	rctx.info_ptr = info_ptr;
-	rctx.img = &img;
-	png_set_read_fn(png_ptr, (void*)&rctx, my_png_read_fn);
+	pr->rctx.ctx = ctx;
+	pr->rctx.iodescr = iodescr;
+	pr->rctx.png_ptr = pr->png_ptr;
+	pr->rctx.info_ptr = pr->info_ptr;
+	pr->rctx.img = &pr->img;
+	png_set_read_fn(pr->png_ptr, (void*)&pr->rctx, my_png_read_fn);
 
-	png_read_info(png_ptr, info_ptr);
+	png_read_info(pr->png_ptr, pr->info_ptr);
 
-	png_get_IHDR(png_ptr, info_ptr, &width, &height, &rctx.bit_depth, &rctx.color_type,
+	png_get_IHDR(pr->png_ptr, pr->info_ptr, &width, &height, &pr->rctx.bit_depth, &pr->rctx.color_type,
 		&interlace_type, NULL, NULL);
 
 	if(!iw_check_image_dimensions(ctx,width,height)) {
@@ -308,62 +305,62 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 	// I'm not sure I know everything that png_read_update_info() does,
 	// so to be safe, read some things before calling it.
-	iw_read_ancillary_data1(&rctx);
+	iw_read_ancillary_data1(&pr->rctx);
 
-	if(!(rctx.color_type&PNG_COLOR_MASK_COLOR)) {
+	if(!(pr->rctx.color_type&PNG_COLOR_MASK_COLOR)) {
 		// Remember whether the image was originally encoded as grayscale.
-		img.native_grayscale = 1;
+		pr->img.native_grayscale = 1;
 	}
 
 	// TODO: Currently, we promote binary transparency to a full alpha channel.
 	// (If necessary to do that, we also promote the image to 8bits/sample.)
 	// It would be better to create and support 1-bpp alpha channels.
 
-	has_trns=png_get_valid(png_ptr,info_ptr,PNG_INFO_tRNS);
+	has_trns=png_get_valid(pr->png_ptr,pr->info_ptr,PNG_INFO_tRNS);
 	need_update_info=0;
 
-	if(rctx.color_type==PNG_COLOR_TYPE_PALETTE) {
+	if(pr->rctx.color_type==PNG_COLOR_TYPE_PALETTE) {
 		// Expand all palette images to full RGB or RGBA.
-		png_set_palette_to_rgb(png_ptr);
+		png_set_palette_to_rgb(pr->png_ptr);
 		need_update_info=1;
 	}
-	else if(has_trns && !(rctx.color_type&PNG_COLOR_MASK_ALPHA)) {
+	else if(has_trns && !(pr->rctx.color_type&PNG_COLOR_MASK_ALPHA)) {
 		// Expand binary transparency to a full alpha channel.
 		// For (grayscale) images with <8bpp, this will also
 		// expand them to 8bpp.
-		png_set_tRNS_to_alpha(png_ptr);
+		png_set_tRNS_to_alpha(pr->png_ptr);
 		need_update_info=1;
 	}
 
 	if(need_update_info) {
 		// Update things to reflect any transformations done above.
-		png_read_update_info(png_ptr, info_ptr);
-		rctx.color_type = png_get_color_type(png_ptr, info_ptr);
-		rctx.bit_depth = png_get_bit_depth(png_ptr, info_ptr);
+		png_read_update_info(pr->png_ptr, pr->info_ptr);
+		pr->rctx.color_type = png_get_color_type(pr->png_ptr, pr->info_ptr);
+		pr->rctx.bit_depth = png_get_bit_depth(pr->png_ptr, pr->info_ptr);
 	}
 
-	img.bit_depth = rctx.bit_depth;
+	pr->img.bit_depth = pr->rctx.bit_depth;
 
 	is_supported=0;
 
-	switch(rctx.color_type) {
+	switch(pr->rctx.color_type) {
 	case PNG_COLOR_TYPE_GRAY:
-		img.imgtype = IW_IMGTYPE_GRAY;
+		pr->img.imgtype = IW_IMGTYPE_GRAY;
 		numchannels = 1;
 		is_supported=1;
 		break;
 	case PNG_COLOR_TYPE_GRAY_ALPHA:
-		img.imgtype = IW_IMGTYPE_GRAYA;
+		pr->img.imgtype = IW_IMGTYPE_GRAYA;
 		numchannels = 2;
 		is_supported=1;
 		break;
 	case PNG_COLOR_TYPE_RGB:
-		img.imgtype = IW_IMGTYPE_RGB;
+		pr->img.imgtype = IW_IMGTYPE_RGB;
 		numchannels = 3;
 		is_supported=1;
 		break;
 	case PNG_COLOR_TYPE_RGB_ALPHA:
-		img.imgtype = IW_IMGTYPE_RGBA;
+		pr->img.imgtype = IW_IMGTYPE_RGBA;
 		numchannels = 4;
 		is_supported=1;
 		break;
@@ -371,49 +368,81 @@ IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr
 
 	if(!is_supported) {
 		iw_set_errorf(ctx,"This PNG image type (color type=%d, bit depth=%d) is not supported",
-			(int)rctx.color_type,(int)rctx.bit_depth);
+			(int)pr->rctx.color_type,(int)pr->rctx.bit_depth);
 		goto done;
 	}
 
-	iw_read_ancillary_data(&rctx);
+	iw_read_ancillary_data(&pr->rctx);
 
-	if(rctx.sbit_flag) {
+	if(pr->rctx.sbit_flag) {
 		// See comment in iwpng_read_sbit().
-		png_set_shift(png_ptr, &rctx.sbit);
+		png_set_shift(pr->png_ptr, &pr->rctx.sbit);
 	}
 
-	img.width = width;
-	img.height = height;
-	img.bpr = iw_calc_bytesperrow(img.width,img.bit_depth*numchannels);
+	pr->img.width = width;
+	pr->img.height = height;
+	pr->img.bpr = iw_calc_bytesperrow(pr->img.width,pr->img.bit_depth*numchannels);
 
-	img.pixels = (iw_byte*)iw_malloc_large(ctx, img.bpr,img.height);
-	if(!img.pixels) {
+	pr->img.pixels = (iw_byte*)iw_malloc_large(ctx, pr->img.bpr,pr->img.height);
+	if(!pr->img.pixels) {
 		goto done;
 	}
-	row_pointers = (iw_byte**)iw_malloc(ctx, img.height * sizeof(iw_byte*));
-	if(!row_pointers) goto done;
+	pr->row_pointers = (iw_byte**)iw_malloc(ctx, pr->img.height * sizeof(iw_byte*));
+	if(!pr->row_pointers) goto done;
 
-	for(i=0;i<img.height;i++) {
-		row_pointers[i] = &img.pixels[img.bpr*i];
+	for(i=0;i<pr->img.height;i++) {
+		pr->row_pointers[i] = &pr->img.pixels[pr->img.bpr*i];
 	}
 
-	png_read_image(png_ptr, row_pointers);
+	png_read_image(pr->png_ptr, pr->row_pointers);
 
-	png_read_end(png_ptr, info_ptr);
+	png_read_end(pr->png_ptr, pr->info_ptr);
 
-	iw_set_input_image(ctx, &img);
+	iw_set_input_image(ctx, &pr->img);
+	// The contents of img no longer belong to us.
+	pr->img.pixels = NULL;
 
 	retval = 1;
 
 done:
 	if(!retval) {
 		iw_set_error(ctx,"Read failed");
-		iw_free(ctx, img.pixels);
 	}
-	if(png_ptr) {
-		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
+	// Don't free memory here; do it in iw_read_png_file().
+	return retval;
+}
+
+// This function serves as a target for longjmp(). It shouldn't do much of
+// anything else.
+static int iw_read_png_file2(struct pr_rsrc_struct *pr)
+{
+	if(setjmp(pr->errinfo.jbuf)) {
+		return 0;
 	}
-	if(row_pointers) iw_free(ctx,row_pointers);
+
+	return iw_read_png_file3(pr);
+}
+
+IW_IMPL(int) iw_read_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+{
+	struct pr_rsrc_struct *pr = NULL;
+	int retval = 0;
+
+	pr = iw_mallocz(ctx, sizeof(struct pr_rsrc_struct));
+	if(!pr) goto done;
+	pr->ctx = ctx;
+	pr->iodescr = iodescr;
+
+	retval = iw_read_png_file2(pr);
+done:
+	if(pr) {
+		if(pr->png_ptr) {
+			png_destroy_read_struct(&pr->png_ptr, &pr->info_ptr, (png_infopp)NULL);
+		}
+		if(pr->img.pixels) iw_free(ctx, pr->img.pixels);
+		if(pr->row_pointers) iw_free(ctx, pr->row_pointers);
+		iw_free(ctx, pr);
+	}
 	return retval;
 }
 
@@ -428,6 +457,17 @@ struct iwpngwcontext {
 
 	int bkgd_pal_entry_valid;
 	int bkgd_pal_entry; // Write the background color to this palette entry.
+};
+
+struct pw_rsrc_struct {
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+	png_structp png_ptr;
+	png_infop info_ptr;
+	iw_byte **row_pointers;
+	struct iwpngwcontext wctx;
+	struct iw_image img;
+	struct errstruct errinfo;
 };
 
 static void iwpng_set_phys(struct iwpngwcontext *wctx)
@@ -606,44 +646,32 @@ static void my_png_flush_fn(png_structp png_ptr)
 {
 }
 
-IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+static int iw_write_png_file3(struct pw_rsrc_struct *pw)
 {
-	iw_byte **row_pointers = NULL;
+	struct iw_context *ctx = pw->ctx;
+	struct iw_iodescr *iodescr = pw->iodescr;
 	int i;
-	jmp_buf jbuf;
-	struct errstruct errinfo;
 	int lpng_color_type;
 	int lpng_bit_depth;
 	int lpng_interlace_type;
 	int retval=0;
-	png_structp png_ptr = NULL;
-	png_infop  info_ptr = NULL;
-	struct iw_image img;
 	struct iw_csdescr csdescr;
 	const struct iw_palette *iwpal = NULL;
 	int no_cslabel;
 	int palette_is_gray;
 	int cmprlevel;
-	struct iwpngwcontext wctx;
 	const char *optv;
 
-	iw_zeromem(&wctx,sizeof(struct iwpngwcontext));
-
-	iw_get_output_image(ctx,&img);
+	iw_get_output_image(ctx,&pw->img);
 	iw_get_output_colorspace(ctx,&csdescr);
 
-	errinfo.jbufp = &jbuf;
-	errinfo.ctx = ctx;
-	errinfo.write_flag = 1;
+	pw->errinfo.ctx = ctx;
+	pw->errinfo.write_flag = 1;
 
-	if(setjmp(jbuf)) {
-		goto done;
-	}
-
-	png_ptr = png_create_write_struct_2(PNG_LIBPNG_VER_STRING,
-		(void*)(&errinfo), my_png_error_fn, my_png_warning_fn,
+	pw->png_ptr = png_create_write_struct_2(PNG_LIBPNG_VER_STRING,
+		(void*)(&pw->errinfo), my_png_error_fn, my_png_warning_fn,
 		(void*)ctx, my_png_malloc_fn, my_png_free_fn);
-	if(!png_ptr) goto done;
+	if(!pw->png_ptr) goto done;
 
 	cmprlevel = 9;
 	optv = iw_get_option(ctx, "deflate:cmprlevel");
@@ -651,24 +679,24 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		cmprlevel = iw_parse_int(optv);
 	}
 	if(cmprlevel >= 0) {
-		png_set_compression_level(png_ptr, cmprlevel);
+		png_set_compression_level(pw->png_ptr, cmprlevel);
 	}
 
-	png_set_compression_buffer_size(png_ptr, 1048576);
+	png_set_compression_buffer_size(pw->png_ptr, 1048576);
 
-	info_ptr = png_create_info_struct(png_ptr);
-	if(!info_ptr) goto done;
+	pw->info_ptr = png_create_info_struct(pw->png_ptr);
+	if(!pw->info_ptr) goto done;
 
-	wctx.ctx = ctx;
-	wctx.iodescr = iodescr;
-	wctx.png_ptr = png_ptr;
-	wctx.info_ptr = info_ptr;
-	wctx.img = &img;
-	png_set_write_fn(png_ptr, (void*)&wctx, my_png_write_fn, my_png_flush_fn);
+	pw->wctx.ctx = ctx;
+	pw->wctx.iodescr = iodescr;
+	pw->wctx.png_ptr = pw->png_ptr;
+	pw->wctx.info_ptr = pw->info_ptr;
+	pw->wctx.img = &pw->img;
+	png_set_write_fn(pw->png_ptr, (void*)&pw->wctx, my_png_write_fn, my_png_flush_fn);
 
 	lpng_color_type = -1;
 
-	switch(img.imgtype) {
+	switch(pw->img.imgtype) {
 	case IW_IMGTYPE_RGBA:  lpng_color_type=PNG_COLOR_TYPE_RGB_ALPHA;  break;
 	case IW_IMGTYPE_RGB:   lpng_color_type=PNG_COLOR_TYPE_RGB;        break;
 	case IW_IMGTYPE_GRAYA: lpng_color_type=PNG_COLOR_TYPE_GRAY_ALPHA; break;
@@ -681,7 +709,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		goto done;
 	}
 
-	lpng_bit_depth = img.bit_depth;
+	lpng_bit_depth = pw->img.bit_depth;
 
 	if(lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
 		iwpal = iw_get_output_palette(ctx);
@@ -696,7 +724,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		}
 	}
 
-	if(img.reduced_maxcolors) {
+	if(pw->img.reduced_maxcolors) {
 		if(lpng_bit_depth<8 || lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
 			iw_set_error(ctx,"Internal: Can\xe2\x80\x99t support reduced bit depth");
 			goto done;
@@ -708,7 +736,7 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		lpng_interlace_type = PNG_INTERLACE_ADAM7;
 	}
 
-	png_set_IHDR(png_ptr, info_ptr, img.width, img.height,
+	png_set_IHDR(pw->png_ptr, pw->info_ptr, pw->img.width, pw->img.height,
 		lpng_bit_depth, lpng_color_type, lpng_interlace_type,
 		PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
 
@@ -718,53 +746,53 @@ IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		;
 	}
 	else if(csdescr.cstype==IW_CSTYPE_GAMMA) {
-		png_set_gAMA(png_ptr, info_ptr, 1.0/csdescr.gamma);
+		png_set_gAMA(pw->png_ptr, pw->info_ptr, 1.0/csdescr.gamma);
 	}
 	else if(csdescr.cstype==IW_CSTYPE_LINEAR) {
-		png_set_gAMA(png_ptr, info_ptr, 1.0);
+		png_set_gAMA(pw->png_ptr, pw->info_ptr, 1.0);
 	}
 	else if(csdescr.cstype==IW_CSTYPE_SRGB) {
-		png_set_sRGB(png_ptr, info_ptr,
-			iw_intent_to_lpng_intent(img.rendering_intent));
+		png_set_sRGB(pw->png_ptr, pw->info_ptr,
+			iw_intent_to_lpng_intent(pw->img.rendering_intent));
 	}
 
-	iwpng_set_phys(&wctx);
+	iwpng_set_phys(&pw->wctx);
 
-	iwpng_set_bkgd_label(&wctx, lpng_color_type, lpng_bit_depth, iwpal);
+	iwpng_set_bkgd_label(&pw->wctx, lpng_color_type, lpng_bit_depth, iwpal);
 
 	if(lpng_color_type==PNG_COLOR_TYPE_PALETTE) {
-		iwpng_set_palette(&wctx, iwpal);
+		iwpng_set_palette(&pw->wctx, iwpal);
 	}
 
-	iwpng_set_binary_trns(&wctx, lpng_color_type);
+	iwpng_set_binary_trns(&pw->wctx, lpng_color_type);
 
-	if(img.reduced_maxcolors) {
+	if(pw->img.reduced_maxcolors) {
 		png_color_8 sbit;
-		sbit.red   = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_RED]);
-		sbit.green = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_GREEN]);
-		sbit.blue  = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_BLUE]);
-		sbit.gray  = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_GRAY]);
-		sbit.alpha = iw_max_color_to_bitdepth(img.maxcolorcode[IW_CHANNELTYPE_ALPHA]);
-		png_set_sBIT(png_ptr,info_ptr,&sbit);
-		png_set_shift(png_ptr,&sbit);
+		sbit.red   = iw_max_color_to_bitdepth(pw->img.maxcolorcode[IW_CHANNELTYPE_RED]);
+		sbit.green = iw_max_color_to_bitdepth(pw->img.maxcolorcode[IW_CHANNELTYPE_GREEN]);
+		sbit.blue  = iw_max_color_to_bitdepth(pw->img.maxcolorcode[IW_CHANNELTYPE_BLUE]);
+		sbit.gray  = iw_max_color_to_bitdepth(pw->img.maxcolorcode[IW_CHANNELTYPE_GRAY]);
+		sbit.alpha = iw_max_color_to_bitdepth(pw->img.maxcolorcode[IW_CHANNELTYPE_ALPHA]);
+		png_set_sBIT(pw->png_ptr,pw->info_ptr,&sbit);
+		png_set_shift(pw->png_ptr,&sbit);
 	}
 
-	png_write_info(png_ptr, info_ptr);
+	png_write_info(pw->png_ptr, pw->info_ptr);
 
-	row_pointers = (iw_byte**)iw_malloc(ctx, img.height * sizeof(iw_byte*));
-	if(!row_pointers) goto done;
+	pw->row_pointers = (iw_byte**)iw_malloc(ctx, pw->img.height * sizeof(iw_byte*));
+	if(!pw->row_pointers) goto done;
 
-	for(i=0;i<img.height;i++) {
-		row_pointers[i] = &img.pixels[img.bpr*i];
+	for(i=0;i<pw->img.height;i++) {
+		pw->row_pointers[i] = &pw->img.pixels[pw->img.bpr*i];
 	}
 
 	if(lpng_bit_depth<8) {
-		png_set_packing(png_ptr);
+		png_set_packing(pw->png_ptr);
 	}
 
-	png_write_image(png_ptr, row_pointers);
+	png_write_image(pw->png_ptr, pw->row_pointers);
 
-	png_write_end(png_ptr, info_ptr);
+	png_write_end(pw->png_ptr, pw->info_ptr);
 
 	retval = 1;
 
@@ -772,10 +800,41 @@ done:
 	if(!retval) {
 		iw_set_error(ctx,"Write failed");
 	}
-	if(png_ptr) {
-		png_destroy_write_struct(&png_ptr, &info_ptr);
+	// Don't free memory here; do it in iw_write_png_file().
+	return retval;
+}
+
+// This function serves as a target for longjmp(). It shouldn't do much of
+// anything else.
+static int iw_write_png_file2(struct pw_rsrc_struct *pw)
+{
+	if(setjmp(pw->errinfo.jbuf)) {
+		return 0;
 	}
-	if(row_pointers) iw_free(ctx,row_pointers);
+
+	return iw_write_png_file3(pw);
+}
+
+IW_IMPL(int) iw_write_png_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+{
+	struct pw_rsrc_struct *pw = NULL;
+	int retval = 0;
+
+	pw = iw_mallocz(ctx, sizeof(struct pw_rsrc_struct));
+	if(!pw) goto done;
+	pw->ctx = ctx;
+	pw->iodescr = iodescr;
+
+	retval = iw_write_png_file2(pw);
+
+done:
+	if(pw) {
+		if(pw->png_ptr) {
+			png_destroy_write_struct(&pw->png_ptr, &pw->info_ptr);
+		}
+		if(pw->row_pointers) iw_free(ctx, pw->row_pointers);
+		iw_free(ctx, pw);
+	}
 	return retval;
 }
 

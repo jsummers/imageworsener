@@ -23,13 +23,15 @@
 #endif
 
 struct my_error_mgr {
-	struct jpeg_error_mgr pub;
+	struct jpeg_error_mgr pub; // This field must be first.
+	int have_libjpeg_error;
 	jmp_buf setjmp_buffer;
 };
 
 static void my_error_exit(j_common_ptr cinfo)
 {
 	struct my_error_mgr* myerr = (struct my_error_mgr*)cinfo->err;
+	myerr->have_libjpeg_error = 1;
 	longjmp(myerr->setjmp_buffer, 1);
 }
 
@@ -50,6 +52,18 @@ struct iwjpegrcontext {
 	unsigned int exif_orientation; // 0 means not set
 	double exif_density_x, exif_density_y; // -1.0 means not set.
 	unsigned int exif_density_unit; // 0 means not set
+};
+
+// TODO?: Combine iwjpegrcontext and jr_rsrc_struct into one struct (or something).
+struct jr_rsrc_struct {
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+	struct iwjpegrcontext rctx;
+	JSAMPLE *tmprow;
+	struct iw_image img;
+	int cinfo_valid;
+	struct jpeg_decompress_struct cinfo;
+	struct my_error_mgr jerr;
 };
 
 struct iw_exif_state {
@@ -392,66 +406,43 @@ static void convert_cmyk_to_rbg(struct iw_context *ctx, const JSAMPLE *src,
 	}
 }
 
-IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+static int iw_read_jpeg_file3(struct jr_rsrc_struct *jr)
 {
+	struct iw_context *ctx = jr->ctx;
+	struct iw_iodescr *iodescr = jr->iodescr;
 	int retval=0;
-	struct jpeg_decompress_struct cinfo;
-	struct my_error_mgr jerr;
-	int cinfo_valid=0;
 	int colorspace;
 	JDIMENSION rownum;
 	JSAMPLE *jsamprow;
 	int numchannels=0;
-	struct iw_image img;
-	struct iwjpegrcontext rctx;
-	JSAMPLE *tmprow = NULL;
 	int cmyk_flag = 0;
 	int ret;
 
-	iw_zeromem(&img,sizeof(struct iw_image));
-	iw_zeromem(&cinfo,sizeof(struct jpeg_decompress_struct));
-	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
-	iw_zeromem(&rctx,sizeof(struct iwjpegrcontext));
-
-	cinfo.err = jpeg_std_error(&jerr.pub);
-	jerr.pub.error_exit = my_error_exit;
-	jerr.pub.output_message = my_output_message;
-
-	if (setjmp(jerr.setjmp_buffer)) {
-		char buffer[JMSG_LENGTH_MAX];
-
-		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
-
-		iw_set_errorf(ctx,"libjpeg reports read error: %s",buffer);
-
-		goto done;
-	}
-
-	jpeg_create_decompress(&cinfo);
-	cinfo_valid=1;
+	jpeg_create_decompress(&jr->cinfo);
+	jr->cinfo_valid=1;
 
 	// Set up our custom source manager.
-	rctx.pub.init_source = my_init_source_fn;
-	rctx.pub.fill_input_buffer = my_fill_input_buffer_fn;
-	rctx.pub.skip_input_data = my_skip_input_data_fn;
-	rctx.pub.resync_to_restart = jpeg_resync_to_restart; // libjpeg default
-	rctx.pub.term_source = my_term_source_fn;
-	rctx.ctx = ctx;
-	rctx.iodescr = iodescr;
-	rctx.buffer_len = 32768;
-	rctx.buffer = iw_malloc(ctx, rctx.buffer_len);
-	if(!rctx.buffer) goto done;
-	rctx.exif_density_x = -1.0;
-	rctx.exif_density_y = -1.0;
-	cinfo.src = (struct jpeg_source_mgr*)&rctx;
+	jr->rctx.pub.init_source = my_init_source_fn;
+	jr->rctx.pub.fill_input_buffer = my_fill_input_buffer_fn;
+	jr->rctx.pub.skip_input_data = my_skip_input_data_fn;
+	jr->rctx.pub.resync_to_restart = jpeg_resync_to_restart; // libjpeg default
+	jr->rctx.pub.term_source = my_term_source_fn;
+	jr->rctx.ctx = ctx;
+	jr->rctx.iodescr = iodescr;
+	jr->rctx.buffer_len = 32768;
+	jr->rctx.buffer = iw_malloc(ctx, jr->rctx.buffer_len);
+	if(!jr->rctx.buffer) goto done;
+	jr->rctx.exif_density_x = -1.0;
+	jr->rctx.exif_density_y = -1.0;
+	jr->cinfo.src = (struct jpeg_source_mgr*)&jr->rctx;
 
 	// The lazy way. It would be more efficient to use
 	// jpeg_set_marker_processor(), instead of saving everything to memory.
 	// But libjpeg's marker processing functions have fairly complex
 	// requirements.
-	jpeg_save_markers(&cinfo, 0xe1, 65535);
+	jpeg_save_markers(&jr->cinfo, 0xe1, 65535);
 
-	ret = jpeg_read_header(&cinfo, TRUE);
+	ret = jpeg_read_header(&jr->cinfo, TRUE);
 	if(ret != JPEG_HEADER_OK) {
 		// I don't think this is supposed to be possible, assuming the second
 		// param to jpeg_read_header is TRUE, and our fill_input_buffer
@@ -460,16 +451,16 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		goto done;
 	}
 
-	rctx.is_jfif = cinfo.saw_JFIF_marker;
+	jr->rctx.is_jfif = jr->cinfo.saw_JFIF_marker;
 
-	iwjpeg_read_density(ctx,&img,&cinfo);
+	iwjpeg_read_density(ctx,&jr->img,&jr->cinfo);
 
-	iwjpeg_read_saved_markers(&rctx,&cinfo);
+	iwjpeg_read_saved_markers(&jr->rctx,&jr->cinfo);
 
-	jpeg_start_decompress(&cinfo);
+	jpeg_start_decompress(&jr->cinfo);
 
-	colorspace=cinfo.out_color_space;
-	numchannels=cinfo.output_components;
+	colorspace=jr->cinfo.out_color_space;
+	numchannels=jr->cinfo.output_components;
 
 	// libjpeg will automatically convert YCbCr images to RGB, and YCCK images
 	// to CMYK. That leaves GRAYSCALE, RGB, and CMYK for us to handle.
@@ -477,14 +468,14 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 	// cinfo.out_color_space is the colorspace after conversion.
 
 	if(colorspace==JCS_GRAYSCALE && numchannels==1) {
-		img.imgtype = IW_IMGTYPE_GRAY;
-		img.native_grayscale = 1;
+		jr->img.imgtype = IW_IMGTYPE_GRAY;
+		jr->img.native_grayscale = 1;
 	}
 	else if((colorspace==JCS_RGB) && numchannels==3) {
-		img.imgtype = IW_IMGTYPE_RGB;
+		jr->img.imgtype = IW_IMGTYPE_RGB;
 	}
 	else if((colorspace==JCS_CMYK) && numchannels==4) {
-		img.imgtype = IW_IMGTYPE_RGB;
+		jr->img.imgtype = IW_IMGTYPE_RGB;
 		cmyk_flag = 1;
 	}
 	else {
@@ -492,72 +483,113 @@ IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodesc
 		goto done;
 	}
 
-	img.width = cinfo.output_width;
-	img.height = cinfo.output_height;
-	if(!iw_check_image_dimensions(ctx,img.width,img.height)) {
+	jr->img.width = jr->cinfo.output_width;
+	jr->img.height = jr->cinfo.output_height;
+	if(!iw_check_image_dimensions(ctx,jr->img.width,jr->img.height)) {
 		goto done;
 	}
 
-	img.bit_depth = 8;
-	img.bpr = iw_calc_bytesperrow(img.width,img.bit_depth*numchannels);
+	jr->img.bit_depth = 8;
+	jr->img.bpr = iw_calc_bytesperrow(jr->img.width,jr->img.bit_depth*numchannels);
 
-	img.pixels = (iw_byte*)iw_malloc_large(ctx, img.bpr, img.height);
-	if(!img.pixels) {
+	jr->img.pixels = (iw_byte*)iw_malloc_large(ctx, jr->img.bpr, jr->img.height);
+	if(!jr->img.pixels) {
 		goto done;
 	}
 
 	if(cmyk_flag) {
-		tmprow = iw_malloc(ctx,4*img.width);
-		if(!tmprow) goto done;
+		jr->tmprow = iw_malloc(ctx,4*jr->img.width);
+		if(!jr->tmprow) goto done;
 	}
 
-	while(cinfo.output_scanline < cinfo.output_height) {
-		rownum=cinfo.output_scanline;
-		jsamprow = &img.pixels[img.bpr * rownum];
+	while(jr->cinfo.output_scanline < jr->cinfo.output_height) {
+		rownum=jr->cinfo.output_scanline;
+		jsamprow = &jr->img.pixels[jr->img.bpr * rownum];
 		if(cmyk_flag) {
 			// read into tmprow, then convert and copy to img.pixels
-			jpeg_read_scanlines(&cinfo, &tmprow, 1);
-			convert_cmyk_to_rbg(ctx,tmprow,jsamprow,img.width);
+			jpeg_read_scanlines(&jr->cinfo, &jr->tmprow, 1);
+			convert_cmyk_to_rbg(ctx,jr->tmprow,jsamprow,jr->img.width);
 		}
 		else {
 			// read directly into img.pixels
-			jpeg_read_scanlines(&cinfo, &jsamprow, 1);
+			jpeg_read_scanlines(&jr->cinfo, &jsamprow, 1);
 		}
-		if(cinfo.output_scanline<=rownum) {
+		if(jr->cinfo.output_scanline<=rownum) {
 			iw_set_error(ctx,"Error reading JPEG file");
 			goto done;
 		}
 	}
-	jpeg_finish_decompress(&cinfo);
+	jpeg_finish_decompress(&jr->cinfo);
 
-	handle_exif_density(&rctx, &img);
+	handle_exif_density(&jr->rctx, &jr->img);
 
-	iw_set_input_image(ctx, &img);
+	iw_set_input_image(ctx, &jr->img);
 	// The contents of img no longer belong to us.
-	img.pixels = NULL;
+	jr->img.pixels = NULL;
 
-	if(rctx.exif_orientation>=2 && rctx.exif_orientation<=8) {
+	if(jr->rctx.exif_orientation>=2 && jr->rctx.exif_orientation<=8) {
 		static const unsigned int exif_orient_to_transform[9] =
 		   { 0,0, 1,3,2,4,5,7,6 };
 
 		// An Exif marker indicated an unusual image orientation.
 
-		if(rctx.is_jfif) {
+		if(jr->rctx.is_jfif) {
 			// The presence of a JFIF marker implies a particular orientation.
 			// If there's also an Exif marker that says something different,
 			// I'm not sure what we're supposed to do.
 			iw_warning(ctx,"JPEG image has an ambiguous orientation");
 		}
-		iw_reorient_image(ctx,exif_orient_to_transform[rctx.exif_orientation]);
+		iw_reorient_image(ctx,exif_orient_to_transform[jr->rctx.exif_orientation]);
 	}
 
 	retval=1;
 
 done:
-	iw_free(ctx, img.pixels);
-	if(cinfo_valid) jpeg_destroy_decompress(&cinfo);
-	if(rctx.buffer) iw_free(ctx,rctx.buffer);
-	if(tmprow) iw_free(ctx,tmprow);
+	// Don't free memory here; do it in iw_read_jpeg_file().
+	return retval;
+}
+
+// This function serves as a target for longjmp(). It shouldn't do much of
+// anything else.
+static int iw_read_jpeg_file2(struct jr_rsrc_struct *jr)
+{
+	if (setjmp(jr->jerr.setjmp_buffer)) {
+		return 0;
+	}
+
+	return iw_read_jpeg_file3(jr);
+}
+
+IW_IMPL(int) iw_read_jpeg_file(struct iw_context *ctx, struct iw_iodescr *iodescr)
+{
+	int retval = 0;
+	struct jr_rsrc_struct *jr = NULL;
+
+	jr = iw_mallocz(ctx, sizeof(struct jr_rsrc_struct));
+	if(!jr) goto done;
+	jr->ctx = ctx;
+	jr->iodescr = iodescr;
+	jr->cinfo.err = jpeg_std_error(&jr->jerr.pub);
+	jr->jerr.pub.error_exit = my_error_exit;
+	jr->jerr.pub.output_message = my_output_message;
+
+	retval = iw_read_jpeg_file2(jr);
+
+done:
+	if(jr) {
+		if(jr->jerr.have_libjpeg_error) {
+			char buffer[JMSG_LENGTH_MAX];
+
+			(*jr->cinfo.err->format_message) ((j_common_ptr)&jr->cinfo, buffer);
+			iw_set_errorf(jr->ctx, "libjpeg reports read error: %s", buffer);
+		}
+
+		if(jr->cinfo_valid) jpeg_destroy_decompress(&jr->cinfo);
+		if(jr->rctx.buffer) iw_free(ctx, jr->rctx.buffer);
+		iw_free(ctx, jr->img.pixels);
+		if(jr->tmprow) iw_free(ctx, jr->tmprow);
+		iw_free(ctx, jr);
+	}
 	return retval;
 }
 
@@ -569,6 +601,16 @@ struct iwjpegwcontext {
 	struct iw_iodescr *iodescr;
 	JOCTET *buffer;
 	size_t buffer_len;
+};
+
+struct jw_rsrc_struct {
+	struct iw_context *ctx;
+	struct iw_iodescr *iodescr;
+	struct iwjpegwcontext wctx;
+	JSAMPROW *row_pointers;
+	int compress_created;
+	struct jpeg_compress_struct cinfo;
+	struct my_error_mgr jerr;
 };
 
 static void iwjpg_set_density(struct iw_context *ctx,struct jpeg_compress_struct *cinfo,
@@ -634,29 +676,22 @@ static void my_term_destination_fn(j_compress_ptr cinfo)
 	}
 }
 
-IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
+static int iw_write_jpeg_file3(struct jw_rsrc_struct *jw)
 {
+	struct iw_context *ctx = jw->ctx;
+	struct iw_iodescr *iodescr = jw->iodescr;
 	int retval=0;
-	struct jpeg_compress_struct cinfo;
-	struct my_error_mgr jerr;
 	J_COLOR_SPACE in_colortype; // Color type of the data we give to libjpeg
 	int jpeg_cmpts;
-	int compress_created = 0;
 	int compress_started = 0;
-	JSAMPROW *row_pointers = NULL;
 	int is_grayscale;
 	int j;
 	struct iw_image img;
 	int jpeg_quality;
 	int samp_factor_h, samp_factor_v;
 	int disable_subsampling = 0;
-	struct iwjpegwcontext wctx;
 	const char *optv;
 	int ret;
-
-	iw_zeromem(&cinfo,sizeof(struct jpeg_compress_struct));
-	iw_zeromem(&jerr,sizeof(struct my_error_mgr));
-	iw_zeromem(&wctx,sizeof(struct iwjpegwcontext));
 
 	iw_get_output_image(ctx,&img);
 
@@ -681,41 +716,28 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 		jpeg_cmpts=3;
 	}
 
-	cinfo.err = jpeg_std_error(&jerr.pub);
-	jerr.pub.error_exit = my_error_exit;
-
-	if (setjmp(jerr.setjmp_buffer)) {
-		char buffer[JMSG_LENGTH_MAX];
-
-		(*cinfo.err->format_message) ((j_common_ptr)&cinfo, buffer);
-
-		iw_set_errorf(ctx,"libjpeg reports write error: %s",buffer);
-
-		goto done;
-	}
-
-	jpeg_create_compress(&cinfo);
-	compress_created=1;
+	jpeg_create_compress(&jw->cinfo);
+	jw->compress_created=1;
 
 	// Set up our custom destination manager.
-	wctx.pub.init_destination = my_init_destination_fn;
-	wctx.pub.empty_output_buffer = my_empty_output_buffer_fn;
-	wctx.pub.term_destination = my_term_destination_fn;
-	wctx.ctx = ctx;
-	wctx.iodescr = iodescr;
-	wctx.buffer_len = 32768;
-	wctx.buffer = iw_malloc(ctx,wctx.buffer_len);
-	if(!wctx.buffer) goto done;
+	jw->wctx.pub.init_destination = my_init_destination_fn;
+	jw->wctx.pub.empty_output_buffer = my_empty_output_buffer_fn;
+	jw->wctx.pub.term_destination = my_term_destination_fn;
+	jw->wctx.ctx = ctx;
+	jw->wctx.iodescr = iodescr;
+	jw->wctx.buffer_len = 32768;
+	jw->wctx.buffer = iw_malloc(ctx,jw->wctx.buffer_len);
+	if(!jw->wctx.buffer) goto done;
 	// Our wctx is organized so it can double as a
 	// 'struct jpeg_destination_mgr'.
-	cinfo.dest = (struct jpeg_destination_mgr*)&wctx;
+	jw->cinfo.dest = (struct jpeg_destination_mgr*)&jw->wctx;
 
-	cinfo.image_width = img.width;
-	cinfo.image_height = img.height;
-	cinfo.input_components = jpeg_cmpts;
-	cinfo.in_color_space = in_colortype;
+	jw->cinfo.image_width = img.width;
+	jw->cinfo.image_height = img.height;
+	jw->cinfo.input_components = jpeg_cmpts;
+	jw->cinfo.in_color_space = in_colortype;
 
-	jpeg_set_defaults(&cinfo);
+	jpeg_set_defaults(&jw->cinfo);
 
 	optv = iw_get_option(ctx, "jpeg:block");
 	if(optv) {
@@ -724,7 +746,7 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 		// Note: This might not work if DCT_SCALING_SUPPORTED was not defined when
 		// libjpeg was compiled, but that symbol is not normally exposed to
 		// applications.
-		cinfo.block_size = iw_parse_int(optv);
+		jw->cinfo.block_size = iw_parse_int(optv);
 #else
 		iw_warning(ctx, "Setting block size is not supported by this version of libjpeg");
 #endif
@@ -732,26 +754,26 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 	optv = iw_get_option(ctx, "jpeg:arith");
 	if(optv)
-		cinfo.arith_code = iw_parse_int(optv) ? TRUE : FALSE;
+		jw->cinfo.arith_code = iw_parse_int(optv) ? TRUE : FALSE;
 	else
-		cinfo.arith_code = FALSE;
+		jw->cinfo.arith_code = FALSE;
 
 	optv = iw_get_option(ctx, "jpeg:colortype");
 	if(optv) {
 		if(!strcmp(optv, "rgb")) {
 			if(in_colortype==JCS_RGB) {
-				jpeg_set_colorspace(&cinfo,JCS_RGB);
+				jpeg_set_colorspace(&jw->cinfo,JCS_RGB);
 				disable_subsampling = 1;
 			}
 		}
 		else if(!strcmp(optv, "rgb1")) {
 			if(in_colortype==JCS_RGB) {
 #if JPEG_LIB_VERSION_MAJOR >= 9
-				cinfo.color_transform = JCT_SUBTRACT_GREEN;
+				jw->cinfo.color_transform = JCT_SUBTRACT_GREEN;
 #else
 				iw_warning(ctx, "Color type rgb1 is not supported by this version of libjpeg");
 #endif
-				jpeg_set_colorspace(&cinfo,JCS_RGB);
+				jpeg_set_colorspace(&jw->cinfo,JCS_RGB);
 				disable_subsampling = 1;
 			}
 		}
@@ -761,13 +783,13 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 	if(optv && iw_parse_int(optv)) {
 #if (JPEG_LIB_VERSION_MAJOR>9 || \
 	(JPEG_LIB_VERSION_MAJOR==9 && JPEG_LIB_VERSION_MINOR>=1))
-		jpeg_set_colorspace(&cinfo, JCS_BG_YCC);
+		jpeg_set_colorspace(&jw->cinfo, JCS_BG_YCC);
 #else
 		iw_warning(ctx, "Big gamut YCC is not supported by this version of libjpeg");
 #endif
 	}
 
-	iwjpg_set_density(ctx,&cinfo,&img);
+	iwjpg_set_density(ctx,&jw->cinfo,&img);
 
 	optv = iw_get_option(ctx, "jpeg:quality");
 	if(optv)
@@ -776,7 +798,7 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 		jpeg_quality = 0;
 
 	if(jpeg_quality>0) {
-		jpeg_set_quality(&cinfo,jpeg_quality,0);
+		jpeg_set_quality(&jw->cinfo,jpeg_quality,0);
 	}
 
 	if(jpeg_cmpts>1 && !disable_subsampling) {
@@ -810,43 +832,81 @@ IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iode
 
 		if(samp_factor_h>0) {
 			if(samp_factor_h>4) samp_factor_h=4;
-			cinfo.comp_info[0].h_samp_factor = samp_factor_h;
+			jw->cinfo.comp_info[0].h_samp_factor = samp_factor_h;
 		}
 		if(samp_factor_v>0) {
 			if(samp_factor_v>4) samp_factor_v=4;
-			cinfo.comp_info[0].v_samp_factor = samp_factor_v;
+			jw->cinfo.comp_info[0].v_samp_factor = samp_factor_v;
 		}
 	}
 
 	if(iw_get_value(ctx,IW_VAL_OUTPUT_INTERLACED)) {
-		jpeg_simple_progression(&cinfo);
+		jpeg_simple_progression(&jw->cinfo);
 	}
 
-	row_pointers = (JSAMPROW*)iw_malloc(ctx, img.height * sizeof(JSAMPROW));
-	if(!row_pointers) goto done;
+	jw->row_pointers = (JSAMPROW*)iw_malloc(ctx, img.height * sizeof(JSAMPROW));
+	if(!jw->row_pointers) goto done;
 
 	for(j=0;j<img.height;j++) {
-		row_pointers[j] = &img.pixels[j*img.bpr];
+		jw->row_pointers[j] = &img.pixels[j*img.bpr];
 	}
 
-	jpeg_start_compress(&cinfo, TRUE);
+	jpeg_start_compress(&jw->cinfo, TRUE);
 	compress_started=1;
 
-	jpeg_write_scanlines(&cinfo, row_pointers, img.height);
+	jpeg_write_scanlines(&jw->cinfo, jw->row_pointers, img.height);
 
 	retval=1;
 
 done:
 	if(compress_started)
-		jpeg_finish_compress(&cinfo);
+		jpeg_finish_compress(&jw->cinfo);
 
-	if(compress_created)
-		jpeg_destroy_compress(&cinfo);
+	// Don't free memory here; do it in iw_write_jpeg_file().
+	return retval;
+}
 
-	if(row_pointers) iw_free(ctx,row_pointers);
+// This function serves as a target for longjmp(). It shouldn't do much of
+// anything else.
+static int iw_write_jpeg_file2(struct jw_rsrc_struct *jw)
+{
+	if (setjmp(jw->jerr.setjmp_buffer)) {
+		return 0;
+	}
 
-	if(wctx.buffer) iw_free(ctx,wctx.buffer);
+	return iw_write_jpeg_file3(jw);
+}
 
+IW_IMPL(int) iw_write_jpeg_file(struct iw_context *ctx,  struct iw_iodescr *iodescr)
+{
+	struct jw_rsrc_struct *jw = NULL;
+	int retval = 0;
+
+	jw = iw_mallocz(ctx, sizeof(struct jw_rsrc_struct));
+	if(!jw) goto done;
+	jw->ctx = ctx;
+	jw->iodescr = iodescr;
+
+	jw->cinfo.err = jpeg_std_error(&jw->jerr.pub);
+	jw->jerr.pub.error_exit = my_error_exit;
+	jw->jerr.pub.output_message = my_output_message;
+
+	retval = iw_write_jpeg_file2(jw);
+
+done:
+	if(jw) {
+		if(jw->jerr.have_libjpeg_error) {
+			char buffer[JMSG_LENGTH_MAX];
+
+			(*jw->cinfo.err->format_message) ((j_common_ptr)&jw->cinfo, buffer);
+			iw_set_errorf(jw->ctx, "libjpeg reports write error: %s", buffer);
+		}
+
+		if(jw->compress_created) jpeg_destroy_compress(&jw->cinfo);
+		if(jw->row_pointers) iw_free(ctx, jw->row_pointers);
+		if(jw->wctx.buffer) iw_free(ctx, jw->wctx.buffer);
+		iw_free(ctx, jw);
+	}
 	return retval;
 }
 
