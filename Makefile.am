@@ -22,10 +22,14 @@ imagew_LDADD=libimageworsener.la
 include_HEADERS=src/imagew.h
 
 EXTRA_DIST = readme.txt technical.txt COPYING.txt changelog.txt \
- scripts/autogen.sh scripts/Makefile scripts/makerelease.sh \
- scripts/imagew2008.sln scripts/imagew2008.vcproj scripts/libimagew2008.vcproj \
+ scripts/autogen.sh scripts/Makefile \
+ scripts/makerelease.sh scripts/makerelease-win.sh \
+ scripts/imagew2019.sln \
+ scripts/imagew2019.vcxproj scripts/imagew2019.vcxproj.filters \
+ scripts/libimagew2019.vcxproj scripts/libimagew2019.vcxproj.filters \
  src/imagew-config.h src/imagew-internals.h \
- src/imagew.rc src/resources/imagew.ico \
+ src/imagew.rc src/resources/imagew.ico src/imagew.manifest \
+ .editorconfig \
  tests/runtest \
  tests/srcimg \
  tests/expected
