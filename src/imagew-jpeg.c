@@ -533,12 +533,10 @@ static int iw_read_jpeg_file3(struct jr_rsrc_struct *jr)
 
 		// An Exif marker indicated an unusual image orientation.
 
-		if(jr->rctx.is_jfif) {
-			// The presence of a JFIF marker implies a particular orientation.
-			// If there's also an Exif marker that says something different,
-			// I'm not sure what we're supposed to do.
-			iw_warning(ctx,"JPEG image has an ambiguous orientation");
-		}
+		// Note that if there is also a JFIF segment (jr->rctx.is_jfif), the
+		// orientation is technically ambiguous. But, these days, the usual
+		// practice is to allow Exif to overrule JFIF.
+
 		iw_reorient_image(ctx,exif_orient_to_transform[jr->rctx.exif_orientation]);
 	}
 
