@@ -136,6 +136,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>CompileAsC</CompileAs>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>..\..\libpng\Release\libpng.lib;..\..\zlib\Release\zlib.lib;..\..\jpeg\Release\libjpeg.lib;..\..\libwebp\Release\libwebp.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -160,6 +161,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <CompileAs>CompileAsC</CompileAs>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
     </ClCompile>
     <Link>
       <AdditionalDependencies>..\..\libpng\Release64\libpng.lib;..\..\zlib\Release64\zlib.lib;..\..\jpeg\Release64\libjpeg.lib;..\..\libwebp\Release64\libwebp.lib;%(AdditionalDependencies)</AdditionalDependencies>
