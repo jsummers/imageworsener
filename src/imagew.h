@@ -37,7 +37,7 @@ extern "C" {
 
 // The version of the IW header files.
 // Use iw_get_version_int() to get the version at runtime.
-#define IW_VERSION_INT           0x010303
+#define IW_VERSION_INT           0x010304
 
 
 //// Codes for use with iw_get_value/iw_set_value.

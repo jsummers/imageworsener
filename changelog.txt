@@ -1,3 +1,8 @@
+Version 1.3.4 - 9 Sep 2021
+ - (This release is mainly to refresh the Windows binaries.)
+ - Minor improvements to code quality and stability.
+ - Changed libtool versioning scheme.
+
 Version 1.3.3 - 19 Oct 2018
  - Security and stability fixes
 
