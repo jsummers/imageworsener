@@ -2091,7 +2091,17 @@ static int iwbmp_write_main(struct iwbmpwcontext *wctx)
 	wctx->bmpversion = 0;
 	optv = iw_get_option(wctx->ctx, "bmp:version");
 	if(optv) {
-		wctx->bmpversion = iw_parse_int(optv);
+		if(!strcmp(optv, "auto")) {
+			if(IW_IMGTYPE_HAS_ALPHA(img->imgtype)) {
+				wctx->bmpversion = 5;
+			}
+			else {
+				wctx->bmpversion = 3;
+			}
+		}
+		else {
+			wctx->bmpversion = iw_parse_int(optv);
+		}
 	}
 
 	if(wctx->bmpversion==0) wctx->bmpversion=3;

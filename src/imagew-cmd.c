@@ -716,11 +716,13 @@ static int finish_clipboard_write(struct params_struct *p, struct iw_context *ct
 	HANDLE cb_data_handle = NULL;
 	iw_byte *cb_data = NULL;
 	SIZE_T dib_size;
+	iw_byte infohdr_size;
 	int opened_clipboard = 0;
 
 	if(!p->cb_w_data) goto done;
 	if(p->cb_w_data_high_water_mark <= 14) goto done;
 	dib_size = p->cb_w_data_high_water_mark-14;
+	infohdr_size = p->cb_w_data[14];
 
 	// Copy the image to a memory block appropriate for the clipboard.
 	cb_data_handle = GlobalAlloc(GMEM_ZEROINIT|GMEM_MOVEABLE,dib_size);
@@ -745,7 +747,7 @@ static int finish_clipboard_write(struct params_struct *p, struct iw_context *ct
 		goto done;
 	}
 
-	if(!SetClipboardData(p->bmp_version>=5 ? CF_DIBV5 : CF_DIB, cb_data_handle)) {
+	if(!SetClipboardData(infohdr_size==124 ? CF_DIBV5 : CF_DIB, cb_data_handle)) {
 		goto done;
 	}
 
@@ -1109,7 +1111,12 @@ static int iwcmd_run(struct params_struct *p)
 		if(!strcmp(p->options[i].name, "bmp:version")) {
 			// A hack, but we need to know the BMP version to know
 			// whether to enable transparency.
-			p->bmp_version = iw_parse_int(p->options[i].val);
+			if(!strcmp(p->options[i].val, "auto")) {
+				p->bmp_version = 5; // = max version, in this case
+			}
+			else {
+				p->bmp_version = iw_parse_int(p->options[i].val);
+			}
 		}
 	}
 

@@ -704,8 +704,7 @@ Options:
     "bmp:version=<n>": The BMP file version to write. Currently supports "2"
       (Windows BMP v2, also known as OS/2 BMP v1), and "3" (the default; the
       standard version that's compatible with almost everything), "5" (supports
-      transparency), and "auto" (v5 if the image has transparency, otherwise
-      v3).
+      transparency), and "auto" (v5 if needed for transparency, otherwise v3).
     "deflate:cmprlevel=<n>": zlib-style compression level setting for
       zip/deflate/zlib compression. This applies to all PNG files, and to MIFF
       files that use zip compression.
