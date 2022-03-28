@@ -1,6 +1,6 @@
 ImageWorsener is a raster image scaling and processing utility.
 Version 1.3.4
-Copyright (c) 2011-2021 Jason Summers  <jason1@pobox.com>
+Copyright (c) 2011-2022 Jason Summers  <jason1@pobox.com>
 
 Web site: https://entropymine.com/imageworsener/
 
@@ -703,8 +703,9 @@ Options:
    Options:
     "bmp:version=<n>": The BMP file version to write. Currently supports "2"
       (Windows BMP v2, also known as OS/2 BMP v1), and "3" (the default; the
-      standard version that's compatible with almost everything), and "5"
-      (supports transparency).
+      standard version that's compatible with almost everything), "5" (supports
+      transparency), and "auto" (v5 if the image has transparency, otherwise
+      v3).
     "deflate:cmprlevel=<n>": zlib-style compression level setting for
       zip/deflate/zlib compression. This applies to all PNG files, and to MIFF
       files that use zip compression.
