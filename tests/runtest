@@ -315,6 +315,10 @@ $IW srcimg/test1.webp actual/webp3.png $CMPR $SMALL -precision 32
 
 $IW srcimg/g8.pgm actual/pgm1.png $CMPR $SMALL
 
+$IW srcimg/p2t.png actual/autov1.bmp $SMALL -opt bmp:version=auto
+$IW srcimg/g1t.png actual/autov2.bmp -opt bmp:version=auto
+$IW srcimg/p2.png actual/autov3.bmp $SMALL -opt bmp:version=auto
+
 # Compare the expected and actual files.
 # (TODO: Need a better way to do this.)
 
