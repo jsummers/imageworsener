@@ -2052,7 +2052,9 @@ static int setup_16_32bit(struct iwbmpwcontext *wctx,
 	}
 
 	if(has_alpha && wctx->bmpversion<5) {
-		iw_set_error(wctx->ctx,"Internal: Attempt to write v3 16- or 32-bit image with transparency");
+		// Possible to get here if -bmptrans option was used
+		iw_set_error(wctx->ctx,"Incompatible combination of BMP version, "
+			"transparency, number of colors");
 		return 0;
 	}
 
