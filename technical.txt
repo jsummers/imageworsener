@@ -39,9 +39,9 @@ Dependencies (optional):
 
 Here are three possible ways to build ImageWorsener:
 
-* Prebuilt Visual Studio 2008 project files
+* Prebuilt Visual Studio 2019 project files
 
-Open the scripts/imagew2008.sln file in Visual Studio 2008 or newer.
+Open the scripts/imagew2019.sln file in Visual Studio 2019 or newer.
 
 To compile without libwebp: Edit the project settings to not link to
 libwebp.lib, and change the line in src/imagew-config.h to

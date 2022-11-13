@@ -4,8 +4,6 @@
 /Release64
 *.suo
 *.ncb
-/scripts/imagew2008.vcproj.*
-/scripts/libimagew2008.vcproj.*
 /scripts/.vs
 /scripts/*.vcxproj.user
 /tests/actual
