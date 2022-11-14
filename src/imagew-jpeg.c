@@ -777,6 +777,11 @@ static int iw_write_jpeg_file3(struct jw_rsrc_struct *jw)
 		}
 	}
 
+	optv = iw_get_option(ctx, "jpeg:optcoding");
+	if(optv && iw_parse_int(optv)) {
+		jw->cinfo.optimize_coding = TRUE;
+	}
+
 	optv = iw_get_option(ctx, "jpeg:bgycc");
 	if(optv && iw_parse_int(optv)) {
 #if (JPEG_LIB_VERSION_MAJOR>9 || \

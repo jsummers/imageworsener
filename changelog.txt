@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added feature "-opt jpeg:optcoding".
  - Added feature "-opt bmp:version=auto".
 
 Version 1.3.4 - 9 Sep 2021
