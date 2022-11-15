@@ -17,13 +17,13 @@ Some of the inspiration for this project came from these web pages:
 
 Information about resampling functions and other algorithms was gathered from
 many sources, but ImageMagick's page on resizing was particularly helpful:
-  http://www.imagemagick.org/Usage/resize/
+  https://www.imagemagick.org/Usage/resize/
 
 Alternatives
 ------------
 
 There are many applications and libraries that do image processing, but in the
-free software world, the leader is ImageMagick (http://www.imagemagick.org/).
+free software world, the leader is ImageMagick (https://imagemagick.org/).
 Or you might prefer ImageMagick's conservative alter-ego, GraphicsMagick
 (http://www.graphicsmagick.org/).
 
@@ -32,10 +32,10 @@ Installing / Building from source
 
 Dependencies (optional):
   libpng <http://www.libpng.org/pub/png/libpng.html>
-  zlib <http://zlib.net/>
-  libjpeg <http://www.ijg.org/>
+  zlib <https://www.zlib.net/>
+  libjpeg <https://www.ijg.org/>
   libwebp
-     <http://www.webmproject.org/code/#libwebp_webp_image_decoder_library>
+     <https://www.webmproject.org/code/#libwebp-webp-image-library>
 
 Here are three possible ways to build ImageWorsener:
 
