@@ -727,8 +727,8 @@ Options:
        "rgb1": Use libjpeg's "reversible color transform" feature. (For
          experimental use only.)
        "ycbcr": Convert color JPEG images to YCbCr (the default).
-    "jpeg:optcoding=<n>": Enable libjpeg's "optimize_coding" feature, which
-      makes the output JPEG file slightly smaller in most cases.
+    "jpeg:optcoding": Enable libjpeg's "optimize_coding" feature, which makes
+      the output JPEG file slightly smaller in most cases.
     "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
       written. Default is (probably) 75.
     "jpeg:sampling=<x>,<y>": The sampling factors to use if a color JPEG file
