@@ -731,6 +731,10 @@ Options:
       the output JPEG file slightly smaller in most cases.
     "jpeg:quality=<n>": libjpeg-style quality setting to use if a JPEG file is
       written. Default is (probably) 75.
+    "jpeg:rstm=<n>": Include restart markers in the output JPEG file, every <n>
+      "MCUs".
+    "jpeg:rstr=<n>": Include restart markers in the output JPEG file, every <n>
+      "MCU rows".
     "jpeg:sampling=<x>,<y>": The sampling factors to use if a color JPEG file
       is written. For example, 2 means the chroma channels will have 1/2 as
       many samples as the luma channel. For highest quality, use "1,1". The

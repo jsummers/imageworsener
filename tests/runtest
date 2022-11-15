@@ -191,6 +191,7 @@ $IW srcimg/rgb8.jpg actual/jpegsf.jpg $SCALE -filter catrom -jpegsampling 1,1
 $IW srcimg/g8.jpg actual/jpeggray.jpg $SCALE -filter catrom -jpegquality 60
 $IW srcimg/p4t.png actual/jpegt.jpg $SCALE -filter catrom -interlace -nowarn
 $IW srcimg/rgb8.png actual/jpegoc.jpg $SCALE -opt jpeg:optcoding
+$IW srcimg/rgb8.png actual/jpegrst.jpg $SCALE -opt jpeg:rstm=2
 
 # Test writing BMP
 $IW srcimg/g2.png actual/bmp1.bmp -width 11 -filter mix

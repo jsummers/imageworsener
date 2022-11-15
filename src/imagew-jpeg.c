@@ -737,6 +737,15 @@ static int iw_write_jpeg_file3(struct jw_rsrc_struct *jw)
 
 	jpeg_set_defaults(&jw->cinfo);
 
+	optv = iw_get_option(ctx, "jpeg:rstm");
+	if(optv) {
+		jw->cinfo.restart_interval = (unsigned int)iw_parse_int(optv);
+	}
+	optv = iw_get_option(ctx, "jpeg:rstr");
+	if(optv) {
+		jw->cinfo.restart_in_rows = (int)iw_parse_int(optv);
+	}
+
 	optv = iw_get_option(ctx, "jpeg:block");
 	if(optv) {
 #if (JPEG_LIB_VERSION_MAJOR>=9 || \

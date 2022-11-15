@@ -1,4 +1,5 @@
 Unreleased changes
+ - Added feature "-opt jpeg:rstm" / "-opt jpeg:rstr".
  - Added feature "-opt jpeg:optcoding".
  - Added feature "-opt bmp:version=auto".
 
