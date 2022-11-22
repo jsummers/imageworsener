@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.3.4
+VERSION=1.3.5
 
 if [ ! -f technical.txt ]
 then

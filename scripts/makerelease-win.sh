@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VERSION=1.3.4
+VERSION=1.3.5
 WINDOWS_DOCS='readme.txt technical.txt COPYING.txt'
 
 if [ ! -f technical.txt ]
