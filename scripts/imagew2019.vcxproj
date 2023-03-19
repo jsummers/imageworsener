@@ -98,7 +98,7 @@
       <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>..\..\libpng\Debug\libpng.lib;..\..\zlib\Debug\zlib.lib;..\..\jpeg\Debug\libjpeg.lib;..\..\libwebp\Debug\libwebp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\..\libpng\Debug32\libpng.lib;..\..\zlib\Debug32\zlib.lib;..\..\jpeg\Debug32\libjpeg.lib;..\..\libwebp\Debug32\libwebp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <TargetMachine>MachineX86</TargetMachine>
@@ -139,7 +139,7 @@
       <ControlFlowGuard>Guard</ControlFlowGuard>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>..\..\libpng\Release\libpng.lib;..\..\zlib\Release\zlib.lib;..\..\jpeg\Release\libjpeg.lib;..\..\libwebp\Release\libwebp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\..\libpng\Release32\libpng.lib;..\..\zlib\Release32\zlib.lib;..\..\jpeg\Release32\libjpeg.lib;..\..\libwebp\Release32\libwebp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
