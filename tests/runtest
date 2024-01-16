@@ -334,3 +334,4 @@ then
 	echo "All tests passed."
 fi
 
+exit $RET
